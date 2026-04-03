@@ -33,7 +33,9 @@ export default function PodcastPromo() {
             <span style={{ fontSize: '0.85rem', color: '#adb5bd' }}>ANDRYXify • Umanità o IA?</span>
           </div>
           <motion.a 
-            href="#" 
+            href="https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9?si=whQgruxhQ_i34elguQP8Eg" 
+            target="_blank"
+            rel="noopener noreferrer"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             style={{ 
