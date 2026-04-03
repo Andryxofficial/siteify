@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Twitch, Mic } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -5,6 +6,9 @@ import SocialHub from '../components/SocialHub';
 import PodcastPromo from '../components/PodcastPromo';
 
 export default function Home() {
+  // 0 = Offline, 1 = Twitch Live, 2 = Twitch + YouTube Live
+  const [liveState, setLiveState] = useState(1);
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -18,6 +22,9 @@ export default function Home() {
           initial={{ scale: 0, rotate: -15 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ type: "spring", damping: 12, stiffness: 100 }}
+          onClick={() => setLiveState(prev => (prev + 1) % 3)}
+          style={{ cursor: 'pointer' }}
+          title="Segreto: Cambia stato Live"
         >
           <img 
             src="/logo.png" 
@@ -54,10 +61,18 @@ export default function Home() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4 }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <Twidech size={24} color="#9146FF" />
-          <h2 style={{ fontSize: '1.4rem' }}>Live Preview</h2>
-          <span className="live-status-badge"></span>
+          <h2 style={{ fontSize: '1.4rem', margin: 0 }}>Live Preview</h2>
+          {liveState > 0 ? (
+            <span style={{ background: 'rgba(255,0,0,0.2)', color: '#ff4d4d', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', border: '1px solid rgba(255,0,0,0.5)', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ff4d4d', display: 'inline-block', boxShadow: '0 0 8px #ff4d4d' }}></span> LIVE NOW
+            </span>
+          ) : (
+            <span style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-muted)', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', marginLeft: 'auto' }}>
+              ⚪ OFFLINE
+            </span>
+          )}
         </div>
         <div className="player-wrapper glass-card" style={{ aspectRatio: '16/9', overflow: 'hidden' }}>
           <iframe
@@ -68,6 +83,24 @@ export default function Home() {
             style={{ border: 'none' }}
           ></iframe>
         </div>
+        
+        {liveState === 2 && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem' }}
+          >
+            <a 
+              href="https://youtube.com/@ANDRYXify/live"
+              target="_blank"
+              rel="noreferrer"
+              style={{ background: 'linear-gradient(45deg, #FF0000, #990000)', color: 'white', padding: '10px 25px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', fontWeight: 'bold', boxShadow: '0 5px 15px rgba(255,0,0,0.3)', width: '100%', justifyContent: 'center' }}
+            >
+              <span>🔴 In simulcast anche su YouTube</span>
+            </a>
+          </motion.div>
+        )}
+
         <Link to="/twitch" className="nav-link" style={{ alignSelf: 'center', marginTop: '0.5rem', background: 'var(--primary)', color: 'white', borderRadius: '20px', padding: '8px 25px' }}>
           Vedi tutto
         </Link>

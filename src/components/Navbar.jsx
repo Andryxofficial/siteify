@@ -16,8 +16,8 @@ export default function Navbar() {
   return (
     <nav className="navbar-container glass-panel">
       <div className="navbar-content">
-        <Link to="/" className="navbar-logo" style={{ display: 'flex', alignItems: 'center' }}>
-          <img src="/logo.png" alt="Logo" style={{ height: '36px', width: '36px', borderRadius: '50%', background: 'linear-gradient(45deg, var(--primary), var(--secondary))', padding: '2px' }} />
+        <Link to="/" className="navbar-logo" style={{ textDecoration: 'none' }}>
+          <span className="text-gradient" style={{ fontWeight: 800 }}>ANDRYX</span>ify
         </Link>
         <div className="nav-links">
           {navLinks.map((link) => (
