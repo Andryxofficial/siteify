@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Twitch, Mic } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -8,6 +8,25 @@ import PodcastPromo from '../components/PodcastPromo';
 export default function Home() {
   // 0 = Offline, 1 = Twitch Live, 2 = Twitch + YouTube Live
   const [liveState, setLiveState] = useState(0);
+
+  useEffect(() => {
+    const checkLiveStatus = async () => {
+      try {
+        const response = await fetch('https://decapi.me/twitch/uptime/andryxify');
+        const text = await response.text();
+        if (text.toLowerCase().includes('offline')) {
+          setLiveState(0);
+        } else {
+          setLiveState(1); // Real-time detection of Twitch Live
+        }
+      } catch (error) {
+        console.error("Error fetching live status:", error);
+      }
+    };
+    checkLiveStatus();
+    const interval = setInterval(checkLiveStatus, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <motion.div 
