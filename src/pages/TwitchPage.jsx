@@ -14,8 +14,8 @@ export default function TwitchPage() {
         <p className="subtitle">Segui le dirette, interagisci in chat e scopri i momenti migliori.</p>
       </header>
 
-      <div className="twitch-container glass-panel" style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '1px', background: 'var(--glass-border)', overflow: 'hidden', minHeight: '600px', borderRadius: '24px' }}>
-        <div className="player-side" style={{ background: 'black' }}>
+      <div className="twitch-container glass-panel">
+        <div className="player-side">
           <iframe
             src={`https://player.twitch.tv/?channel=andryxify&parent=${window.location.hostname}`}
             height="100%"
@@ -23,7 +23,7 @@ export default function TwitchPage() {
             allowFullScreen
           ></iframe>
         </div>
-        <div className="chat-side" style={{ background: 'var(--glass-bg)' }}>
+        <div className="chat-side">
           <iframe
             src={`https://www.twitch.tv/embed/andryxify/chat?parent=${window.location.hostname}&darkpopout`}
             height="100%"
@@ -35,13 +35,19 @@ export default function TwitchPage() {
       <div style={{ marginTop: '2rem' }}>
         <h2 style={{ marginBottom: '1rem' }}>Cosa aspettarti sui miei stream:</h2>
         <div className="links-grid">
-          <div className="glass-card link-item" style={{ padding: '1.5rem' }}>
-            <h3 style={{ color: '#9146FF' }}>Gaming</h3>
-            <p style={{ color: 'var(--text-muted)' }}>Gameplay evoluti e analisi dei titoli più attesi.</p>
+          <div className="glass-card link-item" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <span style={{ fontSize: '1.5rem' }}>🎮</span>
+              <h3 style={{ color: '#9146FF', margin: 0 }}>Variety Gaming</h3>
+            </div>
+            <p style={{ color: 'var(--text-muted)', margin: 0 }}>Dagli sparatutto adrenalinici ai capolavori indie. Gioco di tutto esplorando storie e meccaniche uniche, senza mai annoiarmi su un solo titolo.</p>
           </div>
-          <div className="glass-card link-item" style={{ padding: '1.5rem' }}>
-            <h3 style={{ color: '#00f5d4' }}>Tech Talk</h3>
-            <p style={{ color: 'var(--text-muted)' }}>Discussioni sull'IA e l'impatto sulla società.</p>
+          <div className="glass-card link-item" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <span style={{ fontSize: '1.5rem' }}>🎙️</span>
+              <h3 style={{ color: '#00f5d4', margin: 0 }}>Just Chatting & Tech</h3>
+            </div>
+            <p style={{ color: 'var(--text-muted)', margin: 0 }}>Non solo gameplay: ci prendiamo il nostro tempo per chiacchierare a ruota libera, analizzare l'IA, commentare le news tech e filosofeggiare sul futuro.</p>
           </div>
         </div>
       </div>

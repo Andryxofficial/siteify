@@ -42,6 +42,14 @@ body {
   align-items: center;
 }
 
+.app-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 140px;
+}
+
 /* Adds a dark overlay to make text readable */
 body::before {
   content: '';
@@ -322,4 +330,36 @@ body::before {
   color: var(--text-muted);
   font-size: 0.9rem;
   font-family: 'Inter', sans-serif;
+}
+
+/* Twitch Container */
+.twitch-container {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 1px;
+  background: var(--glass-border);
+  overflow: hidden;
+  min-height: 600px;
+  padding: 0;
+  border-radius: 24px;
+}
+
+.player-side {
+  background: black;
+  width: 100%;
+  height: 100%;
+}
+
+.chat-side {
+  background: var(--glass-bg);
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 900px) {
+  .twitch-container {
+    grid-template-columns: 1fr;
+    grid-template-rows: 56.25vw 500px; /* 16:9 ratio for player, 500px for chat */
+    min-height: auto;
+  }
 }

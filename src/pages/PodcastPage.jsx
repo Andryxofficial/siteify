@@ -29,10 +29,11 @@ export default function PodcastPage() {
           <div style={{ flex: 1 }}>
              <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>L'Evoluzione della Coscienza Digitale</h3>
              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Episodio #12 • 45 min</p>
-             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                <button className="nav-link" style={{ background: '#1DB954', color: 'white', borderRadius: '20px', padding: '8px 20px', fontWeight: '600' }}>Spotify</button>
-                <button className="nav-link" style={{ background: '#FF1A1A', color: 'white', borderRadius: '20px', padding: '8px 20px', fontWeight: '600' }}>Apple Podcast</button>
-                <button className="glass-card" style={{ borderRadius: '20px', padding: '8px 15px', display: 'flex', alignItems: 'center', gap: '5px' }}><Share2 size={16} /> Share</button>
+             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
+                <a href="#" target="_blank" rel="noopener noreferrer" className="nav-link" style={{ background: '#1DB954', color: 'white', borderRadius: '20px', padding: '8px 20px', fontWeight: '600', textDecoration: 'none' }}>Spotify</a>
+                <a href="#" target="_blank" rel="noopener noreferrer" className="nav-link" style={{ background: '#FF1A1A', color: 'white', borderRadius: '20px', padding: '8px 20px', fontWeight: '600', textDecoration: 'none' }}>Apple Podcast</a>
+                <a href="#" target="_blank" rel="noopener noreferrer" className="nav-link" style={{ background: '#FF0000', color: 'white', borderRadius: '20px', padding: '8px 20px', fontWeight: '600', textDecoration: 'none' }}>YouTube Music</a>
+                <button className="glass-card" style={{ borderRadius: '20px', padding: '8px 15px', display: 'flex', alignItems: 'center', gap: '5px', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}><Share2 size={16} /> Share</button>
              </div>
           </div>
         </div>

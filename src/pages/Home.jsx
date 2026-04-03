@@ -13,19 +13,6 @@ export default function Home() {
       className="main-content"
     >
       <section className="header">
-        <motion.div 
-          className="profile-img-container"
-          initial={{ scale: 0, rotate: -15 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", damping: 12, stiffness: 100 }}
-        >
-          <img 
-            src="/logo.png" 
-            alt="ANDRYXify Logo" 
-            className="profile-img" 
-            style={{ padding: '15px' }}
-          />
-        </motion.div>
         <motion.h1 
           className="title"
           initial={{ y: 20, opacity: 0 }}
