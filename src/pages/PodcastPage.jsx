@@ -2,6 +2,20 @@ import { motion } from 'framer-motion';
 import { Mic, Headphones, Share2 } from 'lucide-react';
 
 export default function PodcastPage() {
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: 'Umanità o IA? - ANDRYXify Podcast',
+        text: "Scopri il podcast dove indaghiamo il confine tra tecnologia e biologia.",
+        url: 'https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9?si=whQgruxhQ_i34elguQP8Eg',
+      }).catch(console.error);
+    } else {
+      navigator.clipboard.writeText('https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9?si=whQgruxhQ_i34elguQP8Eg').then(() => {
+        alert("Link copiato negli appunti!");
+      });
+    }
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -33,7 +47,7 @@ export default function PodcastPage() {
                 <a href="https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9?si=whQgruxhQ_i34elguQP8Eg" target="_blank" rel="noopener noreferrer" className="nav-link" style={{ background: '#1DB954', color: 'white', borderRadius: '20px', padding: '8px 20px', fontWeight: '600', textDecoration: 'none' }}>Spotify</a>
                 <a href="https://podcasts.apple.com/it/podcast/umanit%C3%A0-o-ia/id1869893930" target="_blank" rel="noopener noreferrer" className="nav-link" style={{ background: '#FF1A1A', color: 'white', borderRadius: '20px', padding: '8px 20px', fontWeight: '600', textDecoration: 'none' }}>Apple Podcast</a>
                 <a href="https://youtube.com/playlist?list=PLFG8B0vJXbXcvI4M3trS3cyfQuH6A6hub&si=z-Y4DsUht0BEkrvy" target="_blank" rel="noopener noreferrer" className="nav-link" style={{ background: '#FF0000', color: 'white', borderRadius: '20px', padding: '8px 20px', fontWeight: '600', textDecoration: 'none' }}>YouTube Music</a>
-                <button className="glass-card" style={{ borderRadius: '20px', padding: '8px 15px', display: 'flex', alignItems: 'center', gap: '5px', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}><Share2 size={16} /> Share</button>
+                <button onClick={handleShare} className="glass-card" style={{ borderRadius: '20px', padding: '8px 15px', display: 'flex', alignItems: 'center', gap: '5px', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}><Share2 size={16} /> Share</button>
              </div>
           </div>
         </div>
