@@ -125,8 +125,8 @@ body::before {
   left: 50%;
   transform: translateX(-50%); /* CENTER THE NAV */
   z-index: 1000;
-  width: 90%;
-  max-width: 600px;
+  width: max-content;
+  max-width: 90%;
   padding: 0.8rem 1.5rem;
   display: flex;
   justify-content: center;
