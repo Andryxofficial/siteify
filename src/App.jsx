@@ -9,6 +9,7 @@ import InstagramPage from './pages/InstagramPage';
 import PodcastPage from './pages/PodcastPage';
 //segreto
 import Scoiattoli from './pages/tracker_scoiattoli';
+import './SquirrelRadar.css';
 import './index.css';
 
 function App() {
