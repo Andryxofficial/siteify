@@ -32,7 +32,7 @@ export default function PodcastPage() {
              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
                 <a href="#" target="_blank" rel="noopener noreferrer" className="nav-link" style={{ background: '#1DB954', color: 'white', borderRadius: '20px', padding: '8px 20px', fontWeight: '600', textDecoration: 'none' }}>Spotify</a>
                 <a href="#" target="_blank" rel="noopener noreferrer" className="nav-link" style={{ background: '#FF1A1A', color: 'white', borderRadius: '20px', padding: '8px 20px', fontWeight: '600', textDecoration: 'none' }}>Apple Podcast</a>
-                <a href="#" target="_blank" rel="noopener noreferrer" className="nav-link" style={{ background: '#FF0000', color: 'white', borderRadius: '20px', padding: '8px 20px', fontWeight: '600', textDecoration: 'none' }}>YouTube Music</a>
+                <a href="https://youtube.com/@ANDRYXify" target="_blank" rel="noopener noreferrer" className="nav-link" style={{ background: '#FF0000', color: 'white', borderRadius: '20px', padding: '8px 20px', fontWeight: '600', textDecoration: 'none' }}>YouTube Music</a>
                 <button className="glass-card" style={{ borderRadius: '20px', padding: '8px 15px', display: 'flex', alignItems: 'center', gap: '5px', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}><Share2 size={16} /> Share</button>
              </div>
           </div>
