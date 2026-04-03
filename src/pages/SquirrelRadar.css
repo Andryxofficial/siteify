@@ -1,17 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 
-:root {
-  --bg: #050505;
-  --radar-grid: rgba(0, 255, 0, 0.2);
-  --danger: #ff3c3c;
-  --text-main: #4af626;
-  --text-muted: #1f6b15;
-  --panel-bg: rgba(0, 20, 0, 0.7);
-}
-
+/* Invece di :root, limitiamo queste variabili SOLO al contenitore del radar */
 .radar-body {
-  background-color: var(--bg);
-  color: var(--text-main);
+  --radar-bg: #050505;
+  --radar-grid: rgba(0, 255, 0, 0.2);
+  --radar-danger: #ff3c3c;
+  --radar-text: #4af626;
+  --radar-muted: #1f6b15;
+  --radar-panel: rgba(0, 20, 0, 0.7);
+
+  background-color: var(--radar-bg);
+  color: var(--radar-text);
   font-family: 'Share Tech Mono', monospace;
   overflow: hidden;
   display: flex;
@@ -24,8 +23,8 @@
 
 .radar-header {
   padding: 15px;
-  background: var(--panel-bg);
-  border-bottom: 1px solid var(--text-muted);
+  background: var(--radar-panel);
+  border-bottom: 1px solid var(--radar-muted);
   text-align: center;
   z-index: 10;
   backdrop-filter: blur(5px);
@@ -36,14 +35,14 @@
   font-size: 1.4rem; 
   letter-spacing: 2px; 
   margin-bottom: 4px; 
-  color: var(--danger);
+  color: var(--radar-danger);
   text-shadow: 0 0 10px rgba(255, 60, 60, 0.5);
   margin-top: 0;
 }
 
 .subtitle { 
   font-size: 0.8rem; 
-  color: var(--text-main); 
+  color: var(--radar-text); 
   opacity: 0.9; 
   text-transform: uppercase;
 }
@@ -55,7 +54,7 @@
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  background: radial-gradient(circle at center, #0a1a0a 0%, var(--bg) 80%);
+  background: radial-gradient(circle at center, #0a1a0a 0%, var(--radar-bg) 80%);
 }
 
 canvas#radar {
@@ -97,8 +96,8 @@ canvas#radar {
 
 #logs-panel {
   height: 35vh;
-  background: var(--panel-bg);
-  border-top: 1px solid var(--text-muted);
+  background: var(--radar-panel);
+  border-top: 1px solid var(--radar-muted);
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -108,7 +107,7 @@ canvas#radar {
 
 .log-header {
   font-size: 0.9rem;
-  border-bottom: 1px dashed var(--text-muted);
+  border-bottom: 1px dashed var(--radar-muted);
   padding-bottom: 8px;
   margin-bottom: 8px;
   display: flex;
@@ -128,7 +127,7 @@ canvas#radar {
 
 #terminal::-webkit-scrollbar { width: 4px; }
 #terminal::-webkit-scrollbar-track { background: transparent; }
-#terminal::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 4px; }
+#terminal::-webkit-scrollbar-thumb { background: var(--radar-muted); border-radius: 4px; }
 
 .log-entry { 
   opacity: 0;
@@ -141,14 +140,14 @@ canvas#radar {
 }
 
 .log-entry span.time { 
-  color: var(--text-muted); 
+  color: var(--radar-muted); 
   margin-right: 8px; 
   font-size: 0.75rem; 
 }
 
-.log-entry.alert { color: var(--danger); text-shadow: 0 0 5px rgba(255, 60, 60, 0.4); }
+.log-entry.alert { color: var(--radar-danger); text-shadow: 0 0 5px rgba(255, 60, 60, 0.4); }
 .log-entry.info { color: #88ccee; }
-.log-entry.normal { color: var(--text-main); }
+.log-entry.normal { color: var(--radar-text); }
 
 .scanlines {
   position: absolute;
