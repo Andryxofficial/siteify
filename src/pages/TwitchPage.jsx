@@ -25,7 +25,7 @@ export default function TwitchPage() {
         </div>
         <div className="chat-side" style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ background: 'rgba(145, 70, 255, 0.15)', padding: '8px', textAlign: 'center', fontSize: '0.85rem', color: '#e0e0e0', borderBottom: '1px solid rgba(145, 70, 255, 0.3)' }}>
-            💡 <span style={{ color: '#9146FF', fontWeight: 'bold' }}>Nota:</span> Usa il tasto <strong>Accedi</strong> in basso alla chat per collegare il tuo Twitch e scrivere in diretta!
+            💡 <span style={{ color: '#9146FF', fontWeight: 'bold' }}>Nota:</span> Scrivi direttamente qui sotto, oppure usa il tasto <strong>Accedi</strong> se non sei connesso a Twitch!
           </div>
           <iframe
             src={`https://www.twitch.tv/embed/andryxify/chat?parent=${window.location.hostname}&darkpopout`}
