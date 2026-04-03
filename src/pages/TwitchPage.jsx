@@ -51,6 +51,66 @@ export default function TwitchPage() {
           </div>
         </div>
       </div>
+
+      <div style={{ marginTop: '3rem', marginBottom: '1rem' }}>
+        <h2 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ color: '#00f5d4' }}>💖</span> Supporta il Canale
+        </h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+          Unisciti alla community o supporta direttamente lo stream! Ogni interazione è oro.
+        </p>
+        <div className="links-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+          
+          <motion.a 
+            href="https://streamlabs.com/andryxify/tip" 
+            target="_blank" 
+            rel="noreferrer"
+            className="glass-card link-item" 
+            style={{ padding: '1.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'rgba(49, 196, 141, 0.1)', border: '1px solid rgba(49, 196, 141, 0.3)' }}
+            whileHover={{ scale: 1.05 }}
+          >
+            <h3 style={{ color: '#31C48D', margin: 0, fontSize: '1.2rem' }}>Streamlabs</h3>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Fai una Donazione</span>
+          </motion.a>
+
+          <motion.a 
+            href="https://streamelements.com/andryxify/tip" 
+            target="_blank" 
+            rel="noreferrer"
+            className="glass-card link-item" 
+            style={{ padding: '1.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'rgba(67, 181, 129, 0.1)', border: '1px solid rgba(67, 181, 129, 0.3)' }}
+            whileHover={{ scale: 1.05 }}
+          >
+            <h3 style={{ color: '#43b581', margin: 0, fontSize: '1.2rem' }}>StreamElements</h3>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Supporto Grafico</span>
+          </motion.a>
+
+          <motion.a 
+            href="https://www.tangia.co/andryxify" 
+            target="_blank" 
+            rel="noreferrer"
+            className="glass-card link-item" 
+            style={{ padding: '1.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'rgba(164, 91, 255, 0.1)', border: '1px solid rgba(164, 91, 255, 0.3)' }}
+            whileHover={{ scale: 1.05 }}
+          >
+            <h3 style={{ color: '#a45bff', margin: 0, fontSize: '1.2rem' }}>Tangia</h3>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Interazioni in Live</span>
+          </motion.a>
+
+          <motion.a 
+            href="https://x.la/andryxify" 
+            target="_blank" 
+            rel="noreferrer"
+            className="glass-card link-item" 
+            style={{ padding: '1.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'rgba(255, 105, 180, 0.1)', border: '1px solid rgba(255, 105, 180, 0.3)' }}
+            whileHover={{ scale: 1.05 }}
+          >
+            <h3 style={{ color: '#ff69b4', margin: 0, fontSize: '1.2rem' }}>x.la</h3>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Pagina Donazioni</span>
+          </motion.a>
+
+        </div>
+      </div>
     </motion.div>
   );
 }
