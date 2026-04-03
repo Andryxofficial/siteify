@@ -14,6 +14,7 @@ export default function Navbar() {
   const location = useLocation();
 
   return (
+    <>
     <nav className="navbar-container glass-panel">
       <div className="navbar-content">
         <Link to="/" className="navbar-logo" style={{ textDecoration: 'none' }}>
@@ -45,5 +46,19 @@ export default function Navbar() {
         </div>
       </div>
     </nav>
+    <div className="top-right-auth">
+      <motion.a 
+        href="https://www.twitch.tv/login" 
+        target="_blank" 
+        rel="noreferrer"
+        className="login-btn"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <Twitch size={18} />
+        <span className="login-text">Accedi</span>
+      </motion.a>
+    </div>
+    </>
   );
 }
