@@ -41,7 +41,7 @@ export default function PodcastPage() {
         <div style={{ marginTop: '3rem' }}>
           <h3 style={{ marginBottom: '1.5rem' }}>Perché questo podcast?</h3>
           <p style={{ color: 'var(--text-muted)', lineHeight: '1.8' }}>
-            Nell'era dell'intelligenza artificiale, cosa significa essere umani? Attraverso interviste, riflessioni e analisi profonde, cerchiamo di capire come la tecnologia stia riscrivendo il nostro DNA sociale. ANDRYXify ti guida in questo viaggio tra bit e biologia.
+            Nell'era dell'intelligenza artificiale, sappiamo davvero distinguere fra strumento e cervello in prestito? ANDRYXify ti guida in questo viaggio tra bit e biologia.
           </p>
         </div>
       </div>
