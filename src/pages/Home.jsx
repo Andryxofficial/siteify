@@ -7,7 +7,7 @@ import PodcastPromo from '../components/PodcastPromo';
 
 export default function Home() {
   // 0 = Offline, 1 = Twitch Live, 2 = Twitch + YouTube Live
-  const [liveState, setLiveState] = useState(1);
+  const [liveState, setLiveState] = useState(0);
 
   return (
     <motion.div 

@@ -16,16 +16,18 @@ export default function InstagramPage() {
       <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center' }}>
         <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Esplora il profilo ufficiale @andryxify</p>
         
-        {/* Simplified Instagram viewer using a nice grid of cards or iframes if permitted */}
-        <div className="links-grid">
+        <div className="links-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px' }}>
            {[1, 2, 3, 4, 5, 6].map((i) => (
              <motion.div 
                key={i} 
-               className="glass-card" 
-               style={{ aspectRatio: '1/1', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+               style={{ aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', position: 'relative' }}
                whileHover={{ scale: 1.05 }}
              >
-               <span style={{ fontSize: '2rem', opacity: 0.2 }}>📷</span>
+               <img src={`https://picsum.photos/seed/andryxify${i}/300/300`} alt={`Instagram post mock ${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+               {/* Hover overlay hint */}
+               <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', opacity: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'opacity 0.2s', className: 'ig-hover-overlay' }} onMouseEnter={(e) => e.currentTarget.style.opacity = 1} onMouseLeave={(e) => e.currentTarget.style.opacity = 0}>
+                 <span style={{ color: 'white', fontWeight: 'bold' }}>❤️ 1.2k</span>
+               </div>
              </motion.div>
            ))}
         </div>
