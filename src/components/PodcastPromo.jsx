@@ -19,7 +19,7 @@ export default function PodcastPromo() {
       </div>
       
       <p style={{ color: 'var(--text-muted)' }}>
-        Il podcast ufficiale dove indaghiamo come le nuove tecnologie stiano cambiando la nostra essenza. Ascoltalo ovunque!
+        Riflessioni, domande e indagini per capire come le nuove tecnologie stiano cambiando la nostra essenza.
       </p>
 
       <div className="podcast-player glass-card">

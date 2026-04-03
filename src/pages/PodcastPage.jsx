@@ -27,8 +27,8 @@ export default function PodcastPage() {
             <span style={{ fontSize: '3rem' }}>🎙️</span>
           </div>
           <div style={{ flex: 1 }}>
-             <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>L'Evoluzione della Coscienza Digitale</h3>
-             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Episodio #12 • 45 min</p>
+             <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Inizia ad ascoltare ora</h3>
+             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Scegli la tua piattaforma preferita per tuffarti negli ultimi episodi integrali.</p>
              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
                 <a href="https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9?si=whQgruxhQ_i34elguQP8Eg" target="_blank" rel="noopener noreferrer" className="nav-link" style={{ background: '#1DB954', color: 'white', borderRadius: '20px', padding: '8px 20px', fontWeight: '600', textDecoration: 'none' }}>Spotify</a>
                 <a href="https://podcasts.apple.com/it/podcast/umanit%C3%A0-o-ia/id1869893930" target="_blank" rel="noopener noreferrer" className="nav-link" style={{ background: '#FF1A1A', color: 'white', borderRadius: '20px', padding: '8px 20px', fontWeight: '600', textDecoration: 'none' }}>Apple Podcast</a>
