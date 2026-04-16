@@ -9,7 +9,12 @@ const REDIRECT_URI = typeof window !== 'undefined'
   ? `${window.location.origin}/gioco`
   : 'https://andryxify.it/gioco';
 
+if (!CHIAVETWITCH) {
+  console.warn('[GamePage] VITE_CHIAVETWITCH non configurata. Il login Twitch non funzionerà. Aggiungi la variabile nelle Environment Variables di Vercel.');
+}
+
 function getTwitchLoginUrl() {
+  if (!CHIAVETWITCH) return '#';
   return `https://id.twitch.tv/oauth2/authorize?client_id=${CHIAVETWITCH}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=user:read:email`;
 }
 
@@ -538,7 +543,12 @@ export default function GamePage() {
                     Usa <strong>← →</strong> o tocca lo schermo per muoverti tra le corsie.
                   </p>
 
-                  {!twitchUser && (
+                  {!twitchUser && !CHIAVETWITCH && (
+                    <p style={{ color: '#FF0050', fontSize: '0.8rem', marginBottom: '0.75rem', fontWeight: 600 }}>
+                      ⚠️ Login Twitch non disponibile — VITE_CHIAVETWITCH non configurata.
+                    </p>
+                  )}
+                  {!twitchUser && CHIAVETWITCH && (
                     <a href={getTwitchLoginUrl()} className="btn" style={{
                       background: 'linear-gradient(135deg,#9146FF,#c800ff)',
                       color: '#fff',
@@ -578,7 +588,7 @@ export default function GamePage() {
                     <p style={{ fontSize: '0.82rem', color: COLORS.player, marginTop: '0.5rem' }}>{submitMsg}</p>
                   )}
 
-                  {!twitchUser && (
+                  {!twitchUser && CHIAVETWITCH && (
                     <a href={getTwitchLoginUrl()} className="btn" style={{
                       background: 'linear-gradient(135deg,#9146FF,#c800ff)',
                       color: '#fff',
@@ -623,19 +633,23 @@ export default function GamePage() {
             ) : (
               <div>
                 <p style={{ fontSize: '0.82rem', color: COLORS.textMuted, marginBottom: '0.75rem' }}>
-                  Accedi con Twitch per salvare i tuoi punteggi nella classifica!
+                  {CHIAVETWITCH
+                    ? 'Accedi con Twitch per salvare i tuoi punteggi nella classifica!'
+                    : '⚠️ Login Twitch non disponibile — configurazione mancante.'}
                 </p>
-                <a href={getTwitchLoginUrl()} className="btn" style={{
-                  background: 'linear-gradient(135deg,#9146FF,#c800ff)',
-                  color: '#fff',
-                  fontSize: '0.82rem',
-                  padding: '0.5rem 1rem',
-                  boxShadow: '0 5px 20px rgba(145,70,255,.4)',
-                  width: '100%',
-                  justifyContent: 'center',
-                }}>
-                  <Twitch size={14} /> Login con Twitch
-                </a>
+                {CHIAVETWITCH && (
+                  <a href={getTwitchLoginUrl()} className="btn" style={{
+                    background: 'linear-gradient(135deg,#9146FF,#c800ff)',
+                    color: '#fff',
+                    fontSize: '0.82rem',
+                    padding: '0.5rem 1rem',
+                    boxShadow: '0 5px 20px rgba(145,70,255,.4)',
+                    width: '100%',
+                    justifyContent: 'center',
+                  }}>
+                    <Twitch size={14} /> Login con Twitch
+                  </a>
+                )}
               </div>
             )}
           </div>
