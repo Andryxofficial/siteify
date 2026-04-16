@@ -874,7 +874,7 @@ nav.navbar-container.glass-panel {
 }
 
 /* ═══════════════════════════════════════════════════
-   NEURAL DASH GAME
+   ANDRYX QUEST GAME
    ═══════════════════════════════════════════════════ */
 
 .game-layout {
@@ -892,8 +892,8 @@ nav.navbar-container.glass-panel {
 
 .game-canvas-wrapper {
   position: relative;
-  aspect-ratio: 480 / 640;
-  max-height: 640px;
+  aspect-ratio: 1 / 1;
+  max-height: 480px;
 }
 
 .game-canvas {
@@ -901,8 +901,9 @@ nav.navbar-container.glass-panel {
   height: 100%;
   display: block;
   touch-action: none;
-  cursor: pointer;
+  cursor: default;
   border-radius: var(--r-lg);
+  image-rendering: pixelated;
 }
 
 .game-overlay {
@@ -911,7 +912,7 @@ nav.navbar-container.glass-panel {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(7, 7, 8, 0.85);
+  background: rgba(7, 7, 8, 0.88);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: var(--r-lg);
@@ -931,6 +932,81 @@ nav.navbar-container.glass-panel {
   font-size: 0.78rem;
   color: var(--text-faint);
   display: none;
+}
+
+/* Touch controls */
+.game-touch-controls {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+}
+
+.game-joystick {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 2px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  position: relative;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.game-joystick-knob {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--secondary), var(--primary));
+  box-shadow: 0 2px 10px rgba(0, 245, 212, 0.4);
+  pointer-events: none;
+  transition: transform 0.05s ease-out;
+}
+
+.game-attack-btn {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 2px solid var(--glass-border);
+  background: linear-gradient(135deg, rgba(255,0,212,0.15), rgba(255,0,80,0.15));
+  color: var(--text-main);
+  font-size: 1.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: none;
+  box-shadow: 0 4px 16px rgba(255,0,212,0.2);
+  transition: transform 0.1s ease;
+}
+
+.game-attack-btn:active {
+  transform: scale(0.9);
+  background: linear-gradient(135deg, rgba(255,0,212,0.3), rgba(255,0,80,0.3));
+}
+
+.game-kb-toggle {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--glass-border);
+  background: var(--surface-1);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.game-kb-toggle.active {
+  background: var(--secondary-light);
+  color: var(--secondary);
+  border-color: var(--secondary);
 }
 
 .game-sidebar {
@@ -1049,7 +1125,11 @@ nav.navbar-container.glass-panel {
   }
 
   .game-canvas-wrapper {
-    max-height: 500px;
+    max-height: 420px;
+  }
+
+  .game-touch-controls {
+    display: flex;
   }
 
   .game-controls-hint {
@@ -1059,6 +1139,6 @@ nav.navbar-container.glass-panel {
 
 @media (max-width: 640px) {
   .game-canvas-wrapper {
-    max-height: 420px;
+    max-height: 360px;
   }
 }
