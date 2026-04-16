@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 60" fill="none">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="220" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#863bff"/>
+      <stop offset="50%" stop-color="#c800ff"/>
+      <stop offset="100%" stop-color="#ff00d4"/>
+    </linearGradient>
+  </defs>
+  <text x="10" y="44" font-family="'Brush Script MT','Segoe Script','Comic Sans MS',cursive" font-size="42" font-weight="bold" fill="url(#g)" letter-spacing="1">Andryx</text>
+</svg>

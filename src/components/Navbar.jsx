@@ -14,7 +14,7 @@ const NAV_LINKS = [
   { path: '/gioco',     label: 'Gioco',     Icon: GameIcon      },
 ];
 
-const LOGO_URL = '/logo.png';
+const LOGO_URL = '/andryx-logo.svg';
 
 /* ─────────────────────────────────────────────────────────
    MOBILE BOTTOM TAB BAR  (iOS-style, liquid glass)
