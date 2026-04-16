@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Twitch, Trophy, Zap, LogIn, RotateCcw, Calendar, Crown, Award } from 'lucide-react';
+import { Twitch, Trophy, Sword, LogIn, RotateCcw, Calendar, Crown, Award, Zap, Keyboard } from 'lucide-react';
 import SEO from '../components/SEO';
 
 /* ─── Twitch OAuth config ─── */
@@ -10,7 +10,7 @@ const REDIRECT_URI = typeof window !== 'undefined'
   : 'https://www.andryxify.it/gioco';
 
 if (!CHIAVETWITCH) {
-  console.warn('[GamePage] VITE_CHIAVETWITCH non configurata. Il login Twitch non funzionerà. Aggiungi la variabile nelle Environment Variables di Vercel.');
+  console.warn('[GamePage] VITE_CHIAVETWITCH non configurata.');
 }
 
 function getTwitchLoginUrl() {
@@ -18,63 +18,173 @@ function getTwitchLoginUrl() {
   return `https://id.twitch.tv/oauth2/authorize?client_id=${CHIAVETWITCH}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=user:read:email`;
 }
 
-/* ─── Game constants ─── */
+/* ═══════════════════════════════════════════════════
+   ANDRYX QUEST — Mini Zelda-like Dungeon Crawler
+   ═══════════════════════════════════════════════════ */
 const CANVAS_W = 480;
-const CANVAS_H = 640;
-const LANE_COUNT = 3;
-const PLAYER_SIZE = 22;
-const OBSTACLE_SIZE = 20;
-const SYNAPSE_SIZE = 16;
-const INITIAL_SPEED = 3;
-const SPEED_INCREMENT = 0.0008;
-const SPAWN_INTERVAL_MIN = 40;
-const SPAWN_INTERVAL_MAX = 80;
+const CANVAS_H = 480;
+const TILE = 32;
+const COLS = CANVAS_W / TILE; // 15
+const ROWS = CANVAS_H / TILE; // 15
+const PLAYER_SPD = 2.4;
+const ATTACK_DUR = 12;
+const ATTACK_RANGE = 28;
+const IFRAME_DUR = 40;
+const ATTACK_HIT_RADIUS = 24;
+const ENEMY_COLLISION_RADIUS = 18;
+const GEM_COLLECT_RADIUS = 16;
+const EXIT_PORTAL_RADIUS = 20;
 
-/* ─── Colors ─── */
-const COLORS = {
-  bg: '#070708',
-  lane: 'rgba(255,255,255,0.03)',
-  laneDiv: 'rgba(255,255,255,0.06)',
-  player: '#00f5d4',
-  playerGlow: 'rgba(0,245,212,0.5)',
-  synapse: '#FF00D4',
-  synapseGlow: 'rgba(255,0,212,0.5)',
-  obstacle: '#FF0050',
-  obstacleGlow: 'rgba(255,0,80,0.5)',
-  network: 'rgba(145,70,255,0.08)',
-  networkNode: 'rgba(145,70,255,0.15)',
-  text: '#f0ecf4',
-  textMuted: '#a8a3b3',
+const ENEMY_STATS = {
+  slime: { hp: 1, spd: 0.6, points: 10 },
+  bat:   { hp: 1, spd: 1.2, points: 20 },
+  ghost: { hp: 2, spd: 0.8, points: 30 },
 };
 
-function laneX(lane, w) {
-  const laneW = w / LANE_COUNT;
-  return laneW * lane + laneW / 2;
+const C = {
+  bg: '#0d1117',
+  floor: '#1a1f2e',
+  floorAlt: '#161b27',
+  wall: '#2d3548',
+  wallTop: '#3a4560',
+  player: '#00f5d4',
+  playerDark: '#00c4a8',
+  sword: '#f0ecf4',
+  swordGlow: 'rgba(0,245,212,0.6)',
+  gem: '#FF00D4',
+  gemGlow: 'rgba(255,0,212,0.5)',
+  heart: '#FF0050',
+  heartGlow: 'rgba(255,0,80,0.4)',
+  slime: '#7c3aed',
+  slimeGlow: 'rgba(124,58,237,0.4)',
+  bat: '#f59e0b',
+  batGlow: 'rgba(245,158,11,0.4)',
+  ghost: '#06b6d4',
+  ghostGlow: 'rgba(6,182,212,0.4)',
+  text: '#f0ecf4',
+  textMuted: '#a8a3b3',
+  exit: '#FFD700',
+  exitGlow: 'rgba(255,215,0,0.4)',
+  particle: '#FF00D4',
+};
+
+/* Room generation: random dungeon room with walls and open spaces */
+function generateRoom(roomNum) {
+  // grid: 0=floor, 1=wall
+  const grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+  // Border walls
+  for (let x = 0; x < COLS; x++) { grid[0][x] = 1; grid[ROWS - 1][x] = 1; }
+  for (let y = 0; y < ROWS; y++) { grid[y][0] = 1; grid[y][COLS - 1] = 1; }
+  // Random inner pillars/walls (more walls in later rooms)
+  const wallCount = 6 + Math.min(roomNum * 2, 14);
+  for (let i = 0; i < wallCount; i++) {
+    const x = 2 + Math.floor(Math.random() * (COLS - 4));
+    const y = 2 + Math.floor(Math.random() * (ROWS - 4));
+    grid[y][x] = 1;
+    // Sometimes extend
+    if (Math.random() < 0.5) {
+      const dx = Math.random() < 0.5 ? 1 : 0;
+      const dy = dx === 0 ? 1 : 0;
+      if (y + dy < ROWS - 1 && x + dx < COLS - 1) grid[y + dy][x + dx] = 1;
+    }
+  }
+  // Ensure spawn area (bottom-left) and exit area (top-right) are clear
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const sy = ROWS - 3 + dy, sx = 2 + dx;
+      const ey = 2 + dy, ex = COLS - 3 + dx;
+      if (sy > 0 && sy < ROWS - 1 && sx > 0 && sx < COLS - 1) grid[sy][sx] = 0;
+      if (ey > 0 && ey < ROWS - 1 && ex > 0 && ex < COLS - 1) grid[ey][ex] = 0;
+    }
+  }
+  return grid;
 }
 
-/* ─── Main component ─── */
+function spawnEnemies(roomNum, grid) {
+  const enemies = [];
+  const count = Math.min(2 + roomNum, 10);
+  const types = ['slime'];
+  if (roomNum >= 2) types.push('bat');
+  if (roomNum >= 4) types.push('ghost');
+  for (let i = 0; i < count; i++) {
+    let x, y, tries = 0;
+    do {
+      x = 2 + Math.floor(Math.random() * (COLS - 4));
+      y = 2 + Math.floor(Math.random() * (ROWS - 4));
+      tries++;
+    } while ((grid[y][x] === 1 || (x < 4 && y > ROWS - 5)) && tries < 50);
+    if (tries >= 50) continue;
+    const type = types[Math.floor(Math.random() * types.length)];
+    const baseHp = ENEMY_STATS[type].hp;
+    const spd = ENEMY_STATS[type].spd;
+    enemies.push({
+      type,
+      x: x * TILE + TILE / 2,
+      y: y * TILE + TILE / 2,
+      hp: baseHp + Math.floor(roomNum / 3),
+      maxHp: baseHp + Math.floor(roomNum / 3),
+      spd: spd + roomNum * 0.04,
+      dir: Math.random() * Math.PI * 2,
+      moveTimer: 0,
+      hitFlash: 0,
+      dead: false,
+      pulse: Math.random() * Math.PI * 2,
+    });
+  }
+  return enemies;
+}
+
+function spawnGems(roomNum, grid) {
+  const gems = [];
+  const count = 3 + Math.min(roomNum, 5);
+  for (let i = 0; i < count; i++) {
+    let x, y, tries = 0;
+    do {
+      x = 1 + Math.floor(Math.random() * (COLS - 2));
+      y = 1 + Math.floor(Math.random() * (ROWS - 2));
+      tries++;
+    } while (grid[y][x] === 1 && tries < 40);
+    if (tries >= 40) continue;
+    gems.push({
+      x: x * TILE + TILE / 2,
+      y: y * TILE + TILE / 2,
+      collected: false,
+      pulse: Math.random() * Math.PI * 2,
+    });
+  }
+  return gems;
+}
+
+/* ─── Main Component ─── */
 export default function GamePage() {
   const canvasRef = useRef(null);
   const gameStateRef = useRef(null);
   const animFrameRef = useRef(null);
+  const keysRef = useRef({});
 
   const [twitchUser, setTwitchUser] = useState(null);
   const [twitchToken, setTwitchToken] = useState(null);
-  const [gameStatus, setGameStatus] = useState('idle'); // idle | playing | gameover
+  const [gameStatus, setGameStatus] = useState('idle');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
+  const [roomNum, setRoomNum] = useState(0);
+  const [showKeyboard, setShowKeyboard] = useState(false);
   const [weeklyBoard, setWeeklyBoard] = useState([]);
   const [alltimeBoard, setAlltimeBoard] = useState([]);
   const [monthlyWinners, setMonthlyWinners] = useState([]);
-  const [boardTab, setBoardTab] = useState('weekly'); // 'weekly' | 'alltime' | 'monthly'
+  const [currentMonthData, setCurrentMonthData] = useState(null);
+  const [boardTab, setBoardTab] = useState('weekly');
   const [boardLoading, setBoardLoading] = useState(true);
   const [boardError, setBoardError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState('');
 
-  /* ─── Check Twitch token on mount ─── */
+  /* ─── Touch joystick state ─── */
+  const joystickRef = useRef({ active: false, dx: 0, dy: 0 });
+  const attackBtnRef = useRef(false);
+
+  /* ─── Twitch token check ─── */
   useEffect(() => {
-    // Check URL hash for token (redirect from Twitch)
     const hash = window.location.hash;
     if (hash && hash.includes('access_token')) {
       const params = new URLSearchParams(hash.substring(1));
@@ -84,12 +194,8 @@ export default function GamePage() {
         window.history.replaceState(null, '', window.location.pathname);
       }
     }
-
     const savedToken = localStorage.getItem('twitchGameToken');
-    if (savedToken) {
-      validateTwitchToken(savedToken);
-    }
-
+    if (savedToken) validateTwitchToken(savedToken);
     fetchLeaderboard();
   }, []);
 
@@ -107,9 +213,7 @@ export default function GamePage() {
         setTwitchUser(null);
         setTwitchToken(null);
       }
-    } catch {
-      /* silent */
-    }
+    } catch { /* silent */ }
   }
 
   async function fetchLeaderboard() {
@@ -125,6 +229,7 @@ export default function GamePage() {
       setWeeklyBoard(data.weekly || []);
       setAlltimeBoard(data.alltime || data.leaderboard || []);
       setMonthlyWinners(data.monthlyWinners || []);
+      setCurrentMonthData(data.currentMonth || null);
     } catch (e) {
       console.error('fetchLeaderboard:', e);
       setBoardError('Impossibile caricare la classifica.');
@@ -140,248 +245,505 @@ export default function GamePage() {
     try {
       const res = await fetch('/api/leaderboard', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${twitchToken}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
         body: JSON.stringify({ score: finalScore }),
       });
       const data = await res.json();
-      if (res.ok) {
-        setSubmitMsg(data.message);
-        fetchLeaderboard();
-      } else {
-        setSubmitMsg(data.error || 'Errore nel salvataggio.');
-      }
-    } catch {
-      setSubmitMsg('Errore di rete.');
-    } finally {
-      setSubmitting(false);
-    }
+      if (res.ok) { setSubmitMsg(data.message); fetchLeaderboard(); }
+      else setSubmitMsg(data.error || 'Errore nel salvataggio.');
+    } catch { setSubmitMsg('Errore di rete.'); }
+    finally { setSubmitting(false); }
   }, [twitchToken, submitting]);
 
-  /* ─── Game engine ─── */
+  /* ═══════════════════════════════════════════════════
+     GAME ENGINE
+     ═══════════════════════════════════════════════════ */
   const startGame = useCallback(() => {
     setGameStatus('playing');
     setScore(0);
+    setRoomNum(0);
     setSubmitMsg('');
 
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const w = canvas.width;
-    const h = canvas.height;
+    const w = canvas.width, h = canvas.height;
 
+    function initRoom(rn) {
+      const grid = generateRoom(rn);
+      return {
+        grid,
+        enemies: spawnEnemies(rn, grid),
+        gems: spawnGems(rn, grid),
+        exitOpen: false,
+        exitX: (COLS - 3) * TILE + TILE / 2,
+        exitY: 2 * TILE + TILE / 2,
+      };
+    }
+
+    const room = initRoom(0);
     const state = {
-      playerLane: 1,
-      targetLane: 1,
-      playerY: h - 80,
-      playerX: laneX(1, w),
-      speed: INITIAL_SPEED,
-      distance: 0,
-      bonusScore: 0,
+      px: 2 * TILE + TILE / 2,
+      py: (ROWS - 3) * TILE + TILE / 2,
+      pdir: 0, // 0=right,1=down,2=left,3=up
+      hp: 5,
+      maxHp: 5,
       score: 0,
-      entities: [],
-      spawnTimer: 0,
-      spawnInterval: SPAWN_INTERVAL_MAX,
-      networkNodes: generateNetworkNodes(w, h),
+      roomNum: 0,
+      attacking: 0,
+      iframe: 0,
+      ...room,
       particles: [],
+      floatTexts: [],
       running: true,
       frame: 0,
+      screenShake: 0,
+      transition: 0,
     };
     gameStateRef.current = state;
 
-    function generateNetworkNodes(width, height) {
-      const nodes = [];
-      for (let i = 0; i < 25; i++) {
-        nodes.push({
-          x: Math.random() * width,
-          y: Math.random() * height,
-          r: 2 + Math.random() * 3,
-          connections: [],
-        });
+    function wallAt(px, py, radius) {
+      const r = radius || 10;
+      const checks = [
+        [px - r, py - r], [px + r, py - r],
+        [px - r, py + r], [px + r, py + r],
+      ];
+      for (const [cx, cy] of checks) {
+        const gx = Math.floor(cx / TILE);
+        const gy = Math.floor(cy / TILE);
+        if (gx < 0 || gx >= COLS || gy < 0 || gy >= ROWS) return true;
+        if (state.grid[gy][gx] === 1) return true;
       }
-      // Create random connections
-      for (let i = 0; i < nodes.length; i++) {
-        const numConn = 1 + Math.floor(Math.random() * 2);
-        for (let c = 0; c < numConn; c++) {
-          const j = Math.floor(Math.random() * nodes.length);
-          if (j !== i) nodes[i].connections.push(j);
-        }
-      }
-      return nodes;
-    }
-
-    function spawnEntity() {
-      const lane = Math.floor(Math.random() * LANE_COUNT);
-      const isSynapse = Math.random() < 0.4;
-      state.entities.push({
-        type: isSynapse ? 'synapse' : 'obstacle',
-        lane,
-        x: laneX(lane, w),
-        y: -30,
-        size: isSynapse ? SYNAPSE_SIZE : OBSTACLE_SIZE,
-        pulse: 0,
-      });
+      return false;
     }
 
     function addParticles(x, y, color, count) {
       for (let i = 0; i < count; i++) {
         state.particles.push({
-          x,
-          y,
-          vx: (Math.random() - 0.5) * 4,
-          vy: (Math.random() - 0.5) * 4,
-          life: 1,
-          decay: 0.02 + Math.random() * 0.03,
-          color,
-          size: 2 + Math.random() * 3,
+          x, y,
+          vx: (Math.random() - 0.5) * 5,
+          vy: (Math.random() - 0.5) * 5,
+          life: 1, decay: 0.025 + Math.random() * 0.03,
+          color, size: 2 + Math.random() * 3,
         });
       }
+    }
+
+    function addFloatText(x, y, text, color) {
+      state.floatTexts.push({ x, y, text, color, life: 1 });
+    }
+
+    function enterNextRoom() {
+      state.transition = 30;
+      state.roomNum++;
+      const room = initRoom(state.roomNum);
+      Object.assign(state, room);
+      state.px = 2 * TILE + TILE / 2;
+      state.py = (ROWS - 3) * TILE + TILE / 2;
+      state.score += 100;
+      // Heal 1 hp on room clear
+      state.hp = Math.min(state.hp + 1, state.maxHp);
+    }
+
+    function getAttackPos() {
+      const dist = ATTACK_RANGE;
+      const dirs = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+      const [dx, dy] = dirs[state.pdir];
+      return { x: state.px + dx * dist, y: state.py + dy * dist };
     }
 
     function update() {
       if (!state.running) return;
       state.frame++;
-      state.speed += SPEED_INCREMENT;
-      state.distance += state.speed;
-      state.score = Math.floor(state.distance / 10) + state.bonusScore;
 
-      // Smooth lane transition (snappy)
-      const targetX = laneX(state.targetLane, w);
-      state.playerX += (targetX - state.playerX) * 0.35;
-      state.playerLane = state.targetLane;
-
-      // Spawn
-      state.spawnTimer++;
-      state.spawnInterval = Math.max(SPAWN_INTERVAL_MIN, SPAWN_INTERVAL_MAX - state.speed * 3);
-      if (state.spawnTimer >= state.spawnInterval) {
-        spawnEntity();
-        state.spawnTimer = 0;
+      if (state.transition > 0) {
+        state.transition--;
+        return;
       }
 
-      // Update entities
-      for (let i = state.entities.length - 1; i >= 0; i--) {
-        const e = state.entities[i];
-        e.y += state.speed;
-        e.pulse = (e.pulse + 0.08) % (Math.PI * 2);
+      // Input (keyboard via keysRef + touch joystick)
+      const keys = keysRef.current;
+      let mx = 0, my = 0;
+      if (keys['ArrowLeft'] || keys['a'] || keys['A']) mx -= 1;
+      if (keys['ArrowRight'] || keys['d'] || keys['D']) mx += 1;
+      if (keys['ArrowUp'] || keys['w'] || keys['W']) my -= 1;
+      if (keys['ArrowDown'] || keys['s'] || keys['S']) my += 1;
+      // Touch joystick override
+      const joy = joystickRef.current;
+      if (joy.active) {
+        mx += joy.dx;
+        my += joy.dy;
+      }
+      // Normalize
+      const mag = Math.sqrt(mx * mx + my * my);
+      if (mag > 0) {
+        mx /= mag; my /= mag;
+        // Update facing direction
+        if (Math.abs(mx) > Math.abs(my)) state.pdir = mx > 0 ? 0 : 2;
+        else state.pdir = my > 0 ? 1 : 3;
+      }
 
-        // Off screen
-        if (e.y > h + 40) {
-          state.entities.splice(i, 1);
-          continue;
+      // Move player
+      const spd = PLAYER_SPD;
+      const nx = state.px + mx * spd;
+      const ny = state.py + my * spd;
+      if (!wallAt(nx, state.py)) state.px = nx;
+      if (!wallAt(state.px, ny)) state.py = ny;
+
+      // Attack
+      if (state.attacking > 0) state.attacking--;
+      if ((keys[' '] || keys['Space'] || attackBtnRef.current) && state.attacking === 0) {
+        state.attacking = ATTACK_DUR;
+        // Check hit enemies
+        const ap = getAttackPos();
+        for (const e of state.enemies) {
+          if (e.dead) continue;
+          const dx = e.x - ap.x, dy = e.y - ap.y;
+          if (Math.sqrt(dx * dx + dy * dy) < ATTACK_HIT_RADIUS) {
+            e.hp--;
+            e.hitFlash = 8;
+            addParticles(e.x, e.y, '#fff', 4);
+            state.screenShake = 4;
+            if (e.hp <= 0) {
+              e.dead = true;
+              const pts = ENEMY_STATS[e.type].points;
+              state.score += pts;
+              addParticles(e.x, e.y, C[e.type + 'Glow'] || C.particle, 10);
+              addFloatText(e.x, e.y - 10, `+${pts}`, C[e.type]);
+            }
+          }
+        }
+        attackBtnRef.current = false;
+      }
+
+      // iframes
+      if (state.iframe > 0) state.iframe--;
+
+      // Update enemies
+      for (const e of state.enemies) {
+        if (e.dead) continue;
+        e.pulse = (e.pulse + 0.06) % (Math.PI * 2);
+        if (e.hitFlash > 0) e.hitFlash--;
+        e.moveTimer++;
+
+        // AI movement
+        if (e.type === 'slime') {
+          if (e.moveTimer % 60 === 0) {
+            e.dir = Math.atan2(state.py - e.y, state.px - e.x) + (Math.random() - 0.5) * 1.2;
+          }
+          if (e.moveTimer % 3 === 0) {
+            const enx = e.x + Math.cos(e.dir) * e.spd;
+            const eny = e.y + Math.sin(e.dir) * e.spd;
+            if (!wallAt(enx, e.y, 8)) e.x = enx;
+            if (!wallAt(e.x, eny, 8)) e.y = eny;
+          }
+        } else if (e.type === 'bat') {
+          // Bat: fast, erratic
+          if (e.moveTimer % 30 === 0) {
+            e.dir = Math.atan2(state.py - e.y, state.px - e.x) + (Math.random() - 0.5) * 0.8;
+          }
+          const enx = e.x + Math.cos(e.dir) * e.spd;
+          const eny = e.y + Math.sin(e.dir) * e.spd;
+          if (!wallAt(enx, e.y, 6)) e.x = enx;
+          if (!wallAt(e.x, eny, 6)) e.y = eny;
+        } else if (e.type === 'ghost') {
+          // Ghost: phases through walls, slow but relentless
+          if (e.moveTimer % 45 === 0) {
+            e.dir = Math.atan2(state.py - e.y, state.px - e.x);
+          }
+          e.x += Math.cos(e.dir) * e.spd;
+          e.y += Math.sin(e.dir) * e.spd;
+          // Keep in bounds
+          e.x = Math.max(TILE, Math.min(e.x, w - TILE));
+          e.y = Math.max(TILE, Math.min(e.y, h - TILE));
         }
 
-        // Collision
-        const dx = Math.abs(e.x - state.playerX);
-        const dy = Math.abs(e.y - state.playerY);
-        const hitDist = (PLAYER_SIZE + e.size) / 2;
-
-        if (dx < hitDist && dy < hitDist) {
-          if (e.type === 'synapse') {
-            state.bonusScore += 25;
-            addParticles(e.x, e.y, COLORS.synapse, 8);
-            state.entities.splice(i, 1);
-          } else {
-            // Game over
-            addParticles(state.playerX, state.playerY, COLORS.obstacle, 15);
-            state.running = false;
+        // Enemy-player collision
+        if (state.iframe === 0) {
+          const dx = state.px - e.x, dy = state.py - e.y;
+          if (Math.sqrt(dx * dx + dy * dy) < ENEMY_COLLISION_RADIUS) {
+            state.hp--;
+            state.iframe = IFRAME_DUR;
+            state.screenShake = 8;
+            addParticles(state.px, state.py, C.heart, 6);
+            if (state.hp <= 0) {
+              state.running = false;
+            }
           }
         }
       }
 
-      // Update particles
+      // Gems
+      for (const g of state.gems) {
+        if (g.collected) continue;
+        g.pulse = (g.pulse + 0.05) % (Math.PI * 2);
+        const dx = state.px - g.x, dy = state.py - g.y;
+        if (Math.sqrt(dx * dx + dy * dy) < GEM_COLLECT_RADIUS) {
+          g.collected = true;
+          state.score += 15;
+          addParticles(g.x, g.y, C.gem, 6);
+          addFloatText(g.x, g.y - 10, '+15', C.gem);
+        }
+      }
+
+      // Check if exit should open (all enemies dead)
+      if (!state.exitOpen && state.enemies.every(e => e.dead)) {
+        state.exitOpen = true;
+      }
+
+      // Check exit collision
+      if (state.exitOpen) {
+        const dx = state.px - state.exitX, dy = state.py - state.exitY;
+        if (Math.sqrt(dx * dx + dy * dy) < EXIT_PORTAL_RADIUS) {
+          enterNextRoom();
+        }
+      }
+
+      // Particles
       for (let i = state.particles.length - 1; i >= 0; i--) {
         const p = state.particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
+        p.x += p.vx; p.y += p.vy;
+        p.vx *= 0.96; p.vy *= 0.96;
         p.life -= p.decay;
         if (p.life <= 0) state.particles.splice(i, 1);
       }
 
-      // Scroll network nodes
-      for (const n of state.networkNodes) {
-        n.y += state.speed * 0.3;
-        if (n.y > h + 20) {
-          n.y = -20;
-          n.x = Math.random() * w;
-        }
+      // Float texts
+      for (let i = state.floatTexts.length - 1; i >= 0; i--) {
+        const ft = state.floatTexts[i];
+        ft.y -= 0.8;
+        ft.life -= 0.025;
+        if (ft.life <= 0) state.floatTexts.splice(i, 1);
       }
+
+      if (state.screenShake > 0) state.screenShake--;
     }
 
     function draw() {
-      // Clear
-      ctx.fillStyle = COLORS.bg;
-      ctx.fillRect(0, 0, w, h);
+      ctx.save();
+      // Screen shake
+      if (state.screenShake > 0) {
+        const sx = (Math.random() - 0.5) * state.screenShake * 2;
+        const sy = (Math.random() - 0.5) * state.screenShake * 2;
+        ctx.translate(sx, sy);
+      }
 
-      // Draw neural network background
-      ctx.strokeStyle = COLORS.network;
-      ctx.lineWidth = 0.5;
-      for (const node of state.networkNodes) {
-        for (const ci of node.connections) {
-          const target = state.networkNodes[ci];
-          if (target) {
-            ctx.beginPath();
-            ctx.moveTo(node.x, node.y);
-            ctx.lineTo(target.x, target.y);
-            ctx.stroke();
+      // Room transition fade
+      if (state.transition > 0) {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, w, h);
+        ctx.globalAlpha = 1 - state.transition / 30;
+      }
+
+      // Floor
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          const tx = x * TILE, ty = y * TILE;
+          if (state.grid[y][x] === 1) {
+            // Wall
+            ctx.fillStyle = C.wall;
+            ctx.fillRect(tx, ty, TILE, TILE);
+            // Top highlight
+            ctx.fillStyle = C.wallTop;
+            ctx.fillRect(tx, ty, TILE, 4);
+            // Edge lines
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(tx + 0.5, ty + 0.5, TILE - 1, TILE - 1);
+          } else {
+            // Floor tile with subtle checker
+            ctx.fillStyle = (x + y) % 2 === 0 ? C.floor : C.floorAlt;
+            ctx.fillRect(tx, ty, TILE, TILE);
+            // Subtle dot pattern
+            if ((x + y) % 3 === 0) {
+              ctx.fillStyle = 'rgba(255,255,255,0.02)';
+              ctx.beginPath();
+              ctx.arc(tx + TILE / 2, ty + TILE / 2, 2, 0, Math.PI * 2);
+              ctx.fill();
+            }
           }
         }
       }
-      for (const node of state.networkNodes) {
-        ctx.fillStyle = COLORS.networkNode;
+
+      // Exit portal
+      if (state.exitOpen) {
+        const pulse = 0.7 + Math.sin(state.frame * 0.08) * 0.3;
+        ctx.save();
+        ctx.shadowColor = C.exitGlow;
+        ctx.shadowBlur = 18 * pulse;
+        ctx.fillStyle = C.exit;
         ctx.beginPath();
-        ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
+        ctx.arc(state.exitX, state.exitY, 12 * pulse, 0, Math.PI * 2);
         ctx.fill();
-      }
-
-      // Draw lane dividers
-      ctx.strokeStyle = COLORS.laneDiv;
-      ctx.lineWidth = 1;
-      ctx.setLineDash([8, 12]);
-      for (let i = 1; i < LANE_COUNT; i++) {
-        const x = (w / LANE_COUNT) * i;
+        // Inner swirl
+        ctx.fillStyle = '#fff';
         ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
+        ctx.arc(state.exitX, state.exitY, 5 * pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        // Arrow indicator
+        ctx.fillStyle = C.exit;
+        ctx.font = 'bold 10px Outfit, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('▼', state.exitX, state.exitY - 18 + Math.sin(state.frame * 0.1) * 3);
       }
-      ctx.setLineDash([]);
 
-      // Draw entities
-      for (const e of state.entities) {
-        const glow = 0.5 + Math.sin(e.pulse) * 0.3;
-        if (e.type === 'synapse') {
-          // Synapse: diamond shape
-          ctx.save();
-          ctx.shadowColor = COLORS.synapseGlow;
-          ctx.shadowBlur = 12 * glow;
-          ctx.fillStyle = COLORS.synapse;
-          ctx.translate(e.x, e.y);
-          ctx.rotate(Math.PI / 4);
-          ctx.fillRect(-e.size / 2, -e.size / 2, e.size, e.size);
-          ctx.restore();
+      // Gems
+      for (const g of state.gems) {
+        if (g.collected) continue;
+        const glow = 0.6 + Math.sin(g.pulse) * 0.3;
+        ctx.save();
+        ctx.shadowColor = C.gemGlow;
+        ctx.shadowBlur = 10 * glow;
+        ctx.fillStyle = C.gem;
+        ctx.translate(g.x, g.y + Math.sin(g.pulse * 1.5) * 2);
+        ctx.rotate(Math.PI / 4);
+        ctx.fillRect(-5, -5, 10, 10);
+        ctx.restore();
+      }
+
+      // Enemies
+      for (const e of state.enemies) {
+        if (e.dead) continue;
+        const glow = 0.6 + Math.sin(e.pulse) * 0.25;
+        ctx.save();
+
+        if (e.hitFlash > 0) {
+          ctx.shadowColor = '#fff';
+          ctx.shadowBlur = 12;
+          ctx.fillStyle = '#fff';
         } else {
-          // Obstacle: hexagonal shape
-          ctx.save();
-          ctx.shadowColor = COLORS.obstacleGlow;
-          ctx.shadowBlur = 14 * glow;
-          ctx.fillStyle = COLORS.obstacle;
+          ctx.shadowColor = C[e.type + 'Glow'];
+          ctx.shadowBlur = 8 * glow;
+          ctx.fillStyle = C[e.type];
+        }
+
+        if (e.type === 'slime') {
+          // Slime: bouncy blob
+          const squish = 1 + Math.sin(e.pulse * 2) * 0.15;
+          ctx.translate(e.x, e.y);
+          ctx.scale(squish, 2 - squish);
           ctx.beginPath();
-          for (let j = 0; j < 6; j++) {
-            const angle = (Math.PI / 3) * j - Math.PI / 6;
-            const px = e.x + (e.size / 2) * Math.cos(angle);
-            const py = e.y + (e.size / 2) * Math.sin(angle);
-            if (j === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
+          ctx.arc(0, 0, 10, 0, Math.PI * 2);
+          ctx.fill();
+          // Eyes
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(-4, -4, 3, 4);
+          ctx.fillRect(2, -4, 3, 4);
+          ctx.fillStyle = '#1a1a2e';
+          ctx.fillRect(-3, -2, 2, 3);
+          ctx.fillRect(3, -2, 2, 3);
+        } else if (e.type === 'bat') {
+          // Bat: flappy wings
+          const wing = Math.sin(e.pulse * 3) * 0.4;
+          ctx.translate(e.x, e.y + Math.sin(e.pulse * 2) * 3);
+          // Body
+          ctx.beginPath();
+          ctx.arc(0, 0, 7, 0, Math.PI * 2);
+          ctx.fill();
+          // Wings
+          ctx.beginPath();
+          ctx.moveTo(-7, -2);
+          ctx.quadraticCurveTo(-16, -10 + wing * 15, -12, 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(7, -2);
+          ctx.quadraticCurveTo(16, -10 + wing * 15, 12, 2);
+          ctx.fill();
+          // Eyes
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(-4, -3, 2, 2);
+          ctx.fillRect(2, -3, 2, 2);
+        } else if (e.type === 'ghost') {
+          // Ghost: ethereal, semi-transparent
+          ctx.globalAlpha = 0.6 + Math.sin(e.pulse) * 0.2;
+          ctx.translate(e.x, e.y + Math.sin(e.pulse) * 3);
+          ctx.beginPath();
+          ctx.arc(0, -3, 10, Math.PI, 0);
+          ctx.lineTo(10, 8);
+          // Wavy bottom
+          for (let wx = 10; wx >= -10; wx -= 5) {
+            ctx.lineTo(wx, 8 + (wx % 10 === 0 ? 4 : 0));
           }
           ctx.closePath();
           ctx.fill();
-          ctx.restore();
+          // Eyes
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          ctx.arc(-3, -3, 3, 0, Math.PI * 2);
+          ctx.arc(4, -3, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#1a1a2e';
+          ctx.beginPath();
+          ctx.arc(-2, -2, 1.5, 0, Math.PI * 2);
+          ctx.arc(5, -2, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+
+        // HP bar (if damaged)
+        if (e.hp < e.maxHp && !e.dead) {
+          const barW = 20, barH = 3;
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.fillRect(e.x - barW / 2, e.y - 18, barW, barH);
+          ctx.fillStyle = C.heart;
+          ctx.fillRect(e.x - barW / 2, e.y - 18, barW * (e.hp / e.maxHp), barH);
         }
       }
 
-      // Draw particles
+      // Player
+      ctx.save();
+      // Blink during iframes
+      if (state.iframe > 0 && state.frame % 4 < 2) {
+        ctx.globalAlpha = 0.3;
+      }
+      ctx.shadowColor = C.player;
+      ctx.shadowBlur = 12;
+      // Body
+      ctx.fillStyle = C.player;
+      ctx.beginPath();
+      ctx.arc(state.px, state.py, 11, 0, Math.PI * 2);
+      ctx.fill();
+      // Inner
+      ctx.fillStyle = C.playerDark;
+      ctx.beginPath();
+      ctx.arc(state.px, state.py, 7, 0, Math.PI * 2);
+      ctx.fill();
+      // Eyes (face direction)
+      const dirs = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+      const [fdx, fdy] = dirs[state.pdir];
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(state.px + fdx * 4 - fdy * 2.5, state.py + fdy * 4 + fdx * 2.5, 2, 0, Math.PI * 2);
+      ctx.arc(state.px + fdx * 4 + fdy * 2.5, state.py + fdy * 4 - fdx * 2.5, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Attack swing
+      if (state.attacking > 0) {
+        const ap = getAttackPos();
+        const progress = 1 - state.attacking / ATTACK_DUR;
+        const angle = state.pdir * Math.PI / 2 + (progress - 0.5) * Math.PI * 0.8;
+        ctx.save();
+        ctx.shadowColor = C.swordGlow;
+        ctx.shadowBlur = 14;
+        ctx.strokeStyle = C.sword;
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(state.px, state.py);
+        ctx.lineTo(ap.x + Math.cos(angle) * 8, ap.y + Math.sin(angle) * 8);
+        ctx.stroke();
+        // Slash arc
+        ctx.strokeStyle = `rgba(0,245,212,${0.6 * (1 - progress)})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(state.px, state.py, ATTACK_RANGE, angle - 0.6, angle + 0.6);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Particles
       for (const p of state.particles) {
         ctx.globalAlpha = p.life;
         ctx.fillStyle = p.color;
@@ -391,167 +753,126 @@ export default function GamePage() {
       }
       ctx.globalAlpha = 1;
 
-      // Draw player (neural signal)
-      ctx.save();
-      ctx.shadowColor = COLORS.playerGlow;
-      ctx.shadowBlur = 20;
-      ctx.fillStyle = COLORS.player;
-      ctx.beginPath();
-      ctx.arc(state.playerX, state.playerY, PLAYER_SIZE / 2, 0, Math.PI * 2);
-      ctx.fill();
-      // Inner core
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(state.playerX, state.playerY, PLAYER_SIZE / 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // Trail effect
-      ctx.fillStyle = `rgba(0,245,212,${0.08 + Math.sin(state.frame * 0.1) * 0.04})`;
-      ctx.beginPath();
-      ctx.arc(state.playerX, state.playerY + 12, PLAYER_SIZE / 3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = `rgba(0,245,212,0.04)`;
-      ctx.beginPath();
-      ctx.arc(state.playerX, state.playerY + 22, PLAYER_SIZE / 4, 0, Math.PI * 2);
-      ctx.fill();
+      // Float texts
+      for (const ft of state.floatTexts) {
+        ctx.globalAlpha = ft.life;
+        ctx.fillStyle = ft.color;
+        ctx.font = 'bold 12px Outfit, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(ft.text, ft.x, ft.y);
+      }
+      ctx.globalAlpha = 1;
 
       // HUD
-      ctx.fillStyle = COLORS.text;
-      ctx.font = 'bold 16px Outfit, sans-serif';
+      // Hearts
+      for (let i = 0; i < state.maxHp; i++) {
+        const hx = 12 + i * 18;
+        ctx.fillStyle = i < state.hp ? C.heart : 'rgba(255,0,80,0.2)';
+        ctx.font = '14px sans-serif';
+        ctx.fillText('♥', hx, 20);
+      }
+      // Score
+      ctx.fillStyle = C.text;
+      ctx.font = 'bold 13px Outfit, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`✦ ${state.score}`, w - 12, 18);
+      // Room number
+      ctx.fillStyle = C.textMuted;
+      ctx.font = '11px Outfit, sans-serif';
+      ctx.fillText(`Stanza ${state.roomNum + 1}`, w - 12, 34);
       ctx.textAlign = 'left';
-      ctx.fillText(`⚡ ${state.score}`, 16, 30);
+
+      ctx.restore();
     }
 
     function gameLoop() {
       update();
       draw();
       setScore(state.score);
+      setRoomNum(state.roomNum);
 
       if (state.running) {
         animFrameRef.current = requestAnimationFrame(gameLoop);
       } else {
-        // Game over
         const finalScore = state.score;
         setScore(finalScore);
         setGameStatus('gameover');
         setHighScore(prev => Math.max(prev, finalScore));
-
-        // Auto submit if logged in
-        if (twitchToken) {
-          submitScore(finalScore);
-        }
+        if (twitchToken) submitScore(finalScore);
       }
     }
 
     animFrameRef.current = requestAnimationFrame(gameLoop);
-
     return () => {
       state.running = false;
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
   }, [twitchToken, submitScore]);
 
-  /* ─── Input handlers ─── */
-  const touchStartRef = useRef(null);
-
-  // Keep a ref to gameStatus so the keydown handler can read it without stale closures
+  /* ─── Keyboard ─── */
   const gameStatusRef = useRef(gameStatus);
   gameStatusRef.current = gameStatus;
 
   useEffect(() => {
-    function handleKeyDown(e) {
-      const state = gameStateRef.current;
-
-      // Start / restart with Space or Enter when not playing
+    function onDown(e) {
       if ((e.key === ' ' || e.key === 'Enter') && gameStatusRef.current !== 'playing') {
         e.preventDefault();
         setGameStatus('playing');
         return;
       }
-
-      if (!state || !state.running) return;
-
-      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-        state.targetLane = Math.max(0, state.targetLane - 1);
-        e.preventDefault();
-      } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-        state.targetLane = Math.min(LANE_COUNT - 1, state.targetLane + 1);
-        e.preventDefault();
-      }
+      keysRef.current[e.key] = true;
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
     }
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    function onUp(e) { keysRef.current[e.key] = false; }
+    window.addEventListener('keydown', onDown);
+    window.addEventListener('keyup', onUp);
+    return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
   }, []);
 
-  /* ─── Touch / swipe handlers ─── */
-  function handleTouchStart(e) {
+  /* ─── Touch joystick handlers ─── */
+  const joystickTouchId = useRef(null);
+  const joystickCenter = useRef({ x: 0, y: 0 });
+
+  function onJoystickStart(e) {
     e.preventDefault();
-    const touch = e.touches[0];
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+    const t = e.changedTouches[0];
+    joystickTouchId.current = t.identifier;
+    const rect = e.currentTarget.getBoundingClientRect();
+    joystickCenter.current = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    joystickRef.current = { active: true, dx: 0, dy: 0 };
   }
-
-  function handleTouchEnd(e) {
-    const state = gameStateRef.current;
-    if (!state || !state.running || !touchStartRef.current) return;
-
-    const touch = e.changedTouches[0];
-    const dx = touch.clientX - touchStartRef.current.x;
-    const dy = touch.clientY - touchStartRef.current.y;
-    const dt = Date.now() - touchStartRef.current.time;
-    touchStartRef.current = null;
-
-    const SWIPE_THRESHOLD = 20;
-    const SWIPE_MAX_TIME = 400;
-
-    // Detect horizontal swipe
-    if (dt < SWIPE_MAX_TIME && Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
-      if (dx < 0) {
-        state.targetLane = Math.max(0, state.targetLane - 1);
-      } else {
-        state.targetLane = Math.min(LANE_COUNT - 1, state.targetLane + 1);
+  function onJoystickMove(e) {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === joystickTouchId.current) {
+        const dx = t.clientX - joystickCenter.current.x;
+        const dy = t.clientY - joystickCenter.current.y;
+        const max = 40;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const clamped = Math.min(dist, max);
+        const angle = Math.atan2(dy, dx);
+        joystickRef.current = {
+          active: true,
+          dx: (clamped / max) * Math.cos(angle),
+          dy: (clamped / max) * Math.sin(angle),
+        };
       }
-      return;
-    }
-
-    // Fallback: tap left/right half
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const tapX = touch.clientX - rect.left;
-    const mid = rect.width / 2;
-    if (tapX < mid) {
-      state.targetLane = Math.max(0, state.targetLane - 1);
-    } else {
-      state.targetLane = Math.min(LANE_COUNT - 1, state.targetLane + 1);
     }
   }
-
-  function handleCanvasClick(e) {
-    // Mouse click only — touch is handled separately via touchStart/touchEnd
-    if (e.nativeEvent.pointerType === 'touch') return;
-    const state = gameStateRef.current;
-    if (!state || !state.running) return;
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const mid = rect.width / 2;
-    if (clickX < mid) {
-      state.targetLane = Math.max(0, state.targetLane - 1);
-    } else {
-      state.targetLane = Math.min(LANE_COUNT - 1, state.targetLane + 1);
+  function onJoystickEnd(e) {
+    for (const t of e.changedTouches) {
+      if (t.identifier === joystickTouchId.current) {
+        joystickTouchId.current = null;
+        joystickRef.current = { active: false, dx: 0, dy: 0 };
+      }
     }
   }
-
-  function handleLogout() {
-    localStorage.removeItem('twitchGameToken');
-    setTwitchUser(null);
-    setTwitchToken(null);
+  function onAttackBtn(e) {
+    e.preventDefault();
+    attackBtnRef.current = true;
   }
 
+  /* ─── Lifecycle ─── */
   const cleanupRef = useRef(null);
   const startGameRef = useRef(startGame);
   startGameRef.current = startGame;
@@ -560,10 +881,14 @@ export default function GamePage() {
     if (gameStatus === 'playing') {
       cleanupRef.current = startGameRef.current();
     }
-    return () => {
-      if (cleanupRef.current) cleanupRef.current();
-    };
+    return () => { if (cleanupRef.current) cleanupRef.current(); };
   }, [gameStatus]);
+
+  function handleLogout() {
+    localStorage.removeItem('twitchGameToken');
+    setTwitchUser(null);
+    setTwitchToken(null);
+  }
 
   return (
     <motion.div
@@ -575,24 +900,25 @@ export default function GamePage() {
       style={{ maxWidth: '960px' }}
     >
       <SEO
-        title="Neural Dash — Minigioco Arcade con Classifica"
-        description="Gioca a Neural Dash, il minigioco esclusivo di ANDRYXify! Guida il segnale neurale, raccogli sinapsi, evita i nodi corrotti e scala la classifica. Login con Twitch per salvare il tuo punteggio!"
+        title="Andryx Quest — Minigioco Dungeon Crawler"
+        description="Gioca ad Andryx Quest, il minigioco esclusivo di ANDRYXify! Esplora dungeon, sconfiggi nemici, raccogli gemme e scala la classifica. Login con Twitch per salvare il punteggio!"
         path="/gioco"
       />
 
       <header style={{ textAlign: 'center', marginBottom: '1rem' }}>
         <h1 className="title">
-          <span className="text-gradient">Neural</span> Dash
+          <span className="text-gradient">Andryx</span> Quest
         </h1>
         <p className="subtitle">
-          Guida il segnale neurale attraverso la rete sinaptica. Raccogli le sinapsi{' '}
-          <span style={{ color: COLORS.synapse }}>◆</span>, evita i nodi corrotti{' '}
-          <span style={{ color: COLORS.obstacle }}>⬡</span> e scala la classifica!
+          Esplora i dungeon, sconfiggi i nemici{' '}
+          <span style={{ color: C.slime }}>●</span>{' '}
+          <span style={{ color: C.bat }}>●</span>{' '}
+          <span style={{ color: C.ghost }}>●</span>, raccogli le gemme{' '}
+          <span style={{ color: C.gem }}>◆</span> e avanza il più possibile!
         </p>
       </header>
 
       <div className="game-layout">
-        {/* Game area */}
         <div className="game-area">
           <div className="glass-panel game-canvas-wrapper" style={{ padding: 0, overflow: 'hidden' }}>
             <canvas
@@ -600,20 +926,18 @@ export default function GamePage() {
               width={CANVAS_W}
               height={CANVAS_H}
               className="game-canvas"
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-              onClick={handleCanvasClick}
             />
 
-            {/* Overlays */}
+            {/* Idle overlay */}
             {gameStatus === 'idle' && (
               <div className="game-overlay">
                 <div className="game-overlay-content">
-                  <Zap size={48} color={COLORS.player} />
-                  <h2 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '0.5rem 0' }}>Neural Dash</h2>
-                  <p style={{ color: COLORS.textMuted, fontSize: '0.85rem', maxWidth: '300px', margin: '0 auto 1rem' }}>
-                    Usa <strong>← →</strong> / <strong>A D</strong> o swipe per muoverti tra le corsie.<br />
-                    Premi <strong>Spazio</strong> per iniziare.
+                  <Sword size={48} color={C.player} />
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0.5rem 0' }}>Andryx Quest</h2>
+                  <p style={{ color: C.textMuted, fontSize: '0.85rem', maxWidth: '320px', margin: '0 auto 0.75rem' }}>
+                    Muoviti con il <strong>joystick</strong> (mobile) o <strong>WASD / frecce</strong>.<br />
+                    Attacca con il <strong>pulsante ⚔️</strong> o <strong>Spazio</strong>.<br />
+                    Sconfiggi tutti i nemici per sbloccare il portale!
                   </p>
 
                   {!twitchUser && !CHIAVETWITCH && (
@@ -624,54 +948,53 @@ export default function GamePage() {
                   {!twitchUser && CHIAVETWITCH && (
                     <a href={getTwitchLoginUrl()} className="btn" style={{
                       background: 'linear-gradient(135deg,#9146FF,#c800ff)',
-                      color: '#fff',
-                      marginBottom: '0.75rem',
+                      color: '#fff', marginBottom: '0.75rem',
                       boxShadow: '0 5px 20px rgba(145,70,255,.4)',
                     }}>
                       <Twitch size={16} /> Login con Twitch
                     </a>
                   )}
                   {twitchUser && (
-                    <p style={{ color: COLORS.player, fontSize: '0.9rem', marginBottom: '0.75rem', fontWeight: 700 }}>
+                    <p style={{ color: C.player, fontSize: '0.9rem', marginBottom: '0.75rem', fontWeight: 700 }}>
                       🎮 Loggato come <strong>{twitchUser}</strong>
                     </p>
                   )}
 
                   <button onClick={() => setGameStatus('playing')} className="btn btn-primary" style={{ fontSize: '1rem', padding: '0.75rem 2rem' }}>
-                    <Zap size={18} /> Gioca!
+                    <Sword size={18} /> Gioca!
                   </button>
                 </div>
               </div>
             )}
 
+            {/* Game over overlay */}
             {gameStatus === 'gameover' && (
               <div className="game-overlay">
                 <div className="game-overlay-content">
-                  <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: COLORS.obstacle }}>Game Over!</h2>
-                  <p style={{ fontSize: '2rem', fontWeight: 800, margin: '0.5rem 0' }}>
-                    ⚡ {score}
+                  <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: C.heart }}>Sei caduto!</h2>
+                  <p style={{ fontSize: '1.8rem', fontWeight: 800, margin: '0.5rem 0' }}>
+                    ✦ {score}
+                  </p>
+                  <p style={{ fontSize: '0.82rem', color: C.textMuted, marginBottom: '0.25rem' }}>
+                    Stanza raggiunta: <strong style={{ color: C.exit }}>{roomNum + 1}</strong>
                   </p>
                   {highScore > 0 && (
-                    <p style={{ fontSize: '0.8rem', color: COLORS.textMuted }}>
+                    <p style={{ fontSize: '0.8rem', color: C.textMuted }}>
                       Record personale: {highScore}
                     </p>
                   )}
-
                   {submitMsg && (
-                    <p style={{ fontSize: '0.82rem', color: COLORS.player, marginTop: '0.5rem' }}>{submitMsg}</p>
+                    <p style={{ fontSize: '0.82rem', color: C.player, marginTop: '0.5rem' }}>{submitMsg}</p>
                   )}
-
                   {!twitchUser && CHIAVETWITCH && (
                     <a href={getTwitchLoginUrl()} className="btn" style={{
                       background: 'linear-gradient(135deg,#9146FF,#c800ff)',
-                      color: '#fff',
-                      margin: '0.75rem 0',
+                      color: '#fff', margin: '0.75rem 0',
                       boxShadow: '0 5px 20px rgba(145,70,255,.4)',
                     }}>
                       <LogIn size={16} /> Login per salvare il punteggio
                     </a>
                   )}
-
                   <button onClick={() => setGameStatus('playing')} className="btn btn-primary" style={{ marginTop: '0.75rem' }}>
                     <RotateCcw size={16} /> Riprova
                   </button>
@@ -680,15 +1003,48 @@ export default function GamePage() {
             )}
           </div>
 
-          {/* Controls hint (mobile) */}
-          <p className="game-controls-hint">
-            ← Swipe o tocca sinistra / destra → per muoverti
-          </p>
+          {/* Touch controls (mobile) */}
+          <div className="game-touch-controls">
+            <div
+              className="game-joystick"
+              onTouchStart={onJoystickStart}
+              onTouchMove={onJoystickMove}
+              onTouchEnd={onJoystickEnd}
+            >
+              <div className="game-joystick-knob" style={{
+                transform: `translate(${joystickRef.current.dx * 20}px, ${joystickRef.current.dy * 20}px)`,
+              }} />
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              {/* Keyboard toggle */}
+              <button
+                className={`game-kb-toggle ${showKeyboard ? 'active' : ''}`}
+                onClick={() => setShowKeyboard(v => !v)}
+                title="Toggle tastiera"
+              >
+                <Keyboard size={18} />
+              </button>
+
+              <button
+                className="game-attack-btn"
+                onTouchStart={onAttackBtn}
+              >
+                ⚔️
+              </button>
+            </div>
+          </div>
+
+          {showKeyboard && (
+            <p className="game-controls-hint" style={{ display: 'block' }}>
+              🎮 WASD / Frecce = muovi · Spazio = attacca
+            </p>
+          )}
         </div>
 
-        {/* Sidebar: Auth + Leaderboard */}
+        {/* Sidebar */}
         <div className="game-sidebar">
-          {/* Twitch login card */}
+          {/* Twitch */}
           <div className="glass-panel" style={{ padding: '1.2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
               <Twitch size={18} color="#9146FF" />
@@ -696,7 +1052,7 @@ export default function GamePage() {
             </div>
             {twitchUser ? (
               <div>
-                <p style={{ fontSize: '0.85rem', color: COLORS.player, fontWeight: 700, marginBottom: '0.5rem' }}>
+                <p style={{ fontSize: '0.85rem', color: C.player, fontWeight: 700, marginBottom: '0.5rem' }}>
                   ✓ {twitchUser}
                 </p>
                 <button onClick={handleLogout} className="btn btn-ghost" style={{ fontSize: '0.78rem', padding: '0.35rem 0.9rem' }}>
@@ -705,7 +1061,7 @@ export default function GamePage() {
               </div>
             ) : (
               <div>
-                <p style={{ fontSize: '0.82rem', color: COLORS.textMuted, marginBottom: '0.75rem' }}>
+                <p style={{ fontSize: '0.82rem', color: C.textMuted, marginBottom: '0.75rem' }}>
                   {CHIAVETWITCH
                     ? 'Accedi con Twitch per salvare i tuoi punteggi nella classifica!'
                     : '⚠️ Login Twitch non disponibile — configurazione mancante.'}
@@ -713,12 +1069,9 @@ export default function GamePage() {
                 {CHIAVETWITCH && (
                   <a href={getTwitchLoginUrl()} className="btn" style={{
                     background: 'linear-gradient(135deg,#9146FF,#c800ff)',
-                    color: '#fff',
-                    fontSize: '0.82rem',
-                    padding: '0.5rem 1rem',
+                    color: '#fff', fontSize: '0.82rem', padding: '0.5rem 1rem',
                     boxShadow: '0 5px 20px rgba(145,70,255,.4)',
-                    width: '100%',
-                    justifyContent: 'center',
+                    width: '100%', justifyContent: 'center',
                   }}>
                     <Twitch size={14} /> Login con Twitch
                   </a>
@@ -734,73 +1087,72 @@ export default function GamePage() {
               <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Classifica</h3>
             </div>
 
-            {/* Tab switcher */}
             <div className="leaderboard-tabs">
-              <button
-                className={`leaderboard-tab${boardTab === 'weekly' ? ' active' : ''}`}
-                onClick={() => setBoardTab('weekly')}
-              >
+              <button className={`leaderboard-tab${boardTab === 'weekly' ? ' active' : ''}`} onClick={() => setBoardTab('weekly')}>
                 <Calendar size={13} /> Settimanale
               </button>
-              <button
-                className={`leaderboard-tab${boardTab === 'alltime' ? ' active' : ''}`}
-                onClick={() => setBoardTab('alltime')}
-              >
+              <button className={`leaderboard-tab${boardTab === 'alltime' ? ' active' : ''}`} onClick={() => setBoardTab('alltime')}>
                 <Crown size={13} /> Generale
               </button>
-              <button
-                className={`leaderboard-tab${boardTab === 'monthly' ? ' active' : ''}`}
-                onClick={() => setBoardTab('monthly')}
-              >
+              <button className={`leaderboard-tab${boardTab === 'monthly' ? ' active' : ''}`} onClick={() => setBoardTab('monthly')}>
                 <Award size={13} /> Mensili
               </button>
             </div>
 
             {boardLoading ? (
-              <p style={{ fontSize: '0.82rem', color: COLORS.textMuted, textAlign: 'center', padding: '1rem 0' }}>
-                Caricamento…
-              </p>
+              <p style={{ fontSize: '0.82rem', color: C.textMuted, textAlign: 'center', padding: '1rem 0' }}>Caricamento…</p>
             ) : boardError ? (
-              <p style={{ fontSize: '0.82rem', color: COLORS.obstacle, textAlign: 'center', padding: '1rem 0' }}>
-                {boardError}
-              </p>
+              <p style={{ fontSize: '0.82rem', color: C.heart, textAlign: 'center', padding: '1rem 0' }}>{boardError}</p>
             ) : boardTab === 'monthly' ? (
-              /* ── Monthly winners tab ── */
-              monthlyWinners.length === 0 ? (
-                <p style={{ fontSize: '0.82rem', color: COLORS.textMuted }}>
-                  I vincitori mensili appariranno qui a partire dal prossimo mese!
-                </p>
-              ) : (
-                <div className="leaderboard-list">
-                  {monthlyWinners.map((month) => (
-                    <div key={month.month} className="monthly-winners-block">
-                      <div className="monthly-winners-header">
-                        <Award size={14} /> {month.label}
-                      </div>
-                      {month.top3.map((entry, i) => (
-                        <div key={entry.username} className="leaderboard-entry" style={{
-                          background: i === 0 ? 'rgba(255,215,0,0.08)' : i === 1 ? 'rgba(192,192,192,0.06)' : i === 2 ? 'rgba(205,127,50,0.06)' : 'transparent',
-                          borderLeft: `3px solid ${i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : '#CD7F32'}`,
-                        }}>
-                          <span className="leaderboard-rank">
-                            {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
-                          </span>
-                          <span className="leaderboard-name" style={{
-                            color: twitchUser === entry.username ? COLORS.player : COLORS.text,
-                            fontWeight: twitchUser === entry.username ? 800 : 600,
-                          }}>
-                            {entry.username}
-                            {twitchUser === entry.username && ' (tu)'}
-                          </span>
-                          <span className="leaderboard-score">⚡ {entry.score}</span>
+              (() => {
+                const hasCurrentMonth = currentMonthData && currentMonthData.scores.length > 0;
+                const hasHistory = monthlyWinners.length > 0;
+                if (!hasCurrentMonth && !hasHistory) {
+                  return <p style={{ fontSize: '0.82rem', color: C.textMuted }}>Nessun punteggio mensile ancora. Sii il primo!</p>;
+                }
+                return (
+                  <div className="leaderboard-list">
+                    {hasCurrentMonth && (
+                      <div className="monthly-winners-block">
+                        <div className="monthly-winners-header" style={{ color: C.player }}>
+                          <Zap size={13} /> {currentMonthData.label} <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>(in corso)</span>
                         </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )
+                        {currentMonthData.scores.map((entry, i) => (
+                          <div key={entry.username} className="leaderboard-entry" style={{
+                            background: i === 0 ? 'rgba(255,215,0,0.08)' : i === 1 ? 'rgba(192,192,192,0.06)' : i === 2 ? 'rgba(205,127,50,0.06)' : 'transparent',
+                            borderLeft: i < 3 ? `3px solid ${['#FFD700', '#C0C0C0', '#CD7F32'][i]}` : '3px solid transparent',
+                          }}>
+                            <span className="leaderboard-rank">{i < 3 ? ['🥇', '🥈', '🥉'][i] : `${i + 1}.`}</span>
+                            <span className="leaderboard-name" style={{ color: twitchUser === entry.username ? C.player : C.text, fontWeight: twitchUser === entry.username ? 800 : 600 }}>
+                              {entry.username}{twitchUser === entry.username && ' (tu)'}
+                            </span>
+                            <span className="leaderboard-score">✦ {entry.score}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {hasHistory && monthlyWinners.map((month) => (
+                      <div key={month.month} className="monthly-winners-block">
+                        <div className="monthly-winners-header"><Award size={14} /> {month.label}</div>
+                        {month.top3.map((entry, i) => (
+                          <div key={entry.username} className="leaderboard-entry" style={{
+                            background: i === 0 ? 'rgba(255,215,0,0.08)' : i === 1 ? 'rgba(192,192,192,0.06)' : 'rgba(205,127,50,0.06)',
+                            borderLeft: `3px solid ${['#FFD700', '#C0C0C0', '#CD7F32'][i]}`,
+                          }}>
+                            <span className="leaderboard-rank">{['🥇', '🥈', '🥉'][i]}</span>
+                            <span className="leaderboard-name" style={{ color: twitchUser === entry.username ? C.player : C.text, fontWeight: twitchUser === entry.username ? 800 : 600 }}>
+                              {entry.username}{twitchUser === entry.username && ' (tu)'}
+                            </span>
+                            <span className="leaderboard-score">✦ {entry.score}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()
             ) : (boardTab === 'weekly' ? weeklyBoard : alltimeBoard).length === 0 ? (
-              <p style={{ fontSize: '0.82rem', color: COLORS.textMuted }}>
+              <p style={{ fontSize: '0.82rem', color: C.textMuted }}>
                 {boardTab === 'weekly' ? 'Nessun punteggio questa settimana. Sii il primo!' : 'Nessun punteggio ancora. Sii il primo!'}
               </p>
             ) : (
@@ -808,19 +1160,13 @@ export default function GamePage() {
                 {(boardTab === 'weekly' ? weeklyBoard : alltimeBoard).map((entry, i) => (
                   <div key={entry.username} className="leaderboard-entry" style={{
                     background: i === 0 ? 'rgba(255,215,0,0.08)' : i === 1 ? 'rgba(192,192,192,0.06)' : i === 2 ? 'rgba(205,127,50,0.06)' : 'transparent',
-                    borderLeft: i < 3 ? `3px solid ${i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : '#CD7F32'}` : '3px solid transparent',
+                    borderLeft: i < 3 ? `3px solid ${['#FFD700', '#C0C0C0', '#CD7F32'][i]}` : '3px solid transparent',
                   }}>
-                    <span className="leaderboard-rank">
-                      {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}
+                    <span className="leaderboard-rank">{i < 3 ? ['🥇', '🥈', '🥉'][i] : `${i + 1}.`}</span>
+                    <span className="leaderboard-name" style={{ color: twitchUser === entry.username ? C.player : C.text, fontWeight: twitchUser === entry.username ? 800 : 600 }}>
+                      {entry.username}{twitchUser === entry.username && ' (tu)'}
                     </span>
-                    <span className="leaderboard-name" style={{
-                      color: twitchUser === entry.username ? COLORS.player : COLORS.text,
-                      fontWeight: twitchUser === entry.username ? 800 : 600,
-                    }}>
-                      {entry.username}
-                      {twitchUser === entry.username && ' (tu)'}
-                    </span>
-                    <span className="leaderboard-score">⚡ {entry.score}</span>
+                    <span className="leaderboard-score">✦ {entry.score}</span>
                   </div>
                 ))}
               </div>

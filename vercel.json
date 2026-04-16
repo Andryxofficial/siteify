@@ -7,6 +7,10 @@
     "api/leaderboard.js": {
       "memory": 128,
       "maxDuration": 10
+    },
+    "api/reset-leaderboard.js": {
+      "memory": 128,
+      "maxDuration": 10
     }
   },
   "headers": [
@@ -16,6 +20,25 @@
         { "key": "Access-Control-Allow-Origin", "value": "*" },
         { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type, X-IUA-Nexus-Key, Authorization" }
+      ]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" }
       ]
     }
   ],
