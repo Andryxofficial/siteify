@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     try {
       const { score } = req.body;
 
-      if (typeof score !== 'number' || score < 0 || !Number.isFinite(score)) {
+      if (typeof score !== 'number' || score < 0 || !Number.isFinite(score) || score > 999999) {
         return res.status(400).json({ error: 'Punteggio non valido.' });
       }
 

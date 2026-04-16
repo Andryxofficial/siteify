@@ -475,15 +475,17 @@ export default function GamePage() {
   }
 
   const cleanupRef = useRef(null);
+  const startGameRef = useRef(startGame);
+  startGameRef.current = startGame;
 
   useEffect(() => {
     if (gameStatus === 'playing') {
-      cleanupRef.current = startGame();
+      cleanupRef.current = startGameRef.current();
     }
     return () => {
       if (cleanupRef.current) cleanupRef.current();
     };
-  }, [gameStatus, startGame]);
+  }, [gameStatus]);
 
   return (
     <motion.div

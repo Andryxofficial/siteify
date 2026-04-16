@@ -11,7 +11,7 @@ export default function SEO({
   image = DEFAULT_IMAGE,
   type = 'website',
 }) {
-  const fullTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} — Streamer Twitch, Gaming, IA & Intrattenimento | Andrea Taliento`;
+  const fullTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} — Streamer, Gaming & IA`;
   const url = `${BASE_URL}${path}`;
 
   return (
