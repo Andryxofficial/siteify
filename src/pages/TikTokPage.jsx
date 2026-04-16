@@ -3,15 +3,6 @@ import { motion } from 'framer-motion';
 import { ExternalLink, Music2, TrendingUp, Sparkles, Zap } from 'lucide-react';
 import TikTokIcon from '../components/TikTokIcon';
 
-const highlights = [
-  { emoji: '🎮', label: 'Gaming Clips',    desc: 'I momenti più epici in formato corto.' },
-  { emoji: '🤖', label: 'IA in 60 sec',    desc: 'Pillole di intelligenza artificiale.' },
-  { emoji: '😂', label: 'Behind the Scenes', desc: 'Dietro le quinte delle live.' },
-  { emoji: '💡', label: 'Tech Tips',        desc: 'Consigli e curiosità digitali.' },
-  { emoji: '🎙️', label: 'Podcast Snippet', desc: 'I migliori estratti del podcast.' },
-  { emoji: '🔥', label: 'Trending',         desc: 'Partecipazioni ai trend del momento.' },
-];
-
 export default function TikTokPage() {
   // Load TikTok embed script once
   useEffect(() => {
@@ -135,32 +126,6 @@ export default function TikTokPage() {
           </blockquote>
         </div>
       </motion.div>
-      <div>
-        <h2 className="section-title">Cosa trovi su TikTok 🎬</h2>
-        <div className="links-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-          {highlights.map((h, i) => (
-            <motion.div
-              key={h.label}
-              className="glass-card"
-              style={{
-                padding: '1.2rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.4rem',
-              }}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 + i * 0.07, type: 'spring', stiffness: 240, damping: 22 }}
-              whileHover={{ scale: 1.03 }}
-            >
-              <span style={{ fontSize: '1.8rem' }}>{h.emoji}</span>
-              <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#00F2FE' }}>{h.label}</span>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{h.desc}</span>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
       {/* Stats / CTA */}
       <motion.div
         className="glass-panel"

@@ -1,13 +1,6 @@
 import { motion } from 'framer-motion';
 import { Twitch, ExternalLink, Calendar, Users, Star } from 'lucide-react';
 
-const features = [
-  { emoji: '🎮', title: 'Variety Gaming', color: '#9146FF', desc: 'Dagli sparatutto adrenalinici ai capolavori indie. Gioco di tutto esplorando storie e meccaniche uniche, senza mai annoiarmi su un solo titolo.' },
-  { emoji: '🎙️', title: 'Just Chatting & Tech', color: '#00f5d4', desc: 'Non solo gameplay: ci prendiamo il tempo per chiacchierare, analizzare l\'IA, commentare news tech e filosofeggiare sul futuro.' },
-  { emoji: '🤖', title: 'Esperimenti IA Live', color: '#FF00D4', desc: 'Demo in diretta di strumenti di intelligenza artificiale, prompt engineering e scoperte tech commentate in tempo reale con la community.' },
-  { emoji: '💬', title: 'Community First', color: '#FFD700', desc: 'Il chat è il cuore della live. Ogni domanda, battuta e idea della community plasmano lo show. Non sei spettatore, sei protagonista.' },
-];
-
 const twitchStats = [
   { icon: <Users size={18} color="#9146FF" />, label: 'Community attiva' },
   { icon: <Star  size={18} color="#FFD700" />, label: 'Contenuti originali' },
@@ -72,34 +65,6 @@ export default function TwitchPage() {
             width="100%"
             style={{ flex: 1, border: 'none', display: 'block' }}
           />
-        </div>
-      </div>
-
-      {/* What to expect */}
-      <div>
-        <h2 className="section-title">Cosa aspettarti 🎯</h2>
-        <div className="links-grid">
-          {features.map(f => (
-            <motion.div
-              key={f.title}
-              className="glass-card link-item"
-              style={{
-                padding: '1.4rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.5rem',
-                alignItems: 'flex-start',
-                background: `linear-gradient(135deg, ${f.color}18, ${f.color}06)`,
-              }}
-              whileHover={{ scale: 1.02 }}
-            >
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <span style={{ fontSize: '1.4rem' }}>{f.emoji}</span>
-                <h3 style={{ color: f.color, margin: 0, fontSize: '1rem', fontWeight: 800 }}>{f.title}</h3>
-              </div>
-              <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.88rem', lineHeight: 1.6 }}>{f.desc}</p>
-            </motion.div>
-          ))}
         </div>
       </div>
 

@@ -1,14 +1,5 @@
 import { motion } from 'framer-motion';
-import { Instagram, Camera, ExternalLink } from 'lucide-react';
-
-const highlights = [
-  { emoji: '📸', label: 'Dietro le quinte' },
-  { emoji: '🤖', label: 'Pillole di IA'    },
-  { emoji: '🎮', label: 'Gaming moments'  },
-  { emoji: '💭', label: 'Pensieri & Tech'  },
-  { emoji: '🎙️', label: 'Podcast snippets' },
-  { emoji: '🌐', label: 'News digitali'    },
-];
+import { Instagram, ExternalLink } from 'lucide-react';
 
 export default function InstagramPage() {
   return (
@@ -39,9 +30,7 @@ export default function InstagramPage() {
           height: 120,
           background: 'linear-gradient(135deg,#f09433 0%,#e6683c 20%,#dc2743 40%,#cc2366 70%,#bc1888 100%)',
           position: 'relative',
-        }}>
-          <Camera size={36} color="rgba(255,255,255,.2)" style={{ position: 'absolute', right: 24, top: 20 }} />
-        </div>
+        }} />
 
         <div style={{
           padding: '0 2rem 2.5rem',
@@ -87,34 +76,6 @@ export default function InstagramPage() {
           </motion.a>
         </div>
       </motion.div>
-
-      {/* Content pillars */}
-      <div>
-        <h2 className="section-title">Cosa trovi sul profilo 👀</h2>
-        <div className="links-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
-          {highlights.map((h, i) => (
-            <motion.div
-              key={h.label}
-              className="glass-card"
-              style={{
-                padding: '1.2rem',
-                textAlign: 'center',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '0.5rem',
-              }}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 + i * 0.07, type: 'spring', stiffness: 240, damping: 22 }}
-              whileHover={{ scale: 1.04 }}
-            >
-              <span style={{ fontSize: '1.8rem' }}>{h.emoji}</span>
-              <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-muted)' }}>{h.label}</span>
-            </motion.div>
-          ))}
-        </div>
-      </div>
 
       {/* CTA */}
       <motion.div
