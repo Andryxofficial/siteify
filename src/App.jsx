@@ -8,6 +8,7 @@ import TwitchPage from './pages/TwitchPage';
 import YouTubePage from './pages/YouTubePage';
 import InstagramPage from './pages/InstagramPage';
 import PodcastPage from './pages/PodcastPage';
+import TikTokPage from './pages/TikTokPage';
 //segreto
 import Scoiattoli from './pages/tracker_scoiattoli';
 import './index.css';
@@ -37,6 +38,7 @@ function App() {
             <Route path="/youtube" element={<YouTubePage />} />
             <Route path="/instagram" element={<InstagramPage />} />
             <Route path="/podcast" element={<PodcastPage />} />
+            <Route path="/tiktok" element={<TikTokPage />} />
 
             <Route path="/scoiattoli" element={<Scoiattoli />} />
             

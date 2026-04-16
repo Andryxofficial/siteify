@@ -68,12 +68,12 @@ export default function PodcastPage() {
           <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Ascolta su Spotify</h2>
         </div>
 
-        {/* Full Spotify show embed (height 352 shows episodes list) */}
+        {/* Full Spotify show embed — tall to show full episode list */}
         <iframe
           title="Umanità o IA? – Podcast completo"
           src="https://open.spotify.com/embed/show/1wtbUNmK9cWJXum02QsxW9?utm_source=generator&theme=0"
           width="100%"
-          height="352"
+          height="500"
           frameBorder="0"
           allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
           loading="lazy"
@@ -123,18 +123,6 @@ export default function PodcastPage() {
           Nell'era dell'intelligenza artificiale, sappiamo davvero distinguere fra strumento e cervello in prestito?
           ANDRYXify ti guida in un viaggio tra bit e biologia, esplorando domande che nessun algoritmo sa ancora rispondere.
         </p>
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          {['🤔 Riflessioni', '🔬 Analisi', '💬 Discussioni', '🚀 Futuro'].map(tag => (
-            <span key={tag} style={{
-              background: 'var(--surface-2)',
-              border: '1px solid var(--glass-border)',
-              borderRadius: 'var(--r-full)',
-              padding: '4px 14px',
-              fontSize: '0.82rem',
-              color: 'var(--text-muted)',
-            }}>{tag}</span>
-          ))}
-        </div>
         <motion.a
           href={SPOTIFY_URL}
           target="_blank"

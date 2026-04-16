@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { Twitch, Youtube, Instagram, Music } from 'lucide-react';
+import { Twitch, Youtube, Instagram, Mic } from 'lucide-react';
+import TikTokIcon from './TikTokIcon';
 
 const links = [
   {
@@ -33,10 +34,19 @@ const links = [
     id: 'tiktok',
     title: 'TikTok',
     desc: 'Clip divertenti e pillole di IA',
-    icon: <Music size={22} />,
+    icon: <TikTokIcon size={22} />,
     url: 'https://tiktok.com/@andryxify',
     color: '#00F2FE',
     gradient: 'linear-gradient(135deg,rgba(0,242,254,.2),rgba(0,242,254,.06))',
+  },
+  {
+    id: 'podcast',
+    title: 'Podcast',
+    desc: 'Umanità o IA? — Ascolta ora',
+    icon: <Mic size={22} />,
+    url: 'https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9',
+    color: '#1DB954',
+    gradient: 'linear-gradient(135deg,rgba(29,185,84,.22),rgba(29,185,84,.07))',
   },
 ];
 
