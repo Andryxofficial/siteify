@@ -21,7 +21,7 @@ export default function Footer() {
           <img
             src={LOGO_URL}
             alt="Andryx"
-            style={{ height: '30px', width: 'auto', filter: 'invert(1) hue-rotate(180deg)', mixBlendMode: 'screen' }}
+            style={{ height: '40px', width: 'auto', maxWidth: '160px', objectFit: 'contain', alignSelf: 'flex-start', filter: 'invert(1) hue-rotate(180deg)', mixBlendMode: 'screen' }}
           />
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>
             Esplorando Umanità, IA & Gaming.

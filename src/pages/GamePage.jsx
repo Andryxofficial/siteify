@@ -160,6 +160,7 @@ export default function GamePage() {
       playerX: laneX(1, w),
       speed: INITIAL_SPEED,
       distance: 0,
+      bonusScore: 0,
       score: 0,
       entities: [],
       spawnTimer: 0,
@@ -225,7 +226,7 @@ export default function GamePage() {
       state.frame++;
       state.speed += SPEED_INCREMENT;
       state.distance += state.speed;
-      state.score = Math.floor(state.distance / 10);
+      state.score = Math.floor(state.distance / 10) + state.bonusScore;
 
       // Smooth lane transition
       const targetX = laneX(state.targetLane, w);
@@ -259,7 +260,7 @@ export default function GamePage() {
 
         if (dx < hitDist && dy < hitDist) {
           if (e.type === 'synapse') {
-            state.score += 25;
+            state.bonusScore += 25;
             addParticles(e.x, e.y, COLORS.synapse, 8);
             state.entities.splice(i, 1);
           } else {
@@ -454,6 +455,7 @@ export default function GamePage() {
   function handleCanvasTouch(e) {
     const state = gameStateRef.current;
     if (!state || !state.running) return;
+    if (e.type === 'touchstart') e.preventDefault();
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -523,7 +525,7 @@ export default function GamePage() {
               height={CANVAS_H}
               className="game-canvas"
               onTouchStart={handleCanvasTouch}
-              onClick={handleCanvasTouch}
+              onClick={(e) => { if (e.nativeEvent.pointerType !== 'touch') handleCanvasTouch(e); }}
             />
 
             {/* Overlays */}
