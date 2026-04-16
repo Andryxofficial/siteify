@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion, useMotionValue, animate } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon } from 'lucide-react';
 
 const NAV_LINKS = [
@@ -13,94 +13,6 @@ const NAV_LINKS = [
 
 const LOGO_URL =
   'https://github.com/user-attachments/assets/f721344e-6153-4d66-b5ad-a8a39945fa99';
-
-/* ─────────────────────────────────────────────────────────
-   LIQUID GLASS PILL  (desktop drag indicator)
-   ───────────────────────────────────────────────────────── */
-function LiquidPill({ activePath, onNavigate, containerRef, linkRefs }) {
-  const x     = useMotionValue(0);
-  const pillW = useMotionValue(90);
-
-  const [isDragging, setIsDragging] = useState(false);
-  const [hoverTarget, setHoverTarget] = useState(activePath);
-  const [ready, setReady] = useState(false);
-  const wasDragging = useRef(false);
-
-  const getInfo = useCallback((path) => {
-    const container = containerRef.current;
-    const link      = linkRefs.current?.[path];
-    if (!container || !link) return { x: 0, w: 90 };
-    const cR = container.getBoundingClientRect();
-    const lR = link.getBoundingClientRect();
-    return { x: lR.left - cR.left, w: lR.width };
-  }, [containerRef, linkRefs]);
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const info = getInfo(activePath);
-      if (info.w > 0) { x.set(info.x); pillW.set(info.w); setHoverTarget(activePath); setReady(true); }
-    }, 80);
-    return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (isDragging || !ready) return;
-    const info = getInfo(activePath);
-    animate(x, info.x, { type: 'spring', stiffness: 340, damping: 30 });
-    animate(pillW, info.w, { type: 'spring', stiffness: 340, damping: 30 });
-    setHoverTarget(activePath);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePath, ready]);
-
-  useEffect(() => {
-    const onResize = () => {
-      if (isDragging || !ready) return;
-      const info = getInfo(activePath);
-      x.set(info.x); pillW.set(info.w);
-    };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [activePath, isDragging, ready, getInfo, x, pillW]);
-
-  const handleDragStart = useCallback(() => { setIsDragging(true); wasDragging.current = true; }, []);
-  const handleDrag = useCallback((_, info) => {
-    for (const [path, ref] of Object.entries(linkRefs.current || {})) {
-      if (!ref) continue;
-      const rect = ref.getBoundingClientRect();
-      if (info.point.x >= rect.left - 10 && info.point.x <= rect.right + 10) {
-        if (path !== hoverTarget) { setHoverTarget(path); animate(pillW, getInfo(path).w, { type: 'spring', stiffness: 380, damping: 26 }); }
-        return;
-      }
-    }
-  }, [linkRefs, hoverTarget, getInfo, pillW]);
-
-  const handleDragEnd = useCallback(() => {
-    setIsDragging(false);
-    const info = getInfo(hoverTarget);
-    animate(x, info.x, { type: 'spring', stiffness: 420, damping: 32 });
-    animate(pillW, info.w, { type: 'spring', stiffness: 420, damping: 32 });
-    onNavigate(hoverTarget);
-    setTimeout(() => { wasDragging.current = false; }, 50);
-  }, [hoverTarget, getInfo, x, pillW, onNavigate]);
-
-  if (!ready) return null;
-  return (
-    <motion.div
-      className={`liquid-nav-pill${isDragging ? ' is-dragging' : ''}`}
-      drag="x"
-      dragConstraints={containerRef}
-      dragElastic={0.06}
-      dragMomentum={false}
-      style={{ x, width: pillW, position: 'absolute', top: 0, left: 0, height: '100%' }}
-      animate={{ scale: isDragging ? 1.1 : 1, zIndex: isDragging ? 9999 : 2 }}
-      transition={{ scale: { type: 'spring', stiffness: 260, damping: 18 } }}
-      onDragStart={handleDragStart}
-      onDrag={handleDrag}
-      onDragEnd={handleDragEnd}
-    />
-  );
-}
 
 /* ─────────────────────────────────────────────────────────
    MOBILE BOTTOM TAB BAR  (iOS-style, liquid glass)
@@ -192,12 +104,61 @@ function MobileTabBar({ activePath, onNavigate }) {
 
 /* ─────────────────────────────────────────────────────────
    DESKTOP TOP NAVBAR
+   ─────────────────────────────────────────────────────────
+   Pill uses declarative animate={{ left, width }} with
+   pixel state values — no MotionValues, no imperative
+   animate(), no drag. Pill follows hover across links
+   (Apple-style), returns to activePath on mouse-leave.
    ───────────────────────────────────────────────────────── */
 export default function Navbar() {
   const location          = useLocation();
   const navigate          = useNavigate();
   const linksContainerRef = useRef(null);
   const linkRefs          = useRef({});
+
+  const [hoveredPath, setHoveredPath] = useState(null);
+  const [pillPos,     setPillPos]     = useState({ left: 0, width: 0 });
+  const [pillReady,   setPillReady]   = useState(false);
+
+  // displayPath: hover takes priority over active route
+  const displayPath = hoveredPath ?? location.pathname;
+
+  const getInfo = useCallback((path) => {
+    const container = linksContainerRef.current;
+    const link      = linkRefs.current?.[path];
+    if (!container || !link) return null;
+    const cR = container.getBoundingClientRect();
+    const lR = link.getBoundingClientRect();
+    return { left: lR.left - cR.left, width: lR.width };
+  }, []);
+
+  /* ── Init pill on mount ── */
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const info = getInfo(location.pathname);
+      if (info && info.width > 0) { setPillPos(info); setPillReady(true); }
+    }, 60);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ── Follow displayPath (hover or route) ── */
+  useEffect(() => {
+    if (!pillReady) return;
+    const info = getInfo(displayPath);
+    if (info) setPillPos(info);
+  }, [displayPath, pillReady, getInfo]);
+
+  /* ── Resize: recompute without animation ── */
+  useEffect(() => {
+    const onResize = () => {
+      if (!pillReady) return;
+      const info = getInfo(displayPath);
+      if (info) setPillPos(info);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [displayPath, pillReady, getInfo]);
 
   return (
     <>
@@ -212,13 +173,18 @@ export default function Navbar() {
             ref={linksContainerRef}
             className="nav-links"
             style={{ position: 'relative', overflow: 'visible' }}
+            onMouseLeave={() => setHoveredPath(null)}
           >
-            <LiquidPill
-              activePath={location.pathname}
-              onNavigate={navigate}
-              containerRef={linksContainerRef}
-              linkRefs={linkRefs}
-            />
+            {/* ── Sliding liquid glass pill ── */}
+            {pillReady && (
+              <motion.div
+                className="liquid-nav-pill"
+                initial={false}
+                animate={{ left: pillPos.left, width: pillPos.width }}
+                transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.8 }}
+              />
+            )}
+
             {NAV_LINKS.map(({ path, label, Icon }) => {
               const isActive = location.pathname === path;
               return (
@@ -226,14 +192,14 @@ export default function Navbar() {
                   key={path}
                   ref={el => { linkRefs.current[path] = el; }}
                   style={{ position: 'relative', zIndex: 1 }}
+                  onMouseEnter={() => setHoveredPath(path)}
                 >
                   <Link
                     to={path}
                     className={`nav-link${isActive ? ' active' : ''}`}
-                    style={{ position: 'relative', zIndex: isActive ? 0 : 1 }}
                   >
                     <motion.span
-                      whileHover={{ scale: 1.2, rotate: 5 }}
+                      whileHover={{ scale: 1.15, rotate: 4 }}
                       style={{ display: 'flex', pointerEvents: 'none' }}
                     >
                       <Icon size={16} />
