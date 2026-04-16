@@ -471,53 +471,41 @@ export default function GamePage() {
 
         {/* Sidebar */}
         <div className="game-sidebar">
-          {/* Twitch */}
-          <div className="glass-panel" style={{ padding: '1.2rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
-              <Twitch size={18} color="#9146FF" />
-              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Account Twitch</h3>
-            </div>
+          {/* Twitch login (compact) */}
+          <div className="glass-panel" style={{ padding: '1rem 1.2rem' }}>
             {twitchUser ? (
-              <div>
-                <p style={{ fontSize: '0.85rem', color: themeColor, fontWeight: 700, marginBottom: '0.5rem' }}>
-                  ✓ {twitchUser}
-                </p>
-                <button onClick={handleLogout} className="btn btn-ghost" style={{ fontSize: '0.78rem', padding: '0.35rem 0.9rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Twitch size={16} color="#9146FF" />
+                  <span style={{ fontSize: '0.85rem', color: themeColor, fontWeight: 700 }}>
+                    {twitchUser}
+                  </span>
+                </div>
+                <button onClick={handleLogout} className="btn btn-ghost" style={{ fontSize: '0.72rem', padding: '0.25rem 0.6rem' }}>
                   Logout
                 </button>
               </div>
             ) : (
-              <div>
-                <p style={{ fontSize: '0.82rem', color: C.textMuted, marginBottom: '0.75rem' }}>
-                  {CHIAVETWITCH
-                    ? 'Accedi con Twitch per salvare i tuoi punteggi nella classifica!'
-                    : '⚠️ Login Twitch non disponibile — configurazione mancante.'}
-                </p>
-                {CHIAVETWITCH && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Twitch size={16} color="#9146FF" style={{ flexShrink: 0 }} />
+                {CHIAVETWITCH ? (
                   <a href={getTwitchLoginUrl()} className="btn" style={{
                     background: 'linear-gradient(135deg,#9146FF,#c800ff)',
-                    color: '#fff', fontSize: '0.82rem', padding: '0.5rem 1rem',
-                    boxShadow: '0 5px 20px rgba(145,70,255,.4)',
-                    width: '100%', justifyContent: 'center',
+                    color: '#fff', fontSize: '0.78rem', padding: '0.4rem 0.9rem',
+                    boxShadow: '0 4px 16px rgba(145,70,255,.3)',
+                    flex: 1, justifyContent: 'center',
                   }}>
-                    <Twitch size={14} /> Login con Twitch
+                    <LogIn size={13} /> Login con Twitch
                   </a>
+                ) : (
+                  <span style={{ fontSize: '0.78rem', color: C.textMuted }}>Login non disponibile</span>
                 )}
               </div>
             )}
           </div>
 
-          {/* Game of the month info */}
-          <div className="glass-panel" style={{ padding: '1.2rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '1.2rem' }}>{gameMeta.emoji}</span>
-              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Gioco del mese</h3>
-            </div>
-            <p style={{ fontSize: '0.82rem', color: C.textMuted, marginBottom: '0.5rem' }}>{gameMeta.description}</p>
-            <div style={{ fontSize: '0.75rem', color: C.textMuted, opacity: 0.7 }}>
-              Ogni mese un gioco diverso! Le classifiche mensili vengono archiviate automaticamente.
-            </div>
-          </div>
+          {/* Calendario Giochi — 12 months with #1 player — ABOVE leaderboard */}
+          <GameCalendar archiveData={archiveData} currentMonthData={currentMonthData} />
 
           {/* Leaderboard */}
           <div className="glass-panel" style={{ padding: '1.2rem' }}>
@@ -528,7 +516,7 @@ export default function GamePage() {
 
             <div className="leaderboard-tabs">
               <button className={`leaderboard-tab${boardTab === 'weekly' ? ' active' : ''}`} onClick={() => setBoardTab('weekly')}>
-                <Calendar size={13} /> Settimanale
+                <Calendar size={13} /> Sett.
               </button>
               <button className={`leaderboard-tab${boardTab === 'alltime' ? ' active' : ''}`} onClick={() => setBoardTab('alltime')}>
                 <Crown size={13} /> Generale
@@ -556,9 +544,6 @@ export default function GamePage() {
               </div>
             )}
           </div>
-
-          {/* Calendario Giochi — 12 months with #1 player */}
-          <GameCalendar archiveData={archiveData} currentMonthData={currentMonthData} />
         </div>
       </div>
     </motion.div>

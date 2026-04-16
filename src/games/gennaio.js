@@ -1,7 +1,10 @@
 /**
  * GENNAIO — Frost Dash ❄️
- * Endless side-scroller on ice. Jump over obstacles, collect snowflakes.
- * Controls: tap/space to jump.
+ * Premium endless ice runner with parallax, particle trails, and smooth physics.
+ *
+ * Controls: tap/space to jump (auto-runner).
+ * Features: 3 HP, heal every 1000 pts, crystal collectibles, parallax mountains,
+ *           ice obstacle variety, snowfall, screen shake, particle effects.
  */
 export const meta = {
   name: 'Frost Dash',
@@ -15,21 +18,14 @@ export const meta = {
 };
 
 const W = 480, H = 480;
-const GRAVITY = 0.55;
-const JUMP_FORCE = -10;
+const GRAVITY = 0.52;
+const JUMP_FORCE = -10.5;
 const GROUND_Y = H - 80;
-const PLAYER_X = 80;
-const PLAYER_SIZE = 24;
+const PX = 80; // player X (fixed)
+const PR = 14; // player radius
 
-const C = {
-  bg1: '#0a1628', bg2: '#0f2240',
-  ground: '#1a3a5c', groundTop: '#2a5a8c',
-  player: '#4FC3F7', playerDark: '#0288D1',
-  snow: '#ffffff', crystal: '#E1F5FE',
-  obstacle: '#1565C0', obstacleDark: '#0D47A1',
-  heart: '#FF0050', text: '#f0ecf4', muted: '#a8a3b3',
-  particle: '#81D4FA',
-};
+function rng(min, max) { return min + Math.random() * (max - min); }
+function dist(ax, ay, bx, by) { const dx = ax - bx, dy = ay - by; return Math.sqrt(dx * dx + dy * dy); }
 
 export function createGame(canvas, { keysRef, actionBtnRef, onScore, onGameOver, onHpChange }) {
   const ctx = canvas.getContext('2d');
@@ -37,328 +33,440 @@ export function createGame(canvas, { keysRef, actionBtnRef, onScore, onGameOver,
   canvas.height = H;
   let animFrame = null;
 
-  const state = {
-    py: GROUND_Y - PLAYER_SIZE,
-    vy: 0,
-    onGround: true,
-    score: 0,
-    distance: 0,
-    hp: 3,
-    maxHp: 3,
-    speed: 3.5,
-    running: true,
-    frame: 0,
-    obstacles: [],
-    crystals: [],
-    particles: [],
-    snowflakes: [],
-    screenShake: 0,
-    iframe: 0,
-    nextObstacle: 120,
-    nextCrystal: 80,
-    jumpPressed: false,
-    lastHealAt: 0,
-    healItems: [],
+  /* ── State ── */
+  const s = {
+    py: GROUND_Y - PR, vy: 0, onGround: true,
+    score: 0, distance: 0, speed: 3.5,
+    hp: 3, maxHp: 3,
+    running: true, frame: 0,
+    obstacles: [], crystals: [], particles: [], snowflakes: [],
+    healItems: [], floatTexts: [],
+    shake: 0, iframe: 0,
+    nextObstacle: 100, nextCrystal: 70,
+    jumpHeld: false, lastHealAt: 0,
+    // Parallax layers
+    mountains: [],
+    groundOffset: 0,
   };
 
-  onHpChange(state.hp, state.maxHp);
+  onHpChange(s.hp, s.maxHp);
   onScore(0);
 
-  // Pre-generate background snowflakes
-  for (let i = 0; i < 40; i++) {
-    state.snowflakes.push({
-      x: Math.random() * W,
-      y: Math.random() * H,
-      size: 1 + Math.random() * 2.5,
-      speed: 0.2 + Math.random() * 0.6,
-      drift: (Math.random() - 0.5) * 0.3,
+  // Generate snowflakes
+  for (let i = 0; i < 50; i++) {
+    s.snowflakes.push({
+      x: rng(0, W), y: rng(0, H),
+      size: rng(1, 3), speed: rng(0.3, 0.8),
+      drift: rng(-0.2, 0.2), opacity: rng(0.2, 0.6),
     });
   }
 
-  function spawnObstacle() {
-    const h = 25 + Math.random() * 35;
-    state.obstacles.push({
-      x: W + 20,
-      w: 18 + Math.random() * 14,
-      h,
-      y: GROUND_Y - h,
-    });
-    state.nextObstacle = 80 + Math.random() * 100 - Math.min(state.distance / 200, 40);
-    if (state.nextObstacle < 50) state.nextObstacle = 50;
-  }
-
-  function spawnCrystal() {
-    const flyHeight = Math.random() < 0.4;
-    state.crystals.push({
-      x: W + 20,
-      y: flyHeight ? GROUND_Y - 90 - Math.random() * 60 : GROUND_Y - 30 - Math.random() * 20,
-      collected: false,
-      pulse: Math.random() * Math.PI * 2,
-    });
-    state.nextCrystal = 60 + Math.random() * 80;
-  }
-
-  function addParticles(x, y, color, count) {
+  // Generate parallax mountains
+  for (let layer = 0; layer < 3; layer++) {
+    const peaks = [];
+    const count = 6 + layer * 3;
     for (let i = 0; i < count; i++) {
-      state.particles.push({
-        x, y,
-        vx: (Math.random() - 0.5) * 4,
-        vy: (Math.random() - 1) * 4,
-        life: 1, decay: 0.03 + Math.random() * 0.02,
-        color, size: 2 + Math.random() * 3,
+      peaks.push({
+        x: (W / count) * i + rng(-20, 20),
+        h: rng(40, 120) * (1 - layer * 0.3),
+        w: rng(40, 80),
+      });
+    }
+    s.mountains.push({ peaks, parallax: 0.1 + layer * 0.15, color: `rgba(15,34,64,${0.8 - layer * 0.2})` });
+  }
+
+  /* ── Helpers ── */
+  function addParticles(x, y, color, count, opts = {}) {
+    const { spread = 4, gravity = 0.1, sizeMin = 1.5, sizeMax = 3.5 } = opts;
+    for (let i = 0; i < count; i++) {
+      s.particles.push({
+        x, y, vx: rng(-spread, spread), vy: rng(-spread, spread / 2),
+        life: 1, decay: rng(0.02, 0.04),
+        color, size: rng(sizeMin, sizeMax), gravity,
       });
     }
   }
 
-  function update() {
-    if (!state.running) return;
-    state.frame++;
-    state.distance += state.speed;
-    state.speed = 3.5 + Math.min(state.distance / 600, 4);
+  function addFloatText(x, y, text, color) {
+    s.floatTexts.push({ x, y, text, color, life: 1 });
+  }
 
-    // Jump input
+  function spawnObstacle() {
+    const type = Math.random();
+    let w, h;
+    if (type < 0.4) {
+      // Tall thin ice spike
+      w = rng(14, 20); h = rng(35, 55);
+    } else if (type < 0.7) {
+      // Wide short ice block
+      w = rng(25, 40); h = rng(20, 30);
+    } else {
+      // Medium
+      w = rng(18, 28); h = rng(28, 42);
+    }
+    s.obstacles.push({ x: W + 20, w, h, y: GROUND_Y - h });
+    const minGap = Math.max(45, 90 - Math.min(s.distance / 300, 40));
+    s.nextObstacle = minGap + rng(0, 60);
+  }
+
+  function spawnCrystal() {
+    const high = Math.random() < 0.35;
+    s.crystals.push({
+      x: W + 20,
+      y: high ? GROUND_Y - rng(80, 140) : GROUND_Y - rng(25, 45),
+      collected: false, pulse: rng(0, Math.PI * 2),
+    });
+    s.nextCrystal = rng(50, 90);
+  }
+
+  /* ── Update ── */
+  function update() {
+    if (!s.running) return;
+    s.frame++;
+    s.distance += s.speed;
+    s.speed = 3.5 + Math.min(s.distance / 500, 5);
+    s.groundOffset = (s.groundOffset + s.speed) % 24;
+
+    // Score from distance
+    const newScore = Math.floor(s.distance / 10);
+    if (newScore !== s.score) {
+      s.score = newScore;
+      onScore(s.score);
+    }
+
+    // ── Jump input ──
     const wantJump = keysRef.current[' '] || keysRef.current['Space'] ||
                      keysRef.current['ArrowUp'] || keysRef.current['w'] || keysRef.current['W'] ||
                      actionBtnRef.current;
-    if (wantJump && !state.jumpPressed && state.onGround) {
-      state.vy = JUMP_FORCE;
-      state.onGround = false;
-      state.jumpPressed = true;
-      addParticles(PLAYER_X, GROUND_Y, C.particle, 4);
+    if (wantJump && !s.jumpHeld && s.onGround) {
+      s.vy = JUMP_FORCE;
+      s.onGround = false;
+      s.jumpHeld = true;
+      addParticles(PX, GROUND_Y, 'rgba(129,212,250,0.6)', 5, { spread: 3 });
     }
     if (!wantJump) {
-      state.jumpPressed = false;
+      s.jumpHeld = false;
       actionBtnRef.current = false;
     }
 
     // Physics
-    state.vy += GRAVITY;
-    state.py += state.vy;
-    if (state.py >= GROUND_Y - PLAYER_SIZE) {
-      state.py = GROUND_Y - PLAYER_SIZE;
-      state.vy = 0;
-      state.onGround = true;
+    s.vy += GRAVITY;
+    s.py += s.vy;
+    if (s.py >= GROUND_Y - PR) {
+      s.py = GROUND_Y - PR;
+      s.vy = 0;
+      if (!s.onGround) {
+        addParticles(PX, GROUND_Y, 'rgba(129,212,250,0.4)', 3, { spread: 2 });
+      }
+      s.onGround = true;
     }
 
-    // Score from distance
-    const newScore = Math.floor(state.distance / 10);
-    if (newScore !== state.score) {
-      state.score = newScore;
-      onScore(state.score);
-    }
-
-    // Heal power-up every 1000 points
-    const healMilestone = Math.floor(state.score / 1000);
-    if (healMilestone > state.lastHealAt && state.hp < state.maxHp) {
-      state.lastHealAt = healMilestone;
-      state.healItems.push({
-        x: W + 20,
-        y: GROUND_Y - 40 - Math.random() * 60,
-        pulse: Math.random() * Math.PI * 2,
+    // Running particles (trail)
+    if (s.onGround && s.frame % 4 === 0) {
+      s.particles.push({
+        x: PX - 8, y: GROUND_Y - 2,
+        vx: rng(-1.5, -0.5), vy: rng(-0.5, 0),
+        life: 1, decay: 0.05, color: 'rgba(255,255,255,0.3)', size: rng(1, 2.5), gravity: 0,
       });
     }
 
     // iframes
-    if (state.iframe > 0) state.iframe--;
+    if (s.iframe > 0) s.iframe--;
+
+    // Heal power-up every 1000 points
+    const healMilestone = Math.floor(s.score / 1000);
+    if (healMilestone > s.lastHealAt && s.hp < s.maxHp) {
+      s.lastHealAt = healMilestone;
+      s.healItems.push({
+        x: W + 20, y: GROUND_Y - rng(40, 80), pulse: 0,
+      });
+      addFloatText(W / 2, 60, '♥ CURA IN ARRIVO!', '#00ff80');
+    }
 
     // Spawn
-    state.nextObstacle--;
-    if (state.nextObstacle <= 0) spawnObstacle();
-    state.nextCrystal--;
-    if (state.nextCrystal <= 0) spawnCrystal();
+    s.nextObstacle--;
+    if (s.nextObstacle <= 0) spawnObstacle();
+    s.nextCrystal--;
+    if (s.nextCrystal <= 0) spawnCrystal();
 
-    // Move obstacles
-    for (let i = state.obstacles.length - 1; i >= 0; i--) {
-      const o = state.obstacles[i];
-      o.x -= state.speed;
-      if (o.x + o.w < -10) { state.obstacles.splice(i, 1); continue; }
+    // ── Move obstacles ──
+    for (let i = s.obstacles.length - 1; i >= 0; i--) {
+      const o = s.obstacles[i];
+      o.x -= s.speed;
+      if (o.x + o.w < -20) { s.obstacles.splice(i, 1); continue; }
 
-      // Collision with player
-      if (state.iframe === 0) {
-        const px = PLAYER_X, py = state.py;
-        const pw = PLAYER_SIZE * 0.7, ph = PLAYER_SIZE;
-        if (px + pw > o.x && px < o.x + o.w && py + ph > o.y && py < o.y + o.h) {
-          state.hp--;
-          state.iframe = 60;
-          state.screenShake = 8;
-          onHpChange(state.hp, state.maxHp);
-          addParticles(PLAYER_X + PLAYER_SIZE / 2, state.py + PLAYER_SIZE / 2, C.heart, 6);
-          if (state.hp <= 0) {
-            state.running = false;
+      // Collision — circle vs rect
+      if (s.iframe === 0) {
+        const cx = PX, cy = s.py;
+        const nearX = Math.max(o.x, Math.min(cx, o.x + o.w));
+        const nearY = Math.max(o.y, Math.min(cy, o.y + o.h));
+        if (dist(cx, cy, nearX, nearY) < PR * 0.65) {
+          s.hp--;
+          s.iframe = 60;
+          s.shake = 8;
+          onHpChange(s.hp, s.maxHp);
+          addParticles(PX, s.py, '#FF0050', 8, { spread: 5 });
+          if (s.hp <= 0) {
+            s.running = false;
           }
         }
       }
     }
 
-    // Move crystals
-    for (let i = state.crystals.length - 1; i >= 0; i--) {
-      const c = state.crystals[i];
-      c.x -= state.speed;
+    // ── Move crystals ──
+    for (let i = s.crystals.length - 1; i >= 0; i--) {
+      const c = s.crystals[i];
+      c.x -= s.speed;
       c.pulse += 0.06;
-      if (c.x < -20) { state.crystals.splice(i, 1); continue; }
+      if (c.x < -20) { s.crystals.splice(i, 1); continue; }
       if (c.collected) continue;
 
-      const dx = (PLAYER_X + PLAYER_SIZE / 2) - c.x;
-      const dy = (state.py + PLAYER_SIZE / 2) - c.y;
-      if (Math.sqrt(dx * dx + dy * dy) < 22) {
+      if (dist(PX, s.py, c.x, c.y) < PR + 10) {
         c.collected = true;
-        state.score += 50;
-        onScore(state.score);
-        addParticles(c.x, c.y, C.crystal, 6);
+        s.score += 50;
+        onScore(s.score);
+        addParticles(c.x, c.y, '#E1F5FE', 8, { spread: 4 });
+        addFloatText(c.x, c.y - 15, '+50', '#E1F5FE');
       }
     }
 
-    // Heal items
-    for (let i = state.healItems.length - 1; i >= 0; i--) {
-      const h = state.healItems[i];
-      h.x -= state.speed;
+    // ── Heal items ──
+    for (let i = s.healItems.length - 1; i >= 0; i--) {
+      const h = s.healItems[i];
+      h.x -= s.speed;
       h.pulse += 0.08;
-      if (h.x < -20) { state.healItems.splice(i, 1); continue; }
-      const dx = (PLAYER_X + PLAYER_SIZE / 2) - h.x;
-      const dy = (state.py + PLAYER_SIZE / 2) - h.y;
-      if (Math.sqrt(dx * dx + dy * dy) < 22) {
-        state.hp = state.maxHp;
-        onHpChange(state.hp, state.maxHp);
-        addParticles(h.x, h.y, '#FF0050', 8);
-        state.healItems.splice(i, 1);
+      if (h.x < -20) { s.healItems.splice(i, 1); continue; }
+      if (dist(PX, s.py, h.x, h.y) < PR + 12) {
+        s.hp = s.maxHp;
+        onHpChange(s.hp, s.maxHp);
+        addParticles(h.x, h.y, '#00ff80', 10, { spread: 5 });
+        addFloatText(h.x, h.y - 15, '♥ MAX!', '#00ff80');
+        s.healItems.splice(i, 1);
       }
     }
 
-    // Particles
-    for (let i = state.particles.length - 1; i >= 0; i--) {
-      const p = state.particles[i];
+    // ── Particles ──
+    for (let i = s.particles.length - 1; i >= 0; i--) {
+      const p = s.particles[i];
       p.x += p.vx; p.y += p.vy;
-      p.vy += 0.1;
+      p.vy += p.gravity;
       p.life -= p.decay;
-      if (p.life <= 0) state.particles.splice(i, 1);
+      if (p.life <= 0) s.particles.splice(i, 1);
     }
 
-    // Snowflakes
-    for (const s of state.snowflakes) {
-      s.y += s.speed;
-      s.x += s.drift;
-      if (s.y > H) { s.y = -5; s.x = Math.random() * W; }
-      if (s.x < 0) s.x = W;
-      if (s.x > W) s.x = 0;
+    // ── Float texts ──
+    for (let i = s.floatTexts.length - 1; i >= 0; i--) {
+      const ft = s.floatTexts[i];
+      ft.y -= 0.7; ft.life -= 0.025;
+      if (ft.life <= 0) s.floatTexts.splice(i, 1);
     }
 
-    if (state.screenShake > 0) state.screenShake--;
+    // ── Snowflakes ──
+    for (const f of s.snowflakes) {
+      f.y += f.speed;
+      f.x += f.drift - s.speed * 0.1;
+      if (f.y > H) { f.y = -5; f.x = rng(0, W); }
+      if (f.x < -5) f.x = W + 5;
+      if (f.x > W + 5) f.x = -5;
+    }
+
+    if (s.shake > 0) s.shake -= 0.5;
   }
 
+  /* ── Draw ── */
   function draw() {
     ctx.save();
-    if (state.screenShake > 0) {
-      ctx.translate(
-        (Math.random() - 0.5) * state.screenShake * 2,
-        (Math.random() - 0.5) * state.screenShake * 2,
-      );
+
+    // Screen shake
+    if (s.shake > 0) {
+      ctx.translate(rng(-s.shake, s.shake), rng(-s.shake, s.shake));
     }
 
-    // Sky gradient
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, C.bg1);
-    grad.addColorStop(1, C.bg2);
-    ctx.fillStyle = grad;
+    // ── Sky gradient ──
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+    skyGrad.addColorStop(0, '#060d1f');
+    skyGrad.addColorStop(0.5, '#0a1628');
+    skyGrad.addColorStop(1, '#0f2240');
+    ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, W, H);
 
-    // Stars
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    for (let i = 0; i < 30; i++) {
-      const sx = ((i * 137 + state.frame * 0.1) % W);
-      const sy = (i * 91 + 20) % (GROUND_Y - 40);
+    // ── Stars ──
+    for (let i = 0; i < 35; i++) {
+      const sx = ((i * 137.5 + 23) % W);
+      const sy = ((i * 91.3 + 10) % (GROUND_Y - 60)) + 10;
+      const twinkle = 0.15 + Math.sin(s.frame * 0.02 + i) * 0.15;
+      ctx.fillStyle = `rgba(255,255,255,${twinkle})`;
       ctx.beginPath();
       ctx.arc(sx, sy, 1, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Snowflakes
-    for (const s of state.snowflakes) {
-      ctx.globalAlpha = 0.4 + s.size / 5;
-      ctx.fillStyle = C.snow;
+    // ── Parallax mountains ──
+    for (const layer of s.mountains) {
+      const offset = (s.distance * layer.parallax) % W;
+      ctx.fillStyle = layer.color;
       ctx.beginPath();
-      ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+      ctx.moveTo(0, GROUND_Y);
+      for (const peak of layer.peaks) {
+        const px = ((peak.x - offset) % W + W) % W;
+        ctx.lineTo(px - peak.w / 2, GROUND_Y);
+        ctx.lineTo(px, GROUND_Y - peak.h);
+        ctx.lineTo(px + peak.w / 2, GROUND_Y);
+      }
+      ctx.lineTo(W, GROUND_Y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // ── Snowflakes (behind ground) ──
+    for (const f of s.snowflakes) {
+      ctx.globalAlpha = f.opacity;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.size, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
 
-    // Ground
-    ctx.fillStyle = C.ground;
+    // ── Ground ──
+    const groundGrad = ctx.createLinearGradient(0, GROUND_Y, 0, H);
+    groundGrad.addColorStop(0, '#2a5a8c');
+    groundGrad.addColorStop(0.05, '#1a3a5c');
+    groundGrad.addColorStop(1, '#0f2240');
+    ctx.fillStyle = groundGrad;
     ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
-    ctx.fillStyle = C.groundTop;
-    ctx.fillRect(0, GROUND_Y, W, 4);
-    // Ground texture
-    ctx.fillStyle = 'rgba(255,255,255,0.05)';
-    for (let x = 0; x < W; x += 24) {
-      ctx.fillRect(x + ((state.frame * state.speed) % 24), GROUND_Y + 8, 12, 2);
+    // Ice surface highlight
+    ctx.fillStyle = 'rgba(129,212,250,0.12)';
+    ctx.fillRect(0, GROUND_Y, W, 3);
+    // Ground texture lines
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    for (let x = -24; x < W + 24; x += 24) {
+      ctx.fillRect(x - s.groundOffset, GROUND_Y + 10, 14, 2);
     }
 
-    // Obstacles
-    for (const o of state.obstacles) {
-      ctx.fillStyle = C.obstacle;
+    // ── Obstacles ──
+    for (const o of s.obstacles) {
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.fillRect(o.x + 3, GROUND_Y - 2, o.w, 4);
+      // Main block
+      const oGrad = ctx.createLinearGradient(o.x, o.y, o.x + o.w, o.y + o.h);
+      oGrad.addColorStop(0, '#1976D2');
+      oGrad.addColorStop(1, '#0D47A1');
+      ctx.fillStyle = oGrad;
       ctx.fillRect(o.x, o.y, o.w, o.h);
-      ctx.fillStyle = C.obstacleDark;
-      ctx.fillRect(o.x + 2, o.y + 2, o.w - 4, o.h - 4);
-      // Ice shine
-      ctx.fillStyle = 'rgba(255,255,255,0.15)';
-      ctx.fillRect(o.x + 3, o.y + 3, 4, o.h * 0.6);
+      // Top highlight
+      ctx.fillStyle = 'rgba(129,212,250,0.25)';
+      ctx.fillRect(o.x, o.y, o.w, 3);
+      // Left shine
+      ctx.fillStyle = 'rgba(255,255,255,0.1)';
+      ctx.fillRect(o.x + 2, o.y + 4, 3, o.h * 0.5);
+      // Edge
+      ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(o.x + 0.5, o.y + 0.5, o.w - 1, o.h - 1);
     }
 
-    // Crystals
-    for (const c of state.crystals) {
+    // ── Crystals ──
+    for (const c of s.crystals) {
       if (c.collected) continue;
-      const glow = 0.6 + Math.sin(c.pulse) * 0.3;
+      const glow = 0.7 + Math.sin(c.pulse) * 0.3;
+      const bobY = Math.sin(c.pulse * 1.3) * 3;
+      // Glow
+      const cGrad = ctx.createRadialGradient(c.x, c.y + bobY, 0, c.x, c.y + bobY, 16 * glow);
+      cGrad.addColorStop(0, 'rgba(225,245,254,0.2)');
+      cGrad.addColorStop(1, 'rgba(225,245,254,0)');
+      ctx.fillStyle = cGrad;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y + bobY, 16 * glow, 0, Math.PI * 2);
+      ctx.fill();
+      // Diamond
       ctx.save();
-      ctx.shadowColor = C.crystal;
-      ctx.shadowBlur = 10 * glow;
-      ctx.fillStyle = C.crystal;
-      ctx.translate(c.x, c.y + Math.sin(c.pulse * 1.5) * 3);
-      ctx.rotate(Math.PI / 4);
+      ctx.translate(c.x, c.y + bobY);
+      ctx.rotate(Math.PI / 4 + Math.sin(c.pulse * 0.5) * 0.1);
+      ctx.fillStyle = '#B3E5FC';
       ctx.fillRect(-6, -6, 12, 12);
+      ctx.fillStyle = '#E1F5FE';
+      ctx.fillRect(-3, -3, 6, 6);
       ctx.restore();
     }
 
-    // Heal items
-    for (const h of state.healItems) {
-      const glow = 0.6 + Math.sin(h.pulse) * 0.3;
-      ctx.save();
-      ctx.shadowColor = 'rgba(255,0,80,0.5)';
-      ctx.shadowBlur = 12 * glow;
-      ctx.fillStyle = '#FF0050';
-      ctx.font = '16px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('♥', h.x, h.y + Math.sin(h.pulse) * 3 + 5);
-      ctx.restore();
+    // ── Heal items ──
+    for (const h of s.healItems) {
+      const glow = 0.7 + Math.sin(h.pulse) * 0.3;
+      const bobY = Math.sin(h.pulse) * 3;
+      const hGrad = ctx.createRadialGradient(h.x, h.y + bobY, 0, h.x, h.y + bobY, 18 * glow);
+      hGrad.addColorStop(0, 'rgba(0,255,128,0.15)');
+      hGrad.addColorStop(1, 'rgba(0,255,128,0)');
+      ctx.fillStyle = hGrad;
+      ctx.beginPath();
+      ctx.arc(h.x, h.y + bobY, 18 * glow, 0, Math.PI * 2);
+      ctx.fill();
+      // Cross
+      ctx.fillStyle = '#00ff80';
+      ctx.fillRect(h.x - 2, h.y + bobY - 7, 4, 14);
+      ctx.fillRect(h.x - 7, h.y + bobY - 2, 14, 4);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(h.x - 1, h.y + bobY - 5, 2, 10);
+      ctx.fillRect(h.x - 5, h.y + bobY - 1, 10, 2);
     }
 
-    // Player
+    // ── Player ──
     ctx.save();
-    if (state.iframe > 0 && state.frame % 4 < 2) ctx.globalAlpha = 0.3;
-    const px = PLAYER_X, py = state.py;
-    // Body
-    ctx.shadowColor = C.player;
-    ctx.shadowBlur = 10;
-    ctx.fillStyle = C.player;
+    if (s.iframe > 0 && s.frame % 4 < 2) ctx.globalAlpha = 0.25;
+    const py = s.py;
+    // Shadow on ground
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
     ctx.beginPath();
-    ctx.arc(px + PLAYER_SIZE / 2, py + PLAYER_SIZE / 2, PLAYER_SIZE / 2, 0, Math.PI * 2);
+    ctx.ellipse(PX, GROUND_Y + 2, 10, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Glow
+    const pGrad = ctx.createRadialGradient(PX, py, 0, PX, py, 22);
+    pGrad.addColorStop(0, 'rgba(79,195,247,0.12)');
+    pGrad.addColorStop(1, 'rgba(79,195,247,0)');
+    ctx.fillStyle = pGrad;
+    ctx.beginPath();
+    ctx.arc(PX, py, 22, 0, Math.PI * 2);
+    ctx.fill();
+    // Body (circle)
+    ctx.fillStyle = '#4FC3F7';
+    ctx.beginPath();
+    ctx.arc(PX, py, PR, 0, Math.PI * 2);
     ctx.fill();
     // Inner
-    ctx.fillStyle = C.playerDark;
+    ctx.fillStyle = '#0288D1';
     ctx.beginPath();
-    ctx.arc(px + PLAYER_SIZE / 2, py + PLAYER_SIZE / 2, PLAYER_SIZE / 3, 0, Math.PI * 2);
+    ctx.arc(PX, py, PR * 0.6, 0, Math.PI * 2);
     ctx.fill();
-    // Eyes
+    // Eyes — facing right
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.arc(px + PLAYER_SIZE / 2 + 4, py + PLAYER_SIZE / 2 - 2, 2.5, 0, Math.PI * 2);
-    ctx.arc(px + PLAYER_SIZE / 2 + 4, py + PLAYER_SIZE / 2 + 4, 2.5, 0, Math.PI * 2);
+    ctx.arc(PX + 5, py - 3, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(PX + 5, py + 3, 3, 0, Math.PI * 2);
+    ctx.fill();
+    // Pupils
+    ctx.fillStyle = '#0a1628';
+    ctx.beginPath();
+    ctx.arc(PX + 6.5, py - 3, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(PX + 6.5, py + 3, 1.5, 0, Math.PI * 2);
     ctx.fill();
     // Scarf
-    ctx.fillStyle = C.heart;
-    ctx.fillRect(px + PLAYER_SIZE / 2 - 2, py + PLAYER_SIZE - 4, 10, 4);
+    ctx.fillStyle = '#FF0050';
+    const scarfBob = Math.sin(s.frame * 0.15) * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(PX - 6, py + PR - 2);
+    ctx.lineTo(PX - 12, py + PR + 4 + scarfBob);
+    ctx.lineTo(PX - 4, py + PR + 2 + scarfBob);
+    ctx.closePath();
+    ctx.fill();
     ctx.restore();
 
-    // Particles
-    for (const p of state.particles) {
+    // ── Particles ──
+    for (const p of s.particles) {
       ctx.globalAlpha = p.life;
       ctx.fillStyle = p.color;
       ctx.beginPath();
@@ -367,21 +475,46 @@ export function createGame(canvas, { keysRef, actionBtnRef, onScore, onGameOver,
     }
     ctx.globalAlpha = 1;
 
-    // HUD
-    for (let i = 0; i < state.maxHp; i++) {
-      ctx.fillStyle = i < state.hp ? C.heart : 'rgba(255,0,80,0.2)';
-      ctx.font = '14px sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('♥', 12 + i * 18, 20);
+    // ── Float texts ──
+    for (const ft of s.floatTexts) {
+      ctx.globalAlpha = ft.life;
+      ctx.fillStyle = ft.color;
+      ctx.font = `bold ${12 + (1 - ft.life) * 2}px Outfit, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 3;
+      ctx.strokeText(ft.text, ft.x, ft.y);
+      ctx.fillText(ft.text, ft.x, ft.y);
     }
-    ctx.fillStyle = C.text;
+    ctx.globalAlpha = 1;
+
+    // ── HUD ──
+    const heartSize = s.hp <= 1 && s.hp > 0 ? 15 + Math.sin(s.frame * 0.2) * 2 : 14;
+    for (let i = 0; i < s.maxHp; i++) {
+      ctx.fillStyle = i < s.hp ? '#FF0050' : 'rgba(255,0,80,0.15)';
+      ctx.font = `${i < s.hp ? heartSize : 14}px sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.fillText('♥', 14 + i * 20, 22);
+    }
+    ctx.fillStyle = '#f0ecf4';
     ctx.font = 'bold 13px Outfit, sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText(`✦ ${state.score}`, W - 12, 18);
-    ctx.fillStyle = C.muted;
+    ctx.fillText(`✦ ${s.score}`, W - 14, 18);
+    ctx.fillStyle = '#7a7590';
     ctx.font = '11px Outfit, sans-serif';
-    ctx.fillText(`${Math.floor(state.distance)}m`, W - 12, 34);
+    ctx.fillText(`${Math.floor(s.distance)}m`, W - 14, 34);
+    // Speed indicator
+    ctx.fillStyle = 'rgba(79,195,247,0.4)';
+    ctx.font = '10px Outfit, sans-serif';
+    ctx.fillText(`⚡ ${s.speed.toFixed(1)}`, W - 14, 48);
     ctx.textAlign = 'left';
+
+    // Vignette
+    const vGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.3, W / 2, H / 2, W * 0.7);
+    vGrad.addColorStop(0, 'rgba(0,0,0,0)');
+    vGrad.addColorStop(1, 'rgba(0,0,0,0.15)');
+    ctx.fillStyle = vGrad;
+    ctx.fillRect(0, 0, W, H);
 
     ctx.restore();
   }
@@ -389,17 +522,17 @@ export function createGame(canvas, { keysRef, actionBtnRef, onScore, onGameOver,
   function gameLoop() {
     update();
     draw();
-    if (state.running) {
+    if (s.running) {
       animFrame = requestAnimationFrame(gameLoop);
     } else {
-      onGameOver(state.score);
+      onGameOver(s.score);
     }
   }
 
   animFrame = requestAnimationFrame(gameLoop);
 
   return function cleanup() {
-    state.running = false;
+    s.running = false;
     if (animFrame) cancelAnimationFrame(animFrame);
   };
 }
