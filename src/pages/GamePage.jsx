@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Twitch, Trophy, Zap, LogIn, RotateCcw, Calendar, Crown } from 'lucide-react';
+import { Twitch, Trophy, Zap, LogIn, RotateCcw, Calendar, Crown, Award } from 'lucide-react';
 import SEO from '../components/SEO';
 
 /* ─── Twitch OAuth config ─── */
@@ -65,7 +65,8 @@ export default function GamePage() {
   const [highScore, setHighScore] = useState(0);
   const [weeklyBoard, setWeeklyBoard] = useState([]);
   const [alltimeBoard, setAlltimeBoard] = useState([]);
-  const [boardTab, setBoardTab] = useState('weekly'); // 'weekly' | 'alltime'
+  const [monthlyWinners, setMonthlyWinners] = useState([]);
+  const [boardTab, setBoardTab] = useState('weekly'); // 'weekly' | 'alltime' | 'monthly'
   const [boardLoading, setBoardLoading] = useState(true);
   const [boardError, setBoardError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -123,6 +124,7 @@ export default function GamePage() {
       const data = await res.json();
       setWeeklyBoard(data.weekly || []);
       setAlltimeBoard(data.alltime || data.leaderboard || []);
+      setMonthlyWinners(data.monthlyWinners || []);
     } catch (e) {
       console.error('fetchLeaderboard:', e);
       setBoardError('Impossibile caricare la classifica.');
@@ -746,6 +748,12 @@ export default function GamePage() {
               >
                 <Crown size={13} /> Generale
               </button>
+              <button
+                className={`leaderboard-tab${boardTab === 'monthly' ? ' active' : ''}`}
+                onClick={() => setBoardTab('monthly')}
+              >
+                <Award size={13} /> Mensili
+              </button>
             </div>
 
             {boardLoading ? (
@@ -756,6 +764,41 @@ export default function GamePage() {
               <p style={{ fontSize: '0.82rem', color: COLORS.obstacle, textAlign: 'center', padding: '1rem 0' }}>
                 {boardError}
               </p>
+            ) : boardTab === 'monthly' ? (
+              /* ── Monthly winners tab ── */
+              monthlyWinners.length === 0 ? (
+                <p style={{ fontSize: '0.82rem', color: COLORS.textMuted }}>
+                  I vincitori mensili appariranno qui a partire dal prossimo mese!
+                </p>
+              ) : (
+                <div className="leaderboard-list">
+                  {monthlyWinners.map((month) => (
+                    <div key={month.month} className="monthly-winners-block">
+                      <div className="monthly-winners-header">
+                        <Award size={14} /> {month.label}
+                      </div>
+                      {month.top3.map((entry, i) => (
+                        <div key={entry.username} className="leaderboard-entry" style={{
+                          background: i === 0 ? 'rgba(255,215,0,0.08)' : i === 1 ? 'rgba(192,192,192,0.06)' : i === 2 ? 'rgba(205,127,50,0.06)' : 'transparent',
+                          borderLeft: `3px solid ${i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : '#CD7F32'}`,
+                        }}>
+                          <span className="leaderboard-rank">
+                            {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
+                          </span>
+                          <span className="leaderboard-name" style={{
+                            color: twitchUser === entry.username ? COLORS.player : COLORS.text,
+                            fontWeight: twitchUser === entry.username ? 800 : 600,
+                          }}>
+                            {entry.username}
+                            {twitchUser === entry.username && ' (tu)'}
+                          </span>
+                          <span className="leaderboard-score">⚡ {entry.score}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )
             ) : (boardTab === 'weekly' ? weeklyBoard : alltimeBoard).length === 0 ? (
               <p style={{ fontSize: '0.82rem', color: COLORS.textMuted }}>
                 {boardTab === 'weekly' ? 'Nessun punteggio questa settimana. Sii il primo!' : 'Nessun punteggio ancora. Sii il primo!'}
