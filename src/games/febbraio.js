@@ -69,6 +69,8 @@ export function createGame(canvas, { keysRef, joystickRef, onScore, onGameOver, 
     frame: 0,
     screenShake: 0,
     speedMult: 1,
+    lastHealAt: 0,
+    healItems: [],
   };
 
   onHpChange(state.hp, state.maxHp);
@@ -185,9 +187,36 @@ export function createGame(canvas, { keysRef, joystickRef, onScore, onGameOver, 
       }
     }
 
+    // Heal power-up every 1000 points
+    const healMilestone = Math.floor(state.score / 1000);
+    if (healMilestone > state.lastHealAt && state.hp < state.maxHp) {
+      state.lastHealAt = healMilestone;
+      state.healItems.push({
+        x: 40 + Math.random() * (W - 80),
+        y: -15,
+        vy: 1.2 + Math.random() * 0.5,
+        pulse: Math.random() * Math.PI * 2,
+      });
+    }
+
     // Check if all bricks destroyed
     if (state.bricks.every(b => !b.alive)) {
       nextLevel();
+    }
+
+    // Heal items (falling hearts)
+    for (let i = state.healItems.length - 1; i >= 0; i--) {
+      const h = state.healItems[i];
+      h.y += h.vy;
+      h.pulse += 0.08;
+      if (h.y > H + 20) { state.healItems.splice(i, 1); continue; }
+      const dx = state.ballX - h.x, dy = state.ballY - h.y;
+      if (Math.sqrt(dx * dx + dy * dy) < BALL_R + 12) {
+        state.hp = state.maxHp;
+        onHpChange(state.hp, state.maxHp);
+        addParticles(h.x, h.y, '#FF0050', 8);
+        state.healItems.splice(i, 1);
+      }
     }
 
     // Particles
@@ -251,6 +280,19 @@ export function createGame(canvas, { keysRef, joystickRef, onScore, onGameOver, 
       // Shine
       ctx.fillStyle = 'rgba(255,255,255,0.2)';
       ctx.fillRect(b.x + 3, b.y + 2, b.w - 6, b.h / 3);
+    }
+
+    // Heal items
+    for (const h of state.healItems) {
+      const glow = 0.6 + Math.sin(h.pulse) * 0.3;
+      ctx.save();
+      ctx.shadowColor = 'rgba(255,0,80,0.5)';
+      ctx.shadowBlur = 12 * glow;
+      ctx.fillStyle = '#FF0050';
+      ctx.font = '16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('♥', h.x, h.y + Math.sin(h.pulse * 1.5) * 3 + 5);
+      ctx.restore();
     }
 
     // Paddle

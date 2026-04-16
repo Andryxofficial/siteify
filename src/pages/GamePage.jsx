@@ -188,42 +188,135 @@ export default function GamePage() {
 
   /* ─── Keyboard listeners ─── */
   useEffect(() => {
-    const down = (e) => { keysRef.current[e.key] = true; };
+    const down = (e) => {
+      keysRef.current[e.key] = true;
+      // Prevent page scroll when playing
+      if (gameStatus === 'playing' && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) {
+        e.preventDefault();
+      }
+    };
     const up = (e) => { keysRef.current[e.key] = false; };
-    window.addEventListener('keydown', down);
+    window.addEventListener('keydown', down, { passive: false });
     window.addEventListener('keyup', up);
     return () => {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       keysRef.current = {};
     };
+  }, [gameStatus]);
+
+  /* ─── Gamepad API polling ─── */
+  const gamepadFrameRef = useRef(null);
+  const prevGamepadBtns = useRef({});
+  useEffect(() => {
+    function pollGamepad() {
+      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+      for (const gp of gamepads) {
+        if (!gp) continue;
+        // Left stick → joystick
+        const lx = gp.axes[0] ?? 0;
+        const ly = gp.axes[1] ?? 0;
+        const deadzone = 0.15;
+        if (Math.abs(lx) > deadzone || Math.abs(ly) > deadzone) {
+          joystickRef.current = { active: true, dx: lx, dy: ly };
+        } else if (joystickRef.current.active && !joystickRef.current._touch) {
+          joystickRef.current = { active: false, dx: 0, dy: 0 };
+        }
+        // D-pad (buttons 12-15 or axes)
+        const k = keysRef.current;
+        k['ArrowUp'] = gp.buttons[12]?.pressed || k['ArrowUp'] || k['w'] || k['W'] || false;
+        k['ArrowDown'] = gp.buttons[13]?.pressed || k['ArrowDown'] || k['s'] || k['S'] || false;
+        k['ArrowLeft'] = gp.buttons[14]?.pressed || k['ArrowLeft'] || k['a'] || k['A'] || false;
+        k['ArrowRight'] = gp.buttons[15]?.pressed || k['ArrowRight'] || k['d'] || k['D'] || false;
+        // Face buttons → action (A=0, B=1, X=2, Y=3) + space
+        const actionPressed = gp.buttons[0]?.pressed || gp.buttons[2]?.pressed;
+        const prev = prevGamepadBtns.current;
+        if (actionPressed && !prev.action) {
+          actionBtnRef.current = true;
+        }
+        prev.action = actionPressed;
+        // Shoulder/trigger → action too
+        if (gp.buttons[4]?.pressed || gp.buttons[5]?.pressed || gp.buttons[6]?.pressed || gp.buttons[7]?.pressed) {
+          actionBtnRef.current = true;
+        }
+        // Right stick → also maps to joystick as alternative
+        const rx = gp.axes[2] ?? 0;
+        const ry = gp.axes[3] ?? 0;
+        if (Math.abs(rx) > deadzone || Math.abs(ry) > deadzone) {
+          joystickRef.current = { active: true, dx: rx, dy: ry };
+        }
+        break; // Use first connected gamepad
+      }
+      gamepadFrameRef.current = requestAnimationFrame(pollGamepad);
+    }
+    gamepadFrameRef.current = requestAnimationFrame(pollGamepad);
+    return () => {
+      if (gamepadFrameRef.current) cancelAnimationFrame(gamepadFrameRef.current);
+    };
   }, []);
 
-  /* ─── Touch handlers ─── */
-  const onJoystickStart = (e) => {
+  /* ─── Touch handlers (ultra-responsive) ─── */
+  const joystickTouchId = useRef(null);
+  const joystickCenterRef = useRef({ cx: 0, cy: 0, r: 0 });
+
+  const onJoystickStart = useCallback((e) => {
     e.preventDefault();
-    joystickRef.current.active = true;
-  };
-  const onJoystickMove = (e) => {
+    e.stopPropagation();
+    const t = e.changedTouches[0];
+    if (t) {
+      joystickTouchId.current = t.identifier;
+      const rect = e.currentTarget.getBoundingClientRect();
+      joystickCenterRef.current = {
+        cx: rect.left + rect.width / 2,
+        cy: rect.top + rect.height / 2,
+        r: rect.width / 2,
+      };
+      joystickRef.current = { active: true, dx: 0, dy: 0, _touch: true };
+    }
+  }, []);
+
+  const onJoystickMove = useCallback((e) => {
     e.preventDefault();
-    const t = e.touches[0];
-    const rect = e.currentTarget.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    let dx = (t.clientX - cx) / (rect.width / 2);
-    let dy = (t.clientY - cy) / (rect.height / 2);
-    const mag = Math.sqrt(dx * dx + dy * dy);
-    if (mag > 1) { dx /= mag; dy /= mag; }
-    joystickRef.current.dx = dx;
-    joystickRef.current.dy = dy;
-  };
-  const onJoystickEnd = () => {
-    joystickRef.current = { active: false, dx: 0, dy: 0 };
-  };
-  const onActionBtn = (e) => {
+    e.stopPropagation();
+    for (const t of e.changedTouches) {
+      if (t.identifier === joystickTouchId.current) {
+        const { cx, cy, r } = joystickCenterRef.current;
+        let dx = (t.clientX - cx) / r;
+        let dy = (t.clientY - cy) / r;
+        const mag = Math.sqrt(dx * dx + dy * dy);
+        if (mag > 1) { dx /= mag; dy /= mag; }
+        joystickRef.current = { active: true, dx, dy, _touch: true };
+        break;
+      }
+    }
+  }, []);
+
+  const onJoystickEnd = useCallback((e) => {
     e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === joystickTouchId.current) {
+        joystickTouchId.current = null;
+        joystickRef.current = { active: false, dx: 0, dy: 0 };
+        break;
+      }
+    }
+  }, []);
+
+  const onActionBtn = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
     actionBtnRef.current = true;
-  };
+  }, []);
+
+  /* ─── Also handle tap-anywhere on canvas for "tap" games ─── */
+  const onCanvasTouch = useCallback((e) => {
+    if (gameMeta.controls === 'tap' && gameStatus === 'playing') {
+      e.preventDefault();
+      actionBtnRef.current = true;
+      keysRef.current[' '] = true;
+      setTimeout(() => { keysRef.current[' '] = false; }, 80);
+    }
+  }, [gameMeta.controls, gameStatus]);
 
   function handleLogout() {
     localStorage.removeItem('twitchGameToken');
@@ -258,7 +351,14 @@ export default function GamePage() {
       <div className="game-layout">
         <div className="game-area">
           <div className="glass-panel game-canvas-wrapper" style={{ padding: 0, overflow: 'hidden' }}>
-            <canvas ref={canvasRef} width={480} height={480} className="game-canvas" />
+            <canvas
+              ref={canvasRef}
+              width={480}
+              height={480}
+              className="game-canvas"
+              onTouchStart={onCanvasTouch}
+              style={{ touchAction: 'none' }}
+            />
 
             {/* Idle overlay */}
             {gameStatus === 'idle' && (
@@ -326,16 +426,19 @@ export default function GamePage() {
             )}
           </div>
 
-          {/* Touch controls (mobile) */}
-          <div className="game-touch-controls">
+          {/* Touch controls (mobile) — ultra responsive */}
+          <div className="game-touch-controls" style={{ touchAction: 'none' }}>
             <div
               className="game-joystick"
               onTouchStart={onJoystickStart}
               onTouchMove={onJoystickMove}
               onTouchEnd={onJoystickEnd}
+              onTouchCancel={onJoystickEnd}
+              style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
             >
               <div className="game-joystick-knob" style={{
-                transform: `translate(${joystickRef.current.dx * 20}px, ${joystickRef.current.dy * 20}px)`,
+                transform: `translate(${joystickRef.current.dx * 28}px, ${joystickRef.current.dy * 28}px)`,
+                transition: joystickRef.current.active ? 'none' : 'transform 0.1s ease-out',
               }} />
             </div>
 
@@ -347,7 +450,13 @@ export default function GamePage() {
               >
                 <Keyboard size={18} />
               </button>
-              <button className="game-attack-btn" onTouchStart={onActionBtn}>
+              <button
+                className="game-attack-btn"
+                onTouchStart={onActionBtn}
+                onTouchEnd={(e) => e.preventDefault()}
+                onPointerDown={onActionBtn}
+                style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
+              >
                 {gameMeta.actionLabel}
               </button>
             </div>

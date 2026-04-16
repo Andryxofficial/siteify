@@ -29,6 +29,9 @@ const ATTACK_HIT_RADIUS = 24;
 const ENEMY_COLLISION_RADIUS = 18;
 const GEM_COLLECT_RADIUS = 16;
 const EXIT_PORTAL_RADIUS = 20;
+const HEAL_COLLECT_RADIUS = 20;     // Proximity detection for heal pickup
+const HEAL_SPAWN_MARGIN = 100;      // Border distance when spawning heals
+const HEAL_POINTS_THRESHOLD = 1000; // Score interval between heal spawns
 
 const ENEMY_STATS = {
   slime: { hp: 1, spd: 0.6, points: 10 },
@@ -167,6 +170,7 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
     hp: 5, maxHp: 5,
     score: 0, roomNum: 0,
     attacking: 0, iframe: 0,
+    lastHealAt: 0, healItems: [],
     ...room,
     particles: [], floatTexts: [],
     running: true, frame: 0,
@@ -347,6 +351,31 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
       }
     }
 
+    // Heal power-up every 1000 points
+    const healMilestone = Math.floor(state.score / HEAL_POINTS_THRESHOLD);
+    if (healMilestone > state.lastHealAt && state.hp < state.maxHp) {
+      state.lastHealAt = healMilestone;
+      // Place heal near center of current room
+      state.healItems.push({
+        x: HEAL_SPAWN_MARGIN + Math.random() * (W - 2 * HEAL_SPAWN_MARGIN),
+        y: HEAL_SPAWN_MARGIN + Math.random() * (H - 2 * HEAL_SPAWN_MARGIN),
+        pulse: 0,
+      });
+    }
+
+    // Heal items
+    for (let i = state.healItems.length - 1; i >= 0; i--) {
+      const h = state.healItems[i];
+      h.pulse += 0.08;
+      const dx = state.px - h.x, dy = state.py - h.y;
+      if (Math.sqrt(dx * dx + dy * dy) < HEAL_COLLECT_RADIUS) {
+        state.hp = state.maxHp;
+        onHpChange(state.hp, state.maxHp);
+        addParticles(h.x, h.y, '#FF0050', 8);
+        state.healItems.splice(i, 1);
+      }
+    }
+
     if (!state.exitOpen && state.enemies.every(e => e.dead)) {
       state.exitOpen = true;
     }
@@ -450,6 +479,19 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
       ctx.translate(g.x, g.y + Math.sin(g.pulse * 1.5) * 2);
       ctx.rotate(Math.PI / 4);
       ctx.fillRect(-5, -5, 10, 10);
+      ctx.restore();
+    }
+
+    // Heal items
+    for (const h of state.healItems) {
+      const glow = 0.6 + Math.sin(h.pulse) * 0.3;
+      ctx.save();
+      ctx.shadowColor = 'rgba(255,0,80,0.5)';
+      ctx.shadowBlur = 12 * glow;
+      ctx.fillStyle = '#FF0050';
+      ctx.font = '18px Outfit, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('♥', h.x, h.y + Math.sin(h.pulse) * 3 + 5);
       ctx.restore();
     }
 
