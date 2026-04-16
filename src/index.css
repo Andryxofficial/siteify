@@ -505,6 +505,11 @@ body::before {
   100% { background-position:  200% 0; }
 }
 
+@keyframes twitch-shimmer {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
 /* ═══════════════════════════════════════════════════
    RESPONSIVE — tablet (≤900px)
    ═══════════════════════════════════════════════════ */
@@ -821,6 +826,11 @@ nav.navbar-container.glass-panel {
 
 /* ── Very small screens ── */
 @media (max-width: 360px) {
-  .tab-label { font-size: 0.57rem; }
-  .tab-item  { padding: 6px 2px 4px; }
+  .tab-label { font-size: 0.52rem; }
+  .tab-item  { padding: 6px 1px 4px; }
+}
+
+/* ── Hide tab labels when there are many items (6+) on very narrow screens ── */
+@media (max-width: 400px) {
+  .tab-label { font-size: 0.55rem; }
 }

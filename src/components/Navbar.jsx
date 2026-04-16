@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon } from 'lucide-react';
+import TikTokIcon from './TikTokIcon';
 
 const NAV_LINKS = [
   { path: '/',          label: 'Home',      Icon: HomeIcon      },
@@ -9,6 +10,7 @@ const NAV_LINKS = [
   { path: '/youtube',   label: 'YouTube',   Icon: YoutubeIcon   },
   { path: '/instagram', label: 'Instagram', Icon: InstagramIcon },
   { path: '/podcast',   label: 'Podcast',   Icon: MicIcon       },
+  { path: '/tiktok',    label: 'TikTok',    Icon: ({ size }) => <TikTokIcon size={size} /> },
 ];
 
 const LOGO_URL =

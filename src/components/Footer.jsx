@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Twitch, Youtube, Instagram, Mic } from 'lucide-react';
+import TikTokIcon from './TikTokIcon';
 
 const LOGO_URL = 'https://github.com/user-attachments/assets/f721344e-6153-4d66-b5ad-a8a39945fa99';
 
@@ -7,7 +8,8 @@ const socials = [
   { href: 'https://twitch.tv/andryxify',       icon: <Twitch    size={18}/>, label: 'Twitch'    },
   { href: 'https://youtube.com/@ANDRYXify',    icon: <Youtube   size={18}/>, label: 'YouTube'   },
   { href: 'https://instagram.com/andryxify',   icon: <Instagram size={18}/>, label: 'Instagram' },
-  { href: 'https://tiktok.com/@andryxify',     icon: <Mic       size={18}/>, label: 'TikTok'    },
+  { href: 'https://tiktok.com/@andryxify',     icon: <TikTokIcon size={18}/>, label: 'TikTok'  },
+  { href: 'https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9', icon: <Mic size={18}/>, label: 'Podcast' },
 ];
 
 export default function Footer() {
