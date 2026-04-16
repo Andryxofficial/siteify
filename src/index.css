@@ -239,7 +239,6 @@ body::before {
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  margin-top: 160px !important;
 }
 
 /* Header */

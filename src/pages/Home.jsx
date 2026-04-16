@@ -81,7 +81,7 @@ export default function Home() {
         transition={{ delay: 0.4 }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <Twidech size={24} color="#9146FF" />
+          <Twitch size={24} color="#9146FF" />
           <h2 style={{ fontSize: '1.4rem', margin: 0 }}>Live Preview</h2>
           {liveState > 0 ? (
             <span style={{ background: 'rgba(255,0,0,0.2)', color: '#ff4d4d', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', border: '1px solid rgba(255,0,0,0.5)', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '5px' }}>

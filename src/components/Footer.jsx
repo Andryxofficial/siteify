@@ -1,5 +1,3 @@
-import { motion } from 'framer-motion';
-
 export default function Footer() {
   return (
     <footer className="footer glass-panel" style={{ margin: '4rem auto 2rem', padding: '2rem', width: '95%', maxWidth: '1000px' }}>
