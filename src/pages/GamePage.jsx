@@ -6,8 +6,8 @@ import SEO from '../components/SEO';
 /* ─── Twitch OAuth config ─── */
 const CHIAVETWITCH = import.meta.env.VITE_CHIAVETWITCH;
 const REDIRECT_URI = typeof window !== 'undefined'
-  ? `${window.location.origin}/gioco`
-  : 'https://andryxify.it/gioco';
+  ? window.location.origin
+  : 'https://andryxify.it';
 
 if (!CHIAVETWITCH) {
   console.warn('[GamePage] VITE_CHIAVETWITCH non configurata. Il login Twitch non funzionerà. Aggiungi la variabile nelle Environment Variables di Vercel.');
