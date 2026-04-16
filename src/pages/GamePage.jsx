@@ -29,6 +29,27 @@ const INITIAL_SPEED = 3;
 const SPEED_INCREMENT = 0.0008;
 const SPAWN_INTERVAL_MIN = 40;
 const SPAWN_INTERVAL_MAX = 80;
+const COMBO_TIMEOUT_FRAMES = 220;
+const TURBO_SYNAPSE_CHANCE = 0.07;
+
+const PHASES = [
+  { name: 'Inizializzazione', speedMult: 1.0,  synapseChance: 0.40, spawnMin: 40, spawnMax: 80, barrierChance: 0.00 },
+  { name: 'Trasmissione',     speedMult: 1.2,  synapseChance: 0.37, spawnMin: 36, spawnMax: 72, barrierChance: 0.06 },
+  { name: 'Accelerazione',    speedMult: 1.45, synapseChance: 0.33, spawnMin: 32, spawnMax: 63, barrierChance: 0.13 },
+  { name: 'Sovraccarico',     speedMult: 1.75, synapseChance: 0.30, spawnMin: 27, spawnMax: 55, barrierChance: 0.19 },
+  { name: 'Frammentazione',   speedMult: 2.1,  synapseChance: 0.27, spawnMin: 23, spawnMax: 47, barrierChance: 0.24 },
+  { name: 'CHAOS',            speedMult: 2.6,  synapseChance: 0.23, spawnMin: 20, spawnMax: 40, barrierChance: 0.30 },
+];
+const PHASE_SCORE_THRESHOLDS = [0, 150, 400, 800, 1500, 2500];
+const PHASE_COLORS = ['#00f5d4', '#4fffcf', '#FFD700', '#FF9500', '#FF4400', '#FF0050'];
+const GAMEOVER_MESSAGES = [
+  'Segnale interrotto…',
+  'Trasmissione persa!',
+  'Rete sovraccarica!',
+  'Sistema in crash!',
+  'Frammentazione critica!',
+  'MELTDOWN NEURALE! 🔥',
+];
 
 /* ─── Colors ─── */
 const COLORS = {
