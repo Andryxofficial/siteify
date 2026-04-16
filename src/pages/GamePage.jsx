@@ -87,6 +87,7 @@ export default function GamePage() {
   const [weeklyBoard, setWeeklyBoard] = useState([]);
   const [alltimeBoard, setAlltimeBoard] = useState([]);
   const [monthlyWinners, setMonthlyWinners] = useState([]);
+  const [currentMonthData, setCurrentMonthData] = useState(null);
   const [boardTab, setBoardTab] = useState('weekly'); // 'weekly' | 'alltime' | 'monthly'
   const [boardLoading, setBoardLoading] = useState(true);
   const [boardError, setBoardError] = useState('');
@@ -146,6 +147,7 @@ export default function GamePage() {
       setWeeklyBoard(data.weekly || []);
       setAlltimeBoard(data.alltime || data.leaderboard || []);
       setMonthlyWinners(data.monthlyWinners || []);
+      setCurrentMonthData(data.currentMonth || null);
     } catch (e) {
       console.error('fetchLeaderboard:', e);
       setBoardError('Impossibile caricare la classifica.');
@@ -786,40 +788,77 @@ export default function GamePage() {
                 {boardError}
               </p>
             ) : boardTab === 'monthly' ? (
-              /* ── Monthly winners tab ── */
-              monthlyWinners.length === 0 ? (
-                <p style={{ fontSize: '0.82rem', color: COLORS.textMuted }}>
-                  I vincitori mensili appariranno qui a partire dal prossimo mese!
-                </p>
-              ) : (
-                <div className="leaderboard-list">
-                  {monthlyWinners.map((month) => (
-                    <div key={month.month} className="monthly-winners-block">
-                      <div className="monthly-winners-header">
-                        <Award size={14} /> {month.label}
-                      </div>
-                      {month.top3.map((entry, i) => (
-                        <div key={entry.username} className="leaderboard-entry" style={{
-                          background: i === 0 ? 'rgba(255,215,0,0.08)' : i === 1 ? 'rgba(192,192,192,0.06)' : i === 2 ? 'rgba(205,127,50,0.06)' : 'transparent',
-                          borderLeft: `3px solid ${i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : '#CD7F32'}`,
-                        }}>
-                          <span className="leaderboard-rank">
-                            {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
-                          </span>
-                          <span className="leaderboard-name" style={{
-                            color: twitchUser === entry.username ? COLORS.player : COLORS.text,
-                            fontWeight: twitchUser === entry.username ? 800 : 600,
-                          }}>
-                            {entry.username}
-                            {twitchUser === entry.username && ' (tu)'}
-                          </span>
-                          <span className="leaderboard-score">⚡ {entry.score}</span>
+              /* ── Monthly tab: current month (live) + completed months (top 3) ── */
+              (() => {
+                const hasCurrentMonth = currentMonthData && currentMonthData.scores.length > 0;
+                const hasHistory = monthlyWinners.length > 0;
+
+                if (!hasCurrentMonth && !hasHistory) {
+                  return (
+                    <p style={{ fontSize: '0.82rem', color: COLORS.textMuted }}>
+                      Nessun punteggio mensile ancora. Sii il primo!
+                    </p>
+                  );
+                }
+
+                return (
+                  <div className="leaderboard-list">
+                    {/* Current month — live full leaderboard */}
+                    {hasCurrentMonth && (
+                      <div className="monthly-winners-block">
+                        <div className="monthly-winners-header" style={{ color: COLORS.player }}>
+                          <Zap size={13} /> {currentMonthData.label} <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>(in corso)</span>
                         </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )
+                        {currentMonthData.scores.map((entry, i) => (
+                          <div key={entry.username} className="leaderboard-entry" style={{
+                            background: i === 0 ? 'rgba(255,215,0,0.08)' : i === 1 ? 'rgba(192,192,192,0.06)' : i === 2 ? 'rgba(205,127,50,0.06)' : 'transparent',
+                            borderLeft: i < 3 ? `3px solid ${i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : '#CD7F32'}` : '3px solid transparent',
+                          }}>
+                            <span className="leaderboard-rank">
+                              {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}
+                            </span>
+                            <span className="leaderboard-name" style={{
+                              color: twitchUser === entry.username ? COLORS.player : COLORS.text,
+                              fontWeight: twitchUser === entry.username ? 800 : 600,
+                            }}>
+                              {entry.username}
+                              {twitchUser === entry.username && ' (tu)'}
+                            </span>
+                            <span className="leaderboard-score">⚡ {entry.score}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Completed months — top 3 per month */}
+                    {hasHistory && monthlyWinners.map((month) => (
+                      <div key={month.month} className="monthly-winners-block">
+                        <div className="monthly-winners-header">
+                          <Award size={14} /> {month.label}
+                        </div>
+                        {month.top3.map((entry, i) => (
+                          <div key={entry.username} className="leaderboard-entry" style={{
+                            background: i === 0 ? 'rgba(255,215,0,0.08)' : i === 1 ? 'rgba(192,192,192,0.06)' : i === 2 ? 'rgba(205,127,50,0.06)' : 'transparent',
+                            borderLeft: `3px solid ${i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : '#CD7F32'}`,
+                          }}>
+                            <span className="leaderboard-rank">
+                              {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
+                            </span>
+                            <span className="leaderboard-name" style={{
+                              color: twitchUser === entry.username ? COLORS.player : COLORS.text,
+                              fontWeight: twitchUser === entry.username ? 800 : 600,
+                            }}>
+                              {entry.username}
+                              {twitchUser === entry.username && ' (tu)'}
+                            </span>
+                            <span className="leaderboard-score">⚡ {entry.score}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()
             ) : (boardTab === 'weekly' ? weeklyBoard : alltimeBoard).length === 0 ? (
               <p style={{ fontSize: '0.82rem', color: COLORS.textMuted }}>
                 {boardTab === 'weekly' ? 'Nessun punteggio questa settimana. Sii il primo!' : 'Nessun punteggio ancora. Sii il primo!'}

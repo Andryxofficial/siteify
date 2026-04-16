@@ -29,6 +29,19 @@ function getMonthlyKey(now = new Date()) {
   return `neural_dash_leaderboard:monthly:${year}-${month}`;
 }
 
+const MONTH_NAMES = [
+  'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+  'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre',
+];
+
+/**
+ * Get a human-readable label for the current month.
+ * Format: "Aprile 2026"
+ */
+function getCurrentMonthLabel(now = new Date()) {
+  return `${MONTH_NAMES[now.getUTCMonth()]} ${now.getUTCFullYear()}`;
+}
+
 /**
  * Get the list of completed months in the current year (Jan up to last completed month).
  * Returns an array of {key, label, month} for each past month.
@@ -37,16 +50,12 @@ function getCompletedMonthKeys(now = new Date()) {
   const year = now.getUTCFullYear();
   const currentMonth = now.getUTCMonth(); // 0-based: Jan=0
   const months = [];
-  const monthNames = [
-    'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
-    'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre',
-  ];
   // Only include months that are already completed (before currentMonth)
   for (let m = 0; m < currentMonth; m++) {
     const mm = String(m + 1).padStart(2, '0');
     months.push({
       key: `neural_dash_leaderboard:monthly:${year}-${mm}`,
-      label: `${monthNames[m]} ${year}`,
+      label: `${MONTH_NAMES[m]} ${year}`,
       month: `${year}-${mm}`,
     });
   }
@@ -114,14 +123,15 @@ export default async function handler(req, res) {
     try {
       const completedMonths = getCompletedMonthKeys();
 
-      // Fetch weekly + alltime + all completed months' top 3 in parallel
+      // Fetch weekly + alltime + current month + all completed months' top 3 in parallel
       const monthlyPromises = completedMonths.map(m =>
         redis.zrange(m.key, 0, 2, { rev: true, withScores: true })
       );
 
-      const [weeklyRaw, alltimeRaw, ...monthlyRawArr] = await Promise.all([
+      const [weeklyRaw, alltimeRaw, currentMonthRaw, ...monthlyRawArr] = await Promise.all([
         redis.zrange(weeklyKey, 0, MAX_ENTRIES - 1, { rev: true, withScores: true }),
         redis.zrange(ALLTIME_KEY, 0, MAX_ENTRIES - 1, { rev: true, withScores: true }),
+        redis.zrange(monthlyKey, 0, MAX_ENTRIES - 1, { rev: true, withScores: true }),
         ...monthlyPromises,
       ]);
 
@@ -135,9 +145,17 @@ export default async function handler(req, res) {
         .filter(m => m.top3.length > 0)
         .reverse(); // Most recent month first
 
+      const now = new Date();
+      const currentMonthStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+
       return res.status(200).json({
         weekly: parseScores(weeklyRaw),
         alltime: parseScores(alltimeRaw),
+        currentMonth: {
+          month: currentMonthStr,
+          label: getCurrentMonthLabel(now),
+          scores: parseScores(currentMonthRaw),
+        },
         monthlyWinners,
         // Keep legacy field for backwards compatibility
         leaderboard: parseScores(alltimeRaw),
