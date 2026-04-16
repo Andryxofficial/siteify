@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Youtube, ExternalLink, Play } from 'lucide-react';
+import SEO from '../components/SEO';
 
 const CHANNEL_ID = 'UCt_i4p3p-5_pB_7d9D0yTqQ';
 const CHANNEL_URL = 'https://youtube.com/@ANDRYXify';
@@ -34,6 +35,11 @@ export default function YouTubePage() {
       transition={{ type: 'spring', stiffness: 180, damping: 24 }}
       className="main-content"
     >
+      <SEO
+        title="YouTube — Video, Highlights & Approfondimenti"
+        description="Guarda i video di ANDRYXify su YouTube: gameplay, highlights, approfondimenti su intelligenza artificiale e gaming. Iscriviti al canale YouTube di Andrea Taliento!"
+        path="/youtube"
+      />
       <header style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 className="title"><span style={{ color: '#FF0000' }}>YouTube</span> Hub</h1>
         <p className="subtitle">Riflessioni, approfondimenti e highlights sul futuro digitale.</p>

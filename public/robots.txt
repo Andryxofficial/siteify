@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://andryxify.it/sitemap.xml

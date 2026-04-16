@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ExternalLink, Music2, TrendingUp, Sparkles, Zap } from 'lucide-react';
 import TikTokIcon from '../components/TikTokIcon';
+import SEO from '../components/SEO';
 
 export default function TikTokPage() {
   // Load TikTok embed script once
@@ -20,6 +21,11 @@ export default function TikTokPage() {
       transition={{ type: 'spring', stiffness: 180, damping: 24 }}
       className="main-content"
     >
+      <SEO
+        title="TikTok — Clip, Trend & Gaming"
+        description="Le clip più divertenti di ANDRYXify su TikTok: gaming, intelligenza artificiale, trend e pillole di intrattenimento. Seguimi su TikTok!"
+        path="/tiktok"
+      />
       <header style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 className="title">
           <span style={{ color: '#00F2FE' }}>TikTok</span> Vibes

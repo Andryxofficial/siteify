@@ -3,6 +3,10 @@
     "api/ikigai-bridge.js": {
       "memory": 128,
       "maxDuration": 10
+    },
+    "api/leaderboard.js": {
+      "memory": 128,
+      "maxDuration": 10
     }
   },
   "headers": [
@@ -11,8 +15,11 @@
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
         { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, X-IUA-Nexus-Key" }
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, X-IUA-Nexus-Key, Authorization" }
       ]
     }
+  ],
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

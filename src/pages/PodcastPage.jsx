@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Mic, Headphones, Share2, ExternalLink } from 'lucide-react';
+import SEO from '../components/SEO';
 
 const SPOTIFY_URL = 'https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9';
 const APPLE_URL   = 'https://podcasts.apple.com/it/podcast/umanit%C3%A0-o-ia/id1869893930';
@@ -33,6 +34,11 @@ export default function PodcastPage() {
       transition={{ type: 'spring', stiffness: 180, damping: 24 }}
       className="main-content"
     >
+      <SEO
+        title="Podcast — Umanità o IA?"
+        description="Ascolta il podcast 'Umanità o IA?' di ANDRYXify (Andrea Taliento). Episodi su intelligenza artificiale, gaming, tecnologia e il futuro dell'umanità. Disponibile su Spotify e Apple Podcast."
+        path="/podcast"
+      />
       {/* Hero */}
       <header className="header" style={{ marginBottom: '1rem' }}>
         <motion.div

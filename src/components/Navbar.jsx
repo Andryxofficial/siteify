@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon } from 'lucide-react';
+import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 
 const NAV_LINKS = [
@@ -11,10 +11,10 @@ const NAV_LINKS = [
   { path: '/instagram', label: 'Instagram', Icon: InstagramIcon },
   { path: '/podcast',   label: 'Podcast',   Icon: MicIcon       },
   { path: '/tiktok',    label: 'TikTok',    Icon: ({ size }) => <TikTokIcon size={size} /> },
+  { path: '/gioco',     label: 'Gioco',     Icon: GameIcon      },
 ];
 
-const LOGO_URL =
-  'https://github.com/user-attachments/assets/f721344e-6153-4d66-b5ad-a8a39945fa99';
+const LOGO_URL = 'https://github.com/user-attachments/assets/473c6ca9-3173-4fdf-958c-faa4bda57230';
 
 /* ─────────────────────────────────────────────────────────
    MOBILE BOTTOM TAB BAR  (iOS-style, liquid glass)

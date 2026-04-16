@@ -9,6 +9,7 @@ import YouTubePage from './pages/YouTubePage';
 import InstagramPage from './pages/InstagramPage';
 import PodcastPage from './pages/PodcastPage';
 import TikTokPage from './pages/TikTokPage';
+import GamePage from './pages/GamePage';
 //segreto
 import Scoiattoli from './pages/tracker_scoiattoli';
 import './index.css';
@@ -39,6 +40,7 @@ function App() {
             <Route path="/instagram" element={<InstagramPage />} />
             <Route path="/podcast" element={<PodcastPage />} />
             <Route path="/tiktok" element={<TikTokPage />} />
+            <Route path="/gioco" element={<GamePage />} />
 
             <Route path="/scoiattoli" element={<Scoiattoli />} />
             

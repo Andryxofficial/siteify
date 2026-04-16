@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Twitch, Youtube, Instagram, Mic } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 
-const LOGO_URL = 'https://github.com/user-attachments/assets/f721344e-6153-4d66-b5ad-a8a39945fa99';
+const LOGO_URL = 'https://github.com/user-attachments/assets/473c6ca9-3173-4fdf-958c-faa4bda57230';
 
 const socials = [
   { href: 'https://twitch.tv/andryxify',       icon: <Twitch    size={18}/>, label: 'Twitch'    },
@@ -21,7 +21,7 @@ export default function Footer() {
           <img
             src={LOGO_URL}
             alt="Andryx"
-            style={{ height: '30px', width: 'auto', filter: 'invert(1) hue-rotate(180deg)', mixBlendMode: 'screen' }}
+            style={{ height: '40px', width: 'auto', maxWidth: '160px', objectFit: 'contain', alignSelf: 'flex-start', filter: 'invert(1) hue-rotate(180deg)', mixBlendMode: 'screen' }}
           />
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>
             Esplorando Umanità, IA & Gaming.
