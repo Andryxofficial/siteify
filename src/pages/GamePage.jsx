@@ -11,7 +11,7 @@ import {
   Twitch, LogIn, RotateCcw, Trophy, Calendar, Crown, Award, Zap, Keyboard,
 } from 'lucide-react';
 import SEO from '../components/SEO';
-import { getGameForMonth, getGameMeta, getAllGameMetas } from '../games/registry';
+import { getGameForMonth, getAllGameMetas } from '../games/registry';
 
 const CHIAVETWITCH = import.meta.env.VITE_CHIAVETWITCH;
 
@@ -536,17 +536,12 @@ export default function GamePage() {
               <button className={`leaderboard-tab${boardTab === 'monthly' ? ' active' : ''}`} onClick={() => setBoardTab('monthly')}>
                 <Award size={13} /> Mensili
               </button>
-              <button className={`leaderboard-tab${boardTab === 'archive' ? ' active' : ''}`} onClick={() => setBoardTab('archive')}>
-                <Zap size={13} /> Archivio
-              </button>
             </div>
 
             {boardLoading ? (
               <p style={{ fontSize: '0.82rem', color: C.textMuted, textAlign: 'center', padding: '1rem 0' }}>Caricamento…</p>
             ) : boardError ? (
               <p style={{ fontSize: '0.82rem', color: C.heart, textAlign: 'center', padding: '1rem 0' }}>{boardError}</p>
-            ) : boardTab === 'archive' ? (
-              <ArchiveTab archiveData={archiveData} twitchUser={twitchUser} />
             ) : boardTab === 'monthly' ? (
               <MonthlyTab currentMonthData={currentMonthData} monthlyWinners={monthlyWinners} twitchUser={twitchUser} />
             ) : (boardTab === 'weekly' ? weeklyBoard : alltimeBoard).length === 0 ? (
@@ -561,6 +556,9 @@ export default function GamePage() {
               </div>
             )}
           </div>
+
+          {/* Calendario Giochi — 12 months with #1 player */}
+          <GameCalendar archiveData={archiveData} currentMonthData={currentMonthData} />
         </div>
       </div>
     </motion.div>
@@ -615,39 +613,103 @@ function MonthlyTab({ currentMonthData, monthlyWinners, twitchUser }) {
   );
 }
 
-function ArchiveTab({ archiveData, twitchUser }) {
+function GameCalendar({ archiveData, currentMonthData }) {
   const allMetas = getAllGameMetas();
-  if (!archiveData || archiveData.length === 0) {
-    return (
-      <div style={{ fontSize: '0.82rem', color: C.textMuted }}>
-        <p style={{ marginBottom: '0.5rem' }}>L&apos;archivio conterrà le classifiche dei mesi precedenti.</p>
-        <p style={{ fontSize: '0.75rem', opacity: 0.7 }}>
-          Giochi disponibili:
-        </p>
-        {allMetas.map(m => (
-          <div key={m.month} style={{ fontSize: '0.75rem', padding: '2px 0', opacity: m.month === (new Date().getUTCMonth() + 1) ? 1 : 0.5 }}>
-            {m.emoji} {m.name} {m.month === (new Date().getUTCMonth() + 1) && <span style={{ color: C.player }}>← questo mese</span>}
-          </div>
-        ))}
-      </div>
-    );
+  const currentMonth = new Date().getUTCMonth() + 1;
+
+  // Build a map of month → #1 player from archive data
+  const topByMonth = {};
+  if (archiveData) {
+    for (const entry of archiveData) {
+      if (entry.top3 && entry.top3.length > 0) {
+        topByMonth[entry.monthNum] = entry.top3[0];
+      }
+    }
   }
+  // Current month from live data
+  if (currentMonthData && currentMonthData.scores && currentMonthData.scores.length > 0) {
+    topByMonth[currentMonth] = currentMonthData.scores[0];
+  }
+
   return (
-    <div className="leaderboard-list">
-      {archiveData.map((entry) => {
-        const meta = getGameMeta(entry.monthNum);
-        return (
-          <div key={entry.season} className="monthly-winners-block">
-            <div className="monthly-winners-header">
-              <span style={{ fontSize: '1rem' }}>{meta?.emoji || '🎮'}</span> {entry.label}
-              {meta && <span style={{ fontSize: '0.7rem', opacity: 0.5, marginLeft: '4px' }}>— {meta.name}</span>}
+    <div className="glass-panel" style={{ padding: '1.2rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
+        <Zap size={18} color="#FFD700" />
+        <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Calendario Giochi</h3>
+      </div>
+      <p style={{ fontSize: '0.72rem', color: C.textMuted, marginBottom: '0.75rem', opacity: 0.7 }}>
+        Un gioco nuovo ogni mese. Il 🥇 viene mostrato accanto a chi è primo!
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+        {allMetas.map((m) => {
+          const isCurrent = m.month === currentMonth;
+          const isPast = m.month < currentMonth;
+          const top1 = topByMonth[m.month];
+          return (
+            <div
+              key={m.month}
+              className="game-calendar-row"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 8px',
+                borderRadius: '8px',
+                background: isCurrent ? 'rgba(0,245,212,0.06)' : 'transparent',
+                borderLeft: isCurrent ? `3px solid ${m.color}` : '3px solid transparent',
+                opacity: isPast && !isCurrent ? 0.55 : 1,
+              }}
+            >
+              <span style={{ fontSize: '1rem', width: '22px', textAlign: 'center', flexShrink: 0 }}>{m.emoji}</span>
+              <span style={{
+                fontSize: '0.82rem',
+                fontWeight: isCurrent ? 800 : 600,
+                color: isCurrent ? C.player : C.text,
+                flex: 1,
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {m.name}
+              </span>
+              {isCurrent && (
+                <span style={{
+                  fontSize: '0.6rem',
+                  background: `${m.color}22`,
+                  color: m.color,
+                  padding: '2px 6px',
+                  borderRadius: '6px',
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  letterSpacing: '0.03em',
+                }}>
+                  ORA
+                </span>
+              )}
+              {top1 ? (
+                <span style={{
+                  fontSize: '0.72rem',
+                  color: '#FFD700',
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  maxWidth: '120px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
+                  🥇 {top1.username}
+                </span>
+              ) : isPast ? (
+                <span style={{ fontSize: '0.68rem', color: C.textMuted, opacity: 0.5, flexShrink: 0 }}>—</span>
+              ) : null}
             </div>
-            {entry.top3 && entry.top3.map((e, i) => (
-              <LeaderboardEntry key={e.username} entry={e} rank={i} twitchUser={twitchUser} />
-            ))}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

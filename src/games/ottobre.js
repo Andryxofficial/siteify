@@ -148,6 +148,8 @@ export function createGame(canvas, { keysRef, joystickRef, onScore, onGameOver, 
     iframe: 0,
     screenShake: 0,
     lightRadius: LIGHT_RADIUS,
+    lastHealAt: 0,
+    healItems: [],
   };
 
   onHpChange(state.hp, state.maxHp);
@@ -259,6 +261,29 @@ export function createGame(canvas, { keysRef, joystickRef, onScore, onGameOver, 
           addParticles(state.px, state.py, C.heart, 6);
           if (state.hp <= 0) { state.running = false; return; }
         }
+      }
+    }
+
+    // Heal power-up every 1000 points
+    const healMilestone = Math.floor(state.score / 1000);
+    if (healMilestone > state.lastHealAt && state.hp < state.maxHp) {
+      state.lastHealAt = healMilestone;
+      state.healItems.push({
+        x: 50 + Math.random() * (W - 100),
+        y: 50 + Math.random() * (H - 100),
+        pulse: Math.random() * Math.PI * 2,
+      });
+    }
+
+    for (let i = state.healItems.length - 1; i >= 0; i--) {
+      const h = state.healItems[i];
+      h.pulse += 0.08;
+      const dx = state.px - h.x, dy = state.py - h.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 18) {
+        state.hp = state.maxHp;
+        onHpChange(state.hp, state.maxHp);
+        addParticles(h.x, h.y, '#FF0050', 8);
+        state.healItems.splice(i, 1);
       }
     }
 
@@ -382,6 +407,24 @@ export function createGame(canvas, { keysRef, joystickRef, onScore, onGameOver, 
       ctx.arc(-3, -3, 2.5, 0, Math.PI * 2);
       ctx.arc(4, -3, 2.5, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+
+    // Heal items
+    for (const h of state.healItems) {
+      const dist = Math.sqrt((h.x - state.px) ** 2 + (h.y - state.py) ** 2);
+      if (dist > state.lightRadius + 20) continue;
+      const alpha = Math.max(0, 1 - dist / (state.lightRadius + 20));
+      ctx.globalAlpha = alpha;
+      const glow = 0.6 + Math.sin(h.pulse) * 0.3;
+      ctx.save();
+      ctx.shadowColor = 'rgba(255,0,80,0.5)';
+      ctx.shadowBlur = 12 * glow;
+      ctx.fillStyle = '#FF0050';
+      ctx.font = '18px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('♥', h.x, h.y + Math.sin(h.pulse * 1.5) * 3 + 5);
       ctx.restore();
     }
     ctx.globalAlpha = 1;

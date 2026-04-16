@@ -55,6 +55,8 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
     nextObstacle: 120,
     iframe: 0,
     screenShake: 0,
+    lastHealAt: 0,
+    healItems: [],
   };
 
   onHpChange(state.hp, state.maxHp);
@@ -225,6 +227,31 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
       onScore(state.score);
     }
 
+    // Heal power-up every 1000 points
+    const healMilestone = Math.floor(state.score / 1000);
+    if (healMilestone > state.lastHealAt && state.hp < state.maxHp) {
+      state.lastHealAt = healMilestone;
+      state.healItems.push({
+        x: W + 20,
+        y: getWaveY(W + 20 + state.waveOffset) - 20 - Math.random() * 40,
+        pulse: Math.random() * Math.PI * 2,
+      });
+    }
+
+    for (let i = state.healItems.length - 1; i >= 0; i--) {
+      const h = state.healItems[i];
+      h.x -= state.speed;
+      h.pulse += 0.08;
+      if (h.x < -20) { state.healItems.splice(i, 1); continue; }
+      const dx = state.px - h.x, dy = state.py - h.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 22) {
+        state.hp = state.maxHp;
+        onHpChange(state.hp, state.maxHp);
+        addParticles(h.x, h.y, '#FF0050', 8);
+        state.healItems.splice(i, 1);
+      }
+    }
+
     // Particles
     for (let i = state.particles.length - 1; i >= 0; i--) {
       const p = state.particles[i];
@@ -318,6 +345,19 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
       ctx.beginPath();
       ctx.arc(o.x + 2, o.y - 2, o.r * 0.6, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // Heal items
+    for (const h of state.healItems) {
+      const glow = 0.6 + Math.sin(h.pulse) * 0.3;
+      ctx.save();
+      ctx.shadowColor = 'rgba(255,0,80,0.5)';
+      ctx.shadowBlur = 12 * glow;
+      ctx.fillStyle = '#FF0050';
+      ctx.font = '18px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('♥', h.x, h.y + Math.sin(h.pulse * 1.5) * 3 + 5);
+      ctx.restore();
     }
 
     // Player (surfer)
