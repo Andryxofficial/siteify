@@ -1,379 +1,638 @@
 /**
  * FEBBRAIO — Heart Breaker 💕
- * Breakout/Arkanoid with heart-themed blocks.
- * Controls: left/right to move paddle.
+ * Valentine's-themed collection game.  Catch falling hearts for points,
+ * dodge broken hearts (damage).  Action button triggers a brief shield.
+ * Difficulty ramps with score.  Heal power-up every 1000 pts.
+ *
+ * Controls: joystick / WASD / arrows to move, action button for shield.
  */
+
 export const meta = {
   name: 'Heart Breaker',
   emoji: '💕',
-  description: 'Rompi tutti i blocchi cuore con la pallina!',
-  color: '#FF6B9D',
-  controls: 'lr',
-  instructions: 'Muovi la barra con le frecce ← → o WASD. Non far cadere la pallina!',
+  description: 'Cattura i cuori e evita quelli spezzati!',
+  color: '#FF69B4',
+  controls: 'joystick',
+  instructions: 'Muovi con joystick o WASD. Raccogli i cuori, evita quelli spezzati! Premi 💘 per lo scudo.',
   gameOverTitle: 'Cuore spezzato!',
-  actionLabel: '💕',
+  actionLabel: '💘',
 };
 
+/* ── constants ── */
 const W = 480, H = 480;
-const PADDLE_W = 70, PADDLE_H = 12;
-const BALL_R = 6;
-const BRICK_ROWS = 6, BRICK_COLS = 9;
-const BRICK_W = 46, BRICK_H = 16;
-const BRICK_GAP = 4;
-const BRICK_OFFSET_X = (W - (BRICK_COLS * (BRICK_W + BRICK_GAP) - BRICK_GAP)) / 2;
-const BRICK_OFFSET_Y = 60;
+const PLAYER_R = 16;
+const HEART_R = 14;
+const BROKEN_R = 14;
+const HEAL_R = 14;
+const SHIELD_DURATION = 90;   // frames (~1.5 s)
+const SHIELD_COOLDOWN = 240;  // frames (~4 s)
+const MAX_PARTICLES = 300;
+const MAX_STARS = 60;
 
-const COLORS = ['#FF6B9D', '#FF1744', '#FF4081', '#F50057', '#E91E63', '#AD1457'];
+function rng(a, b) { return a + Math.random() * (b - a); }
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+function dist(ax, ay, bx, by) { const dx = ax - bx, dy = ay - by; return Math.sqrt(dx * dx + dy * dy); }
+function lerp(a, b, t) { return a + (b - a) * t; }
 
-const C = {
-  bg: '#1a0a14', paddle: '#FF6B9D', paddleGlow: 'rgba(255,107,157,0.4)',
-  ball: '#fff', ballGlow: 'rgba(255,255,255,0.5)',
-  heart: '#FF0050', text: '#f0ecf4', muted: '#a8a3b3',
-};
+/* ── canvas heart drawing (no emoji, pure vector) ── */
+function drawHeart(ctx, x, y, size) {
+  ctx.beginPath();
+  ctx.moveTo(x, y + size * 0.3);
+  ctx.bezierCurveTo(x, y - size * 0.3, x - size, y - size * 0.3, x - size, y + size * 0.1);
+  ctx.bezierCurveTo(x - size, y + size * 0.6, x, y + size, x, y + size);
+  ctx.bezierCurveTo(x, y + size, x + size, y + size * 0.6, x + size, y + size * 0.1);
+  ctx.bezierCurveTo(x + size, y - size * 0.3, x, y - size * 0.3, x, y + size * 0.3);
+  ctx.closePath();
+}
 
-export function createGame(canvas, { keysRef, joystickRef, onScore, onGameOver, onHpChange }) {
+function drawBrokenHeart(ctx, x, y, size) {
+  ctx.save();
+  // Left half
+  ctx.beginPath();
+  ctx.moveTo(x, y + size * 0.3);
+  ctx.bezierCurveTo(x, y - size * 0.3, x - size, y - size * 0.3, x - size, y + size * 0.1);
+  ctx.bezierCurveTo(x - size, y + size * 0.6, x, y + size, x, y + size);
+  ctx.lineTo(x - 2, y + size * 0.55);
+  ctx.lineTo(x + 2, y + size * 0.3);
+  ctx.lineTo(x - 1, y + size * 0.05);
+  ctx.closePath();
+  ctx.fill();
+  // Right half (offset slightly)
+  ctx.beginPath();
+  ctx.moveTo(x, y + size * 0.3);
+  ctx.bezierCurveTo(x, y - size * 0.3, x + size, y - size * 0.3, x + size, y + size * 0.1);
+  ctx.bezierCurveTo(x + size, y + size * 0.6, x, y + size, x, y + size);
+  ctx.lineTo(x + 2, y + size * 0.55);
+  ctx.lineTo(x - 2, y + size * 0.3);
+  ctx.lineTo(x + 1, y + size * 0.05);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawCross(ctx, x, y, size) {
+  const t = size * 0.3;
+  ctx.beginPath();
+  ctx.moveTo(x - t, y - size);
+  ctx.lineTo(x + t, y - size);
+  ctx.lineTo(x + t, y - t);
+  ctx.lineTo(x + size, y - t);
+  ctx.lineTo(x + size, y + t);
+  ctx.lineTo(x + t, y + t);
+  ctx.lineTo(x + t, y + size);
+  ctx.lineTo(x - t, y + size);
+  ctx.lineTo(x - t, y + t);
+  ctx.lineTo(x - size, y + t);
+  ctx.lineTo(x - size, y - t);
+  ctx.lineTo(x - t, y - t);
+  ctx.closePath();
+}
+
+/* ── main ── */
+export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore, onGameOver, onHpChange }) {
   const ctx = canvas.getContext('2d');
   canvas.width = W;
   canvas.height = H;
   let animFrame = null;
 
-  // Build bricks
-  function buildBricks() {
-    const bricks = [];
-    for (let r = 0; r < BRICK_ROWS; r++) {
-      for (let c = 0; c < BRICK_COLS; c++) {
-        bricks.push({
-          x: BRICK_OFFSET_X + c * (BRICK_W + BRICK_GAP),
-          y: BRICK_OFFSET_Y + r * (BRICK_H + BRICK_GAP),
-          w: BRICK_W, h: BRICK_H,
-          color: COLORS[r % COLORS.length],
-          alive: true,
-          points: (BRICK_ROWS - r) * 10,
-        });
-      }
-    }
-    return bricks;
-  }
-
-  const state = {
-    paddleX: W / 2 - PADDLE_W / 2,
-    ballX: W / 2, ballY: H - 60,
-    bvx: 3.5, bvy: -3.5,
-    score: 0,
-    hp: 3, maxHp: 3,
-    bricks: buildBricks(),
-    particles: [],
-    combo: 0,
-    level: 1,
-    running: true,
-    frame: 0,
-    screenShake: 0,
-    speedMult: 1,
+  /* ── state ── */
+  const s = {
+    px: W / 2, py: H - 60, vx: 0, vy: 0,
+    score: 0, hp: 3, maxHp: 3,
+    running: true, frame: 0,
+    hearts: [], brokens: [], healItems: [],
+    particles: [], floatTexts: [], stars: [],
+    shake: 0, iframe: 0,
+    shieldTimer: 0, shieldCooldown: 0,
     lastHealAt: 0,
-    healItems: [],
+    spawnTimer: 0,
+    difficulty: 1,
+    // parallax background
+    bgLayers: [],
+    trail: [],
   };
 
-  onHpChange(state.hp, state.maxHp);
+  onHpChange(s.hp, s.maxHp);
   onScore(0);
 
-  function addParticles(x, y, color, count) {
-    for (let i = 0; i < count; i++) {
-      state.particles.push({
-        x, y,
-        vx: (Math.random() - 0.5) * 6,
-        vy: (Math.random() - 0.5) * 6,
-        life: 1, decay: 0.03 + Math.random() * 0.02,
-        color, size: 2 + Math.random() * 3,
+  // Generate background stars
+  for (let i = 0; i < MAX_STARS; i++) {
+    s.stars.push({
+      x: rng(0, W), y: rng(0, H),
+      size: rng(0.5, 2), twinkle: rng(0, Math.PI * 2),
+      speed: rng(0.005, 0.03),
+    });
+  }
+
+  // Parallax heart layers (ambient, not collectible)
+  for (let layer = 0; layer < 3; layer++) {
+    const items = [];
+    for (let i = 0; i < 5 + layer * 2; i++) {
+      items.push({
+        x: rng(0, W), y: rng(0, H),
+        size: rng(6, 14) * (1 - layer * 0.25),
+        drift: rng(-0.15, 0.15),
+        fall: rng(0.1, 0.35) * (1 - layer * 0.2),
+      });
+    }
+    s.bgLayers.push({ items, opacity: 0.025 + layer * 0.008, parallax: 0.3 + layer * 0.2 });
+  }
+
+  /* ── helpers ── */
+  function addParticles(x, y, color, count, opts = {}) {
+    const { spread = 4, grav = 0.08, sMin = 1.5, sMax = 3.5, shape = 'circle' } = opts;
+    for (let i = 0; i < count && s.particles.length < MAX_PARTICLES; i++) {
+      s.particles.push({
+        x, y, vx: rng(-spread, spread), vy: rng(-spread, spread * 0.5),
+        life: 1, decay: rng(0.015, 0.035),
+        color, size: rng(sMin, sMax), grav, shape,
       });
     }
   }
 
-  function resetBall() {
-    state.ballX = state.paddleX + PADDLE_W / 2;
-    state.ballY = H - 60;
-    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.8;
-    const spd = 4 * state.speedMult;
-    state.bvx = Math.cos(angle) * spd;
-    state.bvy = Math.sin(angle) * spd;
-    state.combo = 0;
+  function addFloatText(x, y, text, color) {
+    s.floatTexts.push({ x, y, text, color, life: 1, vy: -1.5 });
   }
 
-  function nextLevel() {
-    state.level++;
-    state.bricks = buildBricks();
-    state.speedMult = 1 + (state.level - 1) * 0.15;
-    resetBall();
-    state.score += 200;
-    onScore(state.score);
+  function spawnHeart() {
+    const fast = Math.random() < 0.15 + s.difficulty * 0.04;
+    const big = !fast && Math.random() < 0.12;
+    s.hearts.push({
+      x: rng(HEART_R + 10, W - HEART_R - 10),
+      y: -HEART_R * 2,
+      vy: (fast ? rng(3.5, 5) : rng(1.5, 2.5)) + s.difficulty * 0.25,
+      vx: rng(-0.4, 0.4),
+      size: big ? rng(18, 22) : rng(11, 15),
+      points: big ? 25 : (fast ? 15 : 10),
+      pulse: rng(0, Math.PI * 2),
+      fast,
+      rot: 0, rotSpeed: rng(-0.02, 0.02),
+    });
   }
 
+  function spawnBroken() {
+    const sway = Math.random() < 0.3;
+    s.brokens.push({
+      x: rng(BROKEN_R + 10, W - BROKEN_R - 10),
+      y: -BROKEN_R * 2,
+      vy: rng(1.2, 2.5) + s.difficulty * 0.2,
+      vx: sway ? rng(-1.5, 1.5) : rng(-0.3, 0.3),
+      sway, swayPhase: rng(0, Math.PI * 2),
+      size: rng(12, 16),
+      rot: 0, rotSpeed: rng(-0.03, 0.03),
+    });
+  }
+
+  function spawnHeal() {
+    s.healItems.push({
+      x: rng(HEAL_R + 20, W - HEAL_R - 20),
+      y: -HEAL_R * 2,
+      vy: rng(1.0, 1.6),
+      pulse: rng(0, Math.PI * 2),
+    });
+  }
+
+  function takeDamage() {
+    if (s.iframe > 0 || s.shieldTimer > 0) return;
+    s.hp--;
+    s.shake = 10;
+    s.iframe = 60;
+    onHpChange(s.hp, s.maxHp);
+    addParticles(s.px, s.py, '#ff2266', 20, { spread: 6 });
+    if (s.hp <= 0) {
+      s.running = false;
+    }
+  }
+
+  /* ── update ── */
   function update() {
-    if (!state.running) return;
-    state.frame++;
+    if (!s.running) return;
+    s.frame++;
+    if (s.iframe > 0) s.iframe--;
+    if (s.shieldTimer > 0) s.shieldTimer--;
+    if (s.shieldCooldown > 0) s.shieldCooldown--;
 
-    // Paddle input
+    // Difficulty ramps with score
+    s.difficulty = 1 + Math.floor(s.score / 300) * 0.15;
+
+    /* ── input ── */
     const keys = keysRef.current;
-    let mx = 0;
-    if (keys['ArrowLeft'] || keys['a'] || keys['A']) mx = -1;
-    if (keys['ArrowRight'] || keys['d'] || keys['D']) mx = 1;
+    let mx = 0, my = 0;
+    if (keys['ArrowLeft']  || keys['a'] || keys['A']) mx -= 1;
+    if (keys['ArrowRight'] || keys['d'] || keys['D']) mx += 1;
+    if (keys['ArrowUp']    || keys['w'] || keys['W']) my -= 1;
+    if (keys['ArrowDown']  || keys['s'] || keys['S']) my += 1;
     const joy = joystickRef.current;
-    if (joy.active) mx += joy.dx;
-    if (mx > 1) mx = 1;
-    if (mx < -1) mx = -1;
+    if (joy && joy.active) { mx += joy.dx; my += joy.dy; }
+    const len = Math.sqrt(mx * mx + my * my);
+    if (len > 1) { mx /= len; my /= len; }
 
-    state.paddleX += mx * 7;
-    if (state.paddleX < 0) state.paddleX = 0;
-    if (state.paddleX > W - PADDLE_W) state.paddleX = W - PADDLE_W;
+    const speed = 5.5;
+    s.vx = lerp(s.vx, mx * speed, 0.25);
+    s.vy = lerp(s.vy, my * speed, 0.25);
+    s.px = clamp(s.px + s.vx, PLAYER_R, W - PLAYER_R);
+    s.py = clamp(s.py + s.vy, PLAYER_R + 40, H - PLAYER_R);
 
-    // Ball movement
-    state.ballX += state.bvx;
-    state.ballY += state.bvy;
+    // Trail (for visual flair)
+    if (s.frame % 2 === 0) {
+      s.trail.push({ x: s.px, y: s.py, life: 1 });
+      if (s.trail.length > 15) s.trail.shift();
+    }
+    for (const t of s.trail) t.life -= 0.07;
 
-    // Wall bounces
-    if (state.ballX - BALL_R <= 0) { state.ballX = BALL_R; state.bvx = Math.abs(state.bvx); }
-    if (state.ballX + BALL_R >= W) { state.ballX = W - BALL_R; state.bvx = -Math.abs(state.bvx); }
-    if (state.ballY - BALL_R <= 0) { state.ballY = BALL_R; state.bvy = Math.abs(state.bvy); }
-
-    // Ball fell off bottom
-    if (state.ballY > H + BALL_R) {
-      state.hp--;
-      state.screenShake = 6;
-      onHpChange(state.hp, state.maxHp);
-      if (state.hp <= 0) {
-        state.running = false;
-        return;
-      }
-      resetBall();
-      return;
+    // Shield activation
+    if (actionBtnRef && actionBtnRef.current && s.shieldTimer === 0 && s.shieldCooldown === 0) {
+      s.shieldTimer = SHIELD_DURATION;
+      s.shieldCooldown = SHIELD_COOLDOWN;
+      addParticles(s.px, s.py, '#88eeff', 12, { spread: 3, sMin: 2, sMax: 4 });
     }
 
-    // Paddle collision
-    if (state.bvy > 0 &&
-        state.ballY + BALL_R >= H - 40 - PADDLE_H &&
-        state.ballY + BALL_R <= H - 40 &&
-        state.ballX >= state.paddleX - BALL_R &&
-        state.ballX <= state.paddleX + PADDLE_W + BALL_R) {
-      const hitPos = (state.ballX - state.paddleX) / PADDLE_W; // 0-1
-      const angle = -Math.PI / 2 + (hitPos - 0.5) * Math.PI * 0.7;
-      const spd = Math.sqrt(state.bvx * state.bvx + state.bvy * state.bvy);
-      state.bvx = Math.cos(angle) * spd;
-      state.bvy = Math.sin(angle) * spd;
-      state.ballY = H - 40 - PADDLE_H - BALL_R;
-      state.combo = 0;
-      addParticles(state.ballX, state.ballY, C.paddle, 3);
-    }
-
-    // Brick collision
-    for (const b of state.bricks) {
-      if (!b.alive) continue;
-      if (state.ballX + BALL_R > b.x && state.ballX - BALL_R < b.x + b.w &&
-          state.ballY + BALL_R > b.y && state.ballY - BALL_R < b.y + b.h) {
-        b.alive = false;
-        state.combo++;
-        const pts = b.points * Math.min(state.combo, 5);
-        state.score += pts;
-        onScore(state.score);
-        addParticles(b.x + b.w / 2, b.y + b.h / 2, b.color, 6);
-
-        // Determine bounce direction
-        const overlapLeft = (state.ballX + BALL_R) - b.x;
-        const overlapRight = (b.x + b.w) - (state.ballX - BALL_R);
-        const overlapTop = (state.ballY + BALL_R) - b.y;
-        const overlapBottom = (b.y + b.h) - (state.ballY - BALL_R);
-        const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
-        if (minOverlap === overlapLeft || minOverlap === overlapRight) state.bvx = -state.bvx;
-        else state.bvy = -state.bvy;
-        break; // Only one brick per frame
+    /* ── spawning ── */
+    s.spawnTimer++;
+    const spawnRate = Math.max(18, 50 - s.difficulty * 3);
+    if (s.spawnTimer >= spawnRate) {
+      s.spawnTimer = 0;
+      // Ratio of broken hearts increases with difficulty
+      const brokenChance = clamp(0.2 + s.difficulty * 0.04, 0.2, 0.55);
+      if (Math.random() < brokenChance) {
+        spawnBroken();
+      } else {
+        spawnHeart();
       }
     }
 
-    // Heal power-up every 1000 points
-    const healMilestone = Math.floor(state.score / 1000);
-    if (healMilestone > state.lastHealAt && state.hp < state.maxHp) {
-      state.lastHealAt = healMilestone;
-      state.healItems.push({
-        x: 40 + Math.random() * (W - 80),
-        y: -15,
-        vy: 1.2 + Math.random() * 0.5,
-        pulse: Math.random() * Math.PI * 2,
-      });
+    /* ── heal milestone ── */
+    const milestone = Math.floor(s.score / 1000);
+    if (milestone > s.lastHealAt) {
+      s.lastHealAt = milestone;
+      if (s.hp < s.maxHp) spawnHeal();
     }
 
-    // Check if all bricks destroyed
-    if (state.bricks.every(b => !b.alive)) {
-      nextLevel();
-    }
-
-    // Heal items (falling hearts)
-    for (let i = state.healItems.length - 1; i >= 0; i--) {
-      const h = state.healItems[i];
+    /* ── move & collide hearts ── */
+    for (let i = s.hearts.length - 1; i >= 0; i--) {
+      const h = s.hearts[i];
       h.y += h.vy;
-      h.pulse += 0.08;
-      if (h.y > H + 20) { state.healItems.splice(i, 1); continue; }
-      const dx = state.ballX - h.x, dy = state.ballY - h.y;
-      if (Math.sqrt(dx * dx + dy * dy) < BALL_R + 12) {
-        state.hp = state.maxHp;
-        onHpChange(state.hp, state.maxHp);
-        addParticles(h.x, h.y, '#FF0050', 8);
-        state.healItems.splice(i, 1);
+      h.x += h.vx;
+      h.pulse += 0.06;
+      h.rot += h.rotSpeed;
+      if (h.y > H + 30) { s.hearts.splice(i, 1); continue; }
+      if (dist(s.px, s.py, h.x, h.y) < PLAYER_R + h.size * 0.7) {
+        s.score += h.points;
+        onScore(s.score);
+        addFloatText(h.x, h.y - 10, `+${h.points}`, h.points >= 25 ? '#ffdd57' : '#ff7eb3');
+        addParticles(h.x, h.y, '#ff7eb3', 8, { spread: 3, shape: 'heart' });
+        s.hearts.splice(i, 1);
       }
     }
 
-    // Particles
-    for (let i = state.particles.length - 1; i >= 0; i--) {
-      const p = state.particles[i];
-      p.x += p.vx; p.y += p.vy;
-      p.vy += 0.1;
-      p.life -= p.decay;
-      if (p.life <= 0) state.particles.splice(i, 1);
+    /* ── move & collide broken hearts ── */
+    for (let i = s.brokens.length - 1; i >= 0; i--) {
+      const b = s.brokens[i];
+      b.y += b.vy;
+      b.x += b.vx;
+      if (b.sway) b.x += Math.sin(s.frame * 0.05 + b.swayPhase) * 1.2;
+      b.rot += b.rotSpeed;
+      if (b.y > H + 30) { s.brokens.splice(i, 1); continue; }
+      if (dist(s.px, s.py, b.x, b.y) < PLAYER_R + b.size * 0.6) {
+        if (s.shieldTimer > 0) {
+          // Shield deflects — bonus points
+          s.score += 5;
+          onScore(s.score);
+          addFloatText(b.x, b.y - 10, '🛡+5', '#88eeff');
+          addParticles(b.x, b.y, '#88eeff', 10, { spread: 5 });
+        } else {
+          takeDamage();
+          addFloatText(b.x, b.y - 10, '-1 ♥', '#ff2266');
+        }
+        s.brokens.splice(i, 1);
+      }
     }
 
-    if (state.screenShake > 0) state.screenShake--;
+    /* ── heal items ── */
+    for (let i = s.healItems.length - 1; i >= 0; i--) {
+      const h = s.healItems[i];
+      h.y += h.vy;
+      h.pulse += 0.07;
+      if (h.y > H + 30) { s.healItems.splice(i, 1); continue; }
+      if (dist(s.px, s.py, h.x, h.y) < PLAYER_R + HEAL_R) {
+        s.hp = s.maxHp;
+        onHpChange(s.hp, s.maxHp);
+        addFloatText(h.x, h.y - 10, '+HP', '#44ff88');
+        addParticles(h.x, h.y, '#44ff88', 14, { spread: 4 });
+        s.healItems.splice(i, 1);
+      }
+    }
+
+    /* ── particles ── */
+    for (let i = s.particles.length - 1; i >= 0; i--) {
+      const p = s.particles[i];
+      p.x += p.vx; p.y += p.vy;
+      p.vy += p.grav;
+      p.life -= p.decay;
+      if (p.life <= 0) s.particles.splice(i, 1);
+    }
+
+    /* ── float texts ── */
+    for (let i = s.floatTexts.length - 1; i >= 0; i--) {
+      const ft = s.floatTexts[i];
+      ft.y += ft.vy;
+      ft.life -= 0.018;
+      if (ft.life <= 0) s.floatTexts.splice(i, 1);
+    }
+
+    /* ── background stars twinkle ── */
+    for (const st of s.stars) st.twinkle += st.speed;
+
+    /* ── parallax layers drift ── */
+    for (const layer of s.bgLayers) {
+      for (const item of layer.items) {
+        item.y += item.fall;
+        item.x += item.drift;
+        if (item.y > H + 20) { item.y = -20; item.x = rng(0, W); }
+        if (item.x < -20) item.x = W + 20;
+        if (item.x > W + 20) item.x = -20;
+      }
+    }
+
+    if (s.shake > 0) s.shake--;
   }
 
+  /* ── draw ── */
   function draw() {
     ctx.save();
-    if (state.screenShake > 0) {
+
+    // Screen shake
+    if (s.shake > 0) {
       ctx.translate(
-        (Math.random() - 0.5) * state.screenShake * 2,
-        (Math.random() - 0.5) * state.screenShake * 2,
+        (Math.random() - 0.5) * s.shake * 2,
+        (Math.random() - 0.5) * s.shake * 2,
       );
     }
 
-    // Background
-    ctx.fillStyle = C.bg;
+    /* ── background gradient ── */
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#0a0e17');
+    bg.addColorStop(0.6, '#12081f');
+    bg.addColorStop(1, '#1a0a24');
+    ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
-    // Background hearts decoration
-    ctx.globalAlpha = 0.03;
-    ctx.fillStyle = '#FF6B9D';
-    ctx.font = '40px sans-serif';
-    ctx.textAlign = 'center';
-    for (let i = 0; i < 8; i++) {
-      const bx = ((i * 73 + state.frame * 0.2) % (W + 40)) - 20;
-      const by = ((i * 97 + 30) % H);
-      ctx.fillText('♥', bx, by);
+    /* ── stars ── */
+    for (const st of s.stars) {
+      const alpha = 0.25 + Math.sin(st.twinkle) * 0.25;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#eeddff';
+      ctx.beginPath();
+      ctx.arc(st.x, st.y, st.size, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.globalAlpha = 1;
 
-    // Bricks
-    for (const b of state.bricks) {
-      if (!b.alive) continue;
-      ctx.fillStyle = b.color;
-      ctx.shadowColor = b.color;
-      ctx.shadowBlur = 4;
-      // Rounded brick
-      const r = 4;
-      ctx.beginPath();
-      ctx.moveTo(b.x + r, b.y);
-      ctx.lineTo(b.x + b.w - r, b.y);
-      ctx.quadraticCurveTo(b.x + b.w, b.y, b.x + b.w, b.y + r);
-      ctx.lineTo(b.x + b.w, b.y + b.h - r);
-      ctx.quadraticCurveTo(b.x + b.w, b.y + b.h, b.x + b.w - r, b.y + b.h);
-      ctx.lineTo(b.x + r, b.y + b.h);
-      ctx.quadraticCurveTo(b.x, b.y + b.h, b.x, b.y + b.h - r);
-      ctx.lineTo(b.x, b.y + r);
-      ctx.quadraticCurveTo(b.x, b.y, b.x + r, b.y);
-      ctx.closePath();
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      // Shine
-      ctx.fillStyle = 'rgba(255,255,255,0.2)';
-      ctx.fillRect(b.x + 3, b.y + 2, b.w - 6, b.h / 3);
+    /* ── parallax ambient hearts ── */
+    for (const layer of s.bgLayers) {
+      ctx.globalAlpha = layer.opacity;
+      ctx.fillStyle = '#ff69b4';
+      for (const item of layer.items) {
+        ctx.save();
+        ctx.translate(item.x, item.y);
+        drawHeart(ctx, 0, 0, item.size);
+        ctx.fill();
+        ctx.restore();
+      }
     }
+    ctx.globalAlpha = 1;
 
-    // Heal items
-    for (const h of state.healItems) {
-      const glow = 0.6 + Math.sin(h.pulse) * 0.3;
+    /* ── falling hearts (collectibles) ── */
+    for (const h of s.hearts) {
+      const pulse = 1 + Math.sin(h.pulse) * 0.08;
       ctx.save();
-      ctx.shadowColor = 'rgba(255,0,80,0.5)';
-      ctx.shadowBlur = 12 * glow;
-      ctx.fillStyle = '#FF0050';
-      ctx.font = '16px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('♥', h.x, h.y + Math.sin(h.pulse * 1.5) * 3 + 5);
+      ctx.translate(h.x, h.y);
+      ctx.rotate(h.rot);
+      ctx.scale(pulse, pulse);
+      // Glow
+      ctx.shadowColor = h.fast ? '#ffaa44' : '#ff69b4';
+      ctx.shadowBlur = h.fast ? 18 : 12;
+      // Gradient fill
+      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, h.size);
+      if (h.fast) {
+        grad.addColorStop(0, '#ffcc66');
+        grad.addColorStop(1, '#ff6633');
+      } else if (h.points >= 25) {
+        grad.addColorStop(0, '#ffee88');
+        grad.addColorStop(1, '#ffaa44');
+      } else {
+        grad.addColorStop(0, '#ff9ec8');
+        grad.addColorStop(1, '#ff3388');
+      }
+      ctx.fillStyle = grad;
+      drawHeart(ctx, 0, -h.size * 0.25, h.size);
+      ctx.fill();
+      // Specular highlight
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(-h.size * 0.3, -h.size * 0.15, h.size * 0.22, h.size * 0.15, -0.3, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
     }
 
-    // Paddle
-    ctx.save();
-    ctx.shadowColor = C.paddleGlow;
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = C.paddle;
-    const pr = PADDLE_H / 2;
-    ctx.beginPath();
-    ctx.moveTo(state.paddleX + pr, H - 40 - PADDLE_H);
-    ctx.lineTo(state.paddleX + PADDLE_W - pr, H - 40 - PADDLE_H);
-    ctx.arc(state.paddleX + PADDLE_W - pr, H - 40 - pr, pr, -Math.PI / 2, Math.PI / 2);
-    ctx.lineTo(state.paddleX + pr, H - 40);
-    ctx.arc(state.paddleX + pr, H - 40 - pr, pr, Math.PI / 2, -Math.PI / 2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
+    /* ── broken hearts (hazards) ── */
+    for (const b of s.brokens) {
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(b.rot);
+      ctx.shadowColor = '#8833aa';
+      ctx.shadowBlur = 10;
+      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, b.size);
+      grad.addColorStop(0, '#cc44aa');
+      grad.addColorStop(1, '#662266');
+      ctx.fillStyle = grad;
+      drawBrokenHeart(ctx, 0, -b.size * 0.25, b.size);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
 
-    // Ball
-    ctx.save();
-    ctx.shadowColor = C.ballGlow;
-    ctx.shadowBlur = 10;
-    ctx.fillStyle = C.ball;
-    ctx.beginPath();
-    ctx.arc(state.ballX, state.ballY, BALL_R, 0, Math.PI * 2);
-    ctx.fill();
-    // Ball trail
-    ctx.globalAlpha = 0.3;
-    ctx.beginPath();
-    ctx.arc(state.ballX - state.bvx * 0.5, state.ballY - state.bvy * 0.5, BALL_R * 0.7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    /* ── heal items (green cross) ── */
+    for (const h of s.healItems) {
+      const pulse = 1 + Math.sin(h.pulse) * 0.12;
+      const bob = Math.sin(h.pulse * 1.3) * 3;
+      ctx.save();
+      ctx.translate(h.x, h.y + bob);
+      ctx.scale(pulse, pulse);
+      ctx.shadowColor = '#44ff88';
+      ctx.shadowBlur = 16;
+      ctx.fillStyle = '#44ff88';
+      drawCross(ctx, 0, 0, HEAL_R * 0.6);
+      ctx.fill();
+      // Inner glow
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      drawCross(ctx, 0, 0, HEAL_R * 0.3);
+      ctx.fill();
+      ctx.restore();
+    }
 
-    // Particles
-    for (const p of state.particles) {
-      ctx.globalAlpha = p.life;
-      ctx.fillStyle = p.color;
+    /* ── player trail ── */
+    for (const t of s.trail) {
+      if (t.life <= 0) continue;
+      ctx.globalAlpha = t.life * 0.2;
+      ctx.fillStyle = s.shieldTimer > 0 ? '#88eeff' : '#ff69b4';
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.arc(t.x, t.y, PLAYER_R * t.life * 0.6, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
 
-    // HUD
-    for (let i = 0; i < state.maxHp; i++) {
-      ctx.fillStyle = i < state.hp ? C.heart : 'rgba(255,0,80,0.2)';
-      ctx.font = '14px sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('♥', 12 + i * 18, 20);
-    }
-    ctx.fillStyle = C.text;
-    ctx.font = 'bold 13px Outfit, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(`✦ ${state.score}`, W - 12, 18);
-    ctx.fillStyle = C.muted;
-    ctx.font = '11px Outfit, sans-serif';
-    ctx.fillText(`Livello ${state.level}`, W - 12, 34);
-    if (state.combo > 1) {
-      ctx.fillStyle = '#FFD700';
-      ctx.font = 'bold 11px Outfit, sans-serif';
-      ctx.fillText(`Combo ×${state.combo}`, W - 12, 48);
-    }
-    ctx.textAlign = 'left';
+    /* ── player ── */
+    const blinkOff = s.iframe > 0 && Math.floor(s.iframe / 4) % 2 === 0;
+    if (!blinkOff) {
+      ctx.save();
+      ctx.translate(s.px, s.py);
 
+      // Shield bubble
+      if (s.shieldTimer > 0) {
+        const sa = s.shieldTimer < 30 ? s.shieldTimer / 30 : 1;
+        ctx.globalAlpha = sa * 0.3;
+        const shieldGrad = ctx.createRadialGradient(0, 0, PLAYER_R, 0, 0, PLAYER_R + 12);
+        shieldGrad.addColorStop(0, 'rgba(136,238,255,0.5)');
+        shieldGrad.addColorStop(1, 'rgba(136,238,255,0)');
+        ctx.fillStyle = shieldGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, PLAYER_R + 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = sa * 0.6;
+        ctx.strokeStyle = '#88eeff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, PLAYER_R + 8, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
+      // Player body (radial gradient orb)
+      const bodyGrad = ctx.createRadialGradient(-3, -3, 2, 0, 0, PLAYER_R);
+      bodyGrad.addColorStop(0, '#ffe0f0');
+      bodyGrad.addColorStop(0.5, '#ff69b4');
+      bodyGrad.addColorStop(1, '#cc2277');
+      ctx.fillStyle = bodyGrad;
+      ctx.shadowColor = '#ff69b4';
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.arc(0, 0, PLAYER_R, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Inner heart on player
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      const hs = 7;
+      drawHeart(ctx, 0, -hs * 0.4, hs);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    /* ── particles ── */
+    for (const p of s.particles) {
+      ctx.globalAlpha = clamp(p.life, 0, 1);
+      ctx.fillStyle = p.color;
+      if (p.shape === 'heart') {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        drawHeart(ctx, 0, 0, p.size * p.life);
+        ctx.fill();
+        ctx.restore();
+      } else {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    /* ── float texts ── */
+    for (const ft of s.floatTexts) {
+      ctx.globalAlpha = clamp(ft.life, 0, 1);
+      ctx.fillStyle = ft.color;
+      ctx.font = 'bold 14px Outfit, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.shadowColor = ft.color;
+      ctx.shadowBlur = 6;
+      ctx.fillText(ft.text, ft.x, ft.y);
+      ctx.shadowBlur = 0;
+    }
+    ctx.globalAlpha = 1;
+
+    /* ── vignette ── */
+    const vig = ctx.createRadialGradient(W / 2, H / 2, W * 0.3, W / 2, H / 2, W * 0.75);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(0,0,0,0.45)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, W, H);
+
+    /* ── HUD ── */
+    // Hearts for HP
+    ctx.textAlign = 'left';
+    for (let i = 0; i < s.maxHp; i++) {
+      const hx = 14 + i * 24, hy = 22;
+      ctx.save();
+      ctx.translate(hx, hy);
+      if (i < s.hp) {
+        ctx.shadowColor = '#ff3366';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#ff3366';
+      } else {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(255,51,102,0.2)';
+      }
+      drawHeart(ctx, 0, -5, 8);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Score
+    ctx.fillStyle = '#f0ecf4';
+    ctx.font = 'bold 14px Outfit, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.shadowColor = '#ff69b4';
+    ctx.shadowBlur = 4;
+    ctx.fillText(`✦ ${s.score}`, W - 14, 22);
+    ctx.shadowBlur = 0;
+
+    // Shield cooldown indicator
+    if (s.shieldCooldown > 0 && s.shieldTimer === 0) {
+      const pct = 1 - s.shieldCooldown / SHIELD_COOLDOWN;
+      ctx.fillStyle = 'rgba(136,238,255,0.3)';
+      ctx.font = '11px Outfit, sans-serif';
+      ctx.fillText(`🛡 ${Math.ceil(pct * 100)}%`, W - 14, 38);
+    } else if (s.shieldTimer > 0) {
+      ctx.fillStyle = '#88eeff';
+      ctx.font = '11px Outfit, sans-serif';
+      ctx.fillText('🛡 ATTIVO', W - 14, 38);
+    } else {
+      ctx.fillStyle = 'rgba(136,238,255,0.6)';
+      ctx.font = '11px Outfit, sans-serif';
+      ctx.fillText('🛡 Pronto', W - 14, 38);
+    }
+
+    ctx.textAlign = 'left';
     ctx.restore();
   }
 
+  /* ── game loop ── */
   function gameLoop() {
     update();
     draw();
-    if (state.running) {
+    if (s.running) {
       animFrame = requestAnimationFrame(gameLoop);
     } else {
-      onGameOver(state.score);
+      onGameOver(s.score);
     }
   }
 
   animFrame = requestAnimationFrame(gameLoop);
 
   return function cleanup() {
-    state.running = false;
+    s.running = false;
     if (animFrame) cancelAnimationFrame(animFrame);
   };
 }
