@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion, useMotionValue, animate, AnimatePresence } from 'framer-motion';
 import { Home, Twitch, Youtube, Instagram, Mic } from 'lucide-react';
 
 const navLinks = [
@@ -11,92 +11,181 @@ const navLinks = [
   { path: '/podcast',   label: 'Podcast',   icon: <Mic       size={16} /> },
 ];
 
-const LOGO_URL = 'https://github.com/user-attachments/assets/f721344e-6153-4d66-b5ad-a8a39945fa99';
-const CLIENT_ID = 'i08d9n8i6zv0atnj3hyn70vbbu3yye';
+const LOGO_URL =
+  'https://github.com/user-attachments/assets/f721344e-6153-4d66-b5ad-a8a39945fa99';
 
-export default function Navbar() {
-  const location  = useLocation();
-  const [menuOpen,    setMenuOpen]    = useState(false);
-  const [twitchUser,  setTwitchUser]  = useState(null);
+/* ─────────────────────────────────────────────────────────
+   LIQUID GLASS PILL — draggabile, liquida, magica
+   ───────────────────────────────────────────────────────── */
+function LiquidPill({ activePath, onNavigate, containerRef, linkRefs }) {
+  const x     = useMotionValue(0);
+  const pillW = useMotionValue(90);
 
-  const redirectUri = typeof window !== 'undefined' ? window.location.origin : 'https://andryxify.it';
-  const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${redirectUri}&response_type=token&scope=user:read:email`;
+  const [isDragging, setIsDragging]   = useState(false);
+  const [hoverTarget, setHoverTarget] = useState(activePath);
+  const [ready, setReady]             = useState(false);
+  const wasDragging                   = useRef(false);
 
-  // Close drawer on route change
-  useEffect(() => { setMenuOpen(false); }, [location.pathname]); // eslint-disable-line react-hooks/set-state-in-effect
+  const getInfo = useCallback((path) => {
+    const container = containerRef.current;
+    const link      = linkRefs.current?.[path];
+    if (!container || !link) return { x: 0, w: 90 };
+    const cR = container.getBoundingClientRect();
+    const lR = link.getBoundingClientRect();
+    return { x: lR.left - cR.left, w: lR.width };
+  }, [containerRef, linkRefs]);
 
-  // Fetch Twitch user from stored token
+  /* Init */
   useEffect(() => {
-    const fetchTwitchUser = async () => {
-      const token = localStorage.getItem('twitchAccessToken');
-      if (!token) return;
-      try {
-        const res  = await fetch('https://api.twitch.tv/helix/users', {
-          headers: { 'Authorization': `Bearer ${token}`, 'Client-Id': CLIENT_ID },
-        });
-        const data = await res.json();
-        if (data.data?.length > 0) {
-          setTwitchUser(data.data[0]);
-        } else {
-          localStorage.removeItem('twitchAccessToken');
-        }
-      } catch (e) {
-        console.error('Failed to fetch Twitch user', e);
+    const t = setTimeout(() => {
+      const info = getInfo(activePath);
+      if (info.w > 0) {
+        x.set(info.x);
+        pillW.set(info.w);
+        setHoverTarget(activePath);
+        setReady(true);
       }
-    };
-    setTimeout(fetchTwitchUser, 500);
+    }, 80);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /* Sync on route change */
+  useEffect(() => {
+    if (isDragging || !ready) return;
+    const info = getInfo(activePath);
+    animate(x,     info.x, { type: 'spring', stiffness: 340, damping: 30 });
+    animate(pillW, info.w, { type: 'spring', stiffness: 340, damping: 30 });
+    setHoverTarget(activePath);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePath, ready]);
+
+  /* Resize */
+  useEffect(() => {
+    const onResize = () => {
+      if (isDragging || !ready) return;
+      const info = getInfo(activePath);
+      x.set(info.x);
+      pillW.set(info.w);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [activePath, isDragging, ready, getInfo, x, pillW]);
+
+  const handleDragStart = useCallback(() => {
+    setIsDragging(true);
+    wasDragging.current = true;
+  }, []);
+
+  const handleDrag = useCallback((_, info) => {
+    for (const [path, ref] of Object.entries(linkRefs.current || {})) {
+      if (!ref) continue;
+      const rect = ref.getBoundingClientRect();
+      if (info.point.x >= rect.left - 10 && info.point.x <= rect.right + 10) {
+        if (path !== hoverTarget) {
+          setHoverTarget(path);
+          animate(pillW, getInfo(path).w, { type: 'spring', stiffness: 380, damping: 26 });
+        }
+        return;
+      }
+    }
+  }, [linkRefs, hoverTarget, getInfo, pillW]);
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+    const info = getInfo(hoverTarget);
+    animate(x,     info.x, { type: 'spring', stiffness: 420, damping: 32 });
+    animate(pillW, info.w, { type: 'spring', stiffness: 420, damping: 32 });
+    onNavigate(hoverTarget);
+    setTimeout(() => { wasDragging.current = false; }, 50);
+  }, [hoverTarget, getInfo, x, pillW, onNavigate]);
+
+  if (!ready) return null;
+
+  return (
+    <motion.div
+      className={`liquid-nav-pill${isDragging ? ' is-dragging' : ''}`}
+      drag="x"
+      dragConstraints={containerRef}
+      dragElastic={0.06}
+      dragMomentum={false}
+      style={{ x, width: pillW, position: 'absolute', top: 0, left: 0, height: '100%' }}
+      animate={{ scale: isDragging ? 1.1 : 1, zIndex: isDragging ? 9999 : 2 }}
+      transition={{ scale: { type: 'spring', stiffness: 260, damping: 18 } }}
+      onDragStart={handleDragStart}
+      onDrag={handleDrag}
+      onDragEnd={handleDragEnd}
+    />
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
+   NAVBAR
+   ───────────────────────────────────────────────────────── */
+export default function Navbar() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const linksContainerRef = useRef(null);
+  const linkRefs          = useRef({});
+
+  useEffect(() => {
+    setMenuOpen(false); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [location.pathname]);
 
   return (
     <>
-      {/* ── Desktop / Tablet pill navbar ── */}
+      {/* ── Pill navbar ── */}
       <nav className="navbar-container glass-panel">
         <div className="navbar-content">
-          {/* Logo firma */}
+
           <Link to="/" className="navbar-logo" aria-label="ANDRYXify – Home">
-            <img
-              src={LOGO_URL}
-              alt="Andryx"
-              style={{
-                height: '34px',
-                width: 'auto',
-                display: 'block',
-                filter: 'invert(1) hue-rotate(180deg)',
-                mixBlendMode: 'screen',
-                objectFit: 'contain',
-              }}
-            />
+            <img src={LOGO_URL} alt="Andryx" className="navbar-logo-img" />
           </Link>
 
-          {/* Desktop links */}
-          <div className="nav-links">
+          <div
+            ref={linksContainerRef}
+            className="nav-links"
+            style={{ position: 'relative', overflow: 'visible' }}
+          >
+            <LiquidPill
+              activePath={location.pathname}
+              onNavigate={navigate}
+              containerRef={linksContainerRef}
+              linkRefs={linkRefs}
+            />
+
             {navLinks.map(link => {
               const isActive = location.pathname === link.path;
               return (
-                <Link
+                <div
                   key={link.path}
-                  to={link.path}
-                  className={`nav-link ${isActive ? 'active' : ''}`}
+                  ref={el => { linkRefs.current[link.path] = el; }}
+                  style={{ position: 'relative', zIndex: 1 }}
                 >
-                  <motion.span whileHover={{ scale: 1.15, rotate: 5 }} style={{ display: 'flex' }}>
-                    {link.icon}
-                  </motion.span>
-                  <span className="nav-label">{link.label}</span>
-                  {isActive && (
-                    <motion.div
-                      layoutId="active-pill"
-                      className="active-pill"
-                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                    />
-                  )}
-                </Link>
+                  <Link
+                    to={link.path}
+                    className={`nav-link${isActive ? ' active' : ''}`}
+                    style={{ position: 'relative', zIndex: isActive ? 0 : 1 }}
+                  >
+                    <motion.span
+                      whileHover={{ scale: 1.2, rotate: 5 }}
+                      style={{ display: 'flex', pointerEvents: 'none' }}
+                    >
+                      {link.icon}
+                    </motion.span>
+                    <span className="nav-label" style={{ pointerEvents: 'none' }}>
+                      {link.label}
+                    </span>
+                  </Link>
+                </div>
               );
             })}
           </div>
 
-          {/* Hamburger (mobile only) */}
           <button
-            className={`nav-hamburger ${menuOpen ? 'open' : ''}`}
+            className={`nav-hamburger${menuOpen ? ' open' : ''}`}
             onClick={() => setMenuOpen(o => !o)}
             aria-label={menuOpen ? 'Chiudi menu' : 'Apri menu'}
           >
@@ -105,63 +194,30 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* ── Mobile slide-down drawer ── */}
+      {/* ── Mobile drawer ── */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div
             className="nav-mobile-drawer open"
-            initial={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.25 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
           >
-            {navLinks.map(link => {
-              const isActive = location.pathname === link.path;
-              return (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className={`nav-mobile-link ${isActive ? 'active' : ''}`}
-                >
-                  {link.icon}
-                  {link.label}
-                </Link>
-              );
-            })}
+            {navLinks.map(link => (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={`nav-mobile-link${location.pathname === link.path ? ' active' : ''}`}
+                onClick={() => setMenuOpen(false)}
+              >
+                {link.icon}
+                {link.label}
+              </Link>
+            ))}
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* ── Twitch auth button (top-right) ── */}
-      <div className="top-right-auth">
-        {twitchUser ? (
-          <div className="login-btn" title="Sei connesso con Twitch">
-            <img
-              src={twitchUser.profile_image_url}
-              alt={twitchUser.display_name}
-              style={{ width: 22, height: 22, borderRadius: '50%' }}
-            />
-            <span style={{ fontSize: '0.85rem' }}>{twitchUser.display_name}</span>
-            <button
-              onClick={() => { localStorage.removeItem('twitchAccessToken'); window.location.reload(); }}
-              style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontWeight: 800, lineHeight: 1 }}
-              title="Logout"
-            >
-              ×
-            </button>
-          </div>
-        ) : (
-          <motion.a
-            href={authUrl}
-            className="login-btn"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Twitch size={16} />
-            <span className="login-text">Accedi</span>
-          </motion.a>
-        )}
-      </div>
     </>
   );
 }

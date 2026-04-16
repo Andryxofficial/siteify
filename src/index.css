@@ -325,38 +325,6 @@ body::before {
 
 .nav-mobile-link.active { color: var(--primary); }
 
-/* Auth button (top-right) */
-.top-right-auth {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  z-index: 1001;
-}
-
-.login-btn {
-  background: linear-gradient(135deg, #7c3aed, #9146FF);
-  color: white;
-  padding: 0.5rem 1.1rem;
-  border-radius: var(--r-full);
-  text-decoration: none;
-  font-weight: 700;
-  font-size: .875rem;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  box-shadow: 0 4px 16px rgba(145,70,255,.38);
-  transition: all .25s var(--ease-bounce);
-  font-family: 'Outfit', sans-serif;
-  white-space: nowrap;
-}
-
-.login-btn:hover {
-  transform: translateY(-2px) scale(1.03);
-  box-shadow: 0 6px 22px rgba(145,70,255,.55);
-}
-
-.login-text { display: inline; }
-
 /* ═══════════════════════════════════════════════════
    PAGE LAYOUT
    ═══════════════════════════════════════════════════ */
@@ -626,13 +594,6 @@ body::before {
   .nav-links   { display: none; }
   .nav-hamburger { display: flex; }
   .nav-label   { display: none; }
-  .login-text  { display: none; }
-
-  .top-right-auth {
-    top: auto;
-    bottom: 16px;
-    right: 16px;
-  }
 
   .main-content { gap: 1.5rem; }
 
@@ -656,4 +617,151 @@ body::before {
 @media (max-width: 360px) {
   .navbar-logo { font-size: 1rem; }
   .title { font-size: 1.9rem; }
+}
+
+/* ═══════════════════════════════════════════════════
+   LIQUID GLASS PILL (nav indicator / drag handle)
+   ═══════════════════════════════════════════════════ */
+
+.liquid-nav-pill {
+  position: absolute;
+  top: 0; left: 0;
+  height: 100%;
+  border-radius: var(--r-sm);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  overflow: hidden;
+  will-change: transform, width;
+
+  /* Apple Liquid Glass core */
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.20) 0%,
+    rgba(255, 0, 212, 0.14) 55%,
+    rgba(255, 255, 255, 0.09) 100%
+  );
+  backdrop-filter: blur(32px) saturate(220%) brightness(118%);
+  -webkit-backdrop-filter: blur(32px) saturate(220%) brightness(118%);
+
+  /* Borders: top bright edge, rest subtle */
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top-color: rgba(255, 255, 255, 0.44);
+
+  /* Layered shadows for glass depth */
+  box-shadow:
+    0 1px 0  rgba(255, 255, 255, 0.26),      /* top edge glow */
+    0 2px 14px rgba(255, 0, 212, 0.20),      /* magenta halo */
+    inset 0  1px 0 rgba(255, 255, 255, 0.38), /* inner top highlight */
+    inset 0 -1px 0 rgba(0, 0, 0, 0.14),      /* inner bottom shadow */
+    inset  1px 0 0 rgba(255, 255, 255, 0.08),
+    inset -1px 0 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Prismatic top-center specular line */
+.liquid-nav-pill::before {
+  content: '';
+  position: absolute;
+  top: 1px; left: 18%; right: 18%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,.70) 40%,
+    rgba(255,255,255,.85) 50%,
+    rgba(255,255,255,.70) 60%,
+    transparent 100%
+  );
+  pointer-events: none;
+  border-radius: 100%;
+}
+
+/* Lens blob highlight */
+.liquid-nav-pill::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 16%;
+  width: 30%; height: 48%;
+  background: radial-gradient(ellipse at center, rgba(255,255,255,.22) 0%, transparent 80%);
+  border-radius: 50%;
+  filter: blur(3px);
+  pointer-events: none;
+}
+
+/* ── While dragging: lifts and glows ── */
+.liquid-nav-pill.is-dragging {
+  cursor: grabbing;
+  backdrop-filter: blur(44px) saturate(280%) brightness(130%);
+  -webkit-backdrop-filter: blur(44px) saturate(280%) brightness(130%);
+  border-top-color: rgba(255, 255, 255, 0.62);
+  box-shadow:
+    0 1px 0  rgba(255, 255, 255, 0.45),
+    0 8px 32px rgba(255, 0, 212, 0.42),
+    0 24px 64px rgba(255, 0, 212, 0.22),
+    inset 0  1px 0 rgba(255, 255, 255, 0.52),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+}
+
+/* ── Logo image styling ── */
+.navbar-logo-img {
+  height: 34px;
+  width: auto;
+  display: block;
+  filter: invert(1) hue-rotate(180deg);
+  mix-blend-mode: screen;
+  object-fit: contain;
+  transition: filter .2s ease;
+}
+
+/* ── Override glass-panel for navbar ── */
+nav.navbar-container.glass-panel {
+  overflow: visible;    /* let pill float above page on drag */
+  padding: 0.5rem 1rem;
+  max-width: calc(100vw - 32px);
+  backdrop-filter: blur(40px) saturate(210%) brightness(112%);
+  -webkit-backdrop-filter: blur(40px) saturate(210%) brightness(112%);
+  border-top-color: rgba(255,255,255,.28);
+  box-shadow:
+    0 4px 32px rgba(0,0,0,.38),
+    inset 0 1px 0 rgba(255,255,255,.18),
+    inset 0 -1px 0 rgba(0,0,0,.18);
+}
+
+/* ═══════════════════════════════════════════════════
+   MOBILE: logo centrato quando i link sono nascosti
+   ═══════════════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+  /* Three-slot layout: [hamburger] [logo-center] [empty] */
+  .navbar-content {
+    display: grid;
+    grid-template-columns: 40px 1fr 40px;
+    align-items: center;
+  }
+
+  /* Hamburger goes to col 1 (left) */
+  .nav-hamburger {
+    grid-column: 1;
+    display: flex;
+    margin: 0;
+  }
+
+  /* Logo goes to col 2 (center) */
+  .navbar-logo {
+    grid-column: 2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* Nav links col: hidden on mobile */
+  .nav-links {
+    display: none;
+  }
+
+  /* Larger logo image on mobile */
+  .navbar-logo-img {
+    height: 30px;
+  }
 }
