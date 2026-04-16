@@ -24,21 +24,21 @@ function TwitchOAuthRedirect() {
   const location = useLocation();
 
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash && hash.includes('access_token')) {
+    const hash = location.hash || window.location.hash;
+    if (hash) {
       const params = new URLSearchParams(hash.substring(1));
       const token = params.get('access_token');
       if (token) {
         localStorage.setItem('twitchGameToken', token);
         // Clean the hash from the URL
-        window.history.replaceState(null, '', window.location.pathname);
+        window.history.replaceState(null, '', location.pathname);
         // If we're not already on the game page, navigate there
         if (location.pathname !== '/gioco') {
           navigate('/gioco', { replace: true });
         }
       }
     }
-  }, [navigate, location.pathname]);
+  }, [navigate, location]);
 
   return null;
 }
