@@ -91,8 +91,8 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
     score: 0,
     hp: 4, maxHp: 4,
     wave: 0,
-    waveTimer: 0,
     waveEnemiesLeft: 0,
+    spawnQueue: [],
     waveBanner: null,
     running: true,
     frame: 0,
@@ -180,20 +180,10 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
 
     S.waveBanner = { text: `— Ondata ${S.wave} —`, life: 1 };
 
-    // Spawn all enemies for this wave with staggered delays
+    // Queue staggered spawns via frame-based delays (no setTimeout)
     for (let i = 0; i < count; i++) {
-      const delay = i * rndInt(15, 30);
-      scheduleEnemy(delay);
+      S.spawnQueue.push(S.frame + i * rndInt(15, 30));
     }
-  }
-
-  function scheduleEnemy(delay) {
-    // We track scheduled spawns via waveTimer in update
-    S.waveTimer = Math.max(S.waveTimer, delay);
-    setTimeout(() => {
-      if (!S.running) return;
-      spawnEnemy();
-    }, delay * 16.67);
   }
 
   function pickEnemyType() {
@@ -254,6 +244,14 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
       if (S.waveBanner.life <= 0) S.waveBanner = null;
     }
 
+    // Process spawn queue (frame-based staggering)
+    for (let i = S.spawnQueue.length - 1; i >= 0; i--) {
+      if (S.frame >= S.spawnQueue[i]) {
+        spawnEnemy();
+        S.spawnQueue.splice(i, 1);
+      }
+    }
+
     /* Input */
     const keys = keysRef.current;
     let mx = 0, my = 0;
@@ -289,6 +287,7 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
       let aimA = S.aimAngle;
       let nearest = null, nearDist = Infinity;
       for (const e of S.enemies) {
+        if (e.hp <= 0) continue;
         const d = dist(S.px, S.py, e.x, e.y);
         if (d < nearDist) { nearDist = d; nearest = e; }
       }
@@ -426,7 +425,7 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
 
     /* Heal power-up every 1000 pts */
     const healMilestone = Math.floor(S.score / HEAL_SCORE_INTERVAL);
-    if (healMilestone > S.lastHealMilestone) {
+    if (healMilestone > S.lastHealMilestone && S.hp < S.maxHp) {
       S.lastHealMilestone = healMilestone;
       const spawnAngle = Math.random() * PI2;
       const spawnDist = rnd(60, 180);
