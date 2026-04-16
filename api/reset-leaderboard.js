@@ -3,7 +3,8 @@ import { Redis } from '@upstash/redis';
 /**
  * POST /api/reset-leaderboard
  *
- * Admin endpoint: wipes every Redis key that starts with "neural_dash_leaderboard".
+ * Admin endpoint: wipes every Redis key that starts with "neural_dash_leaderboard"
+ * (used by Andryx Quest and legacy Neural Dash).
  * Protected by Authorization: Bearer <IUA_SECRET>.
  *
  * Usage (curl):

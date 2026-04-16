@@ -30,6 +30,16 @@ const PLAYER_SPD = 2.4;
 const ATTACK_DUR = 12;
 const ATTACK_RANGE = 28;
 const IFRAME_DUR = 40;
+const ATTACK_HIT_RADIUS = 24;
+const ENEMY_COLLISION_RADIUS = 18;
+const GEM_COLLECT_RADIUS = 16;
+const EXIT_PORTAL_RADIUS = 20;
+
+const ENEMY_STATS = {
+  slime: { hp: 1, spd: 0.6, points: 10 },
+  bat:   { hp: 1, spd: 1.2, points: 20 },
+  ghost: { hp: 2, spd: 0.8, points: 30 },
+};
 
 const C = {
   bg: '#0d1117',
@@ -105,8 +115,8 @@ function spawnEnemies(roomNum, grid) {
     } while ((grid[y][x] === 1 || (x < 4 && y > ROWS - 5)) && tries < 50);
     if (tries >= 50) continue;
     const type = types[Math.floor(Math.random() * types.length)];
-    const baseHp = type === 'slime' ? 1 : type === 'bat' ? 1 : 2;
-    const spd = type === 'slime' ? 0.6 : type === 'bat' ? 1.2 : 0.8;
+    const baseHp = ENEMY_STATS[type].hp;
+    const spd = ENEMY_STATS[type].spd;
     enemies.push({
       type,
       x: x * TILE + TILE / 2,
@@ -389,14 +399,14 @@ export default function GamePage() {
         for (const e of state.enemies) {
           if (e.dead) continue;
           const dx = e.x - ap.x, dy = e.y - ap.y;
-          if (Math.sqrt(dx * dx + dy * dy) < 24) {
+          if (Math.sqrt(dx * dx + dy * dy) < ATTACK_HIT_RADIUS) {
             e.hp--;
             e.hitFlash = 8;
             addParticles(e.x, e.y, '#fff', 4);
             state.screenShake = 4;
             if (e.hp <= 0) {
               e.dead = true;
-              const pts = e.type === 'ghost' ? 30 : e.type === 'bat' ? 20 : 10;
+              const pts = ENEMY_STATS[e.type].points;
               state.score += pts;
               addParticles(e.x, e.y, C[e.type + 'Glow'] || C.particle, 10);
               addFloatText(e.x, e.y - 10, `+${pts}`, C[e.type]);
@@ -451,7 +461,7 @@ export default function GamePage() {
         // Enemy-player collision
         if (state.iframe === 0) {
           const dx = state.px - e.x, dy = state.py - e.y;
-          if (Math.sqrt(dx * dx + dy * dy) < 18) {
+          if (Math.sqrt(dx * dx + dy * dy) < ENEMY_COLLISION_RADIUS) {
             state.hp--;
             state.iframe = IFRAME_DUR;
             state.screenShake = 8;
@@ -468,7 +478,7 @@ export default function GamePage() {
         if (g.collected) continue;
         g.pulse = (g.pulse + 0.05) % (Math.PI * 2);
         const dx = state.px - g.x, dy = state.py - g.y;
-        if (Math.sqrt(dx * dx + dy * dy) < 16) {
+        if (Math.sqrt(dx * dx + dy * dy) < GEM_COLLECT_RADIUS) {
           g.collected = true;
           state.score += 15;
           addParticles(g.x, g.y, C.gem, 6);
@@ -484,7 +494,7 @@ export default function GamePage() {
       // Check exit collision
       if (state.exitOpen) {
         const dx = state.px - state.exitX, dy = state.py - state.exitY;
-        if (Math.sqrt(dx * dx + dy * dy) < 20) {
+        if (Math.sqrt(dx * dx + dy * dy) < EXIT_PORTAL_RADIUS) {
           enterNextRoom();
         }
       }
