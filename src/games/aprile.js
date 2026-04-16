@@ -71,7 +71,6 @@ function dist(ax, ay, bx, by) {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
-function lerp(a, b, t) { return a + (b - a) * t; }
 
 function rng(min, max) { return min + Math.random() * (max - min); }
 
