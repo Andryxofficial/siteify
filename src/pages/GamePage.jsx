@@ -453,6 +453,10 @@ export default function GamePage() {
   /* ─── Input handlers ─── */
   const touchStartRef = useRef(null);
 
+  // Keep a ref to gameStatus so the keydown handler can read it without stale closures
+  const gameStatusRef = useRef(gameStatus);
+  gameStatusRef.current = gameStatus;
+
   useEffect(() => {
     function handleKeyDown(e) {
       const state = gameStateRef.current;
@@ -478,10 +482,6 @@ export default function GamePage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
-  // Keep a ref to gameStatus so the keydown handler can read it
-  const gameStatusRef = useRef(gameStatus);
-  gameStatusRef.current = gameStatus;
 
   /* ─── Touch / swipe handlers ─── */
   function handleTouchStart(e) {

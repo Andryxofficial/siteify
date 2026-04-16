@@ -19,9 +19,10 @@ function getWeeklyKey(now = new Date()) {
 }
 
 /**
- * Parse the flat interleaved array returned by zrange with withScores
- * into [{username, score}]. Handles both flat [member, score, …] and
- * object [{value, score}] formats for @upstash/redis compatibility.
+ * Parse scores returned by zrange with withScores.
+ * @upstash/redis v1.x returns a flat interleaved array: [member, score, member, score, …]
+ * The object-format branch (value/member/element) is a defensive fallback in case
+ * future SDK versions change the response shape.
  */
 function parseScores(raw) {
   if (!Array.isArray(raw) || raw.length === 0) return [];
@@ -137,15 +138,19 @@ export default async function handler(req, res) {
       }
 
       if (currentWeekly === null || Number(currentWeekly) < score) {
-        ops.push(
-          redis.zadd(weeklyKey, { score, member: username })
-            .then(() => redis.expire(weeklyKey, WEEKLY_TTL_SECONDS))
-        );
+        ops.push(redis.zadd(weeklyKey, { score, member: username }));
         updatedWeekly = true;
       }
 
       if (ops.length > 0) {
         await Promise.all(ops);
+      }
+
+      // Set TTL on weekly key separately so a failure here doesn't lose the score
+      if (updatedWeekly) {
+        await redis.expire(weeklyKey, WEEKLY_TTL_SECONDS).catch((e) => {
+          console.error('Failed to set weekly TTL:', e);
+        });
       }
 
       if (!updatedAlltime && !updatedWeekly) {
