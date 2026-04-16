@@ -4,7 +4,7 @@ import { Twitch, Trophy, Zap, LogIn, RotateCcw } from 'lucide-react';
 import SEO from '../components/SEO';
 
 /* ─── Twitch OAuth config ─── */
-const CHIAVETWITCH = 'i08d9n8i6zv0atnj3hyn70vbbu3yye';
+const CHIAVETWITCH = import.meta.env.VITE_CHIAVETWITCH;
 const REDIRECT_URI = typeof window !== 'undefined'
   ? `${window.location.origin}/gioco`
   : 'https://andryxify.it/gioco';

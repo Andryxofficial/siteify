@@ -43,13 +43,15 @@ siteify/
 │       ├── InstagramPage.jsx     ← Feed Instagram
 │       ├── PodcastPage.jsx       ← Episodi podcast Spotify
 │       ├── TikTokPage.jsx        ← Feed TikTok
+│       ├── GamePage.jsx          ← Gioco in-browser con autenticazione Twitch OAuth
 │       ├── tracker_scoiattoli.jsx ← 🔒 Pagina segreta /scoiattoli (Squirrel Radar)
 │       └── SquirrelRadar.css     ← Stili specifici per tracker_scoiattoli
 ├── vercel.json                   ← Configurazione deploy Vercel
 ├── vite.config.js                ← Configurazione Vite
 ├── eslint.config.js              ← ESLint (flat config)
 ├── package.json                  ← Dipendenze e script npm
-└── .env.example                  ← Template variabili d'ambiente
+├── .env.example                  ← Template variabili d'ambiente (pubblico, senza valori)
+└── .env.local                    ← 🔒 Credenziali reali (gitignored, NON committare)
 ```
 
 ---
@@ -85,6 +87,11 @@ siteify/
 - Gestisce il redirect OAuth di Twitch: legge `access_token` dall'URL hash e lo salva in `localStorage`
 - Route `/scoiattoli` è nascosta (non appare in navbar)
 
+### `GamePage.jsx`
+- Gioco in-browser (canvas, 3 corsie, ostacoli e sinapsi)
+- Autenticazione Twitch OAuth via `CHIAVETWITCH` (`VITE_CHIAVETWITCH` in `.env.local`)
+- Invia i punteggi al leaderboard serverless (`/api/leaderboard`)
+
 ### `TikTokIcon.jsx`
 - SVG custom perché lucide-react non include l'icona TikTok
 - Accetta prop `size` (default 24)
@@ -102,6 +109,7 @@ siteify/
 | `/podcast` | `PodcastPage` | Episodi podcast |
 | `/tiktok` | `TikTokPage` | Feed TikTok |
 | `/scoiattoli` | `tracker_scoiattoli` | Pagina segreta (non in navbar) |
+| `/gioco` | `GamePage` | Gioco con login Twitch e leaderboard |
 
 ---
 
@@ -110,6 +118,24 @@ siteify/
 - I file nella cartella `public/` sono serviti alla radice (`/nomefile.ext`)
 - **Non usare URL GitHub raw** per le immagini del sito: scaricare sempre il file in `public/` e referenziarlo con path locale (es. `/andryx-logo.png`)
 - Il logo principale è `public/andryx-logo.png` (PNG con sfondo bianco, firma "Andryx" in nero/viola)
+
+---
+
+## 🔑 Credenziali e variabili d'ambiente
+
+### File
+- **`.env.local`** — file gitignored (coperto da `*.local` in `.gitignore`). Contiene tutte le chiavi reali. **Non committare mai questo file.**
+- **`.env.example`** — template pubblico senza valori, da tenere aggiornato.
+
+### Convenzione di naming (chiavi frontend / Vite)
+Le variabili d'ambiente inserite dall'agent seguono la convenzione `VITE_CHIAVE<PROVIDER>`:
+
+| Variabile | Provider | Usato in |
+|---|---|---|
+| `VITE_CHIAVETWITCH` | Twitch | `src/pages/GamePage.jsx` → `import.meta.env.VITE_CHIAVETWITCH` |
+
+> **Regola**: ogni nuova chiave introdotta dall'agent deve chiamarsi `VITE_CHIAVE<PROVIDER>` (es. `VITE_CHIAVEYOUTUBE`, `VITE_CHIAVESPOTIFY`).
+> Le variabili server-side (API Vercel) seguono la stessa logica ma senza prefisso `VITE_`.
 
 ---
 
@@ -130,6 +156,8 @@ npm run lint      # ESLint (flat config)
 |---|---|---|
 | 2026-04-16 | Aggiunto logo Andryx in `public/andryx-logo.png` e aggiornato `LOGO_URL` in Navbar e Footer | `public/andryx-logo.png`, `src/components/Navbar.jsx`, `src/components/Footer.jsx` |
 | 2026-04-16 | Creato `.github/copilot-instructions.md` con mappatura completa del progetto | `.github/copilot-instructions.md` |
+| 2026-04-16 | Rinominato `TWITCH_CLIENT_ID` → `CHIAVETWITCH` in `GamePage.jsx`; aggiornato Client ID Twitch | `src/pages/GamePage.jsx` |
+| 2026-04-16 | Spostato `CHIAVETWITCH` in `.env.local` (gitignored); `GamePage.jsx` ora legge da `import.meta.env.VITE_CHIAVETWITCH`; aggiornati `.env.example` e docs | `src/pages/GamePage.jsx`, `.env.local`, `.env.example`, `.github/copilot-instructions.md` |
 
 > **Nota per l'agent**: aggiornare sempre la tabella "Registro operazioni" ogni volta che si esegue una modifica significativa al progetto.
 
@@ -144,3 +172,4 @@ npm run lint      # ESLint (flat config)
 - Stili globali e design token in `src/index.css` (variabili CSS `--primary`, `--secondary`, `--accent`, `--glass-border`, ecc.)
 - Nessun CSS-in-JS: usare `className` con classi definite in `index.css`
 - Le costanti condivise tra componenti (es. `LOGO_URL`) vanno estratte e mantenute coerenti
+- Le chiavi API/OAuth introdotte dall'agent si chiamano `VITE_CHIAVE<PROVIDER>` e vengono lette da `import.meta.env` (mai hardcodate nel sorgente)
