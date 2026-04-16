@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Twitch, Trophy, Zap, LogIn, RotateCcw } from 'lucide-react';
+import { Twitch, Trophy, Zap, LogIn, RotateCcw, Calendar, Crown } from 'lucide-react';
 import SEO from '../components/SEO';
 
 /* ─── Twitch OAuth config ─── */
@@ -63,7 +63,11 @@ export default function GamePage() {
   const [gameStatus, setGameStatus] = useState('idle'); // idle | playing | gameover
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
-  const [leaderboard, setLeaderboard] = useState([]);
+  const [weeklyBoard, setWeeklyBoard] = useState([]);
+  const [alltimeBoard, setAlltimeBoard] = useState([]);
+  const [boardTab, setBoardTab] = useState('weekly'); // 'weekly' | 'alltime'
+  const [boardLoading, setBoardLoading] = useState(true);
+  const [boardError, setBoardError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState('');
 
@@ -108,14 +112,22 @@ export default function GamePage() {
   }
 
   async function fetchLeaderboard() {
+    setBoardLoading(true);
+    setBoardError('');
     try {
       const res = await fetch('/api/leaderboard');
-      if (res.ok) {
-        const data = await res.json();
-        setLeaderboard(data.leaderboard || []);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
       }
-    } catch {
-      /* silent */
+      const data = await res.json();
+      setWeeklyBoard(data.weekly || []);
+      setAlltimeBoard(data.alltime || data.leaderboard || []);
+    } catch (e) {
+      console.error('fetchLeaderboard:', e);
+      setBoardError('Impossibile caricare la classifica.');
+    } finally {
+      setBoardLoading(false);
     }
   }
 
@@ -233,9 +245,9 @@ export default function GamePage() {
       state.distance += state.speed;
       state.score = Math.floor(state.distance / 10) + state.bonusScore;
 
-      // Smooth lane transition
+      // Smooth lane transition (snappy)
       const targetX = laneX(state.targetLane, w);
-      state.playerX += (targetX - state.playerX) * 0.18;
+      state.playerX += (targetX - state.playerX) * 0.35;
       state.playerLane = state.targetLane;
 
       // Spawn
@@ -439,15 +451,29 @@ export default function GamePage() {
   }, [twitchToken, submitScore]);
 
   /* ─── Input handlers ─── */
+  const touchStartRef = useRef(null);
+
+  // Keep a ref to gameStatus so the keydown handler can read it without stale closures
+  const gameStatusRef = useRef(gameStatus);
+  gameStatusRef.current = gameStatus;
+
   useEffect(() => {
     function handleKeyDown(e) {
       const state = gameStateRef.current;
+
+      // Start / restart with Space or Enter when not playing
+      if ((e.key === ' ' || e.key === 'Enter') && gameStatusRef.current !== 'playing') {
+        e.preventDefault();
+        setGameStatus('playing');
+        return;
+      }
+
       if (!state || !state.running) return;
 
-      if (e.key === 'ArrowLeft' || e.key === 'a') {
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
         state.targetLane = Math.max(0, state.targetLane - 1);
         e.preventDefault();
-      } else if (e.key === 'ArrowRight' || e.key === 'd') {
+      } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
         state.targetLane = Math.min(LANE_COUNT - 1, state.targetLane + 1);
         e.preventDefault();
       }
@@ -457,18 +483,61 @@ export default function GamePage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  function handleCanvasTouch(e) {
+  /* ─── Touch / swipe handlers ─── */
+  function handleTouchStart(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+  }
+
+  function handleTouchEnd(e) {
+    const state = gameStateRef.current;
+    if (!state || !state.running || !touchStartRef.current) return;
+
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+    const dt = Date.now() - touchStartRef.current.time;
+    touchStartRef.current = null;
+
+    const SWIPE_THRESHOLD = 20;
+    const SWIPE_MAX_TIME = 400;
+
+    // Detect horizontal swipe
+    if (dt < SWIPE_MAX_TIME && Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) {
+        state.targetLane = Math.max(0, state.targetLane - 1);
+      } else {
+        state.targetLane = Math.min(LANE_COUNT - 1, state.targetLane + 1);
+      }
+      return;
+    }
+
+    // Fallback: tap left/right half
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const tapX = touch.clientX - rect.left;
+    const mid = rect.width / 2;
+    if (tapX < mid) {
+      state.targetLane = Math.max(0, state.targetLane - 1);
+    } else {
+      state.targetLane = Math.min(LANE_COUNT - 1, state.targetLane + 1);
+    }
+  }
+
+  function handleCanvasClick(e) {
+    // Mouse click only — touch is handled separately via touchStart/touchEnd
+    if (e.nativeEvent.pointerType === 'touch') return;
     const state = gameStateRef.current;
     if (!state || !state.running) return;
-    if (e.type === 'touchstart') e.preventDefault();
 
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const touchX = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const clickX = e.clientX - rect.left;
     const mid = rect.width / 2;
-
-    if (touchX < mid) {
+    if (clickX < mid) {
       state.targetLane = Math.max(0, state.targetLane - 1);
     } else {
       state.targetLane = Math.min(LANE_COUNT - 1, state.targetLane + 1);
@@ -529,8 +598,9 @@ export default function GamePage() {
               width={CANVAS_W}
               height={CANVAS_H}
               className="game-canvas"
-              onTouchStart={handleCanvasTouch}
-              onClick={(e) => { if (e.nativeEvent.pointerType !== 'touch') handleCanvasTouch(e); }}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              onClick={handleCanvasClick}
             />
 
             {/* Overlays */}
@@ -540,7 +610,8 @@ export default function GamePage() {
                   <Zap size={48} color={COLORS.player} />
                   <h2 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '0.5rem 0' }}>Neural Dash</h2>
                   <p style={{ color: COLORS.textMuted, fontSize: '0.85rem', maxWidth: '300px', margin: '0 auto 1rem' }}>
-                    Usa <strong>← →</strong> o tocca lo schermo per muoverti tra le corsie.
+                    Usa <strong>← →</strong> / <strong>A D</strong> o swipe per muoverti tra le corsie.<br />
+                    Premi <strong>Spazio</strong> per iniziare.
                   </p>
 
                   {!twitchUser && !CHIAVETWITCH && (
@@ -609,7 +680,7 @@ export default function GamePage() {
 
           {/* Controls hint (mobile) */}
           <p className="game-controls-hint">
-            ← Tocca a sinistra / destra → per muoverti
+            ← Swipe o tocca sinistra / destra → per muoverti
           </p>
         </div>
 
@@ -660,13 +731,38 @@ export default function GamePage() {
               <Trophy size={18} color="#FFD700" />
               <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Classifica</h3>
             </div>
-            {leaderboard.length === 0 ? (
+
+            {/* Tab switcher */}
+            <div className="leaderboard-tabs">
+              <button
+                className={`leaderboard-tab${boardTab === 'weekly' ? ' active' : ''}`}
+                onClick={() => setBoardTab('weekly')}
+              >
+                <Calendar size={13} /> Settimanale
+              </button>
+              <button
+                className={`leaderboard-tab${boardTab === 'alltime' ? ' active' : ''}`}
+                onClick={() => setBoardTab('alltime')}
+              >
+                <Crown size={13} /> Generale
+              </button>
+            </div>
+
+            {boardLoading ? (
+              <p style={{ fontSize: '0.82rem', color: COLORS.textMuted, textAlign: 'center', padding: '1rem 0' }}>
+                Caricamento…
+              </p>
+            ) : boardError ? (
+              <p style={{ fontSize: '0.82rem', color: COLORS.obstacle, textAlign: 'center', padding: '1rem 0' }}>
+                {boardError}
+              </p>
+            ) : (boardTab === 'weekly' ? weeklyBoard : alltimeBoard).length === 0 ? (
               <p style={{ fontSize: '0.82rem', color: COLORS.textMuted }}>
-                Nessun punteggio ancora. Sii il primo!
+                {boardTab === 'weekly' ? 'Nessun punteggio questa settimana. Sii il primo!' : 'Nessun punteggio ancora. Sii il primo!'}
               </p>
             ) : (
               <div className="leaderboard-list">
-                {leaderboard.map((entry, i) => (
+                {(boardTab === 'weekly' ? weeklyBoard : alltimeBoard).map((entry, i) => (
                   <div key={entry.username} className="leaderboard-entry" style={{
                     background: i === 0 ? 'rgba(255,215,0,0.08)' : i === 1 ? 'rgba(192,192,192,0.06)' : i === 2 ? 'rgba(205,127,50,0.06)' : 'transparent',
                     borderLeft: i < 3 ? `3px solid ${i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : '#CD7F32'}` : '3px solid transparent',

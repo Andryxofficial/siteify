@@ -940,6 +940,44 @@ nav.navbar-container.glass-panel {
 }
 
 /* Leaderboard */
+.leaderboard-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0.75rem;
+  background: var(--surface-1);
+  border-radius: var(--r-sm);
+  padding: 3px;
+}
+
+.leaderboard-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0.4rem 0.5rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.leaderboard-tab:hover {
+  color: var(--text-main);
+  background: var(--surface-2);
+}
+
+.leaderboard-tab.active {
+  background: var(--primary-light);
+  color: var(--primary);
+  box-shadow: 0 1px 4px rgba(255, 0, 212, 0.15);
+}
+
 .leaderboard-list {
   display: flex;
   flex-direction: column;
