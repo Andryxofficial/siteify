@@ -3,6 +3,7 @@ import { Redis } from '@upstash/redis';
 const ALLTIME_KEY = 'neural_dash_leaderboard';
 const MAX_ENTRIES = 50;
 const WEEKLY_TTL_SECONDS = 8 * 24 * 60 * 60; // 8 days (buffer beyond 7)
+const MONTHLY_TTL_SECONDS = 35 * 24 * 60 * 60; // 35 days (buffer beyond ~31)
 
 /**
  * Get the ISO week key for the current week (Monday–Sunday).
@@ -16,6 +17,40 @@ function getWeeklyKey(now = new Date()) {
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
   return `neural_dash_leaderboard:weekly:${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
+/**
+ * Get the monthly key for the current month.
+ * Format: neural_dash_leaderboard:monthly:YYYY-MM
+ */
+function getMonthlyKey(now = new Date()) {
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+  return `neural_dash_leaderboard:monthly:${year}-${month}`;
+}
+
+/**
+ * Get the list of completed months in the current year (Jan up to last completed month).
+ * Returns an array of {key, label, month} for each past month.
+ */
+function getCompletedMonthKeys(now = new Date()) {
+  const year = now.getUTCFullYear();
+  const currentMonth = now.getUTCMonth(); // 0-based: Jan=0
+  const months = [];
+  const monthNames = [
+    'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+    'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre',
+  ];
+  // Only include months that are already completed (before currentMonth)
+  for (let m = 0; m < currentMonth; m++) {
+    const mm = String(m + 1).padStart(2, '0');
+    months.push({
+      key: `neural_dash_leaderboard:monthly:${year}-${mm}`,
+      label: `${monthNames[m]} ${year}`,
+      month: `${year}-${mm}`,
+    });
+  }
+  return months;
 }
 
 /**
@@ -55,30 +90,55 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  let redis;
-  try {
-    redis = new Redis({
-      url: process.env.KV_REST_API_URL,
-      token: process.env.KV_REST_API_TOKEN,
-    });
-  } catch (e) {
-    console.error('Redis init error:', e);
+  const kvUrl = process.env.KV_REST_API_URL;
+  const kvToken = process.env.KV_REST_API_TOKEN;
+
+  if (!kvUrl || !kvToken) {
+    console.error('Leaderboard: KV_REST_API_URL or KV_REST_API_TOKEN not configured.');
     return res.status(500).json({ error: 'Database non configurato.' });
   }
 
-  const weeklyKey = getWeeklyKey();
+  let redis;
+  try {
+    redis = new Redis({ url: kvUrl, token: kvToken });
+  } catch (e) {
+    console.error('Redis init error:', e);
+    return res.status(500).json({ error: 'Errore di connessione al database.' });
+  }
 
-  // GET: return both weekly and all-time leaderboards
+  const weeklyKey = getWeeklyKey();
+  const monthlyKey = getMonthlyKey();
+
+  // GET: return weekly, all-time, and monthly winners leaderboards
   if (req.method === 'GET') {
     try {
-      const [weeklyRaw, alltimeRaw] = await Promise.all([
+      const completedMonths = getCompletedMonthKeys();
+
+      // Fetch weekly + alltime + all completed months' top 3 in parallel
+      const monthlyPromises = completedMonths.map(m =>
+        redis.zrange(m.key, 0, 2, { rev: true, withScores: true })
+      );
+
+      const [weeklyRaw, alltimeRaw, ...monthlyRawArr] = await Promise.all([
         redis.zrange(weeklyKey, 0, MAX_ENTRIES - 1, { rev: true, withScores: true }),
         redis.zrange(ALLTIME_KEY, 0, MAX_ENTRIES - 1, { rev: true, withScores: true }),
+        ...monthlyPromises,
       ]);
+
+      // Build monthly winners: only include months that have at least one entry
+      const monthlyWinners = completedMonths
+        .map((m, i) => ({
+          month: m.month,
+          label: m.label,
+          top3: parseScores(monthlyRawArr[i]),
+        }))
+        .filter(m => m.top3.length > 0)
+        .reverse(); // Most recent month first
 
       return res.status(200).json({
         weekly: parseScores(weeklyRaw),
         alltime: parseScores(alltimeRaw),
+        monthlyWinners,
         // Keep legacy field for backwards compatibility
         leaderboard: parseScores(alltimeRaw),
       });
@@ -121,16 +181,18 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Impossibile ottenere il nome utente Twitch.' });
       }
 
-      // Write to both all-time and weekly leaderboards.
+      // Write to all-time, weekly, and monthly leaderboards.
       // For each, only update if the new score is higher.
-      const [currentAlltime, currentWeekly] = await Promise.all([
+      const [currentAlltime, currentWeekly, currentMonthly] = await Promise.all([
         redis.zscore(ALLTIME_KEY, username),
         redis.zscore(weeklyKey, username),
+        redis.zscore(monthlyKey, username),
       ]);
 
       const ops = [];
       let updatedAlltime = false;
       let updatedWeekly = false;
+      let updatedMonthly = false;
 
       if (currentAlltime === null || Number(currentAlltime) < score) {
         ops.push(redis.zadd(ALLTIME_KEY, { score, member: username }));
@@ -142,18 +204,28 @@ export default async function handler(req, res) {
         updatedWeekly = true;
       }
 
+      if (currentMonthly === null || Number(currentMonthly) < score) {
+        ops.push(redis.zadd(monthlyKey, { score, member: username }));
+        updatedMonthly = true;
+      }
+
       if (ops.length > 0) {
         await Promise.all(ops);
       }
 
-      // Set TTL on weekly key separately so a failure here doesn't lose the score
+      // Set TTLs separately so a failure here doesn't lose the score
       if (updatedWeekly) {
         await redis.expire(weeklyKey, WEEKLY_TTL_SECONDS).catch((e) => {
           console.error('Failed to set weekly TTL:', e);
         });
       }
+      if (updatedMonthly) {
+        await redis.expire(monthlyKey, MONTHLY_TTL_SECONDS).catch((e) => {
+          console.error('Failed to set monthly TTL:', e);
+        });
+      }
 
-      if (!updatedAlltime && !updatedWeekly) {
+      if (!updatedAlltime && !updatedWeekly && !updatedMonthly) {
         return res.status(200).json({
           message: 'Hai già un punteggio più alto!',
           username,

@@ -1020,6 +1020,28 @@ nav.navbar-container.glass-panel {
   white-space: nowrap;
 }
 
+/* Monthly winners */
+.monthly-winners-block {
+  margin-bottom: 0.75rem;
+}
+
+.monthly-winners-block:last-child {
+  margin-bottom: 0;
+}
+
+.monthly-winners-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--primary);
+  padding: 0.4rem 0.65rem;
+  margin-bottom: 2px;
+  border-bottom: 1px solid rgba(255, 0, 212, 0.15);
+  text-transform: capitalize;
+}
+
 /* ── Game responsive ── */
 @media (max-width: 900px) {
   .game-layout {
