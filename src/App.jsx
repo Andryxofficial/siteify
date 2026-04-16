@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -13,10 +14,39 @@ import GamePage from './pages/GamePage';
 import Scoiattoli from './pages/tracker_scoiattoli';
 import './index.css';
 
+/* ─── Global Twitch OAuth hash handler ───
+   Twitch may redirect to the root URL (or any page) depending on the
+   registered redirect URI in the developer console. This component
+   catches the access_token hash on ANY route, persists it, and
+   navigates to /gioco so GamePage can pick it up.                    */
+function TwitchOAuthRedirect() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const hash = location.hash || window.location.hash;
+    if (hash) {
+      const params = new URLSearchParams(hash.substring(1));
+      const token = params.get('access_token');
+      if (token) {
+        localStorage.setItem('twitchGameToken', token);
+        // Clean the hash from the URL
+        window.history.replaceState(null, '', location.pathname);
+        // If we're not already on the game page, navigate there
+        if (location.pathname !== '/gioco') {
+          navigate('/gioco', { replace: true });
+        }
+      }
+    }
+  }, [navigate, location]);
+
+  return null;
+}
+
 function App() {
-  // Twitch OAuth hash is handled directly by GamePage.jsx
   return (
     <Router>
+      <TwitchOAuthRedirect />
       <div className="app-container">
         <Navbar />
         <AnimatePresence mode="wait">
