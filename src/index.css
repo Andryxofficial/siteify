@@ -677,8 +677,10 @@ body::before {
   height: 34px;
   width: auto;
   display: block;
+  filter: invert(1) hue-rotate(180deg);
+  mix-blend-mode: screen;
   object-fit: contain;
-  transition: opacity .2s ease;
+  transition: filter .2s ease;
 }
 
 /* ── Override glass-panel for navbar ── */
