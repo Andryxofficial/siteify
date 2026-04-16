@@ -55,15 +55,20 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  const kvUrl = process.env.KV_REST_API_URL;
+  const kvToken = process.env.KV_REST_API_TOKEN;
+
+  if (!kvUrl || !kvToken) {
+    console.error('Leaderboard: KV_REST_API_URL or KV_REST_API_TOKEN not configured.');
+    return res.status(500).json({ error: 'Database non configurato.' });
+  }
+
   let redis;
   try {
-    redis = new Redis({
-      url: process.env.KV_REST_API_URL,
-      token: process.env.KV_REST_API_TOKEN,
-    });
+    redis = new Redis({ url: kvUrl, token: kvToken });
   } catch (e) {
     console.error('Redis init error:', e);
-    return res.status(500).json({ error: 'Database non configurato.' });
+    return res.status(500).json({ error: 'Errore di connessione al database.' });
   }
 
   const weeklyKey = getWeeklyKey();
