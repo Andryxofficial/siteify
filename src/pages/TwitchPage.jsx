@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Twitch, ExternalLink, Calendar, Users, Star } from 'lucide-react';
+import SEO from '../components/SEO';
 
 const twitchStats = [
   { icon: <Users size={18} color="#9146FF" />, label: 'Community attiva' },
@@ -17,6 +18,11 @@ export default function TwitchPage() {
       className="main-content"
       style={{ maxWidth: '1100px' }}
     >
+      <SEO
+        title="Twitch — Live Streaming & Gaming"
+        description="Guarda le dirette live di ANDRYXify (Andrea Taliento) su Twitch. Streaming di videogiochi, interazione in chat e community gaming italiana. Segui il canale Twitch e attiva le notifiche!"
+        path="/twitch"
+      />
       <header style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 className="title">
           <span style={{ color: '#9146FF' }}>Twitch</span> Experience

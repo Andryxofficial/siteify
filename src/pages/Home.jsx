@@ -4,6 +4,7 @@ import { Twitch } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SocialHub from '../components/SocialHub';
 import PodcastPromo from '../components/PodcastPromo';
+import SEO from '../components/SEO';
 
 const up = (delay = 0) => ({
   initial:    { opacity: 0, y: 22 },
@@ -34,6 +35,11 @@ export default function Home() {
       exit={{ opacity: 0 }}
       className="main-content"
     >
+      <SEO
+        title="Home"
+        description="ANDRYXify (Andrea Taliento) — Streamer Twitch, gamer e content creator italiano. Live streaming di videogiochi, podcast su Intelligenza Artificiale, video YouTube, clip TikTok e minigioco esclusivo con classifica."
+        path="/"
+      />
       {/* ── Hero: solo testo, niente cerchio ── */}
       <section className="header" style={{ paddingTop: '1rem' }}>
         <motion.h1 className="title" {...up(0.05)} style={{ letterSpacing: '-2px' }}>

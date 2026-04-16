@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Instagram, ExternalLink } from 'lucide-react';
+import SEO from '../components/SEO';
 
 export default function InstagramPage() {
   return (
@@ -10,6 +11,11 @@ export default function InstagramPage() {
       transition={{ type: 'spring', stiffness: 180, damping: 24 }}
       className="main-content"
     >
+      <SEO
+        title="Instagram — Dietro le Quinte & Aggiornamenti"
+        description="Segui ANDRYXify (Andrea Taliento) su Instagram: dietro le quinte delle live, storie quotidiane e aggiornamenti dal mondo gaming e IA."
+        path="/instagram"
+      />
       <header style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 className="title">
           <span style={{ color: '#E1306C' }}>Instagram</span> Feed

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Twitch, Youtube, Instagram, Mic } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 
-const LOGO_URL = 'https://github.com/user-attachments/assets/f721344e-6153-4d66-b5ad-a8a39945fa99';
+const LOGO_URL = '/logo.png';
 
 const socials = [
   { href: 'https://twitch.tv/andryxify',       icon: <Twitch    size={18}/>, label: 'Twitch'    },

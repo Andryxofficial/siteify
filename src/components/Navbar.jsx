@@ -13,8 +13,7 @@ const NAV_LINKS = [
   { path: '/tiktok',    label: 'TikTok',    Icon: ({ size }) => <TikTokIcon size={size} /> },
 ];
 
-const LOGO_URL =
-  'https://github.com/user-attachments/assets/f721344e-6153-4d66-b5ad-a8a39945fa99';
+const LOGO_URL = '/logo.png';
 
 /* ─────────────────────────────────────────────────────────
    MOBILE BOTTOM TAB BAR  (iOS-style, liquid glass)
