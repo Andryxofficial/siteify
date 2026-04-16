@@ -4,13 +4,13 @@ import { Twitch, Trophy, Zap, LogIn, RotateCcw } from 'lucide-react';
 import SEO from '../components/SEO';
 
 /* ─── Twitch OAuth config ─── */
-const TWITCH_CLIENT_ID = 'q03bz5gqylkeqpk5hnqhg9g1k3sdla';
+const CHIAVETWITCH = 'i08d9n8i6zv0atnj3hyn70vbbu3yye';
 const REDIRECT_URI = typeof window !== 'undefined'
   ? `${window.location.origin}/gioco`
   : 'https://andryxify.it/gioco';
 
 function getTwitchLoginUrl() {
-  return `https://id.twitch.tv/oauth2/authorize?client_id=${TWITCH_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=user:read:email`;
+  return `https://id.twitch.tv/oauth2/authorize?client_id=${CHIAVETWITCH}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=user:read:email`;
 }
 
 /* ─── Game constants ─── */
