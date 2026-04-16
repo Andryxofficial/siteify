@@ -103,113 +103,42 @@ function LiquidPill({ activePath, onNavigate, containerRef, linkRefs }) {
 }
 
 /* ─────────────────────────────────────────────────────────
-   MOBILE BOTTOM TAB BAR  (iOS-style)
+   MOBILE BOTTOM TAB BAR  (iOS-style, liquid glass)
+   ─────────────────────────────────────────────────────────
+   Pill uses declarative `animate` prop with % positioning —
+   no DOM measurements, no imperative animate(), works on
+   framer-motion v10/11/12.
    ───────────────────────────────────────────────────────── */
 function MobileTabBar({ activePath, onNavigate }) {
-  const containerRef = useRef(null);
-  const tabRefs      = useRef({});
-  const pillX        = useMotionValue(0);
-  const pillW        = useMotionValue(0);
-  const [ready, setReady] = useState(false);
-
-  // Touch swipe state
-  const touchStartX = useRef(0);
-  const touchStartY = useRef(0);
+  const touchStartX  = useRef(0);
+  const touchStartY  = useRef(0);
   const isHorizontal = useRef(false);
 
-  /* ── Utility: get tab position ── */
-  const getTabInfo = useCallback((path) => {
-    const container = containerRef.current;
-    const tab       = tabRefs.current?.[path];
-    if (!container || !tab) return { x: 0, w: 64 };
-    const cR = container.getBoundingClientRect();
-    const tR = tab.getBoundingClientRect();
-    return { x: tR.left - cR.left, w: tR.width };
-  }, []);
+  const activeIdx   = NAV_LINKS.findIndex(l => l.path === activePath);
+  const tabWidthPct = 100 / NAV_LINKS.length; // each slot is 20%
 
-  /* ── Init pill on mount ── */
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const info = getTabInfo(activePath);
-      if (info.w > 0) {
-        pillX.set(info.x);
-        pillW.set(info.w);
-        setReady(true);
-      }
-    }, 100);
-    return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /* ── Sync pill when route changes ── */
-  useEffect(() => {
-    if (!ready) return;
-    const info = getTabInfo(activePath);
-    animate(pillX, info.x, { type: 'spring', stiffness: 380, damping: 32 });
-    animate(pillW, info.w, { type: 'spring', stiffness: 380, damping: 32 });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePath, ready]);
-
-  /* ── Resize ── */
-  useEffect(() => {
-    const onResize = () => {
-      if (!ready) return;
-      const info = getTabInfo(activePath);
-      pillX.set(info.x);
-      pillW.set(info.w);
-    };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [activePath, ready, getTabInfo, pillX, pillW]);
-
-  /* ── Touch: swipe to navigate ── */
   const handleTouchStart = useCallback((e) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
+    touchStartX.current  = e.touches[0].clientX;
+    touchStartY.current  = e.touches[0].clientY;
     isHorizontal.current = false;
   }, []);
 
   const handleTouchMove = useCallback((e) => {
     const dx = e.touches[0].clientX - touchStartX.current;
     const dy = e.touches[0].clientY - touchStartY.current;
-
-    // Lock direction on first significant movement
-    if (!isHorizontal.current && Math.abs(dx) > 6) {
+    if (!isHorizontal.current && Math.abs(dx) > 6)
       isHorizontal.current = Math.abs(dx) > Math.abs(dy);
-    }
-
-    if (isHorizontal.current && ready) {
-      // Subtle live follow — 15% coupling so it feels reactive but not jittery
-      const base = getTabInfo(activePath).x;
-      pillX.set(base + dx * 0.15);
-    }
-  }, [activePath, getTabInfo, pillX, ready]);
+  }, []);
 
   const handleTouchEnd = useCallback((e) => {
     if (!isHorizontal.current) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(dx) < 35) {
-      // Too short → snap back
-      const info = getTabInfo(activePath);
-      animate(pillX, info.x, { type: 'spring', stiffness: 400, damping: 30 });
-      return;
-    }
-
-    const currentIdx = NAV_LINKS.findIndex(l => l.path === activePath);
-    const nextIdx    = dx < 0
-      ? Math.min(currentIdx + 1, NAV_LINKS.length - 1)
-      : Math.max(currentIdx - 1, 0);
-
-    if (nextIdx !== currentIdx) {
-      onNavigate(NAV_LINKS[nextIdx].path);
-      // pill animation handled by the activePath useEffect above
-    } else {
-      const info = getTabInfo(activePath);
-      animate(pillX, info.x, { type: 'spring', stiffness: 400, damping: 30 });
-    }
-  }, [activePath, getTabInfo, pillX, onNavigate]);
-
-  const currentIdx = NAV_LINKS.findIndex(l => l.path === activePath);
+    if (Math.abs(dx) < 30) return;
+    const nextIdx = dx < 0
+      ? Math.min(activeIdx + 1, NAV_LINKS.length - 1)
+      : Math.max(activeIdx - 1, 0);
+    if (nextIdx !== activeIdx) onNavigate(NAV_LINKS[nextIdx].path);
+  }, [activeIdx, onNavigate]);
 
   return (
     <nav
@@ -219,60 +148,41 @@ function MobileTabBar({ activePath, onNavigate }) {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <div ref={containerRef} className="mobile-tab-items">
-        {/* Liquid Glass pill indicator */}
-        {ready && (
-          <motion.div
-            className="mobile-tab-pill"
-            style={{ x: pillX, width: pillW }}
-          >
-            {/* Specular line */}
-            <div className="mobile-tab-pill-shine" />
-          </motion.div>
-        )}
+      <div className="mobile-tab-items">
 
-        {NAV_LINKS.map(({ path, label, Icon }, idx) => {
+        {/* ── Sliding liquid glass pill ── */}
+        <motion.div
+          className="mobile-tab-pill"
+          animate={{ left: `${activeIdx * tabWidthPct}%`, width: `${tabWidthPct}%` }}
+          transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
+        />
+
+        {/* ── Tab items ── */}
+        {NAV_LINKS.map(({ path, label, Icon }) => {
           const isActive = activePath === path;
           return (
-            <div
+            <Link
               key={path}
-              ref={el => { tabRefs.current[path] = el; }}
-              className="tab-slot"
+              to={path}
+              className={`tab-item${isActive ? ' active' : ''}`}
+              aria-label={label}
+              aria-current={isActive ? 'page' : undefined}
             >
-              <Link
-                to={path}
-                className={`tab-item${isActive ? ' active' : ''}`}
-                aria-label={label}
-                aria-current={isActive ? 'page' : undefined}
+              <motion.span
+                className="tab-icon"
+                animate={{ y: isActive ? -2 : 0, scale: isActive ? 1.12 : 1 }}
+                transition={{ type: 'spring', stiffness: 420, damping: 26 }}
               >
-                <motion.span
-                  className="tab-icon"
-                  animate={{
-                    y:     isActive ? -2 : 0,
-                    scale: isActive ? 1.12 : 1,
-                  }}
-                  transition={{ type: 'spring', stiffness: 420, damping: 26 }}
-                >
-                  <Icon size={22} />
-                </motion.span>
-                <motion.span
-                  className="tab-label"
-                  animate={{ opacity: isActive ? 1 : 0.45 }}
-                  transition={{ duration: 0.18 }}
-                >
-                  {label}
-                </motion.span>
-
-                {/* Dot pulse when active (only on mount) */}
-                {isActive && idx === currentIdx && (
-                  <motion.span
-                    className="tab-active-dot"
-                    layoutId="tab-active-dot"
-                    transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                  />
-                )}
-              </Link>
-            </div>
+                <Icon size={22} />
+              </motion.span>
+              <motion.span
+                className="tab-label"
+                animate={{ opacity: isActive ? 1 : 0.5 }}
+                transition={{ duration: 0.2 }}
+              >
+                {label}
+              </motion.span>
+            </Link>
           );
         })}
       </div>
