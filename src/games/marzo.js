@@ -146,7 +146,6 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
     state.onGround = false;
     if (state.vy >= 0) {
       for (const p of platforms) {
-        const screenY = p.y - state.cameraY;
         if (state.px + PW / 2 > p.x && state.px - PW / 2 < p.x + p.w) {
           const playerBottom = state.py + PH / 2;
           const prevBottom = playerBottom - state.vy;
