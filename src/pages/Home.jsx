@@ -1,137 +1,102 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Twitch, Mic } from 'lucide-react';
+import { Twitch } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SocialHub from '../components/SocialHub';
 import PodcastPromo from '../components/PodcastPromo';
 
+const up = (delay = 0) => ({
+  initial:    { opacity: 0, y: 22 },
+  animate:    { opacity: 1, y: 0 },
+  transition: { delay, type: 'spring', stiffness: 220, damping: 24 },
+});
+
 export default function Home() {
-  // 0 = Offline, 1 = Twitch Live, 2 = Twitch + YouTube Live
-  const [liveState, setLiveState] = useState(0);
+  const [liveState, setLiveState] = useState(0); // 0=offline 1=twitch 2=simulcast
 
   useEffect(() => {
-    const checkLiveStatus = async () => {
+    const check = async () => {
       try {
-        const response = await fetch('https://decapi.me/twitch/uptime/andryxify');
-        const text = await response.text();
-        if (text.toLowerCase().includes('offline')) {
-          setLiveState(0);
-        } else {
-          setLiveState(1); // Real-time detection of Twitch Live
-        }
-      } catch (error) {
-        console.error("Error fetching live status:", error);
-      }
+        const res  = await fetch('https://decapi.me/twitch/uptime/andryxify');
+        const text = await res.text();
+        setLiveState(text.toLowerCase().includes('offline') ? 0 : 1);
+      } catch { /* silent */ }
     };
-    checkLiveStatus();
-    const interval = setInterval(checkLiveStatus, 60000);
-    return () => clearInterval(interval);
+    check();
+    const id = setInterval(check, 60_000);
+    return () => clearInterval(id);
   }, []);
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="main-content"
     >
-      <section className="header">
-        <motion.div 
-          className="profile-img-container"
-          initial={{ scale: 0, rotate: -15 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", damping: 12, stiffness: 100 }}
-          onClick={() => setLiveState(prev => (prev + 1) % 3)}
-          style={{ cursor: 'pointer' }}
-          title="Segreto: Cambia stato Live"
-        >
-          <img 
-            src="/logo.png" 
-            alt="ANDRYXify Logo" 
-            className="profile-img" 
-            style={{ padding: '15px' }}
-          />
-        </motion.div>
-        <motion.h1 
-          className="title"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          style={{ letterSpacing: '-2px' }}
-        >
+      {/* ── Hero: solo testo, niente cerchio ── */}
+      <section className="header" style={{ paddingTop: '1rem' }}>
+        <motion.h1 className="title" {...up(0.05)} style={{ letterSpacing: '-2px' }}>
           <span className="text-gradient">ANDRYX</span>ify
         </motion.h1>
-        <motion.p 
-          className="subtitle"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          style={{ color: 'var(--text-muted)', fontWeight: 400 }}
-        >
-          Esplorando il confine tra <span style={{ color: 'var(--primary)', fontWeight: 600 }}>Umanità</span>, <span style={{ color: 'var(--secondary)', fontWeight: 600 }}>Intelligenza Artificiale</span> e <span style={{ color: 'var(--accent)', fontWeight: 600 }}>Gaming</span>.
+        <motion.p className="subtitle" {...up(0.15)}>
+          Esplorando il confine tra{' '}
+          <span style={{ color: 'var(--primary)',   fontWeight: 600 }}>Umanità</span>,{' '}
+          <span style={{ color: 'var(--secondary)', fontWeight: 600 }}>Intelligenza Artificiale</span>{' '}
+          e <span style={{ color: 'var(--accent)',  fontWeight: 600 }}>Gaming</span>.
         </motion.p>
       </section>
 
-      {/* Twitch Preview Section */}
-      <motion.section 
-        className="glass-panel" 
-        style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.4 }}
+      {/* ── Live preview ── */}
+      <motion.section
+        className="glass-panel"
+        style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
+        {...up(0.25)}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <Twidech size={24} color="#9146FF" />
-          <h2 style={{ fontSize: '1.4rem', margin: 0 }}>Live Preview</h2>
-          {liveState > 0 ? (
-            <span style={{ background: 'rgba(255,0,0,0.2)', color: '#ff4d4d', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', border: '1px solid rgba(255,0,0,0.5)', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ff4d4d', display: 'inline-block', boxShadow: '0 0 8px #ff4d4d' }}></span> LIVE NOW
-            </span>
-          ) : (
-            <span style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-muted)', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold', marginLeft: 'auto' }}>
-              ⚪ OFFLINE
-            </span>
-          )}
+          <Twitch size={20} color="#9146FF" />
+          <h2 style={{ fontSize: '1.15rem', margin: 0, fontWeight: 800 }}>Live Preview</h2>
+          <div style={{ marginLeft: 'auto' }}>
+            {liveState > 0
+              ? <span className="chip chip-live"><span className="chip-live-dot" /> LIVE ORA</span>
+              : <span className="chip chip-offline">⚪ OFFLINE</span>
+            }
+          </div>
         </div>
-        <div className="player-wrapper glass-card" style={{ aspectRatio: '16/9', overflow: 'hidden' }}>
+
+        <div className="glass-card" style={{ aspectRatio: '16/9', overflow: 'hidden', borderRadius: 'var(--r-md)' }}>
           <iframe
             src={`https://player.twitch.tv/?channel=andryxify&parent=${window.location.hostname}&muted=true`}
-            height="100%"
-            width="100%"
-            allowFullScreen
-            style={{ border: 'none' }}
-          ></iframe>
+            height="100%" width="100%" allowFullScreen
+            style={{ border: 'none', display: 'block' }}
+          />
         </div>
-        
+
         {liveState === 2 && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem' }}
+          <motion.a
+            href="https://youtube.com/@ANDRYXify/live"
+            target="_blank" rel="noreferrer"
+            className="btn"
+            style={{ background: 'linear-gradient(135deg,#FF0000,#990000)', color: '#fff', justifyContent: 'center' }}
+            initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           >
-            <a 
-              href="https://youtube.com/@ANDRYXify/live"
-              target="_blank"
-              rel="noreferrer"
-              style={{ background: 'linear-gradient(45deg, #FF0000, #990000)', color: 'white', padding: '10px 25px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', fontWeight: 'bold', boxShadow: '0 5px 15px rgba(255,0,0,0.3)', width: '100%', justifyContent: 'center' }}
-            >
-              <span>🔴 In simulcast anche su YouTube</span>
-            </a>
-          </motion.div>
+            🔴 In simulcast anche su YouTube
+          </motion.a>
         )}
 
-        <Link to="/twitch" className="nav-link" style={{ alignSelf: 'center', marginTop: '0.5rem', background: 'var(--primary)', color: 'white', borderRadius: '20px', padding: '8px 25px' }}>
-          Vedi tutto
+        <Link to="/twitch" className="btn btn-primary" style={{ alignSelf: 'center' }}>
+          Apri stream completo
         </Link>
       </motion.section>
 
-      <SocialHub />
-      
+      {/* ── Social Hub ── */}
+      <motion.div {...up(0.38)}>
+        <h2 className="section-title" style={{ textAlign: 'center' }}>Trovami su 📡</h2>
+        <SocialHub />
+      </motion.div>
+
+      {/* ── Podcast Promo ── */}
       <PodcastPromo />
-      
     </motion.div>
   );
 }
-
-// Fixed Lucide icon name: Twitch
-function Twidech(props) { return <Twitch {...props} /> }

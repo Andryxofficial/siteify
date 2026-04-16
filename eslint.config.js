@@ -5,16 +5,19 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'src/_old']),
+
+  // Browser/React source
   {
-    files: ['**/*.{js,jsx}'],
+    files: ['src/**/*.{js,jsx}'],
     extends: [
       js.configs.recommended,
       reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
     ],
     languageOptions: {
-      ecmaVersion: 2020,
+      ecmaVersion: 'latest',
+      sourceType: 'module',
       globals: globals.browser,
       parserOptions: {
         ecmaVersion: 'latest',
@@ -23,7 +26,25 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Pattern ^[A-Z_] ignores PascalCase components; also allow lowercase
+      // vars used only as JSX member-expressions (e.g. <motion.div>)
+      'no-unused-vars': ['warn', {
+        varsIgnorePattern: '^[A-Z_]|^motion$',
+        args: 'none',
+        ignoreRestSiblings: true,
+        caughtErrors: 'none',
+      }],
+    },
+  },
+
+  // Vercel serverless API — Node.js environment
+  {
+    files: ['api/**/*.js'],
+    extends: [js.configs.recommended],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: { ...globals.node },
     },
   },
 ])
