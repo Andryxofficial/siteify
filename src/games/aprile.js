@@ -907,45 +907,46 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
   }
 
   function drawHUD() {
-    // Hearts — animated with pulse on low HP
-    const heartSize = s.hp <= 1 && s.hp > 0 ? 15 + Math.sin(s.frame * 0.2) * 2 : 14;
+    const heartSpacing = 26;
+    const heartSize = s.hp <= 1 && s.hp > 0 ? 23 + Math.sin(s.frame * 0.2) * 3 : 22;
+
+    // HUD background bar (top strip)
+    ctx.save();
+    ctx.fillStyle = 'rgba(7,7,14,0.62)';
+    ctx.fillRect(0, 0, W, 44);
+    ctx.restore();
+
+    // Hearts
+    ctx.font = `${heartSize}px sans-serif`;
+    ctx.textAlign = 'left';
     for (let i = 0; i < s.maxHp; i++) {
-      const hx = 14 + i * 20;
-      const hy = 16;
-      if (i < s.hp) {
-        ctx.fillStyle = P.heart;
-        ctx.font = `${heartSize}px sans-serif`;
-      } else {
-        ctx.fillStyle = P.heartDim;
-        ctx.font = '14px sans-serif';
-      }
-      ctx.textAlign = 'left';
-      ctx.fillText('♥', hx, hy + 4);
+      const hx = 10 + i * heartSpacing;
+      const hy = 30;
+      ctx.fillStyle = i < s.hp ? P.heart : P.heartDim;
+      ctx.fillText('♥', hx, hy);
     }
 
-    // Score
+    // Score (right side)
     ctx.fillStyle = P.text;
-    ctx.font = 'bold 13px Outfit, sans-serif';
+    ctx.font = 'bold 16px Outfit, sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText(`✦ ${s.score}`, W - 14, 18);
+    ctx.fillText(`✦ ${s.score}`, W - 10, 28);
 
-    // Room number
+    // Room number (right, below score)
     ctx.fillStyle = P.textDim;
     ctx.font = '11px Outfit, sans-serif';
-    ctx.fillText(`Stanza ${s.roomNum + 1}`, W - 14, 34);
+    ctx.fillText(`Stanza ${s.roomNum + 1}`, W - 10, 40);
 
-    // Enemies remaining indicator (subtle)
+    // Enemies remaining
     const alive = s.enemies.filter(e => !e.dead).length;
+    ctx.font = '12px Outfit, sans-serif';
+    ctx.textAlign = 'left';
     if (alive > 0) {
-      ctx.fillStyle = 'rgba(255,0,80,0.5)';
-      ctx.font = '10px Outfit, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(`👾 ${alive}`, 14, 36);
+      ctx.fillStyle = 'rgba(255,0,80,0.7)';
+      ctx.fillText(`👾 ${alive}`, 10 + s.maxHp * heartSpacing + 6, 30);
     } else if (s.exitOpen) {
-      ctx.fillStyle = 'rgba(255,215,0,0.7)';
-      ctx.font = '10px Outfit, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('✦ Portale aperto!', 14, 36);
+      ctx.fillStyle = 'rgba(255,215,0,0.8)';
+      ctx.fillText('✦ Portale!', 10 + s.maxHp * heartSpacing + 6, 30);
     }
 
     ctx.textAlign = 'left';
