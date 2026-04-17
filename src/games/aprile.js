@@ -228,6 +228,7 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
     particles: [], floatTexts: [], trail: [],
     running: true, frame: 0,
     shake: 0, transition: 0, transitionDir: 1, // 1=fade-in, -1=fade-out
+    roomTransitioning: false, // guard against multiple enterNextRoom calls
     ...room0,
   };
 
@@ -269,6 +270,8 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
   }
 
   function enterNextRoom() {
+    if (s.roomTransitioning) return;
+    s.roomTransitioning = true;
     s.transition = 30;
     s.transitionDir = -1; // fade out
     setTimeout(() => {
@@ -284,6 +287,7 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
       onHpChange(s.hp, s.maxHp);
       s.transition = 30;
       s.transitionDir = 1; // fade in
+      s.roomTransitioning = false;
     }, 500);
   }
 

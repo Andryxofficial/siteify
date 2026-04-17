@@ -6,6 +6,8 @@ import TikTokIcon from './TikTokIcon';
 import useScrollHeader from '../hooks/useScrollHeader';
 import { hapticLight } from '../utils/haptics';
 
+const LOGO_URL = '/Firma_Andryx.png';
+
 const NAV_LINKS = [
   { path: '/',          label: 'Home',      Icon: HomeIcon      },
   { path: '/twitch',    label: 'Twitch',    Icon: TwitchIcon    },
@@ -15,8 +17,6 @@ const NAV_LINKS = [
   { path: '/tiktok',    label: 'TikTok',    Icon: ({ size }) => <TikTokIcon size={size} /> },
   { path: '/gioco',     label: 'Gioco',     Icon: GameIcon      },
 ];
-
-const LOGO_URL = '/logo.png';
 
 /* ─────────────────────────────────────────────────────────
    MOBILE BOTTOM TAB BAR  (iOS-style, liquid glass)
@@ -153,7 +153,7 @@ export default function Navbar() {
           >
             <div className="navbar-content">
               <Link to="/" className="navbar-logo" aria-label="ANDRYXify – Home">
-                <img src={LOGO_URL} alt="Andryx" className="navbar-logo-img" />
+                <img src={LOGO_URL} alt="ANDRYXify" className="navbar-logo-img" />
               </Link>
 
               <div

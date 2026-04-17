@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Twitch, Youtube, Instagram, Mic } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 
-const LOGO_URL = '/logo.png';
+const LOGO_URL = '/Firma_Andryx.png';
 
 const socials = [
   { href: 'https://twitch.tv/andryxify',       icon: <Twitch    size={18}/>, label: 'Twitch'    },
@@ -17,12 +17,8 @@ export default function Footer() {
     <footer className="footer glass-panel" style={{ margin: '2rem auto 2rem', maxWidth: '860px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
         {/* Brand */}
-        <Link to="/" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-          <img
-            src={LOGO_URL}
-            alt="Andryx"
-            style={{ height: '40px', width: 'auto', maxWidth: '160px', objectFit: 'contain', alignSelf: 'flex-start', filter: 'invert(1) hue-rotate(180deg)', mixBlendMode: 'screen' }}
-          />
+        <Link to="/" aria-label="ANDRYXify – Home" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          <img src={LOGO_URL} alt="ANDRYXify" className="footer-logo-img" />
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0, letterSpacing: '0.2px' }}>
             Esplorando Umanità, IA & Gaming.
           </p>
