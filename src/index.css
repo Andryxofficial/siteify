@@ -281,6 +281,7 @@ body::before {
 .navbar-container {
   position: fixed;
   top: 16px;
+  /* Use margin-based centering to avoid conflicts with Framer Motion's transform animations */
   left: 0;
   right: 0;
   margin-inline: auto;
