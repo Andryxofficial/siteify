@@ -151,9 +151,7 @@ export default function Navbar() {
           >
             <div className="navbar-content">
               <Link to="/" className="navbar-logo" aria-label="ANDRYXify – Home">
-                <span className="navbar-logo-text">
-                  <span className="text-gradient">ANDRYX</span>ify
-                </span>
+                <img src="/firma_andryx.png" alt="ANDRYXify" className="navbar-logo-img" />
               </Link>
 
               <div

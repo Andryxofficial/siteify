@@ -16,9 +16,7 @@ export default function Footer() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
         {/* Brand */}
         <Link to="/" aria-label="ANDRYXify – Home" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-          <span className="footer-logo-text">
-            <span className="text-gradient">ANDRYX</span>ify
-          </span>
+          <img src="/firma_andryx.png" alt="ANDRYXify" className="footer-logo-img" />
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0, letterSpacing: '0.2px' }}>
             Esplorando Umanità, IA & Gaming.
           </p>
