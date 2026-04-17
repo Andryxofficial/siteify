@@ -47,12 +47,11 @@ export default function PodcastPage() {
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 200, damping: 16 }}
         >
-          <div style={{
+          <div className="glass-avatar" style={{
             width: 76, height: 76,
             borderRadius: 'var(--r-md)',
             background: 'linear-gradient(135deg,var(--secondary),var(--primary))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 0 36px rgba(0,245,212,.25), inset 0 1px 0 rgba(255,255,255,.20)',
           }}>
             <Mic size={36} color="#fff" />
           </div>

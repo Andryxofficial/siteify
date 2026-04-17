@@ -32,7 +32,7 @@ export default function InstagramPage() {
         transition={{ delay: 0.1 }}
       >
         {/* Gradient banner */}
-        <div style={{
+        <div className="glass-banner" style={{
           height: 120,
           background: 'linear-gradient(135deg,#f09433 0%,#e6683c 20%,#dc2743 40%,#cc2366 70%,#bc1888 100%)',
           position: 'relative',
@@ -46,7 +46,7 @@ export default function InstagramPage() {
           textAlign: 'center',
           marginTop: -50,
         }}>
-          <div style={{
+          <div className="glass-avatar" style={{
             width: 96, height: 96,
             borderRadius: '50%',
             background: 'linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)',
@@ -54,7 +54,6 @@ export default function InstagramPage() {
             position: 'relative',
             zIndex: 2,
             marginBottom: '1rem',
-            boxShadow: '0 4px 28px rgba(225,48,108,.25)',
           }}>
             <img
               src="/logo.png"

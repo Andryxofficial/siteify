@@ -30,9 +30,9 @@ export default function TwitchPage() {
         <p className="subtitle">Segui le dirette, interagisci in chat e scopri i momenti migliori.</p>
 
         {/* Twitch brand stats bar */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+        <div className="glass-stats-bar" style={{ marginTop: '1rem' }}>
           {twitchStats.map(s => (
-            <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div key={s.label}>
               {s.icon}
               <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>{s.label}</span>
             </div>

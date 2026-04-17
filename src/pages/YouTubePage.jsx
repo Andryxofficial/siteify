@@ -54,7 +54,7 @@ export default function YouTubePage() {
         transition={{ delay: 0.1 }}
       >
         {/* Banner */}
-        <div style={{
+        <div className="glass-banner" style={{
           height: 120,
           background: 'linear-gradient(135deg,#FF0000 0%,#600000 60%,#1a0000 100%)',
           position: 'relative',
@@ -62,7 +62,7 @@ export default function YouTubePage() {
           alignItems: 'flex-end',
           padding: '0 2rem',
         }}>
-          <Youtube size={36} color="rgba(255,255,255,.15)" style={{ position: 'absolute', right: 24, top: 16 }} />
+          <Youtube size={36} color="rgba(255,255,255,.15)" style={{ position: 'absolute', right: 24, top: 16, zIndex: 2 }} />
         </div>
 
         <div style={{
@@ -76,6 +76,7 @@ export default function YouTubePage() {
           <img
             src="/logo.png"
             alt="ANDRYXify"
+            className="glass-avatar"
             style={{
               width: 96, height: 96,
               borderRadius: '50%',
@@ -86,7 +87,6 @@ export default function YouTubePage() {
               position: 'relative',
               zIndex: 2,
               marginBottom: '1rem',
-              boxShadow: '0 4px 24px rgba(0,0,0,.40)',
             }}
           />
           <h2 style={{ fontSize: '1.7rem', fontWeight: 800, marginBottom: '0.4rem' }}>ANDRYXify</h2>
