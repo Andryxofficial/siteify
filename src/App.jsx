@@ -3,6 +3,8 @@ import { useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import PageTransition from './components/PageTransition';
+import useStandalone from './hooks/useStandalone';
 import Home from './pages/Home';
 import TwitchPage from './pages/TwitchPage';
 import YouTubePage from './pages/YouTubePage';
@@ -43,14 +45,16 @@ function TwitchOAuthRedirect() {
   return null;
 }
 
-function App() {
+function AppShell() {
+  const location = useLocation();
+  const isStandalone = useStandalone();
+
   return (
-    <Router>
-      <TwitchOAuthRedirect />
-      <div className="app-container">
-        <Navbar />
-        <AnimatePresence mode="wait">
-          <Routes>
+    <div className={`app-container${isStandalone ? ' pwa-standalone' : ''}`}>
+      <Navbar />
+      <AnimatePresence mode="wait">
+        <PageTransition key={location.pathname}>
+          <Routes location={location}>
             <Route path="/" element={<Home />} />
             <Route path="/twitch" element={<TwitchPage />} />
             <Route path="/youtube" element={<YouTubePage />} />
@@ -62,9 +66,18 @@ function App() {
             <Route path="/scoiattoli" element={<Scoiattoli />} />
             
           </Routes>
-        </AnimatePresence>
-        <Footer />
-      </div>
+        </PageTransition>
+      </AnimatePresence>
+      <Footer />
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <TwitchOAuthRedirect />
+      <AppShell />
     </Router>
   );
 }

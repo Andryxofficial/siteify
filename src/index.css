@@ -324,12 +324,14 @@ body::before {
   text-decoration: none;
   color: var(--text-muted);
   padding: 0.5rem 0.85rem;
+  min-height: 40px;
   border-radius: var(--r-sm);
   font-size: 0.88rem;
   font-weight: 600;
   position: relative;
   transition: color .22s var(--ease-glass);
   white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .nav-link:hover { color: var(--text-main); }
@@ -427,9 +429,11 @@ body::before {
   display: flex;
   align-items: center;
   padding: 1.1rem 1.3rem;
+  min-height: 56px;        /* comfortable touch target for list items */
   text-decoration: none;
   color: var(--text-main);
   gap: 1rem;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .link-icon-wrapper {
@@ -508,6 +512,7 @@ body::before {
   justify-content: center;
   gap: 7px;
   padding: 0.6rem 1.5rem;
+  min-height: 44px;        /* Apple HIG minimum touch target */
   border-radius: var(--r-full);
   font-family: 'Outfit', sans-serif;
   font-weight: 700;
@@ -519,6 +524,7 @@ body::before {
   white-space: nowrap;
   position: relative;
   overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .btn-primary {
@@ -963,8 +969,11 @@ nav.navbar-container.glass-panel {
   backdrop-filter: blur(48px) saturate(180%) contrast(110%);
   -webkit-backdrop-filter: blur(48px) saturate(180%) contrast(110%);
 
-  /* Blue-tinted top border — Apple tab bar signature */
+  /* Blue-tinted top border — Apple tab bar signature (overridden to full border in floating capsule @media below) */
   border-top: 1.5px solid rgba(130, 170, 240, 0.12);
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
 
   box-shadow:
     0 -1px 0 rgba(130, 170, 240, 0.04),
@@ -989,7 +998,8 @@ nav.navbar-container.glass-panel {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  padding: 7px 4px 5px;
+  padding: 8px 4px 6px;
+  min-height: 48px;        /* ≥44px Apple HIG touch target */
   text-decoration: none;
   color: rgba(255, 255, 255, 0.35);
   position: relative;
@@ -1463,4 +1473,229 @@ nav.navbar-container.glass-panel {
   outline: 2px solid rgba(255, 0, 212, 0.40);
   outline-offset: 2px;
   border-radius: var(--r-sm);
+}
+
+/* ═══════════════════════════════════════════════════
+   NATIVE APP ENHANCEMENTS
+   Mobile-first features for installed PWA / standalone
+   ═══════════════════════════════════════════════════ */
+
+/* ── Standalone PWA: remove extra top spacing (no browser chrome) ── */
+.pwa-standalone {
+  padding-top: 60px;
+}
+
+.pwa-standalone .navbar-container {
+  top: env(safe-area-inset-top, 8px);
+}
+
+/* ── Touch behavior: prevent accidental text selection and callouts ── */
+.tab-item,
+.btn,
+.btn-primary,
+.btn-ghost,
+.nav-link,
+.link-item,
+.leaderboard-tab,
+.game-attack-btn,
+.game-joystick {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ── Touch active states — glass flash for native feel ── */
+@media (hover: none) and (pointer: coarse) {
+  .btn:active,
+  .btn-primary:active,
+  .btn-ghost:active {
+    transform: scale(0.96);
+    transition: transform 0.08s ease;
+  }
+
+  .glass-card:active {
+    transform: scale(0.98);
+    transition: transform 0.08s ease;
+  }
+
+  .link-item:active {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .tab-item:active .tab-icon {
+    transform: scale(0.9);
+    transition: transform 0.06s ease;
+  }
+
+  /* Disable hover effects on touch devices — only active states */
+  .glass-card:hover {
+    transform: none;
+  }
+
+  .btn-primary:hover,
+  .btn-ghost:hover {
+    transform: none;
+  }
+}
+
+/* ── Rubber-band overscroll (iOS native feel) ── */
+html {
+  overscroll-behavior-y: none;
+}
+
+body {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Smooth momentum scrolling for lists ── */
+.leaderboard-list,
+.links-grid {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Mobile tab bar — floating capsule style ── */
+@media (max-width: 640px) {
+  .mobile-tab-bar {
+    bottom: 0;
+    left: 0;
+    right: 0;
+    /* Apple iOS 26 floating bar: lifted from edge with rounded glass capsule */
+    margin: 0 8px calc(env(safe-area-inset-bottom, 0px) + 4px);
+    border-radius: 20px;
+    border: 1.5px solid rgba(130, 170, 240, 0.14);
+    border-top: 1.5px solid rgba(160, 200, 255, 0.20);
+  }
+
+  /* When running as standalone PWA — bar floats higher */
+  .pwa-standalone .mobile-tab-bar {
+    margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  }
+}
+
+/* ── Pull-to-refresh visual indicator area ── */
+.pull-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  z-index: 9999;
+  background: linear-gradient(90deg, var(--primary), var(--secondary), var(--primary));
+  background-size: 200% 100%;
+  animation: pull-shimmer 1.5s linear infinite;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.pull-indicator.active {
+  opacity: 1;
+}
+
+@keyframes pull-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Smooth page transition backdrop ── */
+.app-container {
+  position: relative;
+  isolation: isolate;
+}
+
+/* ── iOS safe area respect everywhere ── */
+@supports (padding: env(safe-area-inset-top)) {
+  .navbar-container {
+    top: max(16px, env(safe-area-inset-top, 16px));
+  }
+
+  .footer {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* ── Reduced motion — respect accessibility ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .mobile-tab-pill,
+  .liquid-nav-pill {
+    transition: none !important;
+  }
+}
+
+/* ── Loading skeleton for standalone PWA splash ── */
+.app-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-dark);
+}
+
+.app-loading-logo {
+  width: 64px;
+  height: 64px;
+  animation: pulse-logo 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse-logo {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.05); }
+}
+
+/* ── Enhanced mobile glass panels — edge-to-edge on small screens ── */
+@media (max-width: 400px) {
+  .glass-panel {
+    border-radius: var(--r-md);
+    margin-left: -0.25rem;
+    margin-right: -0.25rem;
+  }
+}
+
+/* ── Notch-aware landscape (iPhone with Dynamic Island) ── */
+@media (orientation: landscape) and (max-height: 500px) {
+  .app-container {
+    padding-top: 50px;
+    padding-bottom: 0;
+  }
+
+  .mobile-tab-bar {
+    display: none !important;
+  }
+
+  .navbar-container {
+    top: 4px;
+  }
+}
+
+/* ── Print: clean output ── */
+@media print {
+  .navbar-container,
+  .mobile-tab-bar,
+  .game-touch-controls {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  .glass-panel,
+  .glass-card {
+    backdrop-filter: none;
+    border: 1px solid #ccc;
+    box-shadow: none;
+    background: white;
+  }
 }
