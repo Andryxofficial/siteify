@@ -6,7 +6,7 @@ import TikTokIcon from './TikTokIcon';
 import useScrollHeader from '../hooks/useScrollHeader';
 import { hapticLight } from '../utils/haptics';
 
-const LOGO_URL = '/firma_andryx.png';
+const LOGO_URL = '/Firma_Andryx.png';
 
 const NAV_LINKS = [
   { path: '/',          label: 'Home',      Icon: HomeIcon      },
