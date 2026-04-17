@@ -16,7 +16,7 @@ const NAV_LINKS = [
   { path: '/gioco',     label: 'Gioco',     Icon: GameIcon      },
 ];
 
-const LOGO_URL = 'https://github.com/user-attachments/assets/473c6ca9-3173-4fdf-958c-faa4bda57230';
+const LOGO_URL = '/logo.png';
 
 /* ─────────────────────────────────────────────────────────
    MOBILE BOTTOM TAB BAR  (iOS-style, liquid glass)
