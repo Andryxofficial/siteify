@@ -59,9 +59,8 @@ function MobileTabBar({ activePath, onNavigate }) {
     }
   }, [activeIdx, onNavigate]);
 
-  const handleTabClick = useCallback((path) => {
+  const handleTabClick = useCallback(() => {
     hapticLight();
-    // navigation handled by <Link> — haptic only
   }, []);
 
   return (
@@ -91,7 +90,7 @@ function MobileTabBar({ activePath, onNavigate }) {
               className={`tab-item${isActive ? ' active' : ''}`}
               aria-label={label}
               aria-current={isActive ? 'page' : undefined}
-              onClick={() => handleTabClick(path)}
+              onClick={handleTabClick}
             >
               <motion.span
                 className="tab-icon"

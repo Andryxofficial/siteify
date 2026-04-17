@@ -45,7 +45,7 @@ function TwitchOAuthRedirect() {
   return null;
 }
 
-function AppShell() {
+function AppLayout() {
   const location = useLocation();
   const isStandalone = useStandalone();
 
@@ -77,7 +77,7 @@ function App() {
   return (
     <Router>
       <TwitchOAuthRedirect />
-      <AppShell />
+      <AppLayout />
     </Router>
   );
 }
