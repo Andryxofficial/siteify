@@ -12,8 +12,11 @@ siteify/
 ├── .github/
 │   └── copilot-instructions.md   ← questo file
 ├── api/                          ← Serverless functions (Vercel)
+│   ├── leaderboard.js            ← GET/POST classifica (weekly/monthly/general)
+│   ├── reset-leaderboard.js      ← GET status + POST admin (reset/wipe/recalculate)
+│   └── ikigai-bridge.js
 ├── public/                       ← Asset statici serviti direttamente
-│   ├── andryx-logo.png           ← Logo Andryx (navbar & footer) — aggiunto 2026-04-16
+│   ├── andryx-logo.svg           ← Logo Andryx SVG (navbar & footer)
 │   ├── firma_andryx.png          ← Firma grafica
 │   ├── logo.png                  ← Logo generico
 │   ├── favicon.svg
@@ -36,6 +39,13 @@ siteify/
 │   │   ├── SocialHub.jsx         ← Grid card social (Twitch, YouTube, Instagram, TikTok, Podcast)
 │   │   ├── PodcastPromo.jsx      ← Banner promozionale podcast Spotify
 │   │   └── TikTokIcon.jsx        ← Icona SVG custom TikTok (lucide non la include)
+│   ├── games/
+│   │   ├── registry.js           ← Mappa mese→modulo gioco; getGameForMonth(month)
+│   │   ├── aprile.js             ← Aprile: "Andryx Quest" ⚔️ (Zelda-like dungeon crawler)
+│   │   ├── marzo.js              ← Marzo
+│   │   ├── maggio.js             ← Maggio
+│   │   ├── ottobre.js            ← Ottobre
+│   │   └── [altri mesi].js       ← gennaio/febbraio/giugno/luglio/agosto/settembre/novembre/dicembre
 │   └── pages/
 │       ├── Home.jsx              ← Homepage: hero, live preview Twitch, SocialHub, PodcastPromo
 │       ├── TwitchPage.jsx        ← Embed stream Twitch + chat
@@ -43,7 +53,7 @@ siteify/
 │       ├── InstagramPage.jsx     ← Feed Instagram
 │       ├── PodcastPage.jsx       ← Episodi podcast Spotify
 │       ├── TikTokPage.jsx        ← Feed TikTok
-│       ├── GamePage.jsx          ← Gioco in-browser con autenticazione Twitch OAuth
+│       ├── GamePage.jsx          ← Shell modulare gioco: canvas, joystick, HUD, classifica
 │       ├── tracker_scoiattoli.jsx ← 🔒 Pagina segreta /scoiattoli (Squirrel Radar)
 │       └── SquirrelRadar.css     ← Stili specifici per tracker_scoiattoli
 ├── vercel.json                   ← Configurazione deploy Vercel
@@ -66,7 +76,7 @@ siteify/
 | Framer Motion v12 | Animazioni (pill navbar, transizioni pagina) |
 | Lucide React | Icone |
 | Tailwind Merge + clsx | Utility CSS |
-| @upstash/redis + @vercel/kv | Storage serverless (KV) |
+| @upstash/redis | Storage serverless (KV — sorted sets per leaderboard) |
 | Vercel | Hosting + serverless functions |
 
 ---
@@ -76,7 +86,7 @@ siteify/
 ### `Navbar.jsx`
 - **Desktop**: navbar in cima con pill liquida animata (segue hover e route attiva)
 - **Mobile**: tab bar in basso stile iOS con pill scorrevole
-- `LOGO_URL` → punta a `/andryx-logo.png` (file locale in `public/`)
+- `LOGO_URL` → punta a `/andryx-logo.svg` (SVG locale in `public/`)
 - `NAV_LINKS` → array con path, label e icona per ogni sezione
 
 ### `Footer.jsx`
@@ -88,13 +98,99 @@ siteify/
 - Route `/scoiattoli` è nascosta (non appare in navbar)
 
 ### `GamePage.jsx`
-- Gioco in-browser (canvas, 3 corsie, ostacoli e sinapsi)
-- Autenticazione Twitch OAuth via `CHIAVETWITCH` (`VITE_CHIAVETWITCH` in `.env.local`)
-- Invia i punteggi al leaderboard serverless (`/api/leaderboard`)
+- **Shell modulare**: carica il gioco del mese corrente da `src/games/registry.js`
+- Fornisce: canvas 480×480, joystick touch floating, pulsante azione, HUD HP+score
+- Autenticazione Twitch OAuth via `VITE_CHIAVETWITCH`
+- Classifica con 3 tab: **Settimanale** / **Mensile** / **Generale**
+- Calendario giochi con leader in tempo reale per il mese corrente
+
+### `src/games/registry.js`
+- Esporta `getGameForMonth(month)` → restituisce il modulo del gioco per quel mese (1–12)
+- Ogni modulo esporta: `meta` (name, emoji, description, color, controls, instructions, gameOverTitle, actionLabel) + `createGame(canvas, callbacks)` → `cleanup()`
+- Callbacks ricevuti: `keysRef`, `joystickRef`, `actionBtnRef`, `onScore`, `onGameOver`, `onHpChange`
 
 ### `TikTokIcon.jsx`
 - SVG custom perché lucide-react non include l'icona TikTok
 - Accetta prop `size` (default 24)
+
+---
+
+## 🕹️ Architettura gioco — `aprile.js` (Andryx Quest ⚔️)
+
+- Top-down Zelda-like su canvas 480×480
+- Player: WASD/frecce + joystick touch floating + gamepad API
+- 3 tipi nemici: slime (lento), bat (veloce), ghost (passa i muri)
+- Generazione procedurale stanze con muri, torce, gemme
+- HUD: cuori `♥`/`♡`, punteggio, numero stanza, nemici rimasti
+- Porta porta al prossimo piano (tutti i nemici morti → portale)
+- Heal power-up ogni 1000 punti se HP < max
+- Iframe di 45 frame dopo danno ricevuto
+
+---
+
+## 🏆 Classifica — `api/leaderboard.js`
+
+### Struttura Redis
+
+| Board | Logica | Chiave Redis | TTL |
+|---|---|---|---|
+| **Settimanale** | MAX punteggio utente nella settimana ISO corrente | `lb:<YYYY-MM>:weekly:<YYYY-WNN>` | 8 giorni |
+| **Mensile** | MAX punteggio utente nel mese corrente | `lb:<YYYY-MM>:monthly` | permanente |
+| **Generale** | Somma dei MAX mensili (`ZINCRBY Δ`) | `lb:general` | permanente |
+
+### Logica generale
+Quando un utente migliora il suo max mensile di Δ → `ZINCRBY lb:general Δ username`.
+Risultato: `general[user] = Σ monthly_max(user, mese)` su tutti i mesi giocati.
+
+### GET `/api/leaderboard[?season=YYYY-MM]`
+```json
+{
+  "weekly":  [{ "username": "...", "score": 0 }],
+  "monthly": [{ "username": "...", "score": 0 }],
+  "general": [{ "username": "...", "score": 0 }],
+  "archive": [{ "season": "2026-03", "label": "Marzo 2026", "monthNum": 3, "top3": [...] }],
+  "currentSeason": "2026-04",
+  "currentLabel": "Aprile 2026"
+}
+```
+
+### POST `/api/leaderboard`
+- Body: `{ score: number, season?: string }`
+- Header: `Authorization: ******`
+- Valida token Twitch → scrive su weekly + monthly + ZINCRBY general
+
+---
+
+## 🔧 Admin — `api/reset-leaderboard.js`
+
+Protetto da `Authorization: ******` (`IUA_SECRET` env var).
+
+### GET — stato attuale
+```bash
+curl -X GET /api/reset-leaderboard -H "Authorization: ******"
+# → entry counts, TTLs, lista di tutte le chiavi lb:*
+```
+
+### POST — operazioni
+```bash
+# Reset settimanale (default)
+curl -X POST /api/reset-leaderboard -H "..." -d '{}'
+
+# Reset mensile + aggiusta generale
+curl -X POST /api/reset-leaderboard -H "..." -d '{"monthly": true}'
+
+# Azzera classifica generale
+curl -X POST /api/reset-leaderboard -H "..." -d '{"general": true}'
+
+# Ricalcola generale da zero (scansione tutti lb:*:monthly)
+curl -X POST /api/reset-leaderboard -H "..." -d '{"recalculate_general": true}'
+
+# Rimuovi un utente da tutte le board attive
+curl -X POST /api/reset-leaderboard -H "..." -d '{"user": "twitchusername"}'
+
+# Wipe totale (tutte le chiavi lb:*)
+curl -X POST /api/reset-leaderboard -H "..." -d '{"full": true}'
+```
 
 ---
 
@@ -116,8 +212,8 @@ siteify/
 ## 🖼️ Asset e immagini
 
 - I file nella cartella `public/` sono serviti alla radice (`/nomefile.ext`)
-- **Non usare URL GitHub raw** per le immagini del sito: scaricare sempre il file in `public/` e referenziarlo con path locale (es. `/andryx-logo.png`)
-- Il logo principale è `public/andryx-logo.png` (PNG con sfondo bianco, firma "Andryx" in nero/viola)
+- **Non usare URL GitHub raw** per le immagini del sito: usare sempre path locale (es. `/andryx-logo.svg`)
+- Il logo principale è `public/andryx-logo.svg` (SVG con gradient fill, no filtri CSS necessari)
 
 ---
 
@@ -128,14 +224,20 @@ siteify/
 - **`.env.example`** — template pubblico senza valori, da tenere aggiornato.
 
 ### Convenzione di naming (chiavi frontend / Vite)
-Le variabili d'ambiente inserite dall'agent seguono la convenzione `VITE_CHIAVE<PROVIDER>`:
 
 | Variabile | Provider | Usato in |
 |---|---|---|
-| `VITE_CHIAVETWITCH` | Twitch | `src/pages/GamePage.jsx` → `import.meta.env.VITE_CHIAVETWITCH` |
+| `VITE_CHIAVETWITCH` | Twitch | `src/pages/GamePage.jsx` |
 
-> **Regola**: ogni nuova chiave introdotta dall'agent deve chiamarsi `VITE_CHIAVE<PROVIDER>` (es. `VITE_CHIAVEYOUTUBE`, `VITE_CHIAVESPOTIFY`).
-> Le variabili server-side (API Vercel) seguono la stessa logica ma senza prefisso `VITE_`.
+### Chiavi server-side (Vercel dashboard)
+
+| Variabile | Descrizione |
+|---|---|
+| `KV_REST_API_URL` | URL Upstash Redis |
+| `KV_REST_API_TOKEN` | Token Upstash Redis |
+| `IUA_SECRET` | Segreto admin per `/api/reset-leaderboard` |
+
+> **Regola**: chiavi frontend → `VITE_CHIAVE<PROVIDER>`; chiavi server → senza prefisso `VITE_`. Mai hardcodate nel sorgente.
 
 ---
 
@@ -156,10 +258,42 @@ npm run lint      # ESLint (flat config)
 |---|---|---|
 | 2026-04-16 | Aggiunto logo Andryx in `public/andryx-logo.png` e aggiornato `LOGO_URL` in Navbar e Footer | `public/andryx-logo.png`, `src/components/Navbar.jsx`, `src/components/Footer.jsx` |
 | 2026-04-16 | Creato `.github/copilot-instructions.md` con mappatura completa del progetto | `.github/copilot-instructions.md` |
-| 2026-04-16 | Rinominato `TWITCH_CLIENT_ID` → `CHIAVETWITCH` in `GamePage.jsx`; aggiornato Client ID Twitch | `src/pages/GamePage.jsx` |
-| 2026-04-16 | Spostato `CHIAVETWITCH` in `.env.local` (gitignored); `GamePage.jsx` ora legge da `import.meta.env.VITE_CHIAVETWITCH`; aggiornati `.env.example` e docs | `src/pages/GamePage.jsx`, `.env.local`, `.env.example`, `.github/copilot-instructions.md` |
+| 2026-04-16 | Rinominato `TWITCH_CLIENT_ID` → `CHIAVETWITCH`; spostato in `.env.local`; `GamePage.jsx` legge da `import.meta.env.VITE_CHIAVETWITCH` | `src/pages/GamePage.jsx`, `.env.local`, `.env.example` |
+| 2026-04-17 | **Fix cuori**: `P.heartDim` era invisibile (0.15 opacity) → ora `♡` outline a 0.32 opacity in `aprile.js`, `marzo.js`, `maggio.js`, `ottobre.js` | `src/games/aprile.js`, `src/games/marzo.js`, `src/games/maggio.js`, `src/games/ottobre.js` |
+| 2026-04-17 | **Fix joystick**: `onTouchMove` React passivo → native `addEventListener` con `{ passive: false }` + joystick floating (centro = punto di touch iniziale) | `src/pages/GamePage.jsx` |
+| 2026-04-17 | **Classifica v2**: riscritta con weekly/monthly/general (ZINCRBY delta). Nuova struttura Redis: weekly TTL 8gg, monthly permanente, general cumulativo | `api/leaderboard.js` |
+| 2026-04-17 | **Admin leaderboard**: `reset-leaderboard.js` esteso con GET status + POST weekly/monthly/general/recalculate_general/user/full | `api/reset-leaderboard.js` |
+| 2026-04-17 | **UI classifica**: tab Sett./Mensile/Generale; tab Mensile mostra mese corrente + archivio mesi passati | `src/pages/GamePage.jsx` |
+| 2026-04-17 | **Calendario leader**: riga mese corrente mostra `🥇 username` in tempo reale (colore tema gioco); badge "ORA" solo se nessuno ha ancora giocato | `src/pages/GamePage.jsx` |
 
-> **Nota per l'agent**: aggiornare sempre la tabella "Registro operazioni" ogni volta che si esegue una modifica significativa al progetto.
+---
+
+## 💡 Idee di miglioramento e feature future
+
+### 🎮 Gioco
+- [ ] **Più tipi di nemici** per le stanze avanzate (boss room ogni 5 stanze, range attacker, ecc.)
+- [ ] **Power-up variati**: scudo temporaneo, velocità, attacco potenziato (non solo heal)
+- [ ] **Suoni e musica**: Web Audio API per SFX (attacco, danno, gemma, portale) e loop musicale
+- [ ] **Salvataggio sessione**: `sessionStorage` per riprendere dal piano raggiunto in caso di refresh accidentale
+- [ ] **Animazioni morte più elaborate**: esplosione/dissoluzione per ogni tipo di nemico
+- [ ] **Feedback danno sul player**: flash rosso breve sullo schermo quando si viene colpiti
+- [ ] **Difficoltà progressiva**: aumentare numero nemici e HP al passare delle stanze più velocemente
+
+### 🏆 Classifica
+- [ ] **Notifica in-game** quando l'utente scala la classifica ("Sei in 2ª posizione!")
+- [ ] **Profilo utente**: pagina `/gioco/@username` con storico punteggi mensili e badge
+- [ ] **Webhook Discord/Twitch** quando qualcuno prende il primo posto
+- [ ] **Paginazione** per la classifica generale (oltre i top 50)
+- [ ] **Dashboard admin** (pagina web protetta) per non dover usare curl per le operazioni di reset
+
+### 📅 Calendario
+- [ ] **Countdown** al prossimo gioco del mese (se il mese non è ancora iniziato)
+- [ ] **Preview del gioco futuro** (nome + emoji) per i mesi non ancora giocabili
+
+### 🔧 Tecnico
+- [ ] **Code splitting**: il bundle principale supera 500KB; usare `React.lazy()` per le pagine gioco e leaderboard
+- [ ] **Joystick visivo**: aggiornare la posizione del knob a 60fps (ora il transform viene calcolato dal React state, non dal ref → possibile lag visivo)
+- [ ] **Test E2E**: Playwright per verificare il flusso OAuth Twitch + submit punteggio
 
 ---
 
@@ -173,3 +307,4 @@ npm run lint      # ESLint (flat config)
 - Nessun CSS-in-JS: usare `className` con classi definite in `index.css`
 - Le costanti condivise tra componenti (es. `LOGO_URL`) vanno estratte e mantenute coerenti
 - Le chiavi API/OAuth introdotte dall'agent si chiamano `VITE_CHIAVE<PROVIDER>` e vengono lette da `import.meta.env` (mai hardcodate nel sorgente)
+- Ogni modulo gioco (`src/games/*.js`) deve esportare `meta` e `createGame` secondo il contratto di `registry.js`

@@ -1,109 +1,106 @@
 import { Redis } from '@upstash/redis';
 
-const ALLTIME_KEY = 'neural_dash_leaderboard';
+/**
+ * Leaderboard API — v2
+ *
+ * Three scoreboards, all stored in Redis sorted sets:
+ *
+ *   Weekly   — Max score per user in the current ISO week.
+ *              Key: lb:<YYYY-MM>:weekly:<YYYY-WNN>  (TTL 8 days)
+ *
+ *   Monthly  — Max score per user in the current month.
+ *              Key: lb:<YYYY-MM>:monthly  (no TTL — permanent archive)
+ *
+ *   General  — Cumulative: sum of each user's monthly maxima across all months.
+ *              Key: lb:general  (no TTL — updated incrementally via ZINCRBY)
+ *              Logic: when a user improves their monthly best by Δ, add Δ to their
+ *              general score. So general[user] = Σ monthly_max(user, month) over all months.
+ *
+ * GET /api/leaderboard[?season=YYYY-MM]
+ *   Returns: { weekly, monthly, general, archive, currentSeason, currentLabel }
+ *
+ * POST /api/leaderboard
+ *   Body:  { score: number, season?: string }
+ *   Auth:  Authorization: Bearer <twitchAccessToken>
+ *   Logic: updates weekly max; if monthly max improves → update monthly + ZINCRBY general
+ */
+
+const GENERAL_KEY = 'lb:general';
 const MAX_ENTRIES = 50;
-const WEEKLY_TTL_SECONDS = 8 * 24 * 60 * 60; // 8 days (buffer beyond 7)
-const MONTHLY_TTL_SECONDS = 35 * 24 * 60 * 60; // 35 days (buffer beyond ~31)
-
-/**
- * Get the ISO week key for the current week (Monday–Sunday).
- * Format: neural_dash_leaderboard:weekly:YYYY-WXX
- */
-function getWeeklyKey(now = new Date()) {
-  // ISO week: Monday is the first day of the week
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  // Set to nearest Thursday (ISO week belongs to the year of its Thursday)
-  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
-  return `neural_dash_leaderboard:weekly:${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
-}
-
-/**
- * Get the monthly key for the current month.
- * Format: neural_dash_leaderboard:monthly:YYYY-MM
- */
-function getMonthlyKey(now = new Date()) {
-  const year = now.getUTCFullYear();
-  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-  return `neural_dash_leaderboard:monthly:${year}-${month}`;
-}
+const WEEKLY_TTL_SECONDS = 8 * 24 * 60 * 60; // 8 days
 
 const MONTH_NAMES = [
   'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
   'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre',
 ];
 
-/**
- * Get a human-readable label for the current month.
- * Format: "Aprile 2026"
- */
+/* ─── Key helpers ─── */
+
+function getWeeklyKey(season, now = new Date()) {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return `lb:${season}:weekly:${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
+function getMonthlyKey(season) {
+  return `lb:${season}:monthly`;
+}
+
+function getCurrentSeason(now = new Date()) {
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
 function getCurrentMonthLabel(now = new Date()) {
   return `${MONTH_NAMES[now.getUTCMonth()]} ${now.getUTCFullYear()}`;
 }
 
-/**
- * Get the list of completed months in the current year (Jan up to last completed month).
- * Returns an array of {key, label, month} for each past month.
- */
-function getCompletedMonthKeys(now = new Date()) {
-  const year = now.getUTCFullYear();
-  const currentMonth = now.getUTCMonth(); // 0-based: Jan=0
-  const months = [];
-  // Only include months that are already completed (before currentMonth)
-  for (let m = 0; m < currentMonth; m++) {
-    const mm = String(m + 1).padStart(2, '0');
-    months.push({
-      key: `neural_dash_leaderboard:monthly:${year}-${mm}`,
-      label: `${MONTH_NAMES[m]} ${year}`,
-      month: `${year}-${mm}`,
+/** Returns up to `lookback` completed months before the current one, oldest first. */
+function getCompletedSeasons(now = new Date(), lookback = 12) {
+  const result = [];
+  for (let i = lookback; i >= 1; i--) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const year = d.getUTCFullYear();
+    const month = d.getUTCMonth(); // 0-based
+    result.push({
+      season: `${year}-${String(month + 1).padStart(2, '0')}`,
+      label: `${MONTH_NAMES[month]} ${year}`,
+      monthNum: month + 1,
+      year,
     });
   }
-  return months;
+  return result;
 }
 
-/**
- * Parse scores returned by zrange with withScores.
- * @upstash/redis v1.x returns a flat interleaved array: [member, score, member, score, …]
- * The object-format branch (value/member/element) is a defensive fallback in case
- * future SDK versions change the response shape.
- */
 function parseScores(raw) {
   if (!Array.isArray(raw) || raw.length === 0) return [];
-
-  // Check if response is already in object format [{value/member, score}]
   if (typeof raw[0] === 'object' && raw[0] !== null) {
     return raw.map(entry => ({
       username: String(entry.value ?? entry.member ?? entry.element ?? ''),
       score: Number(entry.score ?? 0),
     }));
   }
-
-  // Flat interleaved array: [member, score, member, score, …]
   const result = [];
   for (let i = 0; i + 1 < raw.length; i += 2) {
-    result.push({
-      username: String(raw[i]),
-      score: Number(raw[i + 1]),
-    });
+    result.push({ username: String(raw[i]), score: Number(raw[i + 1]) });
   }
   return result;
 }
+
+/* ─── Handler ─── */
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   const kvUrl = process.env.KV_REST_API_URL;
   const kvToken = process.env.KV_REST_API_TOKEN;
-
   if (!kvUrl || !kvToken) {
-    console.error('Leaderboard: KV_REST_API_URL or KV_REST_API_TOKEN not configured.');
+    console.error('Leaderboard: KV env vars missing.');
     return res.status(500).json({ error: 'Database non configurato.' });
   }
 
@@ -115,50 +112,46 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Errore di connessione al database.' });
   }
 
-  const weeklyKey = getWeeklyKey();
-  const monthlyKey = getMonthlyKey();
+  const now = new Date();
+  const currentSeason = getCurrentSeason(now);
+  const requestedSeason = (req.query?.season || currentSeason).replace(/[^0-9-]/g, '');
 
-  // GET: return weekly, all-time, and monthly winners leaderboards
+  /* ─── GET: fetch leaderboard data ─── */
   if (req.method === 'GET') {
     try {
-      const completedMonths = getCompletedMonthKeys();
+      const weeklyKey = getWeeklyKey(requestedSeason, now);
+      const monthlyKey = getMonthlyKey(requestedSeason);
+      const completedSeasons = getCompletedSeasons(now);
 
-      // Fetch weekly + alltime + current month + all completed months' top 3 in parallel
-      const monthlyPromises = completedMonths.map(m =>
-        redis.zrange(m.key, 0, 2, { rev: true, withScores: true })
+      const archivePromises = completedSeasons.map(s =>
+        redis.zrange(getMonthlyKey(s.season), 0, 2, { rev: true, withScores: true })
       );
 
-      const [weeklyRaw, alltimeRaw, currentMonthRaw, ...monthlyRawArr] = await Promise.all([
+      const [weeklyRaw, monthlyRaw, generalRaw, ...archiveRawArr] = await Promise.all([
         redis.zrange(weeklyKey, 0, MAX_ENTRIES - 1, { rev: true, withScores: true }),
-        redis.zrange(ALLTIME_KEY, 0, MAX_ENTRIES - 1, { rev: true, withScores: true }),
         redis.zrange(monthlyKey, 0, MAX_ENTRIES - 1, { rev: true, withScores: true }),
-        ...monthlyPromises,
+        redis.zrange(GENERAL_KEY, 0, MAX_ENTRIES - 1, { rev: true, withScores: true }),
+        ...archivePromises,
       ]);
 
-      // Build monthly winners: only include months that have at least one entry
-      const monthlyWinners = completedMonths
-        .map((m, i) => ({
-          month: m.month,
-          label: m.label,
-          top3: parseScores(monthlyRawArr[i]),
+      const archive = completedSeasons
+        .map((s, i) => ({
+          season: s.season,
+          label: s.label,
+          monthNum: s.monthNum,
+          year: s.year,
+          top3: parseScores(archiveRawArr[i]).slice(0, 3),
         }))
-        .filter(m => m.top3.length > 0)
-        .reverse(); // Most recent month first
-
-      const now = new Date();
-      const currentMonthStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+        .filter(a => a.top3.length > 0)
+        .reverse(); // most recent first
 
       return res.status(200).json({
         weekly: parseScores(weeklyRaw),
-        alltime: parseScores(alltimeRaw),
-        currentMonth: {
-          month: currentMonthStr,
-          label: getCurrentMonthLabel(now),
-          scores: parseScores(currentMonthRaw),
-        },
-        monthlyWinners,
-        // Keep legacy field for backwards compatibility
-        leaderboard: parseScores(alltimeRaw),
+        monthly: parseScores(monthlyRaw),
+        general: parseScores(generalRaw),
+        archive,
+        currentSeason: requestedSeason,
+        currentLabel: getCurrentMonthLabel(now),
       });
     } catch (e) {
       console.error('Leaderboard GET error:', e);
@@ -166,88 +159,77 @@ export default async function handler(req, res) {
     }
   }
 
-  // POST: submit a score (requires Twitch token)
+  /* ─── POST: submit score ─── */
   if (req.method === 'POST') {
     try {
-      const { score } = req.body;
+      const { score, season: bodySeason } = req.body;
+      const targetSeason = (bodySeason || currentSeason).replace(/[^0-9-]/g, '');
 
       if (typeof score !== 'number' || score < 0 || !Number.isFinite(score) || score > 999999) {
         return res.status(400).json({ error: 'Punteggio non valido.' });
       }
+      if (targetSeason !== currentSeason) {
+        return res.status(400).json({ error: 'Non puoi inviare punteggi per una stagione passata.' });
+      }
 
-      // Validate Twitch token
       const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      if (!authHeader?.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Token Twitch mancante. Effettua il login.' });
       }
 
       const twitchToken = authHeader.split(' ')[1];
-
-      // Validate token with Twitch API
       const validateRes = await fetch('https://id.twitch.tv/oauth2/validate', {
         headers: { Authorization: `OAuth ${twitchToken}` },
       });
-
       if (!validateRes.ok) {
         return res.status(401).json({ error: 'Token Twitch non valido o scaduto.' });
       }
-
       const twitchData = await validateRes.json();
       const username = twitchData.login;
-
       if (!username) {
         return res.status(401).json({ error: 'Impossibile ottenere il nome utente Twitch.' });
       }
 
-      // Write to all-time, weekly, and monthly leaderboards.
-      // For each, only update if the new score is higher.
-      const [currentAlltime, currentWeekly, currentMonthly] = await Promise.all([
-        redis.zscore(ALLTIME_KEY, username),
-        redis.zscore(weeklyKey, username),
+      const weeklyKey = getWeeklyKey(targetSeason, now);
+      const monthlyKey = getMonthlyKey(targetSeason);
+
+      // Fetch current best scores
+      const [oldMonthly, oldWeekly] = await Promise.all([
         redis.zscore(monthlyKey, username),
+        redis.zscore(weeklyKey, username),
       ]);
 
       const ops = [];
-      let updatedAlltime = false;
-      let updatedWeekly = false;
       let updatedMonthly = false;
+      let updatedWeekly = false;
 
-      if (currentAlltime === null || Number(currentAlltime) < score) {
-        ops.push(redis.zadd(ALLTIME_KEY, { score, member: username }));
-        updatedAlltime = true;
-      }
-
-      if (currentWeekly === null || Number(currentWeekly) < score) {
-        ops.push(redis.zadd(weeklyKey, { score, member: username }));
-        updatedWeekly = true;
-      }
-
-      if (currentMonthly === null || Number(currentMonthly) < score) {
+      // Monthly: update only if this score is higher than the current monthly best
+      if (oldMonthly === null || Number(oldMonthly) < score) {
         ops.push(redis.zadd(monthlyKey, { score, member: username }));
         updatedMonthly = true;
       }
 
-      if (ops.length > 0) {
-        await Promise.all(ops);
+      // Weekly: update only if this score is higher than the current weekly best
+      if (oldWeekly === null || Number(oldWeekly) < score) {
+        ops.push(redis.zadd(weeklyKey, { score, member: username }));
+        ops.push(redis.expire(weeklyKey, WEEKLY_TTL_SECONDS));
+        updatedWeekly = true;
       }
 
-      // Set TTLs separately so a failure here doesn't lose the score
-      if (updatedWeekly) {
-        await redis.expire(weeklyKey, WEEKLY_TTL_SECONDS).catch((e) => {
-          console.error('Failed to set weekly TTL:', e);
-        });
-      }
+      if (ops.length > 0) await Promise.all(ops);
+
+      // General: add the delta of monthly improvement via ZINCRBY
+      // This keeps general = Σ monthly_max across all months
       if (updatedMonthly) {
-        await redis.expire(monthlyKey, MONTHLY_TTL_SECONDS).catch((e) => {
-          console.error('Failed to set monthly TTL:', e);
-        });
+        const delta = score - (oldMonthly !== null ? Number(oldMonthly) : 0);
+        await redis.zincrby(GENERAL_KEY, delta, username);
       }
 
-      if (!updatedAlltime && !updatedWeekly && !updatedMonthly) {
+      if (!updatedMonthly && !updatedWeekly) {
         return res.status(200).json({
           message: 'Hai già un punteggio più alto!',
           username,
-          currentBest: Number(currentAlltime),
+          currentMonthlyBest: Number(oldMonthly),
           submitted: score,
         });
       }
@@ -256,6 +238,8 @@ export default async function handler(req, res) {
         message: 'Punteggio registrato!',
         username,
         score,
+        updatedMonthly,
+        updatedWeekly,
       });
     } catch (e) {
       console.error('Leaderboard POST error:', e);

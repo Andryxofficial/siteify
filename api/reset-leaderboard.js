@@ -1,40 +1,125 @@
 import { Redis } from '@upstash/redis';
 
 /**
- * POST /api/reset-leaderboard
+ * Admin leaderboard management endpoint.
+ * Protected by: Authorization: Bearer <IUA_SECRET>
  *
- * Admin endpoint: wipes every Redis key that starts with "neural_dash_leaderboard"
- * (used by Andryx Quest and legacy Neural Dash).
- * Protected by Authorization: Bearer <IUA_SECRET>.
+ * GET  /api/reset-leaderboard
+ *   Returns the current state (entry counts, TTLs) of all active leaderboard keys.
+ *
+ * POST /api/reset-leaderboard  — body examples:
+ *
+ *   {}  or  { "weekly": true }
+ *     Reset the current week's weekly key.
+ *
+ *   { "monthly": true }
+ *     Reset the current month's monthly key AND subtract those scores from lb:general.
+ *
+ *   { "general": true }
+ *     Wipe lb:general entirely.
+ *
+ *   { "recalculate_general": true }
+ *     Rebuild lb:general by summing ALL existing lb:*:monthly keys.
+ *     Use this after manual edits or to fix any drift.
+ *
+ *   { "user": "twitchusername" }
+ *     Remove a user from all active boards (weekly + monthly + general adjustment).
+ *
+ *   { "full": true }
+ *     Wipe every lb:* key. Nuclear option.
  *
  * Usage (curl):
- *   curl -X POST https://www.andryxify.it/api/reset-leaderboard \
+ *   curl -X GET https://www.andryxify.it/api/reset-leaderboard \
  *        -H "Authorization: Bearer <IUA_SECRET>"
+ *
+ *   curl -X POST https://www.andryxify.it/api/reset-leaderboard \
+ *        -H "Authorization: Bearer <IUA_SECRET>" \
+ *        -H "Content-Type: application/json" \
+ *        -d '{"weekly": true}'
+ *
+ *   curl -X POST https://www.andryxify.it/api/reset-leaderboard \
+ *        -H "Authorization: Bearer <IUA_SECRET>" \
+ *        -H "Content-Type: application/json" \
+ *        -d '{"monthly": true}'
+ *
+ *   curl -X POST https://www.andryxify.it/api/reset-leaderboard \
+ *        -H "Authorization: Bearer <IUA_SECRET>" \
+ *        -H "Content-Type: application/json" \
+ *        -d '{"recalculate_general": true}'
+ *
+ *   curl -X POST https://www.andryxify.it/api/reset-leaderboard \
+ *        -H "Authorization: Bearer <IUA_SECRET>" \
+ *        -H "Content-Type: application/json" \
+ *        -d '{"user": "twitchusername"}'
+ *
+ *   curl -X POST https://www.andryxify.it/api/reset-leaderboard \
+ *        -H "Authorization: Bearer <IUA_SECRET>" \
+ *        -H "Content-Type: application/json" \
+ *        -d '{"full": true}'
  */
+
+const GENERAL_KEY = 'lb:general';
+
+function getCurrentSeason(now = new Date()) {
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+function getWeeklyKey(season, now = new Date()) {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return `lb:${season}:weekly:${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
+function parseScores(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+  if (typeof raw[0] === 'object' && raw[0] !== null) {
+    return raw.map(e => ({
+      username: String(e.value ?? e.member ?? e.element ?? ''),
+      score: Number(e.score ?? 0),
+    }));
+  }
+  const result = [];
+  for (let i = 0; i + 1 < raw.length; i += 2) {
+    result.push({ username: String(raw[i]), score: Number(raw[i + 1]) });
+  }
+  return result;
+}
+
+async function scanKeys(redis, pattern) {
+  const keys = [];
+  let cursor = 0;
+  do {
+    const [nextCursor, batch] = await redis.scan(cursor, { match: pattern, count: 100 });
+    cursor = Number(nextCursor);
+    if (batch.length > 0) keys.push(...batch);
+  } while (cursor !== 0);
+  return [...new Set(keys)];
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Metodo non supportato.' });
-
-  // Auth
-  const secret = process.env.IUA_SECRET;
-  if (!secret) {
-    return res.status(500).json({ error: 'IUA_SECRET non configurato sul server.' });
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    return res.status(405).json({ error: 'Metodo non supportato.' });
   }
+
+  // ─── Auth ───
+  const secret = process.env.IUA_SECRET;
+  if (!secret) return res.status(500).json({ error: 'IUA_SECRET non configurato sul server.' });
   const auth = req.headers.authorization;
   if (!auth || auth !== `Bearer ${secret}`) {
     return res.status(401).json({ error: 'Non autorizzato.' });
   }
 
-  // Redis
+  // ─── Redis ───
   const kvUrl = process.env.KV_REST_API_URL;
   const kvToken = process.env.KV_REST_API_TOKEN;
-  if (!kvUrl || !kvToken) {
-    return res.status(500).json({ error: 'Database non configurato.' });
-  }
+  if (!kvUrl || !kvToken) return res.status(500).json({ error: 'Database non configurato.' });
 
   let redis;
   try {
@@ -44,30 +129,149 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Errore di connessione al database.' });
   }
 
-  try {
-    // Collect all matching keys via SCAN (handles large keyspaces safely)
-    const keys = [];
-    let cursor = 0;
-    do {
-      const [nextCursor, batch] = await redis.scan(cursor, {
-        match: 'neural_dash_leaderboard*',
-        count: 100,
-      });
-      cursor = Number(nextCursor);
-      if (batch.length > 0) keys.push(...batch);
-    } while (cursor !== 0);
+  const now = new Date();
+  const season = getCurrentSeason(now);
+  const weeklyKey = getWeeklyKey(season, now);
+  const monthlyKey = `lb:${season}:monthly`;
 
-    if (keys.length > 0) {
-      await redis.del(...keys);
+  /* ─── GET: status ─── */
+  if (req.method === 'GET') {
+    try {
+      const [weeklyCount, monthlyCount, generalCount, weeklyTtl, allKeys] = await Promise.all([
+        redis.zcard(weeklyKey),
+        redis.zcard(monthlyKey),
+        redis.zcard(GENERAL_KEY),
+        redis.ttl(weeklyKey),
+        scanKeys(redis, 'lb:*'),
+      ]);
+
+      return res.status(200).json({
+        season,
+        keys: {
+          weekly: weeklyKey,
+          monthly: monthlyKey,
+          general: GENERAL_KEY,
+        },
+        entries: {
+          weekly: weeklyCount ?? 0,
+          monthly: monthlyCount ?? 0,
+          general: generalCount ?? 0,
+        },
+        weeklyTtlSeconds: weeklyTtl,
+        allLbKeys: allKeys.sort(),
+      });
+    } catch (e) {
+      console.error('Reset-leaderboard GET error:', e);
+      return res.status(500).json({ error: 'Errore nel recupero dello stato.' });
+    }
+  }
+
+  /* ─── POST: admin operations ─── */
+  try {
+    const body = req.body || {};
+
+    // ── Full wipe ──
+    if (body.full === true) {
+      const keys = await scanKeys(redis, 'lb:*');
+      if (keys.length > 0) await redis.del(...keys);
+      console.log(`[reset-leaderboard] FULL WIPE: deleted ${keys.length} key(s)`, keys);
+      return res.status(200).json({
+        action: 'full_wipe',
+        message: `Wipe completo. ${keys.length} chiave/i eliminate.`,
+        deletedKeys: keys,
+      });
     }
 
-    console.log(`[reset-leaderboard] Deleted ${keys.length} key(s):`, keys);
+    // ── Wipe general leaderboard ──
+    if (body.general === true) {
+      await redis.del(GENERAL_KEY);
+      console.log('[reset-leaderboard] General leaderboard wiped.');
+      return res.status(200).json({
+        action: 'reset_general',
+        message: 'Classifica generale azzerata.',
+      });
+    }
+
+    // ── Recalculate general from all monthly keys ──
+    if (body.recalculate_general === true) {
+      const monthlyKeys = await scanKeys(redis, 'lb:*:monthly');
+      const allData = await Promise.all(
+        monthlyKeys.map(k => redis.zrange(k, 0, -1, { rev: false, withScores: true }))
+      );
+      const userTotals = {};
+      for (const data of allData) {
+        for (const { username, score } of parseScores(data)) {
+          if (username) userTotals[username] = (userTotals[username] || 0) + score;
+        }
+      }
+      await redis.del(GENERAL_KEY);
+      const entries = Object.entries(userTotals);
+      if (entries.length > 0) {
+        await Promise.all(entries.map(([u, s]) => redis.zadd(GENERAL_KEY, { score: s, member: u })));
+      }
+      console.log(`[reset-leaderboard] General recalculated from ${monthlyKeys.length} monthly key(s). ${entries.length} user(s).`);
+      return res.status(200).json({
+        action: 'recalculate_general',
+        message: `Generale ricalcolata da ${monthlyKeys.length} chiave/i mensili. ${entries.length} utente/i.`,
+        monthlyKeysScanned: monthlyKeys,
+        userTotals,
+      });
+    }
+
+    // ── Reset current monthly + adjust general ──
+    if (body.monthly === true) {
+      const monthlyRaw = await redis.zrange(monthlyKey, 0, -1, { rev: false, withScores: true });
+      const entries = parseScores(monthlyRaw);
+      await redis.del(monthlyKey);
+      // Subtract each user's monthly score from general; remove user if score drops to 0
+      for (const { username, score } of entries) {
+        const newScore = await redis.zincrby(GENERAL_KEY, -score, username);
+        if (Number(newScore) <= 0) await redis.zrem(GENERAL_KEY, username);
+      }
+      console.log(`[reset-leaderboard] Monthly ${monthlyKey} reset. ${entries.length} user(s) adjusted.`);
+      return res.status(200).json({
+        action: 'reset_monthly',
+        message: `Classifica mensile di ${season} azzerata. ${entries.length} utente/i aggiustati nella generale.`,
+        season,
+        adjustedUsers: entries.map(e => ({ username: e.username, removed: e.score })),
+      });
+    }
+
+    // ── Remove a specific user from all active boards ──
+    if (body.user) {
+      const username = String(body.user).trim().toLowerCase();
+      if (!username) return res.status(400).json({ error: 'Username non valido.' });
+      const monthlyScore = await redis.zscore(monthlyKey, username);
+      await Promise.all([
+        redis.zrem(weeklyKey, username),
+        redis.zrem(monthlyKey, username),
+      ]);
+      if (monthlyScore !== null) {
+        const newScore = await redis.zincrby(GENERAL_KEY, -Number(monthlyScore), username);
+        if (Number(newScore) <= 0) await redis.zrem(GENERAL_KEY, username);
+      }
+      console.log(`[reset-leaderboard] User "${username}" removed. Monthly score was: ${monthlyScore}`);
+      return res.status(200).json({
+        action: 'remove_user',
+        message: `Utente "${username}" rimosso dalla classifica attiva.`,
+        username,
+        monthlyScoreRemoved: monthlyScore !== null ? Number(monthlyScore) : null,
+      });
+    }
+
+    // ── Reset current weekly (default) ──
+    const allWeeklyKeys = await scanKeys(redis, `lb:${season}:weekly:*`);
+    const toDelete = allWeeklyKeys.length > 0 ? allWeeklyKeys : [weeklyKey];
+    const existing = toDelete.filter(Boolean);
+    if (existing.length > 0) await redis.del(...existing);
+    console.log(`[reset-leaderboard] Weekly keys cleared: ${existing.join(', ')}`);
     return res.status(200).json({
-      message: `Classifica resettata con successo. ${keys.length} chiave/i eliminate.`,
-      deletedKeys: keys,
+      action: 'reset_weekly',
+      message: `${existing.length} chiave/i settimanali eliminate.`,
+      deletedKeys: existing,
     });
   } catch (e) {
-    console.error('Reset leaderboard error:', e);
-    return res.status(500).json({ error: 'Errore durante il reset della classifica.' });
+    console.error('Reset-leaderboard POST error:', e);
+    return res.status(500).json({ error: 'Errore durante l\'operazione.' });
   }
 }
