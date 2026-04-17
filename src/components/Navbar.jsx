@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
@@ -25,39 +25,9 @@ const LOGO_URL = '/logo.png';
    no DOM measurements, no imperative animate(), works on
    framer-motion v10/11/12.
    ───────────────────────────────────────────────────────── */
-function MobileTabBar({ activePath, onNavigate }) {
-  const touchStartX  = useRef(0);
-  const touchStartY  = useRef(0);
-  const isHorizontal = useRef(false);
-
+function MobileTabBar({ activePath }) {
   const activeIdx   = NAV_LINKS.findIndex(l => l.path === activePath);
-  const tabWidthPct = 100 / NAV_LINKS.length; // each slot is 20%
-
-  const handleTouchStart = useCallback((e) => {
-    touchStartX.current  = e.touches[0].clientX;
-    touchStartY.current  = e.touches[0].clientY;
-    isHorizontal.current = false;
-  }, []);
-
-  const handleTouchMove = useCallback((e) => {
-    const dx = e.touches[0].clientX - touchStartX.current;
-    const dy = e.touches[0].clientY - touchStartY.current;
-    if (!isHorizontal.current && Math.abs(dx) > 6)
-      isHorizontal.current = Math.abs(dx) > Math.abs(dy);
-  }, []);
-
-  const handleTouchEnd = useCallback((e) => {
-    if (!isHorizontal.current) return;
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(dx) < 30) return;
-    const nextIdx = dx < 0
-      ? Math.min(activeIdx + 1, NAV_LINKS.length - 1)
-      : Math.max(activeIdx - 1, 0);
-    if (nextIdx !== activeIdx) {
-      hapticLight();
-      onNavigate(NAV_LINKS[nextIdx].path);
-    }
-  }, [activeIdx, onNavigate]);
+  const tabWidthPct = 100 / NAV_LINKS.length;
 
   const handleTabClick = useCallback(() => {
     hapticLight();
@@ -67,9 +37,6 @@ function MobileTabBar({ activePath, onNavigate }) {
     <nav
       className="mobile-tab-bar"
       aria-label="Navigazione principale"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
     >
       <div className="mobile-tab-items">
 
@@ -124,7 +91,6 @@ function MobileTabBar({ activePath, onNavigate }) {
    ───────────────────────────────────────────────────────── */
 export default function Navbar() {
   const location          = useLocation();
-  const navigate          = useNavigate();
   const linksContainerRef = useRef(null);
   const linkRefs          = useRef({});
   const headerVisible     = useScrollHeader();
@@ -237,7 +203,7 @@ export default function Navbar() {
       </AnimatePresence>
 
       {/* ── Bottom tab bar (mobile only) ── */}
-      <MobileTabBar activePath={location.pathname} onNavigate={navigate} />
+      <MobileTabBar activePath={location.pathname} />
     </>
   );
 }

@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import { useLocation } from 'react-router-dom';
 
 const variants = {
   initial:  { opacity: 0, y: 16, scale: 0.99 },
@@ -16,13 +15,12 @@ const transition = {
 
 /**
  * Wraps each page route for consistent iOS-like spring transitions.
- * Use in place of manual per-page motion.div wrappers.
+ * Key is provided externally by AnimatePresence in App.jsx —
+ * do NOT add a key here or it will break exit animations.
  */
 export default function PageTransition({ children }) {
-  const location = useLocation();
   return (
     <motion.div
-      key={location.pathname}
       variants={variants}
       initial="initial"
       animate="animate"
