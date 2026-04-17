@@ -6,6 +6,8 @@ import TikTokIcon from './TikTokIcon';
 import useScrollHeader from '../hooks/useScrollHeader';
 import { hapticLight } from '../utils/haptics';
 
+const LOGO_URL = '/firma_andryx.png';
+
 const NAV_LINKS = [
   { path: '/',          label: 'Home',      Icon: HomeIcon      },
   { path: '/twitch',    label: 'Twitch',    Icon: TwitchIcon    },
@@ -151,7 +153,7 @@ export default function Navbar() {
           >
             <div className="navbar-content">
               <Link to="/" className="navbar-logo" aria-label="ANDRYXify – Home">
-                <img src="/firma_andryx.png" alt="ANDRYXify" className="navbar-logo-img" />
+                <img src={LOGO_URL} alt="ANDRYXify" className="navbar-logo-img" />
               </Link>
 
               <div
