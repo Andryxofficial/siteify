@@ -10,11 +10,7 @@ const twitchStats = [
 
 export default function TwitchPage() {
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ type: 'spring', stiffness: 180, damping: 24 }}
+    <div
       className="main-content"
       style={{ maxWidth: '1100px' }}
     >
@@ -30,9 +26,9 @@ export default function TwitchPage() {
         <p className="subtitle">Segui le dirette, interagisci in chat e scopri i momenti migliori.</p>
 
         {/* Twitch brand stats bar */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+        <div className="glass-stats-bar" style={{ marginTop: '1rem' }}>
           {twitchStats.map(s => (
-            <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div key={s.label}>
               {s.icon}
               <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>{s.label}</span>
             </div>
@@ -53,11 +49,11 @@ export default function TwitchPage() {
         </div>
         <div className="chat-side">
           <div style={{
-            background: 'rgba(145,70,255,.12)',
+            background: 'rgba(145,70,255,.10)',
             padding: '8px 14px',
             fontSize: '0.82rem',
             color: '#c9b8ff',
-            borderBottom: '1px solid rgba(145,70,255,.25)',
+            borderBottom: '1.5px solid rgba(145,70,255,.12)',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
@@ -80,8 +76,8 @@ export default function TwitchPage() {
         style={{
           padding: '0',
           overflow: 'hidden',
-          background: 'linear-gradient(135deg,rgba(145,70,255,.15),rgba(145,70,255,.04))',
-          border: '1px solid rgba(145,70,255,.3)',
+          background: 'linear-gradient(135deg,rgba(145,70,255,.12),rgba(145,70,255,.03))',
+          border: '1.5px solid rgba(145,70,255,.16)',
         }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -89,7 +85,7 @@ export default function TwitchPage() {
       >
         {/* Twitch-purple banner */}
         <div style={{
-          height: 8,
+          height: 6,
           background: 'linear-gradient(90deg,#9146FF,#c800ff,#9146FF)',
           backgroundSize: '200% 100%',
           animation: 'twitch-shimmer 3s linear infinite',
@@ -135,6 +131,6 @@ export default function TwitchPage() {
           </div>
         </div>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }

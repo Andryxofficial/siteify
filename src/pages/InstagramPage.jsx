@@ -4,13 +4,7 @@ import SEO from '../components/SEO';
 
 export default function InstagramPage() {
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ type: 'spring', stiffness: 180, damping: 24 }}
-      className="main-content"
-    >
+    <div className="main-content">
       <SEO
         title="Instagram — Dietro le Quinte & Aggiornamenti"
         description="Segui ANDRYXify (Andrea Taliento) su Instagram: dietro le quinte delle live, storie quotidiane e aggiornamenti dal mondo gaming e IA."
@@ -32,7 +26,7 @@ export default function InstagramPage() {
         transition={{ delay: 0.1 }}
       >
         {/* Gradient banner */}
-        <div style={{
+        <div className="glass-banner" style={{
           height: 120,
           background: 'linear-gradient(135deg,#f09433 0%,#e6683c 20%,#dc2743 40%,#cc2366 70%,#bc1888 100%)',
           position: 'relative',
@@ -46,7 +40,7 @@ export default function InstagramPage() {
           textAlign: 'center',
           marginTop: -50,
         }}>
-          <div style={{
+          <div className="glass-avatar" style={{
             width: 96, height: 96,
             borderRadius: '50%',
             background: 'linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)',
@@ -61,7 +55,7 @@ export default function InstagramPage() {
               style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#111', objectFit: 'contain', padding: 8 }}
             />
           </div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.2rem' }}>@andryxify</h2>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.25rem' }}>@andryxify</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem', maxWidth: 420, lineHeight: 1.6 }}>
             Dietro le quinte delle live, pillole di IA, gaming moments e contenuti esclusivi. Seguimi per non perderti nulla!
           </p>
@@ -104,6 +98,6 @@ export default function InstagramPage() {
           <ExternalLink size={16} /> Apri le Stories
         </motion.a>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }

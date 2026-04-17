@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { Link, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
+import useScrollHeader from '../hooks/useScrollHeader';
+import { hapticLight } from '../utils/haptics';
 
 const NAV_LINKS = [
   { path: '/',          label: 'Home',      Icon: HomeIcon      },
@@ -14,7 +16,7 @@ const NAV_LINKS = [
   { path: '/gioco',     label: 'Gioco',     Icon: GameIcon      },
 ];
 
-const LOGO_URL = 'https://github.com/user-attachments/assets/473c6ca9-3173-4fdf-958c-faa4bda57230';
+const LOGO_URL = '/logo.png';
 
 /* ─────────────────────────────────────────────────────────
    MOBILE BOTTOM TAB BAR  (iOS-style, liquid glass)
@@ -23,44 +25,18 @@ const LOGO_URL = 'https://github.com/user-attachments/assets/473c6ca9-3173-4fdf-
    no DOM measurements, no imperative animate(), works on
    framer-motion v10/11/12.
    ───────────────────────────────────────────────────────── */
-function MobileTabBar({ activePath, onNavigate }) {
-  const touchStartX  = useRef(0);
-  const touchStartY  = useRef(0);
-  const isHorizontal = useRef(false);
-
+function MobileTabBar({ activePath }) {
   const activeIdx   = NAV_LINKS.findIndex(l => l.path === activePath);
-  const tabWidthPct = 100 / NAV_LINKS.length; // each slot is 20%
+  const tabWidthPct = 100 / NAV_LINKS.length;
 
-  const handleTouchStart = useCallback((e) => {
-    touchStartX.current  = e.touches[0].clientX;
-    touchStartY.current  = e.touches[0].clientY;
-    isHorizontal.current = false;
+  const handleTabClick = useCallback(() => {
+    hapticLight();
   }, []);
-
-  const handleTouchMove = useCallback((e) => {
-    const dx = e.touches[0].clientX - touchStartX.current;
-    const dy = e.touches[0].clientY - touchStartY.current;
-    if (!isHorizontal.current && Math.abs(dx) > 6)
-      isHorizontal.current = Math.abs(dx) > Math.abs(dy);
-  }, []);
-
-  const handleTouchEnd = useCallback((e) => {
-    if (!isHorizontal.current) return;
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(dx) < 30) return;
-    const nextIdx = dx < 0
-      ? Math.min(activeIdx + 1, NAV_LINKS.length - 1)
-      : Math.max(activeIdx - 1, 0);
-    if (nextIdx !== activeIdx) onNavigate(NAV_LINKS[nextIdx].path);
-  }, [activeIdx, onNavigate]);
 
   return (
     <nav
       className="mobile-tab-bar"
       aria-label="Navigazione principale"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
     >
       <div className="mobile-tab-items">
 
@@ -81,6 +57,7 @@ function MobileTabBar({ activePath, onNavigate }) {
               className={`tab-item${isActive ? ' active' : ''}`}
               aria-label={label}
               aria-current={isActive ? 'page' : undefined}
+              onClick={handleTabClick}
             >
               <motion.span
                 className="tab-icon"
@@ -114,9 +91,9 @@ function MobileTabBar({ activePath, onNavigate }) {
    ───────────────────────────────────────────────────────── */
 export default function Navbar() {
   const location          = useLocation();
-  const navigate          = useNavigate();
   const linksContainerRef = useRef(null);
   const linkRefs          = useRef({});
+  const headerVisible     = useScrollHeader();
 
   const [hoveredPath, setHoveredPath] = useState(null);
   const [pillPos,     setPillPos]     = useState({ left: 0, width: 0 });
@@ -164,59 +141,69 @@ export default function Navbar() {
 
   return (
     <>
-      {/* ── Top pill navbar (desktop) ── */}
-      <nav className="navbar-container glass-panel">
-        <div className="navbar-content">
-          <Link to="/" className="navbar-logo" aria-label="ANDRYXify – Home">
-            <img src={LOGO_URL} alt="Andryx" className="navbar-logo-img" />
-          </Link>
-
-          <div
-            ref={linksContainerRef}
-            className="nav-links"
-            style={{ position: 'relative', overflow: 'visible' }}
-            onMouseLeave={() => setHoveredPath(null)}
+      {/* ── Top pill navbar (desktop) — hides on scroll-down ── */}
+      <AnimatePresence>
+        {headerVisible && (
+          <motion.nav
+            className="navbar-container glass-panel"
+            initial={{ y: -80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -80, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 340, damping: 32, mass: 0.8 }}
           >
-            {/* ── Sliding liquid glass pill ── */}
-            {pillReady && (
-              <motion.div
-                className="liquid-nav-pill"
-                initial={false}
-                animate={{ left: pillPos.left, width: pillPos.width }}
-                transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.8 }}
-              />
-            )}
+            <div className="navbar-content">
+              <Link to="/" className="navbar-logo" aria-label="ANDRYXify – Home">
+                <img src={LOGO_URL} alt="Andryx" className="navbar-logo-img" />
+              </Link>
 
-            {NAV_LINKS.map(({ path, label, Icon }) => {
-              const isActive = location.pathname === path;
-              return (
-                <div
-                  key={path}
-                  ref={el => { linkRefs.current[path] = el; }}
-                  style={{ position: 'relative', zIndex: 1 }}
-                  onMouseEnter={() => setHoveredPath(path)}
-                >
-                  <Link
-                    to={path}
-                    className={`nav-link${isActive ? ' active' : ''}`}
-                  >
-                    <motion.span
-                      whileHover={{ scale: 1.15, rotate: 4 }}
-                      style={{ display: 'flex', pointerEvents: 'none' }}
+              <div
+                ref={linksContainerRef}
+                className="nav-links"
+                style={{ position: 'relative', overflow: 'visible' }}
+                onMouseLeave={() => setHoveredPath(null)}
+              >
+                {/* ── Sliding liquid glass pill ── */}
+                {pillReady && (
+                  <motion.div
+                    className="liquid-nav-pill"
+                    initial={false}
+                    animate={{ left: pillPos.left, width: pillPos.width }}
+                    transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.8 }}
+                  />
+                )}
+
+                {NAV_LINKS.map(({ path, label, Icon }) => {
+                  const isActive = location.pathname === path;
+                  return (
+                    <div
+                      key={path}
+                      ref={el => { linkRefs.current[path] = el; }}
+                      style={{ position: 'relative', zIndex: 1 }}
+                      onMouseEnter={() => setHoveredPath(path)}
                     >
-                      <Icon size={16} />
-                    </motion.span>
-                    <span className="nav-label" style={{ pointerEvents: 'none' }}>{label}</span>
-                  </Link>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </nav>
+                      <Link
+                        to={path}
+                        className={`nav-link${isActive ? ' active' : ''}`}
+                      >
+                        <motion.span
+                          whileHover={{ scale: 1.15, rotate: 4 }}
+                          style={{ display: 'flex', pointerEvents: 'none' }}
+                        >
+                          <Icon size={16} />
+                        </motion.span>
+                        <span className="nav-label" style={{ pointerEvents: 'none' }}>{label}</span>
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.nav>
+        )}
+      </AnimatePresence>
 
       {/* ── Bottom tab bar (mobile only) ── */}
-      <MobileTabBar activePath={location.pathname} onNavigate={navigate} />
+      <MobileTabBar activePath={location.pathname} />
     </>
   );
 }

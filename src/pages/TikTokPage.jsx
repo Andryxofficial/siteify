@@ -14,13 +14,7 @@ export default function TikTokPage() {
     document.body.appendChild(s);
   }, []);
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ type: 'spring', stiffness: 180, damping: 24 }}
-      className="main-content"
-    >
+    <div className="main-content">
       <SEO
         title="TikTok — Clip, Trend & Gaming"
         description="Le clip più divertenti di ANDRYXify su TikTok: gaming, intelligenza artificiale, trend e pillole di intrattenimento. Seguimi su TikTok!"
@@ -44,12 +38,12 @@ export default function TikTokPage() {
         transition={{ delay: 0.1 }}
       >
         {/* Banner gradient TikTok */}
-        <div style={{
+        <div className="glass-banner" style={{
           height: 120,
           background: 'linear-gradient(135deg,#010101 0%,#69C9D0 40%,#EE1D52 100%)',
           position: 'relative',
         }}>
-          <TikTokIcon size={40} color="rgba(255,255,255,.18)" style={{ position: 'absolute', right: 24, top: 20 }} />
+          <TikTokIcon size={40} color="rgba(255,255,255,.18)" style={{ position: 'absolute', right: 24, top: 20, zIndex: 2 }} />
         </div>
 
         <div style={{
@@ -60,7 +54,7 @@ export default function TikTokPage() {
           textAlign: 'center',
           marginTop: -50,
         }}>
-          <div style={{
+          <div className="glass-avatar" style={{
             width: 96, height: 96,
             borderRadius: '50%',
             background: 'linear-gradient(135deg,#EE1D52,#69C9D0)',
@@ -75,7 +69,7 @@ export default function TikTokPage() {
               style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#111', objectFit: 'contain', padding: 8 }}
             />
           </div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.2rem' }}>@andryxify</h2>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.25rem' }}>@andryxify</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem', maxWidth: 420, lineHeight: 1.6 }}>
             Gaming, IA, tech e tanto altro in pillole veloci. Seguimi per non perdere nemmeno un trend!
           </p>
@@ -140,7 +134,7 @@ export default function TikTokPage() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.6 }}
       >
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '2.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        <div className="glass-stats-bar" style={{ justifyContent: 'center', gap: '2.5rem', marginBottom: '1.5rem' }}>
           {[
             { icon: <Music2 size={20} color="#EE1D52" />, label: 'Trending Sounds' },
             { icon: <TrendingUp size={20} color="#69C9D0" />, label: 'Viral Clips' },
@@ -163,6 +157,6 @@ export default function TikTokPage() {
           <ExternalLink size={16} /> Apri il profilo TikTok
         </motion.a>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }

@@ -28,13 +28,7 @@ export default function YouTubePage() {
   }, []);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ type: 'spring', stiffness: 180, damping: 24 }}
-      className="main-content"
-    >
+    <div className="main-content">
       <SEO
         title="YouTube — Video, Highlights & Approfondimenti"
         description="Guarda i video di ANDRYXify su YouTube: gameplay, highlights, approfondimenti su intelligenza artificiale e gaming. Iscriviti al canale YouTube di Andrea Taliento!"
@@ -54,7 +48,7 @@ export default function YouTubePage() {
         transition={{ delay: 0.1 }}
       >
         {/* Banner */}
-        <div style={{
+        <div className="glass-banner" style={{
           height: 120,
           background: 'linear-gradient(135deg,#FF0000 0%,#600000 60%,#1a0000 100%)',
           position: 'relative',
@@ -62,7 +56,7 @@ export default function YouTubePage() {
           alignItems: 'flex-end',
           padding: '0 2rem',
         }}>
-          <Youtube size={36} color="rgba(255,255,255,.15)" style={{ position: 'absolute', right: 24, top: 16 }} />
+          <Youtube size={36} color="rgba(255,255,255,.15)" style={{ position: 'absolute', right: 24, top: 16, zIndex: 2 }} />
         </div>
 
         <div style={{
@@ -76,10 +70,11 @@ export default function YouTubePage() {
           <img
             src="/logo.png"
             alt="ANDRYXify"
+            className="glass-avatar"
             style={{
               width: 96, height: 96,
               borderRadius: '50%',
-              border: '4px solid var(--bg-dark)',
+              border: '3px solid var(--bg-dark)',
               background: '#111',
               objectFit: 'contain',
               padding: 8,
@@ -139,10 +134,12 @@ export default function YouTubePage() {
                     />
                     <div style={{
                       position: 'absolute', inset: 0,
-                      background: 'rgba(0,0,0,.3)',
+                      background: 'rgba(0,0,0,.35)',
+                      backdropFilter: 'blur(4px)',
+                      WebkitBackdropFilter: 'blur(4px)',
                       display: 'flex', justifyContent: 'center', alignItems: 'center',
                       opacity: 0,
-                      transition: 'opacity .2s',
+                      transition: 'opacity .25s',
                     }}
                       onMouseEnter={e => e.currentTarget.style.opacity = 1}
                       onMouseLeave={e => e.currentTarget.style.opacity = 0}
@@ -169,6 +166,6 @@ export default function YouTubePage() {
           }
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

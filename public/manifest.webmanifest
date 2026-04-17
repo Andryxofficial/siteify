@@ -2,14 +2,21 @@
   "name": "ANDRYXify",
   "short_name": "ANDRYXify",
   "description": "Esplorando il confine tra Umanità, Intelligenza Artificiale e Gaming.",
-  "theme_color": "#9146FF",
-  "background_color": "#070708",
+  "theme_color": "#050506",
+  "background_color": "#050506",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "scope": "/",
   "start_url": "/",
+  "id": "/",
   "lang": "it",
+  "dir": "ltr",
   "categories": ["entertainment", "games", "lifestyle"],
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
   "icons": [
     {
       "src": "/pwa-192.png",
@@ -26,6 +33,26 @@
       "src": "/apple-touch-icon.png",
       "sizes": "180x180",
       "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Twitch Live",
+      "short_name": "Twitch",
+      "url": "/twitch",
+      "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Gioca Ora",
+      "short_name": "Gioco",
+      "url": "/gioco",
+      "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Podcast",
+      "short_name": "Podcast",
+      "url": "/podcast",
+      "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }]
     }
   ],
   "screenshots": [

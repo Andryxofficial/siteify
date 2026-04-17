@@ -29,12 +29,7 @@ export default function Home() {
   }, []);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="main-content"
-    >
+    <div className="main-content">
       <SEO
         title="Home"
         description="ANDRYXify (Andrea Taliento) — Streamer Twitch, gamer e content creator italiano. Live streaming di videogiochi, podcast su Intelligenza Artificiale, video YouTube, clip TikTok e minigioco esclusivo con classifica."
@@ -56,7 +51,7 @@ export default function Home() {
       {/* ── Live preview ── */}
       <motion.section
         className="glass-panel"
-        style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
+        style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}
         {...up(0.25)}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -103,6 +98,6 @@ export default function Home() {
 
       {/* ── Podcast Promo ── */}
       <PodcastPromo />
-    </motion.div>
+    </div>
   );
 }
