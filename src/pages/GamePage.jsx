@@ -57,9 +57,11 @@ export default function GamePage() {
   const [gameStatus, setGameStatus] = useState('idle'); // idle | playing | gameover
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
-  const [, setHp] = useState(0);
-  const [, setMaxHp] = useState(0);
+  const [hp, setHp] = useState(0);
+  const [maxHp, setMaxHp] = useState(0);
+  const [damaged, setDamaged] = useState(false);
   const [showKeyboard, setShowKeyboard] = useState(false);
+  const prevHpRef = useRef(0);
 
   // Twitch auth
   const [twitchUser, setTwitchUser] = useState(null);
@@ -158,6 +160,8 @@ export default function GamePage() {
       setScore(0);
       setHp(0);
       setMaxHp(0);
+      setDamaged(false);
+      prevHpRef.current = 0;
       setSubmitMsg('');
 
       const cleanup = gameModule.createGame(canvasRef.current, {
@@ -165,7 +169,15 @@ export default function GamePage() {
         joystickRef,
         actionBtnRef,
         onScore: (s) => setScore(s),
-        onHpChange: (h, m) => { setHp(h); setMaxHp(m); },
+        onHpChange: (h, m) => {
+          if (h < prevHpRef.current) {
+            setDamaged(true);
+            setTimeout(() => setDamaged(false), 400);
+          }
+          prevHpRef.current = h;
+          setHp(h);
+          setMaxHp(m);
+        },
         onGameOver: (finalScore) => {
           setScore(finalScore);
           setGameStatus('gameover');
@@ -350,7 +362,7 @@ export default function GamePage() {
 
       <div className="game-layout">
         <div className="game-area">
-          <div className="glass-panel game-canvas-wrapper" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className={`glass-panel game-canvas-wrapper${damaged ? ' game-damaged' : ''}`} style={{ padding: 0, overflow: 'hidden' }}>
             <canvas
               ref={canvasRef}
               width={480}
@@ -359,6 +371,18 @@ export default function GamePage() {
               onTouchStart={onCanvasTouch}
               style={{ touchAction: 'none' }}
             />
+
+            {/* HP + Score overlay — React-rendered, always correct CSS size on mobile */}
+            {gameStatus === 'playing' && maxHp > 0 && (
+              <div className="game-hud-overlay">
+                <div className="game-hud-hearts">
+                  {Array.from({ length: maxHp }, (_, i) => (
+                    <span key={i} className={`game-hud-heart${i < hp ? ' full' : ' empty'}`}>♥</span>
+                  ))}
+                </div>
+                <div className="game-hud-score">✦ {score}</div>
+              </div>
+            )}
 
             {/* Idle overlay */}
             {gameStatus === 'idle' && (
