@@ -49,6 +49,7 @@ export default function GamePage() {
   const canvasRef = useRef(null);
   const keysRef = useRef({});
   const joystickRef = useRef({ active: false, dx: 0, dy: 0 });
+  const joystickDivRef = useRef(null);
   const actionBtnRef = useRef(false);
   const startGameRef = useRef(null);
   const cleanupRef = useRef(null);
@@ -68,9 +69,8 @@ export default function GamePage() {
 
   // Leaderboard
   const [weeklyBoard, setWeeklyBoard] = useState([]);
-  const [alltimeBoard, setAlltimeBoard] = useState([]);
-  const [currentMonthData, setCurrentMonthData] = useState(null);
-  const [monthlyWinners, setMonthlyWinners] = useState([]);
+  const [monthlyBoard, setMonthlyBoard] = useState([]);
+  const [generalBoard, setGeneralBoard] = useState([]);
   const [archiveData, setArchiveData] = useState([]);
   const [boardTab, setBoardTab] = useState('weekly');
   const [boardLoading, setBoardLoading] = useState(true);
@@ -115,9 +115,8 @@ export default function GamePage() {
       if (!r.ok) throw new Error('Fetch failed');
       const data = await r.json();
       setWeeklyBoard(data.weekly || []);
-      setAlltimeBoard(data.alltime || []);
-      setCurrentMonthData(data.currentMonth || null);
-      setMonthlyWinners(data.monthlyWinners || []);
+      setMonthlyBoard(data.monthly || []);
+      setGeneralBoard(data.general || []);
       setArchiveData(data.archive || []);
     } catch {
       setBoardError('Impossibile caricare la classifica.');
@@ -261,23 +260,19 @@ export default function GamePage() {
 
   const onJoystickStart = useCallback((e) => {
     e.preventDefault();
-    e.stopPropagation();
     const t = e.changedTouches[0];
     if (t) {
       joystickTouchId.current = t.identifier;
-      const rect = e.currentTarget.getBoundingClientRect();
-      joystickCenterRef.current = {
-        cx: rect.left + rect.width / 2,
-        cy: rect.top + rect.height / 2,
-        r: rect.width / 2,
-      };
+      // Use the actual touch position as the joystick centre (floating joystick)
+      const el = joystickDivRef.current;
+      const r = el ? el.getBoundingClientRect().width / 2 : 60;
+      joystickCenterRef.current = { cx: t.clientX, cy: t.clientY, r };
       joystickRef.current = { active: true, dx: 0, dy: 0, _touch: true };
     }
   }, []);
 
   const onJoystickMove = useCallback((e) => {
     e.preventDefault();
-    e.stopPropagation();
     for (const t of e.changedTouches) {
       if (t.identifier === joystickTouchId.current) {
         const { cx, cy, r } = joystickCenterRef.current;
@@ -301,6 +296,22 @@ export default function GamePage() {
       }
     }
   }, []);
+
+  /* ─── Native touch listeners on joystick element (passive:false ensures preventDefault works) ─── */
+  useEffect(() => {
+    const el = joystickDivRef.current;
+    if (!el) return;
+    el.addEventListener('touchstart', onJoystickStart, { passive: false });
+    el.addEventListener('touchmove', onJoystickMove, { passive: false });
+    el.addEventListener('touchend', onJoystickEnd, { passive: false });
+    el.addEventListener('touchcancel', onJoystickEnd, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', onJoystickStart);
+      el.removeEventListener('touchmove', onJoystickMove);
+      el.removeEventListener('touchend', onJoystickEnd);
+      el.removeEventListener('touchcancel', onJoystickEnd);
+    };
+  }, [onJoystickStart, onJoystickMove, onJoystickEnd]);
 
   const onActionBtn = useCallback((e) => {
     e.preventDefault();
@@ -429,11 +440,8 @@ export default function GamePage() {
           {/* Touch controls (mobile) — ultra responsive */}
           <div className="game-touch-controls" style={{ touchAction: 'none' }}>
             <div
+              ref={joystickDivRef}
               className="game-joystick"
-              onTouchStart={onJoystickStart}
-              onTouchMove={onJoystickMove}
-              onTouchEnd={onJoystickEnd}
-              onTouchCancel={onJoystickEnd}
               style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
             >
               <div className="game-joystick-knob" style={{
@@ -505,7 +513,7 @@ export default function GamePage() {
           </div>
 
           {/* Calendario Giochi — 12 months with #1 player — ABOVE leaderboard */}
-          <GameCalendar archiveData={archiveData} currentMonthData={currentMonthData} />
+          <GameCalendar archiveData={archiveData} monthlyBoard={monthlyBoard} />
 
           {/* Leaderboard */}
           <div className="glass-panel" style={{ padding: '1.2rem' }}>
@@ -518,11 +526,11 @@ export default function GamePage() {
               <button className={`leaderboard-tab${boardTab === 'weekly' ? ' active' : ''}`} onClick={() => setBoardTab('weekly')}>
                 <Calendar size={13} /> Sett.
               </button>
-              <button className={`leaderboard-tab${boardTab === 'alltime' ? ' active' : ''}`} onClick={() => setBoardTab('alltime')}>
-                <Crown size={13} /> Generale
-              </button>
               <button className={`leaderboard-tab${boardTab === 'monthly' ? ' active' : ''}`} onClick={() => setBoardTab('monthly')}>
-                <Award size={13} /> Mensili
+                <Award size={13} /> Mensile
+              </button>
+              <button className={`leaderboard-tab${boardTab === 'general' ? ' active' : ''}`} onClick={() => setBoardTab('general')}>
+                <Crown size={13} /> Generale
               </button>
             </div>
 
@@ -531,14 +539,16 @@ export default function GamePage() {
             ) : boardError ? (
               <p style={{ fontSize: '0.82rem', color: C.heart, textAlign: 'center', padding: '1rem 0' }}>{boardError}</p>
             ) : boardTab === 'monthly' ? (
-              <MonthlyTab currentMonthData={currentMonthData} monthlyWinners={monthlyWinners} twitchUser={twitchUser} />
-            ) : (boardTab === 'weekly' ? weeklyBoard : alltimeBoard).length === 0 ? (
+              <MonthlyTab monthlyBoard={monthlyBoard} archiveData={archiveData} twitchUser={twitchUser} />
+            ) : (boardTab === 'weekly' ? weeklyBoard : generalBoard).length === 0 ? (
               <p style={{ fontSize: '0.82rem', color: C.textMuted }}>
-                {boardTab === 'weekly' ? 'Nessun punteggio questa settimana. Sii il primo!' : 'Nessun punteggio ancora. Sii il primo!'}
+                {boardTab === 'weekly'
+                  ? 'Nessun punteggio questa settimana. Sii il primo!'
+                  : 'Classifica generale vuota. Gioca per entrare!'}
               </p>
             ) : (
               <div className="leaderboard-list">
-                {(boardTab === 'weekly' ? weeklyBoard : alltimeBoard).map((entry, i) => (
+                {(boardTab === 'weekly' ? weeklyBoard : generalBoard).map((entry, i) => (
                   <LeaderboardEntry key={entry.username} entry={entry} rank={i} twitchUser={twitchUser} />
                 ))}
               </div>
@@ -568,26 +578,28 @@ function LeaderboardEntry({ entry, rank, twitchUser }) {
   );
 }
 
-function MonthlyTab({ currentMonthData, monthlyWinners, twitchUser }) {
-  const hasCurrentMonth = currentMonthData && currentMonthData.scores && currentMonthData.scores.length > 0;
-  const hasHistory = monthlyWinners && monthlyWinners.length > 0;
-  if (!hasCurrentMonth && !hasHistory) {
+function MonthlyTab({ monthlyBoard, archiveData, twitchUser }) {
+  const now = new Date();
+  const currentLabel = `${['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'][now.getUTCMonth()]} ${now.getUTCFullYear()}`;
+  const hasCurrent = monthlyBoard && monthlyBoard.length > 0;
+  const hasHistory = archiveData && archiveData.length > 0;
+  if (!hasCurrent && !hasHistory) {
     return <p style={{ fontSize: '0.82rem', color: C.textMuted }}>Nessun punteggio mensile ancora. Sii il primo!</p>;
   }
   return (
     <div className="leaderboard-list">
-      {hasCurrentMonth && (
+      {hasCurrent && (
         <div className="monthly-winners-block">
           <div className="monthly-winners-header" style={{ color: C.player }}>
-            <Zap size={13} /> {currentMonthData.label} <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>(in corso)</span>
+            <Zap size={13} /> {currentLabel} <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>(in corso)</span>
           </div>
-          {currentMonthData.scores.map((entry, i) => (
+          {monthlyBoard.map((entry, i) => (
             <LeaderboardEntry key={entry.username} entry={entry} rank={i} twitchUser={twitchUser} />
           ))}
         </div>
       )}
-      {hasHistory && monthlyWinners.map((month) => (
-        <div key={month.month} className="monthly-winners-block">
+      {hasHistory && archiveData.map((month) => (
+        <div key={month.season} className="monthly-winners-block">
           <div className="monthly-winners-header"><Award size={14} /> {month.label}</div>
           {month.top3.map((entry, i) => (
             <LeaderboardEntry key={entry.username} entry={entry} rank={i} twitchUser={twitchUser} />
@@ -598,7 +610,7 @@ function MonthlyTab({ currentMonthData, monthlyWinners, twitchUser }) {
   );
 }
 
-function GameCalendar({ archiveData, currentMonthData }) {
+function GameCalendar({ archiveData, monthlyBoard }) {
   const allMetas = getAllGameMetas();
   const currentMonth = new Date().getUTCMonth() + 1;
 
@@ -611,9 +623,9 @@ function GameCalendar({ archiveData, currentMonthData }) {
       }
     }
   }
-  // Current month from live data
-  if (currentMonthData && currentMonthData.scores && currentMonthData.scores.length > 0) {
-    topByMonth[currentMonth] = currentMonthData.scores[0];
+  // Current month from live monthly data
+  if (monthlyBoard && monthlyBoard.length > 0) {
+    topByMonth[currentMonth] = monthlyBoard[0];
   }
 
   return (
@@ -658,7 +670,20 @@ function GameCalendar({ archiveData, currentMonthData }) {
               }}>
                 {m.name}
               </span>
-              {isCurrent && (
+              {top1 ? (
+                <span style={{
+                  fontSize: '0.72rem',
+                  color: isCurrent ? m.color : '#FFD700',
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  maxWidth: '120px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
+                  🥇 {top1.username}
+                </span>
+              ) : isCurrent ? (
                 <span style={{
                   fontSize: '0.6rem',
                   background: `${m.color}22`,
@@ -670,23 +695,6 @@ function GameCalendar({ archiveData, currentMonthData }) {
                   letterSpacing: '0.03em',
                 }}>
                   ORA
-                </span>
-              )}
-              {top1 ? (
-                <span style={{
-                  fontSize: '0.72rem',
-                  color: '#FFD700',
-                  fontWeight: 700,
-                  flexShrink: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  maxWidth: '120px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}>
-                  🥇 {top1.username}
                 </span>
               ) : isPast ? (
                 <span style={{ fontSize: '0.68rem', color: C.textMuted, opacity: 0.5, flexShrink: 0 }}>—</span>

@@ -58,7 +58,7 @@ const P = {
   player: '#00f5d4', playerInner: '#00c4a8', playerTrail: 'rgba(0,245,212,0.15)',
   sword: '#f0ecf4', swordGlow: 'rgba(0,245,212,0.7)',
   gem: '#FF00D4', gemInner: '#ff66e5', gemGlow: 'rgba(255,0,212,0.45)',
-  heart: '#FF0050', heartDim: 'rgba(255,0,80,0.15)',
+  heart: '#FF0050', heartDim: 'rgba(255,0,80,0.32)',
   exit: '#FFD700', exitGlow: 'rgba(255,215,0,0.5)', exitInner: '#fff8dc',
   text: '#f0ecf4', textDim: '#7a7590',
   healGlow: 'rgba(0,255,128,0.5)', heal: '#00ff80',
@@ -923,7 +923,7 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
       const hx = 10 + i * heartSpacing;
       const hy = 30;
       ctx.fillStyle = i < s.hp ? P.heart : P.heartDim;
-      ctx.fillText('♥', hx, hy);
+      ctx.fillText(i < s.hp ? '♥' : '♡', hx, hy);
     }
 
     // Score (right side)
