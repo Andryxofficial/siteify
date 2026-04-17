@@ -857,7 +857,7 @@ body::before {
    ═══════════════════════════════════════════════════ */
 
 @media (max-width: 360px) {
-  .navbar-logo { font-size: 1rem; }
+  .navbar-logo-text { font-size: 1rem; }
   .title { font-size: 1.9rem; }
 }
 
@@ -929,15 +929,25 @@ body::before {
   mix-blend-mode: screen;
 }
 
-/* ── Logo image styling ── */
-.navbar-logo-img {
-  height: 34px;
-  width: auto;
-  display: block;
-  filter: invert(1) hue-rotate(180deg);
-  mix-blend-mode: screen;
-  object-fit: contain;
-  transition: filter .22s var(--ease-glass), opacity .22s var(--ease-glass);
+/* ── Logo text styling — horizontal wordmark ── */
+.navbar-logo-text {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--text-main);
+}
+
+.footer-logo-text {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--text-main);
 }
 
 /* ── Override glass-panel for navbar — elevated Liquid Glass bar ── */

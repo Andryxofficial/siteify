@@ -16,8 +16,6 @@ const NAV_LINKS = [
   { path: '/gioco',     label: 'Gioco',     Icon: GameIcon      },
 ];
 
-const LOGO_URL = '/logo.png';
-
 /* ─────────────────────────────────────────────────────────
    MOBILE BOTTOM TAB BAR  (iOS-style, liquid glass)
    ─────────────────────────────────────────────────────────
@@ -153,7 +151,9 @@ export default function Navbar() {
           >
             <div className="navbar-content">
               <Link to="/" className="navbar-logo" aria-label="ANDRYXify – Home">
-                <img src={LOGO_URL} alt="Andryx" className="navbar-logo-img" />
+                <span className="navbar-logo-text">
+                  <span className="text-gradient">ANDRYX</span>ify
+                </span>
               </Link>
 
               <div

@@ -2,8 +2,6 @@ import { Link } from 'react-router-dom';
 import { Twitch, Youtube, Instagram, Mic } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 
-const LOGO_URL = '/logo.png';
-
 const socials = [
   { href: 'https://twitch.tv/andryxify',       icon: <Twitch    size={18}/>, label: 'Twitch'    },
   { href: 'https://youtube.com/@ANDRYXify',    icon: <Youtube   size={18}/>, label: 'YouTube'   },
@@ -18,11 +16,9 @@ export default function Footer() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
         {/* Brand */}
         <Link to="/" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-          <img
-            src={LOGO_URL}
-            alt="Andryx"
-            style={{ height: '40px', width: 'auto', maxWidth: '160px', objectFit: 'contain', alignSelf: 'flex-start', filter: 'invert(1) hue-rotate(180deg)', mixBlendMode: 'screen' }}
-          />
+          <span className="footer-logo-text">
+            <span className="text-gradient">ANDRYX</span>ify
+          </span>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0, letterSpacing: '0.2px' }}>
             Esplorando Umanità, IA & Gaming.
           </p>
