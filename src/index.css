@@ -120,7 +120,7 @@ body::before {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 90px;   /* clears fixed navbar */
+  padding: 90px 1rem 0;   /* top clears fixed navbar; sides keep content off edges */
 }
 
 /* ═══════════════════════════════════════════════════
@@ -358,7 +358,6 @@ body::before {
 .main-content {
   max-width: 860px;
   width: 100%;
-  padding: 0 1rem;
   display: flex;
   flex-direction: column;
   gap: 2rem;
