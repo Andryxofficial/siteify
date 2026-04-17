@@ -52,7 +52,7 @@ export default function PodcastPage() {
             borderRadius: 'var(--r-md)',
             background: 'linear-gradient(135deg,var(--secondary),var(--primary))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 0 30px rgba(0,245,212,.3)',
+            boxShadow: '0 0 36px rgba(0,245,212,.25), inset 0 1px 0 rgba(255,255,255,.20)',
           }}>
             <Mic size={36} color="#fff" />
           </div>

@@ -17,13 +17,13 @@ export default function Footer() {
     <footer className="footer glass-panel" style={{ margin: '2rem auto 2rem', maxWidth: '860px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
         {/* Brand */}
-        <Link to="/" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+        <Link to="/" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
           <img
             src={LOGO_URL}
             alt="Andryx"
             style={{ height: '40px', width: 'auto', maxWidth: '160px', objectFit: 'contain', alignSelf: 'flex-start', filter: 'invert(1) hue-rotate(180deg)', mixBlendMode: 'screen' }}
           />
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0, letterSpacing: '0.2px' }}>
             Esplorando Umanità, IA & Gaming.
           </p>
         </Link>
@@ -45,7 +45,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <div style={{ borderTop: '1px solid var(--glass-border)', marginTop: '1.5rem', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <div style={{ borderTop: '0.5px solid rgba(255,255,255,0.08)', marginTop: '1.5rem', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
         <span style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>
           &copy; {new Date().getFullYear()} ANDRYXify. Fatto con ♥ per il futuro.
         </span>

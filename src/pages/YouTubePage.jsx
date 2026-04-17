@@ -79,13 +79,14 @@ export default function YouTubePage() {
             style={{
               width: 96, height: 96,
               borderRadius: '50%',
-              border: '4px solid var(--bg-dark)',
+              border: '3px solid var(--bg-dark)',
               background: '#111',
               objectFit: 'contain',
               padding: 8,
               position: 'relative',
               zIndex: 2,
               marginBottom: '1rem',
+              boxShadow: '0 4px 24px rgba(0,0,0,.40)',
             }}
           />
           <h2 style={{ fontSize: '1.7rem', fontWeight: 800, marginBottom: '0.4rem' }}>ANDRYXify</h2>
@@ -139,10 +140,12 @@ export default function YouTubePage() {
                     />
                     <div style={{
                       position: 'absolute', inset: 0,
-                      background: 'rgba(0,0,0,.3)',
+                      background: 'rgba(0,0,0,.35)',
+                      backdropFilter: 'blur(4px)',
+                      WebkitBackdropFilter: 'blur(4px)',
                       display: 'flex', justifyContent: 'center', alignItems: 'center',
                       opacity: 0,
-                      transition: 'opacity .2s',
+                      transition: 'opacity .25s',
                     }}
                       onMouseEnter={e => e.currentTarget.style.opacity = 1}
                       onMouseLeave={e => e.currentTarget.style.opacity = 0}

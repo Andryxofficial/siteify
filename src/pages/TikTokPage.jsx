@@ -68,6 +68,7 @@ export default function TikTokPage() {
             position: 'relative',
             zIndex: 2,
             marginBottom: '1rem',
+            boxShadow: '0 4px 28px rgba(238,29,82,.22)',
           }}>
             <img
               src="/logo.png"
@@ -75,7 +76,7 @@ export default function TikTokPage() {
               style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#111', objectFit: 'contain', padding: 8 }}
             />
           </div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.2rem' }}>@andryxify</h2>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.25rem' }}>@andryxify</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem', maxWidth: 420, lineHeight: 1.6 }}>
             Gaming, IA, tech e tanto altro in pillole veloci. Seguimi per non perdere nemmeno un trend!
           </p>

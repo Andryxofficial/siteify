@@ -265,6 +265,7 @@ npm run lint      # ESLint (flat config)
 | 2026-04-17 | **Admin leaderboard**: `reset-leaderboard.js` esteso con GET status + POST weekly/monthly/general/recalculate_general/user/full | `api/reset-leaderboard.js` |
 | 2026-04-17 | **UI classifica**: tab Sett./Mensile/Generale; tab Mensile mostra mese corrente + archivio mesi passati | `src/pages/GamePage.jsx` |
 | 2026-04-17 | **Calendario leader**: riga mese corrente mostra `🥇 username` in tempo reale (colore tema gioco); badge "ORA" solo se nessuno ha ancora giocato | `src/pages/GamePage.jsx` |
+| 2026-04-17 | **Liquid Glass Overhaul**: restyling completo secondo le linee guida Apple Liquid Glass (WWDC 2025). Variabili CSS potenziate (prismatic tokens, concentric radii, spring curves), sfondo atmosferico multi-layer, glass-panel con blur 64px e shimmer iridescente, glass-card hover con gradiente liquido, bottoni capsule con trattamento vetro, chip con backdrop-filter, navbar/tab-bar blur potenziato, game UI glass-themed (joystick, attack button con backdrop-filter), leaderboard tabs vetro, scrollbar globali vetro, ::selection e :focus-visible branded, profili social con boxShadow profondità, overlay video con blur, footer con bordo hairline 0.5px | `src/index.css`, `src/components/Footer.jsx`, `src/components/SocialHub.jsx`, `src/pages/Home.jsx`, `src/pages/TwitchPage.jsx`, `src/pages/YouTubePage.jsx`, `src/pages/InstagramPage.jsx`, `src/pages/TikTokPage.jsx`, `src/pages/PodcastPage.jsx` |
 
 ---
 
@@ -303,7 +304,10 @@ npm run lint      # ESLint (flat config)
 - File CSS specifici affiancati al componente (`SquirrelRadar.css` vicino a `tracker_scoiattoli.jsx`)
 - Icone da `lucide-react`; solo se mancante usare SVG custom in un componente dedicato
 - Animazioni sempre con **Framer Motion** (non CSS keyframes per elementi interattivi)
-- Stili globali e design token in `src/index.css` (variabili CSS `--primary`, `--secondary`, `--accent`, `--glass-border`, ecc.)
+- Stili globali e design token in `src/index.css` (variabili CSS `--primary`, `--secondary`, `--accent`, `--glass-border`, `--prism-*`, ecc.)
+- Design language: **Apple Liquid Glass** (WWDC 2025) — translucency, deep blur, iridescent specular highlights, 0.5px hairline borders, capsule shapes, concentric radii
+- Bordi: usare `0.5px solid` (hairline Apple) anziché `1px solid`; `border-top-color` separato per specular highlight
+- Glass primitives: `.glass-panel` (sezioni principali) e `.glass-card` (card interne) con `backdrop-filter: blur()`, `inset box-shadow` e `::before` shimmer prismatico
 - Nessun CSS-in-JS: usare `className` con classi definite in `index.css`
 - Le costanti condivise tra componenti (es. `LOGO_URL`) vanno estratte e mantenute coerenti
 - Le chiavi API/OAuth introdotte dall'agent si chiamano `VITE_CHIAVE<PROVIDER>` e vengono lette da `import.meta.env` (mai hardcodate nel sorgente)

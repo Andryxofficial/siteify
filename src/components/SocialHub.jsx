@@ -78,14 +78,15 @@ export default function SocialHub() {
           variants={item}
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
-          style={{ background: link.gradient }}
+          style={{ background: link.gradient, borderColor: `${link.color}18` }}
         >
           <div
             className="link-icon-wrapper"
             style={{
               color: link.color,
-              background: `${link.color}22`,
-              border: `1px solid ${link.color}44`,
+              background: `${link.color}18`,
+              border: `0.5px solid ${link.color}30`,
+              boxShadow: `inset 0 0.5px 0 rgba(255,255,255,.12)`,
             }}
           >
             {link.icon}

@@ -56,7 +56,7 @@ export default function Home() {
       {/* ── Live preview ── */}
       <motion.section
         className="glass-panel"
-        style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
+        style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}
         {...up(0.25)}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>

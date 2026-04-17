@@ -53,11 +53,11 @@ export default function TwitchPage() {
         </div>
         <div className="chat-side">
           <div style={{
-            background: 'rgba(145,70,255,.12)',
+            background: 'rgba(145,70,255,.10)',
             padding: '8px 14px',
             fontSize: '0.82rem',
             color: '#c9b8ff',
-            borderBottom: '1px solid rgba(145,70,255,.25)',
+            borderBottom: '0.5px solid rgba(145,70,255,.18)',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
@@ -80,8 +80,8 @@ export default function TwitchPage() {
         style={{
           padding: '0',
           overflow: 'hidden',
-          background: 'linear-gradient(135deg,rgba(145,70,255,.15),rgba(145,70,255,.04))',
-          border: '1px solid rgba(145,70,255,.3)',
+          background: 'linear-gradient(135deg,rgba(145,70,255,.12),rgba(145,70,255,.03))',
+          border: '0.5px solid rgba(145,70,255,.22)',
         }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -89,7 +89,7 @@ export default function TwitchPage() {
       >
         {/* Twitch-purple banner */}
         <div style={{
-          height: 8,
+          height: 6,
           background: 'linear-gradient(90deg,#9146FF,#c800ff,#9146FF)',
           backgroundSize: '200% 100%',
           animation: 'twitch-shimmer 3s linear infinite',
