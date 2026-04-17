@@ -28,13 +28,7 @@ export default function YouTubePage() {
   }, []);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ type: 'spring', stiffness: 180, damping: 24 }}
-      className="main-content"
-    >
+    <div className="main-content">
       <SEO
         title="YouTube — Video, Highlights & Approfondimenti"
         description="Guarda i video di ANDRYXify su YouTube: gameplay, highlights, approfondimenti su intelligenza artificiale e gaming. Iscriviti al canale YouTube di Andrea Taliento!"
@@ -172,6 +166,6 @@ export default function YouTubePage() {
           }
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

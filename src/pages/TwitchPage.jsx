@@ -10,11 +10,7 @@ const twitchStats = [
 
 export default function TwitchPage() {
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ type: 'spring', stiffness: 180, damping: 24 }}
+    <div
       className="main-content"
       style={{ maxWidth: '1100px' }}
     >
@@ -135,6 +131,6 @@ export default function TwitchPage() {
           </div>
         </div>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }

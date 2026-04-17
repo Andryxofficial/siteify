@@ -27,13 +27,7 @@ export default function PodcastPage() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ type: 'spring', stiffness: 180, damping: 24 }}
-      className="main-content"
-    >
+    <div className="main-content">
       <SEO
         title="Podcast — Umanità o IA?"
         description="Ascolta il podcast 'Umanità o IA?' di ANDRYXify (Andrea Taliento). Episodi su intelligenza artificiale, gaming, tecnologia e il futuro dell'umanità. Disponibile su Spotify e Apple Podcast."
@@ -139,6 +133,6 @@ export default function PodcastPage() {
           <ExternalLink size={15} /> Inizia ad ascoltare
         </motion.a>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }

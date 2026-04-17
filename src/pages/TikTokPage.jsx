@@ -14,13 +14,7 @@ export default function TikTokPage() {
     document.body.appendChild(s);
   }, []);
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ type: 'spring', stiffness: 180, damping: 24 }}
-      className="main-content"
-    >
+    <div className="main-content">
       <SEO
         title="TikTok — Clip, Trend & Gaming"
         description="Le clip più divertenti di ANDRYXify su TikTok: gaming, intelligenza artificiale, trend e pillole di intrattenimento. Seguimi su TikTok!"
@@ -163,6 +157,6 @@ export default function TikTokPage() {
           <ExternalLink size={16} /> Apri il profilo TikTok
         </motion.a>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }

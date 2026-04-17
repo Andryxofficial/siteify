@@ -29,11 +29,7 @@ export default function Home() {
   }, []);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="main-content"
-    >
+    <div className="main-content">
       <SEO
         title="Home"
         description="ANDRYXify (Andrea Taliento) — Streamer Twitch, gamer e content creator italiano. Live streaming di videogiochi, podcast su Intelligenza Artificiale, video YouTube, clip TikTok e minigioco esclusivo con classifica."
@@ -102,6 +98,6 @@ export default function Home() {
 
       {/* ── Podcast Promo ── */}
       <PodcastPromo />
-    </motion.div>
+    </div>
   );
 }

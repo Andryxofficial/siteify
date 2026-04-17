@@ -338,11 +338,7 @@ export default function GamePage() {
   const themeColor = gameMeta.color || C.player;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ type: 'spring', stiffness: 180, damping: 24 }}
+    <div
       className="main-content"
       style={{ maxWidth: '960px' }}
     >
@@ -556,7 +552,7 @@ export default function GamePage() {
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 

@@ -4,13 +4,7 @@ import SEO from '../components/SEO';
 
 export default function InstagramPage() {
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ type: 'spring', stiffness: 180, damping: 24 }}
-      className="main-content"
-    >
+    <div className="main-content">
       <SEO
         title="Instagram — Dietro le Quinte & Aggiornamenti"
         description="Segui ANDRYXify (Andrea Taliento) su Instagram: dietro le quinte delle live, storie quotidiane e aggiornamenti dal mondo gaming e IA."
@@ -104,6 +98,6 @@ export default function InstagramPage() {
           <ExternalLink size={16} /> Apri le Stories
         </motion.a>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }
