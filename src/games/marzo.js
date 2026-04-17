@@ -44,7 +44,7 @@ const P = {
   thorn: '#D32F2F', thornGlow: 'rgba(211,47,47,0.35)',
   branch: '#5D4037', branchLight: '#795548',
   heal: '#00E676', healGlow: 'rgba(0,230,118,0.4)',
-  heart: '#FF1744', heartDim: 'rgba(255,23,68,0.15)',
+  heart: '#FF1744', heartDim: 'rgba(255,23,68,0.32)',
   text: '#f0ecf4', textDim: '#7a8a70',
   windStreak: 'rgba(165,214,167,0.2)',
   cloud: 'rgba(200,230,201,0.04)',

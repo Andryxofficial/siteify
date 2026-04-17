@@ -62,7 +62,7 @@ const P = {
   flowerPink: '#FF4081', flowerYellow: '#FFD740', flowerPurple: '#CE93D8',
   flowerBlue: '#40C4FF', flowerWhite: '#FAFAFA',
   stem: '#388E3C', leaf: '#4CAF50',
-  heart: '#FF0050', heartDim: 'rgba(255,0,80,0.18)',
+  heart: '#FF0050', heartDim: 'rgba(255,0,80,0.32)',
   heal: '#00E676', healGlow: 'rgba(0,230,118,0.45)',
   text: '#f0ecf4', textDim: '#7a7590',
   vignette: 'rgba(0,0,0,0.55)',

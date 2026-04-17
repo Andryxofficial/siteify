@@ -46,7 +46,7 @@ const P = {
   exit: '#76FF03', exitGlow: 'rgba(118,255,3,0.5)',
   exitRing: 'rgba(118,255,3,0.15)',
   heal: '#00E676', healGlow: 'rgba(0,230,118,0.5)',
-  heart: '#FF1744', heartDim: 'rgba(255,23,68,0.15)',
+  heart: '#FF1744', heartDim: 'rgba(255,23,68,0.32)',
   pumpkin: '#FF6D00', pumpkinDark: '#BF360C', pumpkinGlow: 'rgba(255,109,0,0.25)',
   text: '#f0ecf4', textDim: '#a8a3b3',
   fog: 'rgba(100,80,120,0.035)',
