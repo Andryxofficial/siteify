@@ -57,7 +57,7 @@ export default function TwitchPage() {
             padding: '8px 14px',
             fontSize: '0.82rem',
             color: '#c9b8ff',
-            borderBottom: '0.5px solid rgba(145,70,255,.18)',
+            borderBottom: '1px solid rgba(145,70,255,.15)',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
@@ -81,7 +81,7 @@ export default function TwitchPage() {
           padding: '0',
           overflow: 'hidden',
           background: 'linear-gradient(135deg,rgba(145,70,255,.12),rgba(145,70,255,.03))',
-          border: '0.5px solid rgba(145,70,255,.22)',
+          border: '1px solid rgba(145,70,255,.20)',
         }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

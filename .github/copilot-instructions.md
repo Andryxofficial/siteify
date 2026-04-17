@@ -306,7 +306,7 @@ npm run lint      # ESLint (flat config)
 - File CSS specifici affiancati al componente (`SquirrelRadar.css` vicino a `tracker_scoiattoli.jsx`)
 - Icone da `lucide-react`; solo se mancante usare SVG custom in un componente dedicato
 - Animazioni sempre con **Framer Motion** (non CSS keyframes per elementi interattivi)
-- Stili globali e design token in `src/index.css` (variabili CSS `--primary`, `--secondary`, `--accent`, `--glass-border`, `--prism-*`, ecc.)
+- Stili globali e design token in `src/index.css` (variabili CSS `--primary`, `--secondary`, `--accent`, `--glass-bg`, `--glass-border`, `--glass-highlight`, `--glass-shadow`, ecc.)
 - Design language: **Apple Liquid Glass** (WWDC 2025) — `backdrop-filter: blur(24px) saturate(180%)`, `background: rgba(40,50,70,0.35)`, `1px solid` borders, white-only specular highlights (no rainbow/prismatic), capsule shapes for buttons, concentric radii 22-28px for panels
 - Bordi: usare `1px solid rgba(255,255,255,0.25)` (Apple standard); specular via `inset 0 1.5px 4px rgba(255,255,255,0.16)`
 - Glass primitives: `.glass-panel` (sezioni principali), `.glass-card` (card interne), `.glass-banner` (banner pagina con specular overlay), `.glass-avatar` (avatar profilo con depth shadow), `.glass-stats-bar` (barra statistiche capsule con backdrop-filter) — tutti con `backdrop-filter: blur(24px) saturate(180%)`, single `inset box-shadow` specular, e `::before` white specular top-edge highlight

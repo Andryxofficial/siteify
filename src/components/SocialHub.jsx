@@ -85,8 +85,8 @@ export default function SocialHub() {
             style={{
               color: link.color,
               background: `${link.color}18`,
-              border: `0.5px solid ${link.color}30`,
-              boxShadow: `inset 0 0.5px 0 rgba(255,255,255,.12)`,
+              border: `1px solid ${link.color}30`,
+              boxShadow: `inset 0 1px 0 rgba(255,255,255,.10)`,
             }}
           >
             {link.icon}
