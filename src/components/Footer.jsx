@@ -5,11 +5,11 @@ import TikTokIcon from './TikTokIcon';
 const LOGO_URL = '/Firma_Andryx.png';
 
 const socials = [
-  { href: 'https://twitch.tv/andryxify',       icon: <Twitch    size={18}/>, label: 'Twitch'    },
-  { href: 'https://youtube.com/@ANDRYXify',    icon: <Youtube   size={18}/>, label: 'YouTube'   },
-  { href: 'https://instagram.com/andryxify',   icon: <Instagram size={18}/>, label: 'Instagram' },
-  { href: 'https://tiktok.com/@andryxify',     icon: <TikTokIcon size={18}/>, label: 'TikTok'  },
-  { href: 'https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9', icon: <Mic size={18}/>, label: 'Podcast' },
+  { href: 'https://twitch.tv/andryxify',       icon: <Twitch    size={18}/>, label: 'Twitch',    color: '#9146FF' },
+  { href: 'https://youtube.com/@ANDRYXify',    icon: <Youtube   size={18}/>, label: 'YouTube',   color: '#FF0000' },
+  { href: 'https://instagram.com/andryxify',   icon: <Instagram size={18}/>, label: 'Instagram', color: '#E1306C' },
+  { href: 'https://tiktok.com/@andryxify',     icon: <TikTokIcon size={18}/>, label: 'TikTok',  color: '#00F2FE' },
+  { href: 'https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9', icon: <Mic size={18}/>, label: 'Podcast', color: '#1DB954' },
 ];
 
 export default function Footer() {
@@ -32,8 +32,14 @@ export default function Footer() {
               href={s.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-ghost"
-              style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
+              className="btn btn-ghost footer-social-btn"
+              style={{
+                padding: '0.4rem 0.85rem',
+                fontSize: '0.8rem',
+                color: s.color,
+                borderColor: `${s.color}25`,
+                background: `linear-gradient(160deg, ${s.color}12 0%, ${s.color}06 100%)`,
+              }}
             >
               {s.icon} {s.label}
             </a>
