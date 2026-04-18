@@ -199,9 +199,10 @@ export default function ThreadView() {
   /* ── Elimina risposta ── */
   const eliminaRisposta = async (idRisposta) => {
     if (!twitchToken) return;
+    const backup = risposte;
     setRisposte(prev => prev.filter(r => r.id !== idRisposta));
     try {
-      await fetch('/api/community-replies', {
+      const res = await fetch('/api/community-replies', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -209,8 +210,14 @@ export default function ThreadView() {
         },
         body: JSON.stringify({ replyId: idRisposta }),
       });
-      setPost(prev => prev ? { ...prev, replyCount: Math.max(0, (prev.replyCount || 0) - 1) } : prev);
-    } catch { /* silenzioso */ }
+      if (res.ok) {
+        setPost(prev => prev ? { ...prev, replyCount: Math.max(0, (prev.replyCount || 0) - 1) } : prev);
+      } else {
+        setRisposte(backup); // ripristina in caso di errore
+      }
+    } catch {
+      setRisposte(backup);
+    }
   };
 
   /* ── Elimina post ── */
@@ -218,7 +225,7 @@ export default function ThreadView() {
     if (!twitchToken || !post) return;
     if (!window.confirm('Sei sicuro di voler eliminare questo post?')) return;
     try {
-      await fetch('/api/community', {
+      const res = await fetch('/api/community', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -226,8 +233,14 @@ export default function ThreadView() {
         },
         body: JSON.stringify({ postId: post.id }),
       });
-      window.location.href = '/socialify';
-    } catch { /* silenzioso */ }
+      if (res.ok) {
+        window.location.href = '/socialify';
+      } else {
+        setErroreRisposta('Impossibile eliminare il post.');
+      }
+    } catch {
+      setErroreRisposta('Errore di rete durante l\'eliminazione.');
+    }
   };
 
   if (caricamento) {

@@ -254,7 +254,8 @@ export default function CommunityPage() {
       const data = await res.json();
       setPosts(data.posts || []);
       setTotPagine(data.pages || 1);
-    } catch {
+    } catch (e) {
+      console.error('Caricamento post fallito:', e);
       setErrore('Impossibile caricare i post.');
     } finally {
       setCaricamento(false);
