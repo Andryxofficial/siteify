@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis';
-import { GENERAL_KEY, getMonthlyKey, getCurrentSeason, getLevel, getDecayedXp, getContentQualityMultiplier, getProfanityPenalty } from './social-leaderboard.js';
+import { GENERAL_KEY, getMonthlyKey, getCurrentSeason, getLevel, getDecayedXp, getContentQualityMultiplier, getProfanityPenalty, censorProfanity } from './social-leaderboard.js';
 
 /**
  * Community API — Custom forum for ANDRYXify
@@ -223,8 +223,8 @@ export default async function handler(req, res) {
 
       const { title: rawTitle, body: rawBody, tag: rawTag } = req.body || {};
 
-      const title = sanitize(rawTitle, MAX_TITLE);
-      const body = sanitize(rawBody, MAX_BODY);
+      const title = censorProfanity(sanitize(rawTitle, MAX_TITLE));
+      const body = censorProfanity(sanitize(rawBody, MAX_BODY));
       const tag = VALID_TAGS.includes(rawTag) ? rawTag : 'generale';
 
       if (!title || title.length < 3) {

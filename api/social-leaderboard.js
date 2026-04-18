@@ -159,22 +159,29 @@ export function getContentQualityMultiplier(text) {
   return Math.max(0.1, Math.min(1.5, Math.round(factor * 100) / 100));
 }
 
-/* ─── Profanity detection (Italian) ───
+/* ─── Profanity detection & censoring (Italian) ───
  *
  * Checks text for Italian blasphemies and vulgar language.
- * Returns a penalty value (negative) to subtract from XP.
  *
- * We don't block the content — just reduce XP reward.
- * Mild words → small penalty; blasphemies → bigger penalty.
+ * Two exported functions:
+ *   getProfanityPenalty(text) → XP penalty (0 to -5)
+ *   censorProfanity(text)    → text with profanity replaced by asterisks
  *
  * Penalty:  0 (clean) to -5 (heavy profanity)
  */
-const BESTEMMIE = [
-  'porcodio', 'porcod', 'dioporco', 'diocane', 'dioboia',
-  'diobestia', 'dioladro', 'diomaiale', 'madonnaputtana',
-  'madonnatroia', 'diosanto', 'porcomadonna', 'porcamadonna',
-  'oddio', 'cristod', 'diomerda', 'gesùcristo',
-  'porcoddi', 'porcodd', 'diofa', 'diocr',
+
+/* ── Multi-word blasphemies (compound forms) ──
+ * Each entry is an array of "word parts" that can appear with or without spaces.
+ * e.g. ['porco','dio'] matches "porcodio", "porco dio", "p o r c o d i o" etc.
+ */
+const BESTEMMIE_COMPOUND = [
+  ['porco', 'dio'],    ['porco', 'dd', 'io'], ['porco', 'ddi', 'o'],
+  ['dio', 'porco'],    ['dio', 'cane'],       ['dio', 'boia'],
+  ['dio', 'bestia'],   ['dio', 'ladro'],      ['dio', 'maiale'],
+  ['madonna', 'puttana'], ['madonna', 'troia'],
+  ['dio', 'santo'],    ['porco', 'madonna'],  ['porca', 'madonna'],
+  ['cristo', 'd'],     ['dio', 'merda'],
+  ['porco', 'dd'],     ['dio', 'fa'],         ['dio', 'cr'],
 ];
 const VOLGARITA = [
   'cazzo', 'minchia', 'stronzo', 'stronza', 'vaffanculo', 'fanculo',
@@ -182,6 +189,26 @@ const VOLGARITA = [
   'fottiti', 'fottere', 'scopare', 'cazzata', 'minkia',
   'porcodue', 'mannaggia',
 ];
+
+/** Build a case-insensitive regex that matches compound parts with optional spaces/punctuation between them. */
+function buildCompoundRegex(parts) {
+  // Each part is matched literally; parts can be separated by spaces/punctuation
+  const escaped = parts.map(p =>
+    p.split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[\\s.,!?;:\'"-]*')
+  );
+  return new RegExp(escaped.join('[\\s.,!?;:\'"-]*'), 'gi');
+}
+
+/** Pre-compiled regexes for all profanity patterns (built once at module load). */
+const BESTEMMIE_REGEXES = BESTEMMIE_COMPOUND.map(parts => buildCompoundRegex(parts));
+const VOLGARITA_REGEXES = VOLGARITA.map(word => new RegExp(
+  word.split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[\\s.,!?;:\'"-]*'),
+  'gi',
+));
+
+// Flat list for penalty detection (normalized, no-space version)
+const BESTEMMIE = BESTEMMIE_COMPOUND.map(parts => parts.join(''));
+
 
 /**
  * Returns XP penalty (0 to -5) based on profanity in text.
@@ -216,6 +243,28 @@ export function getProfanityPenalty(text) {
   }
 
   return Math.max(-5, penalty);
+}
+
+/**
+ * Censors profanity in text by replacing matched words with asterisks.
+ * Bestemmie (compound) are replaced first, then individual vulgar words.
+ * Preserves original text structure — only the matched characters become `*`.
+ */
+export function censorProfanity(text) {
+  if (!text || typeof text !== 'string') return text;
+  let result = text;
+
+  // Bestemmie first (longer compound matches take priority)
+  for (const regex of BESTEMMIE_REGEXES) {
+    result = result.replace(regex, match => '*'.repeat(match.length));
+  }
+
+  // Then individual vulgar words
+  for (const regex of VOLGARITA_REGEXES) {
+    result = result.replace(regex, match => '*'.repeat(match.length));
+  }
+
+  return result;
 }
 
 /* ─── Key helpers ─── */

@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis';
-import { GENERAL_KEY, getMonthlyKey, getCurrentSeason, getDecayedXp, getContentQualityMultiplier, getProfanityPenalty } from './social-leaderboard.js';
+import { GENERAL_KEY, getMonthlyKey, getCurrentSeason, getDecayedXp, getContentQualityMultiplier, getProfanityPenalty, censorProfanity } from './social-leaderboard.js';
 
 const XP_REPLY          = 5; // create a reply (base, subject to hourly diminishing returns + quality)
 const XP_REPLY_RECEIVED = 2; // post author receives XP when someone replies to their post
@@ -141,7 +141,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'postId richiesto.' });
       }
 
-      const body = sanitize(rawBody, MAX_BODY);
+      const body = censorProfanity(sanitize(rawBody, MAX_BODY));
       if (!body || body.length < 2) {
         return res.status(400).json({ error: 'La risposta deve avere almeno 2 caratteri.' });
       }
