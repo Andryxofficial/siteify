@@ -50,14 +50,14 @@ export default function Home() {
         {/* Tagline chips */}
         <motion.div {...up(0.22)} style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', marginTop: '1.2rem', flexWrap: 'wrap' }}>
           {[
-            { icon: <Sparkles size={14} />, label: 'Content Creator', color: 'var(--primary)' },
-            { icon: <Brain size={14} />,    label: 'AI Explorer',     color: 'var(--secondary)' },
-            { icon: <Zap size={14} />,      label: 'Gamer',           color: 'var(--accent-warm)' },
+            { icon: <Sparkles size={14} />, label: 'Content Creator', color: 'var(--primary)', bg: 'rgba(224,64,251,0.12)', border: 'rgba(224,64,251,0.20)' },
+            { icon: <Brain size={14} />,    label: 'AI Explorer',     color: 'var(--secondary)', bg: 'rgba(0,229,255,0.12)', border: 'rgba(0,229,255,0.20)' },
+            { icon: <Zap size={14} />,      label: 'Gamer',           color: 'var(--accent-warm)', bg: 'rgba(255,184,108,0.12)', border: 'rgba(255,184,108,0.20)' },
           ].map(t => (
             <span key={t.label} className="chip" style={{
-              background: `color-mix(in srgb, ${t.color} 12%, transparent)`,
+              background: t.bg,
               color: t.color,
-              border: `1px solid color-mix(in srgb, ${t.color} 20%, transparent)`,
+              border: `1px solid ${t.border}`,
               fontSize: '0.72rem',
               padding: '4px 12px',
             }}>

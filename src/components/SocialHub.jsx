@@ -74,15 +74,15 @@ export default function SocialHub() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
           style={{
-            borderColor: `color-mix(in srgb, ${link.color} 15%, transparent)`,
+            borderColor: `${link.color}20`,
           }}
         >
           <div
             className="link-icon-wrapper"
             style={{
               color: link.color,
-              background: `color-mix(in srgb, ${link.color} 12%, transparent)`,
-              border: `1px solid color-mix(in srgb, ${link.color} 18%, transparent)`,
+              background: `${link.color}18`,
+              border: `1px solid ${link.color}25`,
             }}
           >
             {link.icon}
