@@ -15,9 +15,9 @@ const socials = [
 export default function Footer() {
   return (
     <footer className="footer glass-panel" style={{ margin: '2rem auto 2rem', maxWidth: '860px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem' }}>
         {/* Brand */}
-        <Link to="/" aria-label="ANDRYXify – Home" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+        <Link to="/" aria-label="ANDRYXify – Home" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
           <img src={LOGO_URL} alt="ANDRYXify" className="footer-logo-img" />
           <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: 0, letterSpacing: '0.2px' }}>
             Esplorando Umanità, IA & Gaming.
@@ -25,7 +25,7 @@ export default function Footer() {
         </Link>
 
         {/* Social links */}
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'center' }}>
           {socials.map(s => (
             <a
               key={s.label}
@@ -41,12 +41,12 @@ export default function Footer() {
         </div>
       </div>
 
-      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '1.5rem', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '1.5rem', paddingTop: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
         <span style={{ fontSize: '0.76rem', color: 'var(--text-faint)' }}>
           &copy; {new Date().getFullYear()} ANDRYXify. Fatto con ♥ per il futuro.
         </span>
         <span style={{ fontSize: '0.76rem', color: 'var(--text-faint)' }}>
-          andryxify.it
+          · andryxify.it
         </span>
       </div>
     </footer>
