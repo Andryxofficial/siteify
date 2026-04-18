@@ -36,9 +36,12 @@ function TwitchOAuthRedirect() {
         localStorage.setItem('twitchGameToken', token);
         // Pulisci l'hash dall'URL senza navigare via dalla pagina corrente
         window.history.replaceState(null, '', location.pathname);
-        // Se siamo su una pagina generica (es. '/'), vai al gioco
-        // altrimenti resta dove sei (es. /socialify, /gioco)
-        if (location.pathname === '/') {
+        // Controlla se c'è un percorso di ritorno salvato (es. /socialify)
+        const returnPath = sessionStorage.getItem('twitchAuthReturnPath');
+        sessionStorage.removeItem('twitchAuthReturnPath');
+        if (returnPath && returnPath !== location.pathname) {
+          navigate(returnPath, { replace: true });
+        } else if (location.pathname === '/') {
           navigate('/gioco', { replace: true });
         }
       }
