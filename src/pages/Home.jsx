@@ -88,6 +88,7 @@ export default function Home() {
           <iframe
             src={`https://player.twitch.tv/?channel=andryxify&parent=${window.location.hostname}&muted=true`}
             height="100%" width="100%" allowFullScreen
+            loading="lazy"
             style={{ border: 'none', display: 'block' }}
           />
         </div>

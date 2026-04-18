@@ -6,6 +6,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import PageTransition from './components/PageTransition';
 import useStandalone from './hooks/useStandalone';
+import useScrollToTop from './hooks/useScrollToTop';
 import Home from './pages/Home';
 import TwitchPage from './pages/TwitchPage';
 import YouTubePage from './pages/YouTubePage';
@@ -54,6 +55,7 @@ function TwitchOAuthRedirect() {
 function AppLayout() {
   const location = useLocation();
   const isStandalone = useStandalone();
+  useScrollToTop();
 
   return (
     <div className={`app-container${isStandalone ? ' pwa-standalone' : ''}`}>

@@ -7,6 +7,7 @@ const STATIC_ASSETS = [
   '/',
   '/manifest.webmanifest',
   '/logo.png',
+  '/Firma_Andryx.png',
   '/pwa-192.png',
   '/pwa-512.png',
   '/apple-touch-icon.png',
