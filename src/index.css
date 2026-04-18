@@ -1557,6 +1557,513 @@ body {
   }
 }
 
+/* ═══════════════════════════════════════════════════
+   SOCIALify — Forum / Bacheca sociale
+   Mobile-first, touch-optimized, glass design
+   ═══════════════════════════════════════════════════ */
+
+/* ── Avatar ── */
+.social-avatar {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+
+.social-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.social-avatar-piccolo { width: 32px; height: 32px; min-width: 32px; }
+.social-avatar-grande  { width: 44px; height: 44px; min-width: 44px; }
+
+/* ── Scheda post ── */
+.social-scheda-post {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  padding: 1rem 1.1rem;
+  transition: transform 0.18s var(--ease-glass), box-shadow 0.18s var(--ease-glass);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.social-scheda-riga {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.social-scheda-corpo {
+  flex: 1;
+  min-width: 0;
+}
+
+.social-scheda-intestazione {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 3px;
+}
+
+.social-autore {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+
+.social-tempo {
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.social-chip-categoria {
+  font-size: 0.62rem;
+  padding: 2px 7px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.social-titolo-post {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+  line-height: 1.35;
+  color: var(--text-main);
+}
+
+.social-anteprima-testo {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  margin: 0;
+}
+
+/* ── Azioni (mi piace, risposte) ── */
+.social-azioni-riga {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.social-btn-azione {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--text-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--r-sm);
+  transition: color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 32px;
+}
+
+.social-btn-azione:hover,
+.social-btn-azione:active {
+  color: var(--text-muted);
+  background: var(--surface-1);
+}
+
+/* ── Barra autenticazione ── */
+.social-barra-auth {
+  padding: 0.85rem 1.1rem;
+}
+
+.social-barra-contenuto {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.social-utente-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.social-nome-utente {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent-twitch);
+}
+
+.social-barra-azioni {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.social-btn-notifica {
+  padding: 0.4rem;
+  font-size: 0.78rem;
+}
+
+.social-testo-accesso {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.social-btn-twitch {
+  background: linear-gradient(135deg, #9146FF, #c800ff);
+  color: #fff;
+  font-size: 0.82rem;
+  padding: 0.45rem 1.1rem;
+  box-shadow: 0 4px 16px rgba(145, 70, 255, .3);
+}
+
+/* ── Filtri categoria ── */
+.social-filtri-categorie {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 2px 0;
+}
+
+.social-filtri-categorie::-webkit-scrollbar { display: none; }
+
+/* ── Lista post ── */
+.social-lista-post {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.social-skeleton {
+  height: 110px;
+  border-radius: var(--r-md);
+}
+
+.social-vuoto {
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+}
+
+/* ── Paginazione ── */
+.social-paginazione {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Editor modale ── */
+.social-editor-sfondo {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.60);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 0;
+}
+
+.social-editor {
+  width: 100%;
+  max-width: 560px;
+  max-height: 90svh;
+  overflow-y: auto;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  padding: 1.3rem;
+  animation: social-slide-up 0.3s var(--ease-glass);
+}
+
+@keyframes social-slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.social-editor-testata {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.social-editor-titolo {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-family: 'Space Grotesk', 'Outfit', sans-serif;
+}
+
+.social-categorie-griglia {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.social-campo {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 0.6rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.88rem;
+  color: var(--text-main);
+  background: var(--surface-1);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-sm);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none;
+}
+
+.social-campo::placeholder {
+  color: var(--text-faint);
+}
+
+.social-campo:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(224, 64, 251, 0.15);
+}
+
+.social-area-testo {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.6;
+}
+
+.social-editor-piede {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.social-contatore {
+  font-size: 0.72rem;
+  color: var(--text-faint);
+}
+
+.social-errore {
+  font-size: 0.78rem;
+  color: var(--accent);
+  flex: 1;
+}
+
+/* ── Vista thread ── */
+.social-link-indietro {
+  display: inline-flex;
+  gap: 6px;
+  padding: 6px 0;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.social-post-principale {
+  padding: 1.2rem;
+}
+
+.social-titolo-thread {
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin: 0 0 4px;
+  line-height: 1.3;
+  font-family: 'Space Grotesk', 'Outfit', sans-serif;
+}
+
+.social-corpo-thread {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.social-azioni-thread {
+  display: flex;
+  gap: 12px;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--glass-border);
+  align-items: center;
+}
+
+/* ── Risposte ── */
+.social-intestazione-risposte {
+  font-size: 0.92rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.social-lista-risposte {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.social-risposta {
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--r-sm);
+  transition: background 0.15s;
+}
+
+.social-risposta:hover {
+  background: var(--surface-1);
+}
+
+.social-risposta-riga {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.social-risposta-corpo {
+  flex: 1;
+  min-width: 0;
+}
+
+.social-risposta-intestazione {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.social-testo-risposta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.social-nessuna-risposta {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--text-faint);
+  font-size: 0.85rem;
+}
+
+.social-form-risposta {
+  padding: 0.85rem 1rem;
+}
+
+.social-form-risposta-riga {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.social-btn-invia {
+  font-size: 0.82rem;
+  padding: 0.5rem 0.85rem;
+  flex-shrink: 0;
+}
+
+/* ── Desktop: scheda post hover ── */
+@media (min-width: 641px) and (hover: hover) {
+  .social-scheda-post:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.30);
+  }
+
+  .social-editor-sfondo {
+    align-items: center;
+    padding: 1.5rem;
+  }
+
+  .social-editor {
+    border-radius: var(--r-xl);
+    max-height: 85vh;
+  }
+
+  .social-post-principale {
+    padding: 1.5rem 1.6rem;
+  }
+
+  .social-titolo-thread {
+    font-size: 1.3rem;
+  }
+}
+
+/* ── Mobile ≤640px: compatto ── */
+@media (max-width: 640px) {
+  .social-scheda-post {
+    padding: 0.85rem 0.95rem;
+  }
+
+  .social-titolo-post {
+    font-size: 0.9rem;
+  }
+
+  .social-anteprima-testo {
+    font-size: 0.78rem;
+    -webkit-line-clamp: 2;
+  }
+
+  .social-avatar { width: 36px; height: 36px; min-width: 36px; }
+  .social-avatar-grande { width: 40px; height: 40px; min-width: 40px; }
+
+  .social-titolo-thread {
+    font-size: 1.1rem;
+  }
+
+  .social-corpo-thread {
+    font-size: 0.86rem;
+  }
+
+  .social-editor {
+    padding: 1rem;
+    max-height: 85svh;
+  }
+}
+
+/* ── Very small ≤360px ── */
+@media (max-width: 360px) {
+  .social-scheda-riga {
+    gap: 8px;
+  }
+
+  .social-avatar { width: 32px; height: 32px; min-width: 32px; }
+
+  .social-chip-categoria { display: none; }
+
+  .social-barra-contenuto {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+}
+
 /* ── Print: clean output ── */
 @media print {
   .navbar-container,

@@ -49,6 +49,12 @@
       "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }]
     },
     {
+      "name": "SOCIALify",
+      "short_name": "SOCIALify",
+      "url": "/socialify",
+      "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }]
+    },
+    {
       "name": "Podcast",
       "short_name": "Podcast",
       "url": "/podcast",

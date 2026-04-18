@@ -9,13 +9,20 @@ const TwitchAuthContext = createContext(null);
  * Builds the Twitch OAuth implicit-flow URL.
  * `redirectPath` defaults to current page so the user comes back where they were.
  */
-export function getTwitchLoginUrl(redirectPath) {
+function buildTwitchLoginUrl(redirectPath) {
   const redirect = window.location.origin + (redirectPath || window.location.pathname);
   return (
     `https://id.twitch.tv/oauth2/authorize?client_id=${CHIAVETWITCH}` +
     `&redirect_uri=${encodeURIComponent(redirect)}` +
     `&response_type=token&scope=user:read:email`
   );
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function useTwitchAuth() {
+  const ctx = useContext(TwitchAuthContext);
+  if (!ctx) throw new Error('useTwitchAuth deve essere usato dentro TwitchAuthProvider');
+  return ctx;
 }
 
 export function TwitchAuthProvider({ children }) {
@@ -103,15 +110,9 @@ export function TwitchAuthProvider({ children }) {
       isLoggedIn: !!twitchUser,
       clientId: CHIAVETWITCH,
       logout,
-      getTwitchLoginUrl,
+      getTwitchLoginUrl: buildTwitchLoginUrl,
     }}>
       {children}
     </TwitchAuthContext.Provider>
   );
-}
-
-export function useTwitchAuth() {
-  const ctx = useContext(TwitchAuthContext);
-  if (!ctx) throw new Error('useTwitchAuth must be used within TwitchAuthProvider');
-  return ctx;
 }

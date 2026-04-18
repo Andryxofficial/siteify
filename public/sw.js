@@ -102,3 +102,44 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+// ── Push notifications (SOCIALify) ─────────────────────────────────────────
+self.addEventListener('push', (event) => {
+  let data = { titolo: 'SOCIALify', corpo: 'Nuovo aggiornamento!', url: '/socialify' };
+  try {
+    if (event.data) {
+      const payload = event.data.json();
+      data = { ...data, ...payload };
+    }
+  } catch { /* fallback ai dati predefiniti */ }
+
+  event.waitUntil(
+    self.registration.showNotification(data.titolo, {
+      body: data.corpo,
+      icon: '/pwa-192.png',
+      badge: '/pwa-192.png',
+      tag: data.tag || 'socialify',
+      data: { url: data.url || '/socialify' },
+      vibrate: [100, 50, 100],
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/socialify';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Se c'è già una finestra aperta, focalizzala e naviga
+      for (const client of windowClients) {
+        if (client.url.includes(self.location.origin)) {
+          client.focus();
+          client.navigate(url);
+          return;
+        }
+      }
+      // Altrimenti apri una nuova finestra
+      return clients.openWindow(url);
+    })
+  );
+});

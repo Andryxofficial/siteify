@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon } from 'lucide-react';
+import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 import useScrollHeader from '../hooks/useScrollHeader';
 import { hapticLight } from '../utils/haptics';
@@ -16,6 +16,7 @@ const NAV_LINKS = [
   { path: '/podcast',   label: 'Podcast',   Icon: MicIcon       },
   { path: '/tiktok',    label: 'TikTok',    Icon: ({ size }) => <TikTokIcon size={size} /> },
   { path: '/gioco',     label: 'Gioco',     Icon: GameIcon      },
+  { path: '/socialify', label: 'SOCIALify', Icon: UsersIcon     },
 ];
 
 /* ─────────────────────────────────────────────────────────

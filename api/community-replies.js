@@ -21,6 +21,7 @@ const RATE_LIMIT_SECONDS = 15;
 
 function sanitize(str, maxLen) {
   if (typeof str !== 'string') return '';
+  // eslint-disable-next-line no-control-regex
   return str.trim().slice(0, maxLen).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
 }
 

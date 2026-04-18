@@ -27,6 +27,7 @@ const RATE_LIMIT_SECONDS = 30; // min seconds between posts
 
 function sanitize(str, maxLen) {
   if (typeof str !== 'string') return '';
+  // eslint-disable-next-line no-control-regex
   return str.trim().slice(0, maxLen).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
 }
 
@@ -82,9 +83,34 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Errore di connessione al database.' });
   }
 
-  /* ─── GET: list posts ─── */
+  /* ─── GET: list posts OR single post ─── */
   if (req.method === 'GET') {
     try {
+      // Single post fetch: GET /api/community?id=<postId>
+      const singleId = req.query?.id;
+      if (singleId) {
+        const post = await redis.hgetall(`community:post:${singleId}`);
+        if (!post || !post.id) {
+          return res.status(404).json({ error: 'Post non trovato.' });
+        }
+        let liked = false;
+        const authHeader = req.headers.authorization;
+        if (authHeader?.startsWith('Bearer ')) {
+          const twitchUser = await validateTwitch(authHeader);
+          if (twitchUser) {
+            liked = !!(await redis.sismember(`community:likes:${singleId}`, twitchUser.login));
+          }
+        }
+        return res.status(200).json({
+          post: {
+            ...post,
+            replyCount: Number(post.replyCount || 0),
+            likeCount: Number(post.likeCount || 0),
+            liked,
+          },
+        });
+      }
+
       const page = Math.max(1, parseInt(req.query?.page) || 1);
       const limit = Math.min(MAX_PER_PAGE, Math.max(1, parseInt(req.query?.limit) || DEFAULT_PER_PAGE));
       const tag = req.query?.tag;
