@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, Heart, Clock, Send, X, ChevronLeft, ChevronRight,
-  Twitch, LogIn, Plus, User, Bell, BellOff,
+  Twitch, LogIn, Plus, User, Bell, BellOff, Trophy,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
@@ -222,6 +222,272 @@ function EditorPost({ onChiudi, onCreato }) {
 }
 
 /* ═══════════════════════════════════════
+   CLASSIFICA XP
+   ═══════════════════════════════════════ */
+
+const LEVELS = [
+  { level: 1, xp: 0,    label: 'Nuovo Arrivato', emoji: '🌱' },
+  { level: 2, xp: 50,   label: 'Curioso',         emoji: '🌿' },
+  { level: 3, xp: 150,  label: 'Appassionato',    emoji: '⭐' },
+  { level: 4, xp: 350,  label: 'Habitué',         emoji: '💫' },
+  { level: 5, xp: 700,  label: 'Esperto',         emoji: '🔥' },
+  { level: 6, xp: 1200, label: 'Veterano',        emoji: '💎' },
+  { level: 7, xp: 2000, label: 'Elite',           emoji: '🏆' },
+  { level: 8, xp: 3500, label: 'Leggenda',        emoji: '👑' },
+];
+
+const RANK_MEDALS = ['🥇', '🥈', '🥉'];
+
+function RigaClassifica({ entry, rank, showProgress = true }) {
+  const medal = rank <= 3 ? RANK_MEDALS[rank - 1] : null;
+  return (
+    <div className={`social-lb-riga pos-${rank}`}>
+      <div className={`social-lb-rank${medal ? ' medaglia' : ''}`}>
+        {medal || rank}
+      </div>
+
+      <div className="social-lb-avatar">
+        {entry.avatar ? (
+          <img src={entry.avatar} alt="" />
+        ) : (
+          <User size={16} />
+        )}
+      </div>
+
+      <div className="social-lb-info">
+        <div className="social-lb-nome">{entry.username}</div>
+        <div className="social-lb-livello-riga">
+          <span className="social-lb-badge-livello">
+            {entry.levelEmoji} Lv.{entry.level} {entry.levelLabel}
+          </span>
+        </div>
+      </div>
+
+      {showProgress && (
+        <div className="social-lb-barra-xp">
+          <span className="social-lb-xp-numero">{entry.xp} XP</span>
+          <div className="social-lb-progress-track">
+            <div
+              className="social-lb-progress-fill"
+              style={{ width: `${entry.progress ?? 100}%` }}
+            />
+          </div>
+        </div>
+      )}
+      {!showProgress && (
+        <span className="social-lb-xp-numero" style={{ flexShrink: 0 }}>{entry.xp} XP</span>
+      )}
+    </div>
+  );
+}
+
+function Classifica() {
+  const [lbTab, setLbTab] = useState('mensile');
+  const [monthly, setMonthly] = useState([]);
+  const [general, setGeneral] = useState([]);
+  const [archive, setArchive] = useState([]);
+  const [currentLabel, setCurrentLabel] = useState('');
+  const [caricamento, setCaricamento] = useState(true);
+  const [errore, setErrore] = useState('');
+
+  const caricaClassifica = useCallback(async () => {
+    setCaricamento(true);
+    setErrore('');
+    try {
+      const res = await fetch('/api/social-leaderboard');
+      if (!res.ok) throw new Error('Errore di rete');
+      const data = await res.json();
+      setMonthly(data.monthly || []);
+      setGeneral(data.general || []);
+      setArchive(data.archive || []);
+      setCurrentLabel(data.currentLabel || '');
+    } catch {
+      setErrore('Impossibile caricare la classifica.');
+    } finally {
+      setCaricamento(false);
+    }
+  }, []);
+
+  useEffect(() => { caricaClassifica(); }, [caricaClassifica]);
+
+  const elenco = lbTab === 'mensile' ? monthly : general;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 220, damping: 24 }}
+    >
+      {/* Sub-tabs */}
+      <div className="social-lb-tabs">
+        {[
+          { id: 'mensile',  label: '📅 ' + (currentLabel || 'Mese') },
+          { id: 'generale', label: '🌐 Generale' },
+          { id: 'archivio', label: '📚 Archivio' },
+          { id: 'livelli',  label: '⭐ Livelli' },
+        ].map(t => (
+          <button
+            key={t.id}
+            className={`social-lb-tab${lbTab === t.id ? ' attiva' : ''}`}
+            onClick={() => setLbTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {caricamento ? (
+        <div className="social-lb-vuoto">Caricamento…</div>
+      ) : errore ? (
+        <div className="social-lb-vuoto" style={{ color: 'var(--accent)' }}>
+          {errore}
+          <br />
+          <button className="btn btn-ghost" onClick={caricaClassifica} style={{ marginTop: '0.75rem', fontSize: '0.82rem' }}>
+            Riprova
+          </button>
+        </div>
+      ) : lbTab === 'archivio' ? (
+        <div className="social-lb-archivio">
+          {archive.length === 0 ? (
+            <div className="social-lb-vuoto">
+              <p style={{ fontSize: '1.5rem', marginBottom: '0.4rem' }}>📭</p>
+              Nessun mese archiviato ancora.
+            </div>
+          ) : archive.map(mese => (
+            <div key={mese.season} className="social-lb-archivio-mese">
+              <div className="social-lb-archivio-testata">{mese.label}</div>
+              <div className="social-lb-archivio-podio">
+                {mese.top3.map((e, i) => (
+                  <div key={e.username} className="social-lb-archivio-voce">
+                    <span className="social-lb-archivio-voce-rank">{RANK_MEDALS[i] || i + 1}</span>
+                    <span className="social-lb-archivio-voce-nome">{e.levelEmoji} {e.username}</span>
+                    <span className="social-lb-archivio-voce-xp">{e.xp} XP</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : lbTab === 'livelli' ? (
+        <div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+            I livelli si azzerano ogni mese. Guadagna XP interagendo con la community!
+          </p>
+
+          {/* XP Rewards */}
+          <p className="social-lb-titolo-sezione" style={{ marginBottom: '0.4rem' }}>Come guadagnare XP</p>
+          <div className="social-lb-legenda-xp" style={{ marginBottom: '0.75rem', marginTop: 0 }}>
+            <div className="social-lb-legenda-item">✍️ Post: <strong>fino a +15 XP</strong></div>
+            <div className="social-lb-legenda-item">💬 Risposta: <strong>fino a +7 XP</strong></div>
+            <div className="social-lb-legenda-item">❤️ Like ricevuto: <strong>+2 XP</strong></div>
+            <div className="social-lb-legenda-item">📩 Risposta al tuo post: <strong>+2 XP</strong></div>
+            <div className="social-lb-legenda-item">👍 Like dato: <strong>+1 XP</strong></div>
+          </div>
+
+          {/* Content quality */}
+          <p className="social-lb-titolo-sezione" style={{ marginBottom: '0.4rem' }}>Qualità del contenuto</p>
+          <div className="social-lb-legenda-xp" style={{ marginBottom: '0.75rem', marginTop: 0 }}>
+            <div className="social-lb-legenda-item" style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                Post e risposte lunghi e curati guadagnano più XP. Messaggi corti o a caso danno pochissimo.
+              </span>
+              <span>🟥 {'<'}15 char → <strong>×0.3</strong> · 🟧 15–29 → <strong>×0.6</strong> · 🟩 30–79 → <strong>×1.0</strong> · 🟦 80–199 → <strong>×1.15</strong> · ⭐ 200+ → <strong>×1.3</strong></span>
+              <span style={{ color: 'var(--text-faint)', fontSize: '0.68rem' }}>+0.2 bonus con 10+ parole diverse · ×0.5 se testo ripetitivo · ×0.6 se TUTTO MAIUSCOLO</span>
+            </div>
+          </div>
+
+          {/* Profanity penalty */}
+          <p className="social-lb-titolo-sezione" style={{ marginBottom: '0.4rem' }}>🤬 Linguaggio inappropriato</p>
+          <div className="social-lb-legenda-xp" style={{ marginBottom: '0.75rem', marginTop: 0 }}>
+            <div className="social-lb-legenda-item" style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                Bestemmie e volgarità pesanti riducono l'XP guadagnato. Non blocchiamo il contenuto, ma penalizziamo.
+              </span>
+              <span>Bestemmie → <strong>−3 XP</strong> cad. · Volgarità → <strong>−1 XP</strong> cad. · Max penalty: <strong>−5 XP</strong></span>
+            </div>
+          </div>
+
+          {/* Anti-spam */}
+          <p className="social-lb-titolo-sezione" style={{ marginBottom: '0.4rem' }}>Anti-spam</p>
+          <div className="social-lb-legenda-xp" style={{ marginBottom: '0.75rem', marginTop: 0 }}>
+            <div className="social-lb-legenda-item" style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                Ripetere le stesse azioni di continuo dà sempre meno XP. Lo spam non paga.
+              </span>
+              <span>1ª azione → <strong>100%</strong> · 2ª → <strong>75%</strong> · 3ª → <strong>50%</strong> · 4ª → <strong>25%</strong> · 5ª+ → <strong>10%</strong></span>
+              <span style={{ color: 'var(--text-faint)', fontSize: '0.68rem' }}>Finestra: post 24h · risposte 1h · like 1h</span>
+            </div>
+          </div>
+
+          {/* Engagement multiplier */}
+          <p className="social-lb-titolo-sezione" style={{ marginBottom: '0.4rem' }}>Moltiplicatore engagement</p>
+          <div className="social-lb-legenda-xp" style={{ marginBottom: '0.75rem', marginTop: 0 }}>
+            <div className="social-lb-legenda-item" style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                Più il tuo post è popolare (like + risposte), più XP ricevi per ogni nuovo like.
+              </span>
+              <span>0–4 interazioni → <strong>1×</strong> · 5–9 → <strong>1.25×</strong> · 10–19 → <strong>1.5×</strong> · 20+ → <strong>2×</strong></span>
+            </div>
+          </div>
+
+          {/* Levels grid */}
+          <p className="social-lb-titolo-sezione" style={{ marginBottom: '0.4rem' }}>Tabella livelli</p>
+          <div className="social-lb-livelli-griglia">
+            {LEVELS.map(l => (
+              <div key={l.level} className="social-lb-livello-card">
+                <span className="social-lb-livello-card-emoji">{l.emoji}</span>
+                <div className="social-lb-livello-card-info">
+                  <div className="social-lb-livello-card-nome">Lv.{l.level} {l.label}</div>
+                  <div className="social-lb-livello-card-xp">{l.xp} XP</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          {elenco.length === 0 ? (
+            <div className="social-lb-vuoto">
+              <p style={{ fontSize: '1.5rem', marginBottom: '0.4rem' }}>🏆</p>
+              {lbTab === 'mensile'
+                ? 'Sii il primo a guadagnare XP questo mese!'
+                : 'La classifica generale è ancora vuota. Inizia a interagire!'}
+            </div>
+          ) : (
+            <>
+              <p className="social-lb-titolo-sezione">
+                {lbTab === 'mensile' ? `Top community — ${currentLabel}` : 'Classifica generale (cumulativa)'}
+              </p>
+              <div className="social-lb-lista">
+                {elenco.map((entry, i) => (
+                  <RigaClassifica
+                    key={entry.username}
+                    entry={entry}
+                    rank={i + 1}
+                    showProgress={lbTab === 'mensile'}
+                  />
+                ))}
+              </div>
+              {lbTab === 'mensile' && (
+                <div className="social-lb-legenda-xp">
+                  <div className="social-lb-legenda-item">✍️ Post: <strong>fino a +15 XP</strong> (qualità conta!)</div>
+                  <div className="social-lb-legenda-item">💬 Risposta: <strong>fino a +7 XP</strong></div>
+                  <div className="social-lb-legenda-item">❤️ Like ricevuto: <strong>+2 XP</strong> (fino a ×2 se popolare)</div>
+                  <div className="social-lb-legenda-item">📩 Risposta al tuo post: <strong>+2 XP</strong></div>
+                  <div className="social-lb-legenda-item" style={{ color: 'var(--text-faint)', fontSize: '0.68rem', width: '100%' }}>
+                    ⚠️ Spam, post corti e bestemmie riducono l'XP. Tab «⭐ Livelli» per i dettagli.
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════
    PAGINA SOCIALify
    ═══════════════════════════════════════ */
 export default function CommunityPage() {
@@ -236,6 +502,7 @@ export default function CommunityPage() {
   const [caricamento, setCaricamento] = useState(true);
   const [errore, setErrore] = useState('');
   const [mostraEditor, setMostraEditor] = useState(false);
+  const [vistaAttiva, setVistaAttiva] = useState(searchParams.get('vista') === 'classifica' ? 'classifica' : 'feed');
 
   const caricaPosts = useCallback(async () => {
     setCaricamento(true);
@@ -368,99 +635,123 @@ export default function CommunityPage() {
         </div>
       </motion.div>
 
-      {/* Filtri categoria */}
-      <motion.div {...entrata(0.22)} className="social-filtri-categorie">
+      {/* Tab principali: Feed | Classifica */}
+      <motion.div {...entrata(0.22)} className="social-tabs-principali">
         <button
-          className="chip"
-          onClick={() => gestisciCategoria(null)}
-          style={{
-            cursor: 'pointer', fontSize: '0.74rem', padding: '4px 12px',
-            background: !categoriaAttiva ? 'rgba(255,255,255,0.08)' : 'transparent',
-            color: !categoriaAttiva ? 'var(--text-main)' : 'var(--text-muted)',
-            border: `1px solid ${!categoriaAttiva ? 'rgba(255,255,255,0.14)' : 'var(--glass-border)'}`,
-          }}
+          className={`social-tab-principale${vistaAttiva === 'feed' ? ' attiva' : ''}`}
+          onClick={() => setVistaAttiva('feed')}
         >
-          Tutti
+          <MessageSquare size={15} /> Feed
         </button>
-        {CATEGORIE.map(c => (
-          <button
-            key={c.valore}
-            className="chip"
-            onClick={() => gestisciCategoria(c.valore)}
-            style={{
-              cursor: 'pointer', fontSize: '0.74rem', padding: '4px 12px',
-              background: categoriaAttiva === c.valore ? `${c.colore}20` : 'transparent',
-              color: categoriaAttiva === c.valore ? c.colore : 'var(--text-muted)',
-              border: `1px solid ${categoriaAttiva === c.valore ? `${c.colore}35` : 'var(--glass-border)'}`,
-              transition: 'all .2s ease',
-            }}
-          >
-            {c.etichetta}
-          </button>
-        ))}
+        <button
+          className={`social-tab-principale${vistaAttiva === 'classifica' ? ' attiva' : ''}`}
+          onClick={() => setVistaAttiva('classifica')}
+        >
+          <Trophy size={15} /> Classifica
+        </button>
       </motion.div>
 
-      {/* Lista post */}
-      <motion.div {...entrata(0.28)} className="social-lista-post">
-        {caricamento && posts.length === 0 ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="skeleton social-skeleton" />
-          ))
-        ) : errore ? (
-          <div className="glass-panel" style={{ textAlign: 'center', padding: '2rem' }}>
-            <p style={{ color: 'var(--accent)' }}>{errore}</p>
-            <button className="btn btn-ghost" onClick={caricaPosts} style={{ marginTop: '0.75rem' }}>
-              Riprova
-            </button>
-          </div>
-        ) : posts.length === 0 ? (
-          <div className="glass-panel social-vuoto">
-            <p style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🫥</p>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-              {categoriaAttiva ? `Nessun post nella categoria "${infoCategoria(categoriaAttiva).etichetta}".` : 'Ancora nessun post. Sii il primo!'}
-            </p>
-            {isLoggedIn && (
-              <button
-                className="btn btn-primary"
-                onClick={() => setMostraEditor(true)}
-                style={{ marginTop: '1rem', fontSize: '0.85rem' }}
-              >
-                <Plus size={15} /> Scrivi il primo!
-              </button>
-            )}
-          </div>
-        ) : (
-          <AnimatePresence mode="popLayout">
-            {posts.map(post => (
-              <SchedaPost key={post.id} post={post} onMiPiace={gestisciMiPiace} />
-            ))}
-          </AnimatePresence>
-        )}
-      </motion.div>
-
-      {/* Paginazione */}
-      {totPagine > 1 && (
-        <motion.div {...entrata(0.32)} className="social-paginazione">
-          <button
-            className="btn btn-ghost"
-            disabled={pagina <= 1}
-            onClick={() => setPagina(p => Math.max(1, p - 1))}
-            style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem' }}
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            {pagina} / {totPagine}
-          </span>
-          <button
-            className="btn btn-ghost"
-            disabled={pagina >= totPagine}
-            onClick={() => setPagina(p => Math.min(totPagine, p + 1))}
-            style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem' }}
-          >
-            <ChevronRight size={16} />
-          </button>
+      {vistaAttiva === 'classifica' ? (
+        <motion.div {...entrata(0.26)} className="glass-panel" style={{ padding: '1rem' }}>
+          <Classifica />
         </motion.div>
+      ) : (
+        <>
+          {/* Filtri categoria */}
+          <motion.div {...entrata(0.26)} className="social-filtri-categorie">
+            <button
+              className="chip"
+              onClick={() => gestisciCategoria(null)}
+              style={{
+                cursor: 'pointer', fontSize: '0.74rem', padding: '4px 12px',
+                background: !categoriaAttiva ? 'rgba(255,255,255,0.08)' : 'transparent',
+                color: !categoriaAttiva ? 'var(--text-main)' : 'var(--text-muted)',
+                border: `1px solid ${!categoriaAttiva ? 'rgba(255,255,255,0.14)' : 'var(--glass-border)'}`,
+              }}
+            >
+              Tutti
+            </button>
+            {CATEGORIE.map(c => (
+              <button
+                key={c.valore}
+                className="chip"
+                onClick={() => gestisciCategoria(c.valore)}
+                style={{
+                  cursor: 'pointer', fontSize: '0.74rem', padding: '4px 12px',
+                  background: categoriaAttiva === c.valore ? `${c.colore}20` : 'transparent',
+                  color: categoriaAttiva === c.valore ? c.colore : 'var(--text-muted)',
+                  border: `1px solid ${categoriaAttiva === c.valore ? `${c.colore}35` : 'var(--glass-border)'}`,
+                  transition: 'all .2s ease',
+                }}
+              >
+                {c.etichetta}
+              </button>
+            ))}
+          </motion.div>
+
+          {/* Lista post */}
+          <motion.div {...entrata(0.32)} className="social-lista-post">
+            {caricamento && posts.length === 0 ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="skeleton social-skeleton" />
+              ))
+            ) : errore ? (
+              <div className="glass-panel" style={{ textAlign: 'center', padding: '2rem' }}>
+                <p style={{ color: 'var(--accent)' }}>{errore}</p>
+                <button className="btn btn-ghost" onClick={caricaPosts} style={{ marginTop: '0.75rem' }}>
+                  Riprova
+                </button>
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="glass-panel social-vuoto">
+                <p style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🫥</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  {categoriaAttiva ? `Nessun post nella categoria "${infoCategoria(categoriaAttiva).etichetta}".` : 'Ancora nessun post. Sii il primo!'}
+                </p>
+                {isLoggedIn && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => setMostraEditor(true)}
+                    style={{ marginTop: '1rem', fontSize: '0.85rem' }}
+                  >
+                    <Plus size={15} /> Scrivi il primo!
+                  </button>
+                )}
+              </div>
+            ) : (
+              <AnimatePresence mode="popLayout">
+                {posts.map(post => (
+                  <SchedaPost key={post.id} post={post} onMiPiace={gestisciMiPiace} />
+                ))}
+              </AnimatePresence>
+            )}
+          </motion.div>
+
+          {/* Paginazione */}
+          {totPagine > 1 && (
+            <motion.div {...entrata(0.36)} className="social-paginazione">
+              <button
+                className="btn btn-ghost"
+                disabled={pagina <= 1}
+                onClick={() => setPagina(p => Math.max(1, p - 1))}
+                style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem' }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                {pagina} / {totPagine}
+              </span>
+              <button
+                className="btn btn-ghost"
+                disabled={pagina >= totPagine}
+                onClick={() => setPagina(p => Math.min(totPagine, p + 1))}
+                style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem' }}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </motion.div>
+          )}
+        </>
       )}
 
       {/* Modale editor post */}

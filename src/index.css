@@ -2084,6 +2084,331 @@ body {
   }
 }
 
+/* ══════════════════════════════════════
+   SOCIALify — Classifica XP
+   ══════════════════════════════════════ */
+
+/* Main tabs: Feed | Classifica */
+.social-tabs-principali {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 0.75rem;
+}
+
+.social-tab-principale {
+  flex: 1;
+  padding: 0.55rem 0.8rem;
+  border-radius: var(--r-full);
+  border: 1.5px solid var(--glass-border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.social-tab-principale.attiva {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: rgba(224, 64, 251, 0.3);
+}
+
+/* Sub-tabs inside classifica: Mensile | Generale */
+.social-lb-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 1rem;
+}
+
+.social-lb-tab {
+  flex: 1;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--r-full);
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  text-align: center;
+}
+
+.social-lb-tab.attiva {
+  background: var(--surface-2);
+  color: var(--text-main);
+  border-color: var(--glass-border-hi);
+}
+
+/* Section title inside leaderboard */
+.social-lb-titolo-sezione {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0 0 0.6rem;
+}
+
+/* Leaderboard list */
+.social-lb-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Single leaderboard row */
+.social-lb-riga {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.social-lb-riga:hover {
+  background: var(--surface-2);
+  border-color: var(--glass-border);
+}
+
+/* Gold/silver/bronze highlights for top 3 */
+.social-lb-riga.pos-1 { background: rgba(255, 215, 0, 0.07); border-color: rgba(255, 215, 0, 0.18); }
+.social-lb-riga.pos-2 { background: rgba(192, 192, 192, 0.06); border-color: rgba(192, 192, 192, 0.14); }
+.social-lb-riga.pos-3 { background: rgba(205, 127, 50, 0.06); border-color: rgba(205, 127, 50, 0.14); }
+
+/* Rank number */
+.social-lb-rank {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text-faint);
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.social-lb-rank.medaglia {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* Avatar */
+.social-lb-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--surface-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border: 1.5px solid var(--glass-border);
+}
+
+.social-lb-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Username + level row */
+.social-lb-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.social-lb-nome {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.social-lb-livello-riga {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.social-lb-badge-livello {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: var(--r-full);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: 1px solid var(--glass-border);
+  white-space: nowrap;
+}
+
+/* XP progress bar */
+.social-lb-barra-xp {
+  width: 52px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.social-lb-xp-numero {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--primary);
+  display: block;
+  margin-bottom: 3px;
+}
+
+.social-lb-progress-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.social-lb-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--secondary), var(--primary));
+  transition: width 0.5s var(--ease-glass);
+}
+
+/* XP info legend */
+.social-lb-legenda-xp {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0.75rem;
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  border: 1px solid var(--glass-border);
+  margin-top: 1rem;
+}
+
+.social-lb-legenda-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.social-lb-legenda-item strong {
+  color: var(--primary);
+}
+
+/* Archive grid */
+.social-lb-archivio {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.25rem;
+}
+
+.social-lb-archivio-mese {
+  border-radius: var(--r-md);
+  padding: 0.75rem 0.9rem;
+  background: var(--surface-1);
+  border: 1px solid var(--glass-border);
+}
+
+.social-lb-archivio-testata {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.social-lb-archivio-podio {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.social-lb-archivio-voce {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+}
+
+.social-lb-archivio-voce-rank {
+  width: 16px;
+  text-align: center;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.social-lb-archivio-voce-nome {
+  color: var(--text-muted);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-lb-archivio-voce-xp {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* Empty state */
+.social-lb-vuoto {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--text-faint);
+  font-size: 0.88rem;
+}
+
+/* Levels reference card */
+.social-lb-livelli-griglia {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+  margin-top: 0.75rem;
+}
+
+.social-lb-livello-card {
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--r-sm);
+  background: var(--surface-1);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.74rem;
+}
+
+.social-lb-livello-card-emoji {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.social-lb-livello-card-info {
+  flex: 1;
+}
+
+.social-lb-livello-card-nome {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.social-lb-livello-card-xp {
+  color: var(--text-faint);
+  font-size: 0.68rem;
+  margin-top: 1px;
+}
+
 /* ── Mobile ≤640px: compatto ── */
 @media (max-width: 640px) {
   .social-scheda-post {

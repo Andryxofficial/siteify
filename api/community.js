@@ -1,4 +1,5 @@
 import { Redis } from '@upstash/redis';
+import { GENERAL_KEY, getMonthlyKey, getCurrentSeason, getLevel, getDecayedXp, getContentQualityMultiplier, getProfanityPenalty, censorProfanity } from './social-leaderboard.js';
 
 /**
  * Community API — Custom forum for ANDRYXify
@@ -16,6 +17,11 @@ import { Redis } from '@upstash/redis';
  * POST /api/community   { title, body, tag }  — requires Twitch auth
  * DELETE /api/community { postId }            — requires Twitch auth (author or admin)
  * PATCH  /api/community { postId, action: "like" | "unlike" } — requires Twitch auth
+ *
+ * XP system (with diminishing returns + engagement multiplier):
+ *   - Create a post:  base +10 XP, decays if posting too often (window: 24h)
+ *   - Like given:     base +1 XP, decays if liking too many times (window: 1h)
+ *   - Like received:  base +2 XP × engagement multiplier (1.0–2.0x based on post popularity)
  */
 
 const VALID_TAGS = ['generale', 'giochi', 'stream', 'tech', 'meme', 'suggerimenti'];
@@ -24,6 +30,41 @@ const MAX_BODY = 2000;
 const MAX_PER_PAGE = 50;
 const DEFAULT_PER_PAGE = 20;
 const RATE_LIMIT_SECONDS = 30; // min seconds between posts
+
+/* ─── XP base rewards ─── */
+const XP_POST          = 10; // create a post
+const XP_LIKE_RECEIVED = 2;  // post author receives a like (× engagement multiplier)
+const XP_LIKE_GIVEN    = 1;  // user gives a like (subject to decay)
+
+/**
+ * Engagement multiplier for the post author.
+ * Posts that attract many interactions reward the author more per like/reply.
+ *   0–4 interactions  → 1.0×
+ *   5–9               → 1.25×
+ *  10–19              → 1.5×
+ *  20+                → 2.0×
+ */
+function getEngagementMultiplier(likeCount, replyCount) {
+  const total = Number(likeCount || 0) + Number(replyCount || 0);
+  if (total >= 20) return 2.0;
+  if (total >= 10) return 1.5;
+  if (total >= 5)  return 1.25;
+  return 1.0;
+}
+
+/** Award XP to a user on both the monthly and general leaderboards. */
+async function awardXp(redis, username, xp) {
+  if (!username || xp <= 0) return;
+  const season = getCurrentSeason();
+  const monthlyKey = getMonthlyKey(season);
+  await Promise.all([
+    redis.zincrby(monthlyKey, xp, username),
+    redis.zincrby(GENERAL_KEY, xp, username),
+  ]);
+}
+
+// Re-export getLevel so it can be used in GET response enrichment (optional)
+export { getLevel };
 
 function sanitize(str, maxLen) {
   if (typeof str !== 'string') return '';
@@ -182,8 +223,8 @@ export default async function handler(req, res) {
 
       const { title: rawTitle, body: rawBody, tag: rawTag } = req.body || {};
 
-      const title = sanitize(rawTitle, MAX_TITLE);
-      const body = sanitize(rawBody, MAX_BODY);
+      const title = censorProfanity(sanitize(rawTitle, MAX_TITLE));
+      const body = censorProfanity(sanitize(rawBody, MAX_BODY));
       const tag = VALID_TAGS.includes(rawTag) ? rawTag : 'generale';
 
       if (!title || title.length < 3) {
@@ -227,6 +268,19 @@ export default async function handler(req, res) {
         redis.set(rlKey, '1', { ex: RATE_LIMIT_SECONDS }),
       ]);
 
+      // Award XP for creating a post — quality-adjusted, profanity-penalized, with diminishing returns
+      ;(async () => {
+        try {
+          const fullText = `${title} ${body}`;
+          const qualityMultiplier = getContentQualityMultiplier(fullText);
+          const profanityPenalty = getProfanityPenalty(fullText);
+          const qualityAdjusted = Math.max(1, Math.round(XP_POST * qualityMultiplier));
+          const decayedXp = await getDecayedXp(redis, twitchUser.login, 'post', qualityAdjusted);
+          const finalXp = Math.max(0, decayedXp + profanityPenalty);
+          if (finalXp > 0) await awardXp(redis, twitchUser.login, finalXp);
+        } catch (e) { console.warn('XP award (post) error:', e); }
+      })();
+
       return res.status(201).json({ post: { ...post, liked: false } });
     } catch (e) {
       console.error('Community POST error:', e);
@@ -248,8 +302,9 @@ export default async function handler(req, res) {
       }
 
       const postKey = `community:post:${postId}`;
-      const exists = await redis.exists(postKey);
-      if (!exists) {
+      // Fetch full post to access author + engagement counts
+      const post = await redis.hgetall(postKey);
+      if (!post || !post.id) {
         return res.status(404).json({ error: 'Post non trovato.' });
       }
 
@@ -259,6 +314,22 @@ export default async function handler(req, res) {
         const added = await redis.sadd(likesKey, twitchUser.login);
         if (added) {
           await redis.hincrby(postKey, 'likeCount', 1);
+          // Award XP with diminishing returns + engagement multiplier (best-effort)
+          ;(async () => {
+            try {
+              // Liker: base +1 XP, decays if liking too frequently
+              const likerXp = await getDecayedXp(redis, twitchUser.login, 'like', XP_LIKE_GIVEN);
+              if (likerXp > 0) await awardXp(redis, twitchUser.login, likerXp);
+
+              // Post author: base +2 XP × engagement multiplier (popular posts reward more)
+              const postAuthor = post.author;
+              if (postAuthor && postAuthor !== twitchUser.login) {
+                const multiplier = getEngagementMultiplier(Number(post.likeCount), Number(post.replyCount));
+                const authorXp = Math.round(XP_LIKE_RECEIVED * multiplier);
+                if (authorXp > 0) await awardXp(redis, postAuthor, authorXp);
+              }
+            } catch (e) { console.warn('XP award (like) error:', e); }
+          })();
         }
       } else {
         const removed = await redis.srem(likesKey, twitchUser.login);
