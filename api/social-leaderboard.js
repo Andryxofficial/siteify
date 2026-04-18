@@ -105,6 +105,121 @@ export async function getDecayedXp(redis, username, action, baseXp) {
   return Math.max(1, Math.round(baseXp * factor));
 }
 
+/* ─── Content quality scoring ───
+ *
+ * Posts and replies earn a quality multiplier based on their content.
+ * Short, low-effort, or repetitive text gives less XP.
+ * Longer, more thoughtful content gets a bonus.
+ *
+ * Quality multiplier (0.3 – 1.5):
+ *   - Base 1.0
+ *   - Very short (< 15 chars)            → 0.3  (low effort)
+ *   - Short (15–29 chars)                 → 0.6
+ *   - Medium (30–79 chars)                → 1.0
+ *   - Long (80–199 chars)                 → 1.15
+ *   - Very long (200+ chars)              → 1.3
+ *   - Has multiple unique words (10+)     → +0.2 bonus
+ *   - Repetitive (>50% repeated words)    → ×0.5 penalty (halved)
+ *   - ALL CAPS                            → ×0.6 penalty
+ */
+export function getContentQualityMultiplier(text) {
+  if (!text || typeof text !== 'string') return 0.3;
+  const trimmed = text.trim();
+  const len = trimmed.length;
+
+  // Length-based factor
+  let factor;
+  if (len < 15)       factor = 0.3;
+  else if (len < 30)  factor = 0.6;
+  else if (len < 80)  factor = 1.0;
+  else if (len < 200) factor = 1.15;
+  else                factor = 1.3;
+
+  // Word analysis
+  const words = trimmed.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+  const uniqueWords = new Set(words);
+
+  // Bonus for vocabulary diversity (10+ unique words)
+  if (uniqueWords.size >= 10) factor += 0.2;
+
+  // Penalty for repetitive text (>50% repeated words, at least 4 words needed)
+  if (words.length >= 4 && uniqueWords.size / words.length < 0.5) {
+    factor *= 0.5;
+  }
+
+  // Penalty for ALL CAPS (more than 60% uppercase letters if >10 alpha chars)
+  const alphaChars = trimmed.replace(/[^a-zA-ZÀ-ÿ]/g, '');
+  if (alphaChars.length > 10) {
+    const upperCount = [...alphaChars].filter(c => c === c.toUpperCase() && c !== c.toLowerCase()).length;
+    if (upperCount / alphaChars.length > 0.6) {
+      factor *= 0.6;
+    }
+  }
+
+  return Math.max(0.1, Math.min(1.5, Math.round(factor * 100) / 100));
+}
+
+/* ─── Profanity detection (Italian) ───
+ *
+ * Checks text for Italian blasphemies and vulgar language.
+ * Returns a penalty value (negative) to subtract from XP.
+ *
+ * We don't block the content — just reduce XP reward.
+ * Mild words → small penalty; blasphemies → bigger penalty.
+ *
+ * Penalty:  0 (clean) to -5 (heavy profanity)
+ */
+const BESTEMMIE = [
+  'porcodio', 'porcod', 'dioporco', 'diocane', 'dioboia',
+  'diobestia', 'dioladro', 'diomaiale', 'madonnaputtana',
+  'madonnatroia', 'diosanto', 'porcomadonna', 'porcamadonna',
+  'oddio', 'cristod', 'diomerda', 'gesùcristo',
+  'porcoddi', 'porcodd', 'diofa', 'diocr',
+];
+const VOLGARITA = [
+  'cazzo', 'minchia', 'stronzo', 'stronza', 'vaffanculo', 'fanculo',
+  'merda', 'coglione', 'cogliona', 'troia', 'puttana',
+  'fottiti', 'fottere', 'scopare', 'cazzata', 'minkia',
+  'porcodue', 'mannaggia',
+];
+
+/**
+ * Returns XP penalty (0 to -5) based on profanity in text.
+ * Heavy (bestemmie) → -3 per match (max -5)
+ * Mild (volgarità)  → -1 per match (max -3)
+ */
+export function getProfanityPenalty(text) {
+  if (!text || typeof text !== 'string') return 0;
+  // Normalize: lowercase, remove accents, collapse spaces, strip punctuation
+  const normalized = text
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  let penalty = 0;
+
+  // Build regex for each word, allowing optional spaces between characters of multi-word combos
+  for (const word of BESTEMMIE) {
+    // Allow spaces inside compound words (e.g. "porco dio" matches "porcodio")
+    const pattern = word.split('').join('\\s*');
+    if (new RegExp(pattern).test(normalized)) {
+      penalty -= 3;
+    }
+  }
+
+  for (const word of VOLGARITA) {
+    if (normalized.includes(word)) {
+      penalty -= 1;
+    }
+  }
+
+  return Math.max(-5, penalty);
+}
+
+/* ─── Key helpers ─── */
+
 export function getMonthlyKey(season) {
   return `social:lb:${season}`;
 }

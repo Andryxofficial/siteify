@@ -377,14 +377,38 @@ function Classifica() {
           {/* XP Rewards */}
           <p className="social-lb-titolo-sezione" style={{ marginBottom: '0.4rem' }}>Come guadagnare XP</p>
           <div className="social-lb-legenda-xp" style={{ marginBottom: '0.75rem', marginTop: 0 }}>
-            <div className="social-lb-legenda-item">✍️ Post: <strong>+10 XP</strong></div>
-            <div className="social-lb-legenda-item">💬 Risposta: <strong>+5 XP</strong></div>
+            <div className="social-lb-legenda-item">✍️ Post: <strong>fino a +15 XP</strong></div>
+            <div className="social-lb-legenda-item">💬 Risposta: <strong>fino a +7 XP</strong></div>
             <div className="social-lb-legenda-item">❤️ Like ricevuto: <strong>+2 XP</strong></div>
+            <div className="social-lb-legenda-item">📩 Risposta al tuo post: <strong>+2 XP</strong></div>
             <div className="social-lb-legenda-item">👍 Like dato: <strong>+1 XP</strong></div>
           </div>
 
+          {/* Content quality */}
+          <p className="social-lb-titolo-sezione" style={{ marginBottom: '0.4rem' }}>Qualità del contenuto</p>
+          <div className="social-lb-legenda-xp" style={{ marginBottom: '0.75rem', marginTop: 0 }}>
+            <div className="social-lb-legenda-item" style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                Post e risposte lunghi e curati guadagnano più XP. Messaggi corti o a caso danno pochissimo.
+              </span>
+              <span>🟥 {'<'}15 char → <strong>×0.3</strong> · 🟧 15–29 → <strong>×0.6</strong> · 🟩 30–79 → <strong>×1.0</strong> · 🟦 80–199 → <strong>×1.15</strong> · ⭐ 200+ → <strong>×1.3</strong></span>
+              <span style={{ color: 'var(--text-faint)', fontSize: '0.68rem' }}>+0.2 bonus con 10+ parole diverse · ×0.5 se testo ripetitivo · ×0.6 se TUTTO MAIUSCOLO</span>
+            </div>
+          </div>
+
+          {/* Profanity penalty */}
+          <p className="social-lb-titolo-sezione" style={{ marginBottom: '0.4rem' }}>🤬 Linguaggio inappropriato</p>
+          <div className="social-lb-legenda-xp" style={{ marginBottom: '0.75rem', marginTop: 0 }}>
+            <div className="social-lb-legenda-item" style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                Bestemmie e volgarità pesanti riducono l'XP guadagnato. Non blocchiamo il contenuto, ma penalizziamo.
+              </span>
+              <span>Bestemmie → <strong>−3 XP</strong> cad. · Volgarità → <strong>−1 XP</strong> cad. · Max penalty: <strong>−5 XP</strong></span>
+            </div>
+          </div>
+
           {/* Anti-spam */}
-          <p className="social-lb-titolo-sezione" style={{ marginBottom: '0.4rem' }}>Diminishing returns</p>
+          <p className="social-lb-titolo-sezione" style={{ marginBottom: '0.4rem' }}>Anti-spam</p>
           <div className="social-lb-legenda-xp" style={{ marginBottom: '0.75rem', marginTop: 0 }}>
             <div className="social-lb-legenda-item" style={{ width: '100%', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
@@ -446,12 +470,12 @@ function Classifica() {
               </div>
               {lbTab === 'mensile' && (
                 <div className="social-lb-legenda-xp">
-                  <div className="social-lb-legenda-item">✍️ Post: <strong>+10 XP</strong></div>
-                  <div className="social-lb-legenda-item">💬 Risposta: <strong>+5 XP</strong></div>
+                  <div className="social-lb-legenda-item">✍️ Post: <strong>fino a +15 XP</strong> (qualità conta!)</div>
+                  <div className="social-lb-legenda-item">💬 Risposta: <strong>fino a +7 XP</strong></div>
                   <div className="social-lb-legenda-item">❤️ Like ricevuto: <strong>+2 XP</strong> (fino a ×2 se popolare)</div>
-                  <div className="social-lb-legenda-item">👍 Like dato: <strong>+1 XP</strong></div>
+                  <div className="social-lb-legenda-item">📩 Risposta al tuo post: <strong>+2 XP</strong></div>
                   <div className="social-lb-legenda-item" style={{ color: 'var(--text-faint)', fontSize: '0.68rem', width: '100%' }}>
-                    ⚠️ Lo spam riduce l'XP guadagnato. Tab «⭐ Livelli» per i dettagli.
+                    ⚠️ Spam, post corti e bestemmie riducono l'XP. Tab «⭐ Livelli» per i dettagli.
                   </div>
                 </div>
               )}

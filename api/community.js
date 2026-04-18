@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis';
-import { GENERAL_KEY, getMonthlyKey, getCurrentSeason, getLevel, getDecayedXp } from './social-leaderboard.js';
+import { GENERAL_KEY, getMonthlyKey, getCurrentSeason, getLevel, getDecayedXp, getContentQualityMultiplier, getProfanityPenalty } from './social-leaderboard.js';
 
 /**
  * Community API — Custom forum for ANDRYXify
@@ -268,11 +268,16 @@ export default async function handler(req, res) {
         redis.set(rlKey, '1', { ex: RATE_LIMIT_SECONDS }),
       ]);
 
-      // Award XP for creating a post — subject to daily diminishing returns (best-effort)
+      // Award XP for creating a post — quality-adjusted, profanity-penalized, with diminishing returns
       ;(async () => {
         try {
-          const xp = await getDecayedXp(redis, twitchUser.login, 'post', XP_POST);
-          if (xp > 0) await awardXp(redis, twitchUser.login, xp);
+          const fullText = `${title} ${body}`;
+          const qualityMultiplier = getContentQualityMultiplier(fullText);
+          const profanityPenalty = getProfanityPenalty(fullText);
+          const qualityAdjusted = Math.max(1, Math.round(XP_POST * qualityMultiplier));
+          const decayedXp = await getDecayedXp(redis, twitchUser.login, 'post', qualityAdjusted);
+          const finalXp = Math.max(0, decayedXp + profanityPenalty);
+          if (finalXp > 0) await awardXp(redis, twitchUser.login, finalXp);
         } catch (e) { console.warn('XP award (post) error:', e); }
       })();
 

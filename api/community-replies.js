@@ -1,7 +1,8 @@
 import { Redis } from '@upstash/redis';
-import { GENERAL_KEY, getMonthlyKey, getCurrentSeason, getDecayedXp } from './social-leaderboard.js';
+import { GENERAL_KEY, getMonthlyKey, getCurrentSeason, getDecayedXp, getContentQualityMultiplier, getProfanityPenalty } from './social-leaderboard.js';
 
-const XP_REPLY = 5; // create a reply (base, subject to hourly diminishing returns)
+const XP_REPLY          = 5; // create a reply (base, subject to hourly diminishing returns + quality)
+const XP_REPLY_RECEIVED = 2; // post author receives XP when someone replies to their post
 
 async function awardXp(redis, username, xp) {
   if (!username || xp <= 0) return;
@@ -145,9 +146,9 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'La risposta deve avere almeno 2 caratteri.' });
       }
 
-      // Check parent post exists
-      const postExists = await redis.exists(`community:post:${postId}`);
-      if (!postExists) {
+      // Check parent post exists (and get author for XP)
+      const parentPost = await redis.hgetall(`community:post:${postId}`);
+      if (!parentPost || !parentPost.id) {
         return res.status(404).json({ error: 'Post non trovato.' });
       }
 
@@ -179,11 +180,21 @@ export default async function handler(req, res) {
         redis.set(rlKey, '1', { ex: RATE_LIMIT_SECONDS }),
       ]);
 
-      // Award XP for writing a reply — subject to hourly diminishing returns (best-effort)
+      // Award XP for writing a reply — quality-adjusted, profanity-penalized, with diminishing returns
       ;(async () => {
         try {
-          const xp = await getDecayedXp(redis, twitchUser.login, 'reply', XP_REPLY);
-          if (xp > 0) await awardXp(redis, twitchUser.login, xp);
+          const qualityMultiplier = getContentQualityMultiplier(body);
+          const profanityPenalty = getProfanityPenalty(body);
+          const qualityAdjusted = Math.max(1, Math.round(XP_REPLY * qualityMultiplier));
+          const decayedXp = await getDecayedXp(redis, twitchUser.login, 'reply', qualityAdjusted);
+          const finalXp = Math.max(0, decayedXp + profanityPenalty);
+          if (finalXp > 0) await awardXp(redis, twitchUser.login, finalXp);
+
+          // Award XP to the post author for receiving a reply (engagement reward)
+          const postAuthor = parentPost.author;
+          if (postAuthor && postAuthor !== twitchUser.login) {
+            await awardXp(redis, postAuthor, XP_REPLY_RECEIVED);
+          }
         } catch (e) { console.warn('XP award (reply) error:', e); }
       })();
 
