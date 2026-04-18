@@ -63,7 +63,11 @@
   margin: 0; padding: 0; box-sizing: border-box;
 }
 
-html { scroll-behavior: smooth; }
+/* Eliminate 300ms tap delay on all interactive elements */
+html {
+  scroll-behavior: smooth;
+  touch-action: manipulation;
+}
 
 body {
   font-family: 'Outfit', sans-serif;
@@ -778,15 +782,33 @@ body::before {
     max-width: 100%;
   }
 
-  /* Performance: blur pesante è costoso su GPU mobile — valore ridotto per i pannelli contenuto */
+  /* ── Performance: reduce GPU-heavy effects on mobile ── */
+
+  /* backdrop-filter is expensive on mobile GPU — reduce blur for content panels */
   .glass-panel, .glass-card {
     backdrop-filter: blur(8px) saturate(140%);
     -webkit-backdrop-filter: blur(8px) saturate(140%);
   }
 
-  /* Performance: background-attachment: fixed disabilita il compositing GPU su mobile */
+  /* Remove backdrop-filter entirely from small non-essential elements */
+  .chip, .btn-ghost, .glass-stats-bar {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* background-attachment: fixed disabilita il compositing GPU su mobile */
   body {
     background-attachment: scroll;
+  }
+
+  /* Remove ambient aurora layer on mobile — barely visible, costs a full composited layer */
+  body::before {
+    display: none;
+  }
+
+  /* Disable hue-rotate animation on mobile — forces per-frame filter recalculation */
+  .profile-img-container {
+    animation: none;
   }
 
   .links-grid { grid-template-columns: 1fr; gap: 0.65rem; }
@@ -1389,11 +1411,11 @@ nav.navbar-container.glass-panel {
 
 /* ── Standalone PWA: remove extra top spacing (no browser chrome) ── */
 .pwa-standalone {
-  padding-top: 60px;
+  padding-top: calc(60px + env(safe-area-inset-top, 0px));
 }
 
 .pwa-standalone .navbar-container {
-  top: env(safe-area-inset-top, 8px);
+  top: calc(env(safe-area-inset-top, 8px) + 4px);
 }
 
 /* ── Touch behavior: prevent accidental text selection and callouts ── */
@@ -1471,10 +1493,31 @@ body {
     border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-top: 1px solid rgba(255, 255, 255, 0.10);
+    /* Reduced blur for mobile GPU performance (fixed elements recompute every scroll frame) */
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+  }
+
+  /* Reduce navbar blur too */
+  nav.navbar-container.glass-panel {
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
   }
 
   .pwa-standalone .mobile-tab-bar {
     margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  }
+
+  /* Remove expensive pseudo-element effects from mobile tab pills */
+  .mobile-tab-pill::before,
+  .mobile-tab-pill::after {
+    display: none;
+  }
+
+  .mobile-tab-pill {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgba(255,255,255,0.06);
   }
 }
 
