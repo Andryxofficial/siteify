@@ -7,10 +7,17 @@ const TwitchAuthContext = createContext(null);
 
 /**
  * Builds the Twitch OAuth implicit-flow URL.
- * `redirectPath` defaults to current page so the user comes back where they were.
+ * Always uses /gioco as redirect_uri (the only URI registered in Twitch).
+ * If `returnPath` is provided, it's saved in sessionStorage so the app
+ * can navigate back after the OAuth callback.
  */
-function buildTwitchLoginUrl(redirectPath) {
-  const redirect = window.location.origin + (redirectPath || window.location.pathname);
+function buildTwitchLoginUrl(returnPath) {
+  const redirect = window.location.origin + '/gioco';
+  // Save desired return path so TwitchOAuthRedirect can navigate back
+  const desiredPath = returnPath || window.location.pathname;
+  if (desiredPath && desiredPath !== '/gioco') {
+    sessionStorage.setItem('twitchAuthReturnPath', desiredPath);
+  }
   return (
     `https://id.twitch.tv/oauth2/authorize?client_id=${CHIAVETWITCH}` +
     `&redirect_uri=${encodeURIComponent(redirect)}` +
