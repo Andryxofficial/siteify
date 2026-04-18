@@ -19,13 +19,13 @@ export default function Footer() {
         {/* Brand */}
         <Link to="/" aria-label="ANDRYXify – Home" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
           <img src={LOGO_URL} alt="ANDRYXify" className="footer-logo-img" />
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0, letterSpacing: '0.2px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: 0, letterSpacing: '0.2px' }}>
             Esplorando Umanità, IA & Gaming.
           </p>
         </Link>
 
         {/* Social links */}
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
           {socials.map(s => (
             <a
               key={s.label}
@@ -33,7 +33,7 @@ export default function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-ghost"
-              style={{ padding: '0.45rem 0.9rem', fontSize: '0.82rem' }}
+              style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
             >
               {s.icon} {s.label}
             </a>
@@ -41,11 +41,11 @@ export default function Footer() {
         </div>
       </div>
 
-      <div style={{ borderTop: '1.5px solid rgba(130,170,240,0.08)', marginTop: '1.5rem', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <span style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '1.5rem', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <span style={{ fontSize: '0.76rem', color: 'var(--text-faint)' }}>
           &copy; {new Date().getFullYear()} ANDRYXify. Fatto con ♥ per il futuro.
         </span>
-        <span style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>
+        <span style={{ fontSize: '0.76rem', color: 'var(--text-faint)' }}>
           andryxify.it
         </span>
       </div>

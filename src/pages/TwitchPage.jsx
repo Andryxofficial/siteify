@@ -5,7 +5,7 @@ import SEO from '../components/SEO';
 const twitchStats = [
   { icon: <Users size={18} color="#9146FF" />, label: 'Community attiva' },
   { icon: <Star  size={18} color="#FFD700" />, label: 'Contenuti originali' },
-  { icon: <Calendar size={18} color="#00f5d4" />, label: 'Live regolari' },
+  { icon: <Calendar size={18} color="var(--secondary)" />, label: 'Live regolari' },
 ];
 
 export default function TwitchPage() {
@@ -25,7 +25,6 @@ export default function TwitchPage() {
         </h1>
         <p className="subtitle">Segui le dirette, interagisci in chat e scopri i momenti migliori.</p>
 
-        {/* Twitch brand stats bar */}
         <div className="glass-stats-bar" style={{ marginTop: '1rem' }}>
           {twitchStats.map(s => (
             <div key={s.label}>
@@ -49,11 +48,11 @@ export default function TwitchPage() {
         </div>
         <div className="chat-side">
           <div style={{
-            background: 'rgba(145,70,255,.10)',
+            background: 'rgba(145,70,255,.08)',
             padding: '8px 14px',
             fontSize: '0.82rem',
             color: '#c9b8ff',
-            borderBottom: '1.5px solid rgba(145,70,255,.12)',
+            borderBottom: '1px solid rgba(145,70,255,.10)',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
@@ -76,16 +75,15 @@ export default function TwitchPage() {
         style={{
           padding: '0',
           overflow: 'hidden',
-          background: 'linear-gradient(135deg,rgba(145,70,255,.12),rgba(145,70,255,.03))',
-          border: '1.5px solid rgba(145,70,255,.16)',
+          borderColor: 'rgba(145,70,255,.12)',
         }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
       >
-        {/* Twitch-purple banner */}
+        {/* Twitch-purple banner accent */}
         <div style={{
-          height: 6,
+          height: 4,
           background: 'linear-gradient(90deg,#9146FF,#c800ff,#9146FF)',
           backgroundSize: '200% 100%',
           animation: 'twitch-shimmer 3s linear infinite',
@@ -93,7 +91,7 @@ export default function TwitchPage() {
         <div style={{ padding: '2rem', textAlign: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
             <Twitch size={28} color="#9146FF" />
-            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#9146FF' }}>
+            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#9146FF', fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>
               andryxify su Twitch
             </h2>
           </div>
@@ -109,10 +107,10 @@ export default function TwitchPage() {
               style={{
                 background: 'linear-gradient(135deg,#9146FF,#c800ff)',
                 color: '#fff',
-                boxShadow: '0 5px 20px rgba(145,70,255,.4)',
+                boxShadow: '0 4px 16px rgba(145,70,255,.3)',
               }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
             >
               <Twitch size={16} /> Segui su Twitch
             </motion.a>
@@ -122,8 +120,8 @@ export default function TwitchPage() {
               rel="noreferrer"
               className="btn btn-ghost"
               style={{ gap: '8px' }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
             >
               <ExternalLink size={16} />
               Donazioni su x.la

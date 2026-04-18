@@ -56,7 +56,7 @@ export default function YouTubePage() {
           alignItems: 'flex-end',
           padding: '0 2rem',
         }}>
-          <Youtube size={36} color="rgba(255,255,255,.15)" style={{ position: 'absolute', right: 24, top: 16, zIndex: 2 }} />
+          <Youtube size={36} color="rgba(255,255,255,.12)" style={{ position: 'absolute', right: 24, top: 16, zIndex: 2 }} />
         </div>
 
         <div style={{
@@ -83,7 +83,7 @@ export default function YouTubePage() {
               marginBottom: '1rem',
             }}
           />
-          <h2 style={{ fontSize: '1.7rem', fontWeight: 800, marginBottom: '0.4rem' }}>ANDRYXify</h2>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: '0.4rem', fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>ANDRYXify</h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', maxWidth: 480, fontSize: '0.92rem', lineHeight: 1.6 }}>
             Live, estratti, approfondimenti sull'intelligenza artificiale, reaction e gaming. Esplora tutti i contenuti originali e unisciti alla community!
           </p>
@@ -92,9 +92,9 @@ export default function YouTubePage() {
             target="_blank"
             rel="noreferrer"
             className="btn"
-            style={{ background: '#FF0000', color: '#fff', boxShadow: '0 5px 20px rgba(255,0,0,.3)' }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            style={{ background: '#FF0000', color: '#fff', boxShadow: '0 4px 16px rgba(255,0,0,.25)' }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
           >
             <Youtube size={18} /> Iscriviti al Canale
           </motion.a>
