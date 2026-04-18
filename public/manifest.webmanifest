@@ -37,6 +37,12 @@
   ],
   "shortcuts": [
     {
+      "name": "SOCIALify",
+      "short_name": "SOCIALify",
+      "url": "/socialify",
+      "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }]
+    },
+    {
       "name": "Twitch Live",
       "short_name": "Twitch",
       "url": "/twitch",
@@ -46,12 +52,6 @@
       "name": "Gioca Ora",
       "short_name": "Gioco",
       "url": "/gioco",
-      "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "SOCIALify",
-      "short_name": "SOCIALify",
-      "url": "/socialify",
       "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }]
     },
     {

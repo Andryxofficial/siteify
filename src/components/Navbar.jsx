@@ -10,13 +10,13 @@ const LOGO_URL = '/Firma_Andryx.png';
 
 const NAV_LINKS = [
   { path: '/',          label: 'Home',      Icon: HomeIcon      },
+  { path: '/socialify', label: 'SOCIALify', Icon: UsersIcon     },
   { path: '/twitch',    label: 'Twitch',    Icon: TwitchIcon    },
   { path: '/youtube',   label: 'YouTube',   Icon: YoutubeIcon   },
   { path: '/instagram', label: 'Instagram', Icon: InstagramIcon },
   { path: '/podcast',   label: 'Podcast',   Icon: MicIcon       },
   { path: '/tiktok',    label: 'TikTok',    Icon: ({ size }) => <TikTokIcon size={size} /> },
   { path: '/gioco',     label: 'Gioco',     Icon: GameIcon      },
-  { path: '/socialify', label: 'SOCIALify', Icon: UsersIcon     },
 ];
 
 /* ─────────────────────────────────────────────────────────
