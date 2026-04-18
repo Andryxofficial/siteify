@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon } from 'lucide-react';
+import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 import useScrollHeader from '../hooks/useScrollHeader';
 import { hapticLight } from '../utils/haptics';
@@ -10,6 +10,7 @@ const LOGO_URL = '/Firma_Andryx.png';
 
 const NAV_LINKS = [
   { path: '/',          label: 'Home',      Icon: HomeIcon      },
+  { path: '/socialify', label: 'SOCIALify', Icon: UsersIcon     },
   { path: '/twitch',    label: 'Twitch',    Icon: TwitchIcon    },
   { path: '/youtube',   label: 'YouTube',   Icon: YoutubeIcon   },
   { path: '/instagram', label: 'Instagram', Icon: InstagramIcon },

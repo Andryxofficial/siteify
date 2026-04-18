@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import { TwitchAuthProvider } from './contexts/TwitchAuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import PageTransition from './components/PageTransition';
@@ -12,15 +13,16 @@ import InstagramPage from './pages/InstagramPage';
 import PodcastPage from './pages/PodcastPage';
 import TikTokPage from './pages/TikTokPage';
 import GamePage from './pages/GamePage';
+import CommunityPage from './pages/CommunityPage';
+import ThreadView from './components/ThreadView';
 //segreto
 import Scoiattoli from './pages/tracker_scoiattoli';
 import './index.css';
 
-/* ─── Global Twitch OAuth hash handler ───
-   Twitch may redirect to the root URL (or any page) depending on the
-   registered redirect URI in the developer console. This component
-   catches the access_token hash on ANY route, persists it, and
-   navigates to /gioco so GamePage can pick it up.                    */
+/* ─── Gestore globale OAuth Twitch ───
+   Twitch può reindirizzare su qualsiasi pagina con il token nell'hash.
+   Questo componente cattura il token e lo salva in localStorage.
+   Il TwitchAuthProvider lo leggerà automaticamente.              */
 function TwitchOAuthRedirect() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -32,10 +34,11 @@ function TwitchOAuthRedirect() {
       const token = params.get('access_token');
       if (token) {
         localStorage.setItem('twitchGameToken', token);
-        // Clean the hash from the URL
+        // Pulisci l'hash dall'URL senza navigare via dalla pagina corrente
         window.history.replaceState(null, '', location.pathname);
-        // If we're not already on the game page, navigate there
-        if (location.pathname !== '/gioco') {
+        // Se siamo su una pagina generica (es. '/'), vai al gioco
+        // altrimenti resta dove sei (es. /socialify, /gioco)
+        if (location.pathname === '/') {
           navigate('/gioco', { replace: true });
         }
       }
@@ -62,6 +65,8 @@ function AppLayout() {
             <Route path="/podcast" element={<PodcastPage />} />
             <Route path="/tiktok" element={<TikTokPage />} />
             <Route path="/gioco" element={<GamePage />} />
+            <Route path="/socialify" element={<CommunityPage />} />
+            <Route path="/socialify/:postId" element={<ThreadView />} />
 
             <Route path="/scoiattoli" element={<Scoiattoli />} />
             
@@ -76,8 +81,10 @@ function AppLayout() {
 function App() {
   return (
     <Router>
-      <TwitchOAuthRedirect />
-      <AppLayout />
+      <TwitchAuthProvider>
+        <TwitchOAuthRedirect />
+        <AppLayout />
+      </TwitchAuthProvider>
     </Router>
   );
 }

@@ -37,6 +37,12 @@
   ],
   "shortcuts": [
     {
+      "name": "SOCIALify",
+      "short_name": "SOCIALify",
+      "url": "/socialify",
+      "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }]
+    },
+    {
       "name": "Twitch Live",
       "short_name": "Twitch",
       "url": "/twitch",

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Twitch } from 'lucide-react';
+import { Twitch, Sparkles, Zap, Brain } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SocialHub from '../components/SocialHub';
 import PodcastPromo from '../components/PodcastPromo';
@@ -35,28 +35,47 @@ export default function Home() {
         description="ANDRYXify (Andrea Taliento) — Streamer Twitch, gamer e content creator italiano. Live streaming di videogiochi, podcast su Intelligenza Artificiale, video YouTube, clip TikTok e minigioco esclusivo con classifica."
         path="/"
       />
-      {/* ── Hero: solo testo, niente cerchio ── */}
-      <section className="header" style={{ paddingTop: '1rem' }}>
-        <motion.h1 className="title" {...up(0.05)} style={{ letterSpacing: '-2px' }}>
+      {/* ── Hero ── */}
+      <section className="header" style={{ paddingTop: '1.5rem', paddingBottom: '0.5rem' }}>
+        <motion.h1 className="title" {...up(0.05)} style={{ letterSpacing: '-2.5px' }}>
           <span className="text-gradient">ANDRYX</span>ify
         </motion.h1>
         <motion.p className="subtitle" {...up(0.15)}>
           Esplorando il confine tra{' '}
           <span style={{ color: 'var(--primary)',   fontWeight: 600 }}>Umanità</span>,{' '}
           <span style={{ color: 'var(--secondary)', fontWeight: 600 }}>Intelligenza Artificiale</span>{' '}
-          e <span style={{ color: 'var(--accent)',  fontWeight: 600 }}>Gaming</span>.
+          e <span style={{ color: 'var(--accent-warm)',  fontWeight: 600 }}>Gaming</span>.
         </motion.p>
+
+        {/* Tagline chips */}
+        <motion.div {...up(0.22)} style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', marginTop: '1.2rem', flexWrap: 'wrap' }}>
+          {[
+            { icon: <Sparkles size={14} />, label: 'Content Creator', color: 'var(--primary)', bg: 'rgba(224,64,251,0.12)', border: 'rgba(224,64,251,0.20)' },
+            { icon: <Brain size={14} />,    label: 'AI Explorer',     color: 'var(--secondary)', bg: 'rgba(0,229,255,0.12)', border: 'rgba(0,229,255,0.20)' },
+            { icon: <Zap size={14} />,      label: 'Gamer',           color: 'var(--accent-warm)', bg: 'rgba(255,184,108,0.12)', border: 'rgba(255,184,108,0.20)' },
+          ].map(t => (
+            <span key={t.label} className="chip" style={{
+              background: t.bg,
+              color: t.color,
+              border: `1px solid ${t.border}`,
+              fontSize: '0.72rem',
+              padding: '4px 12px',
+            }}>
+              {t.icon} {t.label}
+            </span>
+          ))}
+        </motion.div>
       </section>
 
       {/* ── Live preview ── */}
       <motion.section
         className="glass-panel"
         style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}
-        {...up(0.25)}
+        {...up(0.28)}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <Twitch size={20} color="#9146FF" />
-          <h2 style={{ fontSize: '1.15rem', margin: 0, fontWeight: 800 }}>Live Preview</h2>
+          <h2 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700, fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>Live Preview</h2>
           <div style={{ marginLeft: 'auto' }}>
             {liveState > 0
               ? <span className="chip chip-live"><span className="chip-live-dot" /> LIVE ORA</span>

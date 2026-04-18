@@ -10,7 +10,6 @@ export default function PodcastPromo() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.7, type: 'spring', stiffness: 180, damping: 22 }}
-      whileHover={{ boxShadow: '0 10px 48px rgba(0,245,212,.18)' }}
     >
       {/* Header strip */}
       <div style={{
@@ -20,7 +19,7 @@ export default function PodcastPromo() {
         gap: '0.7rem',
       }}>
         <Mic size={20} color="var(--secondary)" />
-        <h2 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 800 }}>
+        <h2 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>
           <span className="text-gradient-cyan">Umanità o IA?</span> — Podcast
         </h2>
         <Link

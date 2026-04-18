@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Twitch, Youtube, Instagram, Mic } from 'lucide-react';
+import { Twitch, Youtube, Instagram, Mic, ArrowUpRight } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 
 const links = [
@@ -10,7 +10,6 @@ const links = [
     icon: <Twitch size={22} />,
     url: 'https://twitch.tv/andryxify',
     color: '#9146FF',
-    gradient: 'linear-gradient(135deg,rgba(145,70,255,.25),rgba(145,70,255,.08))',
   },
   {
     id: 'youtube',
@@ -19,7 +18,6 @@ const links = [
     icon: <Youtube size={22} />,
     url: 'https://youtube.com/@ANDRYXify',
     color: '#FF0000',
-    gradient: 'linear-gradient(135deg,rgba(255,0,0,.22),rgba(255,0,0,.07))',
   },
   {
     id: 'instagram',
@@ -28,7 +26,6 @@ const links = [
     icon: <Instagram size={22} />,
     url: 'https://instagram.com/andryxify',
     color: '#E1306C',
-    gradient: 'linear-gradient(135deg,rgba(225,48,108,.22),rgba(225,48,108,.07))',
   },
   {
     id: 'tiktok',
@@ -37,7 +34,6 @@ const links = [
     icon: <TikTokIcon size={22} />,
     url: 'https://tiktok.com/@andryxify',
     color: '#00F2FE',
-    gradient: 'linear-gradient(135deg,rgba(0,242,254,.2),rgba(0,242,254,.06))',
   },
   {
     id: 'podcast',
@@ -46,18 +42,17 @@ const links = [
     icon: <Mic size={22} />,
     url: 'https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9',
     color: '#1DB954',
-    gradient: 'linear-gradient(135deg,rgba(29,185,84,.22),rgba(29,185,84,.07))',
   },
 ];
 
 const container = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.1 } },
+  visible: { transition: { staggerChildren: 0.08 } },
 };
 
 const item = {
-  hidden:  { opacity: 0, y: 18 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 260, damping: 22 } },
+  hidden:  { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 280, damping: 24 } },
 };
 
 export default function SocialHub() {
@@ -76,17 +71,18 @@ export default function SocialHub() {
           rel="noopener noreferrer"
           className="glass-card link-item"
           variants={item}
-          whileHover={{ scale: 1.03 }}
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
-          style={{ background: link.gradient, borderColor: `${link.color}18` }}
+          style={{
+            borderColor: `${link.color}20`,
+          }}
         >
           <div
             className="link-icon-wrapper"
             style={{
               color: link.color,
               background: `${link.color}18`,
-              border: `1.5px solid ${link.color}25`,
-              boxShadow: `0 2px 8px ${link.color}10`,
+              border: `1px solid ${link.color}25`,
             }}
           >
             {link.icon}
@@ -95,7 +91,7 @@ export default function SocialHub() {
             <span className="link-title" style={{ color: link.color }}>{link.title}</span>
             <span className="link-desc">{link.desc}</span>
           </div>
-          <svg style={{ marginLeft: 'auto', opacity: 0.4, flexShrink: 0 }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 17L17 7M7 7h10v10"/></svg>
+          <ArrowUpRight size={15} style={{ marginLeft: 'auto', opacity: 0.3, flexShrink: 0, color: link.color }} />
         </motion.a>
       ))}
     </motion.div>
