@@ -776,7 +776,7 @@ body::before {
 
 @media (max-width: 360px) {
   .navbar-logo-img { height: 26px; }
-  .footer-logo-img { height: 30px; }
+  .footer-logo-img { height: 42px; }
   .title { font-size: 1.9rem; }
 }
 
@@ -840,7 +840,7 @@ body::before {
 }
 
 .footer-logo-img {
-  height: 38px;
+  height: 52px;
 }
 
 /* ── Navbar elevated bar override ── */
