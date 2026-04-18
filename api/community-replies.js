@@ -1,4 +1,17 @@
 import { Redis } from '@upstash/redis';
+import { GENERAL_KEY, getMonthlyKey, getCurrentSeason, getDecayedXp } from './social-leaderboard.js';
+
+const XP_REPLY = 5; // create a reply (base, subject to hourly diminishing returns)
+
+async function awardXp(redis, username, xp) {
+  if (!username || xp <= 0) return;
+  const season = getCurrentSeason();
+  const monthlyKey = getMonthlyKey(season);
+  await Promise.all([
+    redis.zincrby(monthlyKey, xp, username),
+    redis.zincrby(GENERAL_KEY, xp, username),
+  ]);
+}
 
 /**
  * Community Replies API
@@ -165,6 +178,14 @@ export default async function handler(req, res) {
         redis.hincrby(`community:post:${postId}`, 'replyCount', 1),
         redis.set(rlKey, '1', { ex: RATE_LIMIT_SECONDS }),
       ]);
+
+      // Award XP for writing a reply — subject to hourly diminishing returns (best-effort)
+      ;(async () => {
+        try {
+          const xp = await getDecayedXp(redis, twitchUser.login, 'reply', XP_REPLY);
+          if (xp > 0) await awardXp(redis, twitchUser.login, xp);
+        } catch (e) { console.warn('XP award (reply) error:', e); }
+      })();
 
       return res.status(201).json({ reply });
     } catch (e) {
