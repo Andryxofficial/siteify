@@ -436,7 +436,19 @@ const AUTO_SYNC_DOMAIN = 'ANDRYXify-auto-sync-v1';
 
 /** Deriva una chiave AES-GCM-256 dall'userId Twitch + il salt fornito dal server */
 async function deriveAutoSyncKey(twitchUserId, saltB64, usage) {
-  const saltBytes = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
+  // Valida il salt prima di decodificare per prevenire eccezioni atob()
+  if (typeof saltB64 !== 'string' || saltB64.length === 0) {
+    throw new Error('Salt non valido per il backup automatico.');
+  }
+  let saltBytes;
+  try {
+    saltBytes = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
+  } catch {
+    throw new Error('Salt non è un Base64 valido.');
+  }
+  if (saltBytes.length < 16) {
+    throw new Error('Salt troppo corto per essere sicuro.');
+  }
   const rawMaterial = new TextEncoder().encode(`${twitchUserId}:${AUTO_SYNC_DOMAIN}`);
   const keyMaterial = await crypto.subtle.importKey('raw', rawMaterial, 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey(

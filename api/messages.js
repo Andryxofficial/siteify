@@ -254,10 +254,9 @@ export default async function handler(req, res) {
         const saltKey = `e2e_sync_salt:${userId}`;
         let salt = await redis.get(saltKey);
         if (!salt) {
-          // Generate a random 32-byte salt, base64-encoded, stored permanently
-          const bytes = new Uint8Array(32);
-          for (let i = 0; i < 32; i++) bytes[i] = Math.floor(Math.random() * 256);
-          salt = Buffer.from(bytes).toString('base64');
+          // Generate a cryptographically secure random 32-byte salt using Node.js crypto
+          const { randomBytes } = await import('crypto');
+          salt = randomBytes(32).toString('base64');
           await redis.set(saltKey, salt);
         }
         return res.status(200).json({ salt: typeof salt === 'string' ? salt : Buffer.from(salt).toString('base64') });

@@ -3665,8 +3665,10 @@ body {
   .btn {
     transition: transform .18s var(--ease-spring), box-shadow .18s var(--ease-glass);
   }
-  .btn:active {
-    transform: scale(0.95) !important;
+  .btn:active,
+  .btn-primary:active,
+  .btn-ghost:active {
+    transform: scale(0.95);
   }
   .glass-card:active {
     transform: scale(0.97);
