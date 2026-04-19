@@ -28,6 +28,8 @@ const ModPanel      = lazy(() => import('./pages/ModPanel'));
 const FriendsPage        = lazy(() => import('./pages/FriendsPage'));
 const MessagesPage       = lazy(() => import('./pages/MessagesPage'));
 const ChatGeneralePage   = lazy(() => import('./pages/ChatGeneralePage'));
+const SettingsPage       = lazy(() => import('./pages/SettingsPage'));
+const ProfiloPage        = lazy(() => import('./pages/ProfiloPage'));
 
 // Skeleton minimo di fallback per Suspense
 function PaginaCaricamento() {
@@ -99,6 +101,8 @@ function AppLayout() {
               <Route path="/amici" element={<FriendsPage />} />
               <Route path="/messaggi" element={<MessagesPage />} />
               <Route path="/chat" element={<ChatGeneralePage />} />
+              <Route path="/impostazioni" element={<SettingsPage />} />
+              <Route path="/profilo/:username" element={<ProfiloPage />} />
             </Routes>
           </Suspense>
         </PageTransition>

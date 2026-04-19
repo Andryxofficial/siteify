@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon, MessageSquare as MessaggiIcon } from 'lucide-react';
+import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon, MessageSquare as MessaggiIcon, MessageCircle as MessageCircleIcon, Settings as SettingsIcon } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 import useScrollHeader from '../hooks/useScrollHeader';
 import { hapticLight } from '../utils/haptics';
@@ -20,6 +20,15 @@ const NAV_LINKS = [
   { path: '/podcast',   label: 'Podcast',   Icon: MicIcon       },
   { path: '/tiktok',    label: 'TikTok',    Icon: ({ size }) => <TikTokIcon size={size} /> },
   { path: '/gioco',     label: 'Gioco',     Icon: GameIcon      },
+  { path: '/chat',      label: 'Chat',      Icon: MessageCircleIcon },
+  { path: '/messaggi',  label: 'Messaggi',  Icon: MessaggiIcon  },
+];
+
+const MOBILE_LINKS = [
+  { path: '/',          label: 'Home',      Icon: HomeIcon      },
+  { path: '/socialify', label: 'SOCIALify', Icon: UsersIcon     },
+  { path: '/gioco',     label: 'Gioco',     Icon: GameIcon      },
+  { path: '/chat',      label: 'Chat',      Icon: MessageCircleIcon },
   { path: '/messaggi',  label: 'Messaggi',  Icon: MessaggiIcon  },
 ];
 
@@ -47,8 +56,8 @@ function useNonLetti() {
    framer-motion v10/11/12.
    ───────────────────────────────────────────────────────── */
 function MobileTabBar({ activePath, haNonLetti }) {
-  const activeIdx   = NAV_LINKS.findIndex(l => l.path === activePath);
-  const tabWidthPct = 100 / NAV_LINKS.length;
+  const activeIdx   = MOBILE_LINKS.findIndex(l => l.path === activePath);
+  const tabWidthPct = 100 / MOBILE_LINKS.length;
 
   const handleTabClick = useCallback(() => {
     hapticLight();
@@ -62,14 +71,16 @@ function MobileTabBar({ activePath, haNonLetti }) {
       <div className="mobile-tab-items">
 
         {/* ── Sliding liquid glass pill ── */}
-        <motion.div
-          className="mobile-tab-pill"
-          animate={{ left: `${activeIdx * tabWidthPct}%`, width: `${tabWidthPct}%` }}
-          transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
-        />
+        {activeIdx >= 0 && (
+          <motion.div
+            className="mobile-tab-pill"
+            animate={{ left: `${activeIdx * tabWidthPct}%`, width: `${tabWidthPct}%` }}
+            transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
+          />
+        )}
 
         {/* ── Tab items ── */}
-        {NAV_LINKS.map(({ path, label, Icon }) => {
+        {MOBILE_LINKS.map(({ path, label, Icon }) => {
           const isActive = activePath === path;
           return (
             <Link
@@ -225,6 +236,11 @@ export default function Navbar() {
                   );
                 })}
               </div>
+
+              {/* Icona impostazioni */}
+              <Link to="/impostazioni" className="nav-link" aria-label="Impostazioni" style={{ marginLeft: '0.5rem', display: 'flex', alignItems: 'center' }}>
+                <SettingsIcon size={17} />
+              </Link>
             </div>
           </motion.nav>
         )}
