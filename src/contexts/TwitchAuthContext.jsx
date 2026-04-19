@@ -21,7 +21,7 @@ function buildTwitchLoginUrl(returnPath) {
   return (
     `https://id.twitch.tv/oauth2/authorize?client_id=${CHIAVETWITCH}` +
     `&redirect_uri=${encodeURIComponent(redirect)}` +
-    `&response_type=token&scope=user:read:email`
+    `&response_type=token&scope=user:read:email+moderation:read`
   );
 }
 

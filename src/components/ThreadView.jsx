@@ -6,6 +6,7 @@ import {
   Twitch, Film, Music,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
+import BottoneAggiungiAmico from './BottoneAggiungiAmico';
 import SEO from '../components/SEO';
 
 const MAPPA_CATEGORIE = {
@@ -48,7 +49,7 @@ const entrata = (ritardo = 0) => ({
 /* ═══════════════════════════════════════
    SCHEDA RISPOSTA
    ═══════════════════════════════════════ */
-function SchedaRisposta({ risposta, puoEliminare, onElimina }) {
+function SchedaRisposta({ risposta, puoEliminare, onElimina, twitchToken, currentUser }) {
   return (
     <motion.div
       className="social-risposta"
@@ -70,6 +71,11 @@ function SchedaRisposta({ risposta, puoEliminare, onElimina }) {
             <span className="social-autore" style={{ fontSize: '0.82rem' }}>
               {risposta.authorDisplay || risposta.author}
             </span>
+            <BottoneAggiungiAmico
+              targetUser={risposta.author}
+              twitchToken={twitchToken}
+              currentUser={currentUser}
+            />
             <span className="social-tempo" style={{ fontSize: '0.68rem' }}>
               {tempoFa(risposta.createdAt)}
             </span>
@@ -298,6 +304,11 @@ export default function ThreadView() {
               <span className="social-autore" style={{ fontSize: '0.92rem' }}>
                 {post.authorDisplay || post.author}
               </span>
+              <BottoneAggiungiAmico
+                targetUser={post.author}
+                twitchToken={twitchToken}
+                currentUser={twitchUser}
+              />
               <span className="chip social-chip-categoria" style={{
                 background: `${cat.colore}18`, color: cat.colore,
                 border: `1px solid ${cat.colore}30`,
@@ -385,6 +396,8 @@ export default function ThreadView() {
                 risposta={r}
                 puoEliminare={isLoggedIn && r.author === twitchUser}
                 onElimina={eliminaRisposta}
+                twitchToken={twitchToken}
+                currentUser={twitchUser}
               />
             ))}
           </AnimatePresence>

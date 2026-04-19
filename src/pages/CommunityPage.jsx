@@ -4,9 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, Heart, Clock, Send, X, ChevronLeft, ChevronRight,
   Twitch, LogIn, Plus, User, Bell, BellOff, Trophy, Film, Music,
+  Users, Lock, Shield,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
+import BottoneAggiungiAmico from '../components/BottoneAggiungiAmico';
 import SEO from '../components/SEO';
 
 const CATEGORIE = [
@@ -43,7 +45,7 @@ const entrata = (ritardo = 0) => ({
 /* ═══════════════════════════════════════
    SCHEDA POST
    ═══════════════════════════════════════ */
-function SchedaPost({ post, onMiPiace }) {
+function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
   const cat = infoCategoria(post.tag);
   return (
     <motion.div layout {...entrata(0)}>
@@ -67,6 +69,11 @@ function SchedaPost({ post, onMiPiace }) {
               <span className="social-autore">
                 {post.authorDisplay || post.author}
               </span>
+              <BottoneAggiungiAmico
+                targetUser={post.author}
+                twitchToken={twitchToken}
+                currentUser={currentUser}
+              />
               <span className="social-tempo">
                 <Clock size={11} /> {tempoFa(post.createdAt)}
               </span>
@@ -699,6 +706,24 @@ export default function CommunityPage() {
         </div>
       </motion.div>
 
+      {/* Quick links: Amici, Messaggi, Mod Panel (solo se loggati) */}
+      {isLoggedIn && (
+        <motion.div {...entrata(0.20)} className="social-quick-links">
+          <Link to="/amici" className="social-quick-link glass-card">
+            <Users size={18} />
+            <span>Amici</span>
+          </Link>
+          <Link to="/messaggi" className="social-quick-link glass-card">
+            <Lock size={18} />
+            <span>Messaggi</span>
+          </Link>
+          <Link to="/mod-panel" className="social-quick-link glass-card">
+            <Shield size={18} />
+            <span>Mod Panel</span>
+          </Link>
+        </motion.div>
+      )}
+
       {/* Tab principali: Feed | Classifica */}
       <motion.div {...entrata(0.22)} className="social-tabs-principali">
         <button
@@ -785,7 +810,7 @@ export default function CommunityPage() {
             ) : (
               <AnimatePresence mode="popLayout">
                 {posts.map(post => (
-                  <SchedaPost key={post.id} post={post} onMiPiace={gestisciMiPiace} />
+                  <SchedaPost key={post.id} post={post} onMiPiace={gestisciMiPiace} twitchToken={twitchToken} currentUser={twitchUser} />
                 ))}
               </AnimatePresence>
             )}
