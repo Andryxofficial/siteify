@@ -34,7 +34,7 @@ const DB_STORE = 'keys';
 function openDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
+    req.onupgradeneeded = (event) => event.target.result.createObjectStore(DB_STORE);
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
@@ -139,22 +139,45 @@ function useE2EKeys(twitchUser, twitchToken) {
       try {
         // Check if we have a stored key pair
         let privateKey = await getFromIDB(`privateKey:${twitchUser}`);
+        let needsRegistration = !privateKey;
 
         if (!privateKey) {
           // Generate new key pair
           const keyPair = await generateKeyPair();
           privateKey = keyPair.privateKey;
 
-          // Store private key locally
-          await setInIDB(`privateKey:${twitchUser}`, privateKey);
-
-          // Register public key on server
+          // Register public key on server first — if this fails, don't store locally
           const pubKeyStr = await exportPublicKey(keyPair.publicKey);
-          await fetch(API_URL, {
+          const regRes = await fetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
             body: JSON.stringify({ action: 'register_key', publicKey: pubKeyStr }),
           });
+          if (!regRes.ok) throw new Error('Registrazione chiave pubblica fallita');
+
+          // Only store private key after successful server registration
+          await setInIDB(`privateKey:${twitchUser}`, privateKey);
+          needsRegistration = false;
+        }
+
+        // If we have a local key but server might not have it (e.g. prior failure),
+        // try to re-register — best effort
+        if (!needsRegistration) {
+          try {
+            const checkRes = await fetch(`${API_URL}?action=key&user=${encodeURIComponent(twitchUser)}`);
+            const checkData = await checkRes.json();
+            if (!checkData.publicKey) {
+              // Re-export and register
+              const pubKey = await getFromIDB(`publicKey:${twitchUser}`);
+              if (pubKey) {
+                await fetch(API_URL, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+                  body: JSON.stringify({ action: 'register_key', publicKey: pubKey }),
+                });
+              }
+            }
+          } catch { /* best effort sync */ }
         }
 
         privateKeyRef.current = privateKey;

@@ -235,9 +235,16 @@ export default async function handler(req, res) {
       if (rawMediaUrl) {
         mediaUrl = sanitize(rawMediaUrl, MAX_MEDIA_URL);
         mediaType = VALID_MEDIA_TYPES.includes(rawMediaType) ? rawMediaType : '';
-        // Basic URL validation — must be HTTPS
-        if (mediaUrl && !mediaUrl.startsWith('https://')) {
-          return res.status(400).json({ error: 'L\'URL del media deve iniziare con https://.' });
+        // Basic URL validation — must be a valid HTTPS URL
+        if (mediaUrl) {
+          try {
+            const parsed = new URL(mediaUrl);
+            if (parsed.protocol !== 'https:') {
+              return res.status(400).json({ error: 'L\'URL del media deve usare HTTPS.' });
+            }
+          } catch {
+            return res.status(400).json({ error: 'URL del media non valido.' });
+          }
         }
       }
 
