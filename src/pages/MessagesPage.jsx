@@ -199,6 +199,7 @@ function KeySetupDialog({ mode, backupInfo, loadingBackupInfo, onSetupPassword, 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [passkeyAvailable, setPasskeyAvailable] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   useEffect(() => { isPasskeyPRFAvailable().then(setPasskeyAvailable); }, []);
 
@@ -402,12 +403,35 @@ function KeySetupDialog({ mode, backupInfo, loadingBackupInfo, onSetupPassword, 
                     {error && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ color: '#f87171', fontSize: '0.8rem', margin: 0 }}>{error}</motion.p>}
                   </AnimatePresence>
 
-                  {onResetKeys && (
-                    <button type="button" className="btn btn-ghost" onClick={onResetKeys}
+                  {onResetKeys && !confirmReset && (
+                    <button type="button" className="btn btn-ghost" onClick={() => setConfirmReset(true)}
                       style={{ fontSize: '0.75rem', color: 'var(--accent)', marginTop: '0.5rem' }}>
                       <AlertTriangle size={12} /> Hai dimenticato? Reset chiavi
                     </button>
                   )}
+
+                  <AnimatePresence>
+                    {onResetKeys && confirmReset && (
+                      <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                        className="glass-card" style={{ padding: '0.85rem', border: '1px solid rgba(248,113,113,0.35)', marginTop: '0.5rem', textAlign: 'left' }}>
+                        <p style={{ fontSize: '0.78rem', color: '#f87171', margin: '0 0 0.6rem', lineHeight: 1.5 }}>
+                          ⚠️ <strong>Attenzione:</strong> il reset genera chiavi completamente nuove.<br />
+                          <strong>Tutti i messaggi su tutti i tuoi dispositivi diventeranno illeggibili per sempre.</strong>
+                        </p>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button className="btn btn-ghost" style={{ fontSize: '0.78rem' }}
+                            onClick={() => setConfirmReset(false)}>
+                            Annulla
+                          </button>
+                          <button className="btn btn-primary"
+                            style={{ fontSize: '0.78rem', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+                            onClick={onResetKeys}>
+                            Sì, resetta le chiavi
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </>
             )}

@@ -119,24 +119,24 @@ export function TwitchAuthProvider({ children }) {
         }
 
         // 2. No local keys — check server for passphrase-protected backup
-        try {
-          const r = await fetch(`${API}?action=has_passphrase`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const d = await r.json();
-          if (d.hasPassphrase) {
-            setE2eNeedsPassphrase('unlock');
-            return; // wait for user to enter passphrase
-          }
-        } catch { /* fall through to setup */ }
+        // Nota: nessun try/catch interno — errori di rete vengono gestiti dal retry
+        // esterno invece di fare pericoloso fallthrough al dialog di setup
+        const r = await fetch(`${API}?action=has_passphrase`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const d = await r.json();
+        if (d.hasPassphrase) {
+          setE2eNeedsPassphrase('unlock');
+          return; // attendi che l'utente inserisca la passphrase
+        }
 
-        // 3. No local keys, no backup — need first-time passphrase setup
+        // 3. Nessuna chiave locale, nessun backup — primo accesso → setup
         setE2eNeedsPassphrase('setup');
         return;
       } catch (e) {
         console.warn(`E2E init attempt ${attempt + 1} failed:`, e);
         if (attempt === MAX_RETRIES) {
-          setE2eError('Impossibile inizializzare la crittografia.');
+          setE2eError('Impossibile verificare le chiavi. Controlla la connessione e riprova.');
         } else {
           await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
         }

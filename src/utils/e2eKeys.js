@@ -473,34 +473,51 @@ async function deriveAutoSyncKey(twitchUserId, saltB64, usage) {
 export async function createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString = null) {
   if (!twitchUserId) return; // senza userId non possiamo creare il backup
 
-  // 1. Ottieni (o crea) il salt per-utente dal server
-  const saltRes = await fetch(`${API_URL}?action=get_sync_secret`, {
-    headers: { Authorization: `Bearer ${twitchToken}` },
-  });
-  if (!saltRes.ok) return; // non bloccare su errori di rete
-  const { salt } = await saltRes.json();
-  if (!salt) return;
+  const MAX_TRIES = 3;
+  for (let attempt = 0; attempt < MAX_TRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
 
-  // 2. Cifra la chiave privata localmente con AES-GCM
-  const aesKey = await deriveAutoSyncKey(twitchUserId, salt, ['encrypt']);
-  const jwk = await crypto.subtle.exportKey('jwk', privateKey);
-  const plaintext = new TextEncoder().encode(JSON.stringify(jwk));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, plaintext);
+      // 1. Ottieni (o crea) il salt per-utente dal server
+      const saltRes = await fetch(`${API_URL}?action=get_sync_secret`, {
+        headers: { Authorization: `Bearer ${twitchToken}` },
+      });
+      if (!saltRes.ok) throw new Error(`get_sync_secret: ${saltRes.status}`);
+      const { salt } = await saltRes.json();
+      if (!salt) throw new Error('Salt mancante nella risposta');
 
-  // 3. Invia il backup cifrato al server (non contiene la chiave di cifratura)
-  const body = {
-    action: 'save_auto_backup',
-    encryptedPrivateKey: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
-    iv: btoa(String.fromCharCode(...iv)),
-  };
-  if (publicKeyString) body.publicKey = publicKeyString;
+      // 2. Cifra la chiave privata localmente con AES-GCM
+      const aesKey = await deriveAutoSyncKey(twitchUserId, salt, ['encrypt']);
+      const jwk = await crypto.subtle.exportKey('jwk', privateKey);
+      const plaintext = new TextEncoder().encode(JSON.stringify(jwk));
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, plaintext);
 
-  await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
-    body: JSON.stringify(body),
-  }).catch(e => console.warn('Auto-sync backup fallito (non bloccante):', e));
+      // 3. Invia il backup cifrato al server (non contiene la chiave di cifratura)
+      const body = {
+        action: 'save_auto_backup',
+        encryptedPrivateKey: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
+        iv: btoa(String.fromCharCode(...iv)),
+      };
+      if (publicKeyString) body.publicKey = publicKeyString;
+
+      const saveRes = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+        body: JSON.stringify(body),
+      });
+      if (!saveRes.ok) throw new Error(`save_auto_backup: ${saveRes.status}`);
+      return; // successo
+    } catch (e) {
+      if (attempt < MAX_TRIES - 1) {
+        console.warn(`Auto-sync backup tentativo ${attempt + 1}/${MAX_TRIES} fallito:`, e);
+      } else {
+        console.warn('Auto-sync backup fallito dopo', MAX_TRIES, 'tentativi:', e);
+      }
+    }
+  }
 }
 
 /**
