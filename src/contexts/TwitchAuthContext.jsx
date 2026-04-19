@@ -288,10 +288,23 @@ export function TwitchAuthProvider({ children }) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Backup non trovato.');
 
+    // When the primary backup is passkey-based, the password fields live in passwordBackup
+    let encKeyData, saltData, ivData;
+    if (data.method === 'passkey') {
+      if (!data.passwordBackup?.encryptedPrivateKey) {
+        throw new Error('Nessuna password di recupero associata a questo backup passkey.');
+      }
+      encKeyData = data.passwordBackup.encryptedPrivateKey;
+      saltData = data.passwordBackup.salt;
+      ivData = data.passwordBackup.iv;
+    } else {
+      encKeyData = data.encryptedPrivateKey;
+      saltData = data.salt;
+      ivData = data.iv;
+    }
+
     // Decrypt private key with passphrase (will throw if wrong passphrase)
-    const privateKey = await decryptPrivateKeyFromBackup(
-      data.encryptedPrivateKey, data.salt, data.iv, passphrase
-    );
+    const privateKey = await decryptPrivateKeyFromBackup(encKeyData, saltData, ivData, passphrase);
 
     // Extract public key
     const jwk = await crypto.subtle.exportKey('jwk', privateKey);
@@ -315,8 +328,9 @@ export function TwitchAuthProvider({ children }) {
     setE2eError(null);
   }, [twitchUser, twitchToken]);
 
-  /** Setup passkey: create WebAuthn credential with PRF, encrypt key, backup to server */
-  const setupE2EPasskey = useCallback(async () => {
+  /** Setup passkey: create WebAuthn credential with PRF, encrypt key, backup to server.
+   *  @param {string|null} fallbackPassphrase — optional password stored as cross-device recovery */
+  const setupE2EPasskey = useCallback(async (fallbackPassphrase = null) => {
     if (!twitchUser || !twitchToken) throw new Error('Non autenticato.');
     const API = '/api/messages';
 
@@ -340,17 +354,25 @@ export function TwitchAuthProvider({ children }) {
 
     const backup = await createPasskeyAndEncryptKey(twitchUser, privateKey);
 
+    const saveBody = {
+      action: 'save_encrypted_key',
+      method: 'passkey',
+      encryptedPrivateKey: backup.encryptedPrivateKey,
+      iv: backup.iv,
+      credentialId: backup.credentialId,
+      publicKey: publicKeyString,
+    };
+
+    // If a fallback passphrase is provided, also encrypt with PBKDF2 for cross-device recovery
+    if (fallbackPassphrase) {
+      const pwBackup = await encryptPrivateKeyForBackup(privateKey, fallbackPassphrase);
+      saveBody.passwordBackup = pwBackup;
+    }
+
     const res = await fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
-      body: JSON.stringify({
-        action: 'save_encrypted_key',
-        method: 'passkey',
-        encryptedPrivateKey: backup.encryptedPrivateKey,
-        iv: backup.iv,
-        credentialId: backup.credentialId,
-        publicKey: publicKeyString,
-      }),
+      body: JSON.stringify(saveBody),
     });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
@@ -404,7 +426,7 @@ export function TwitchAuthProvider({ children }) {
     setE2eError(null);
   }, [twitchUser, twitchToken]);
 
-  /** Get backup metadata (method, credentialId) without downloading encrypted key */
+  /** Get backup metadata (method, credentialId, hasPasswordFallback) without downloading encrypted key */
   const getE2EBackupInfo = useCallback(async () => {
     if (!twitchToken) return null;
     try {
@@ -413,7 +435,11 @@ export function TwitchAuthProvider({ children }) {
       });
       if (!res.ok) return null;
       const data = await res.json();
-      return { method: data.method || 'password', credentialId: data.credentialId || null };
+      return {
+        method: data.method || 'password',
+        credentialId: data.credentialId || null,
+        hasPasswordFallback: data.hasPasswordFallback || false,
+      };
     } catch { return null; }
   }, [twitchToken]);
 
