@@ -23,7 +23,13 @@ if ('serviceWorker' in navigator) {
           }
         });
       };
-      if (reg.waiting) onNewSW(reg.waiting);
+      // On initial page load: if a new SW is already waiting (from a previous deploy),
+      // apply it silently so it doesn't pop up on every fresh page open.
+      // The controllerchange handler in UpdateToast will reload the page once.
+      if (reg.waiting) {
+        reg.waiting.postMessage('SKIP_WAITING');
+      }
+      // Mid-session updates (detected while the page is already active) → show toast
       reg.addEventListener('updatefound', () => { if (reg.installing) onNewSW(reg.installing); });
     }).catch(() => {/* silent */});
   });
