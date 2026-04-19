@@ -24,8 +24,9 @@ const CommunityPage = lazy(() => import('./pages/CommunityPage'));
 const ThreadView    = lazy(() => import('./components/ThreadView'));
 const Scoiattoli    = lazy(() => import('./pages/tracker_scoiattoli'));
 const ModPanel      = lazy(() => import('./pages/ModPanel'));
-const FriendsPage   = lazy(() => import('./pages/FriendsPage'));
-const MessagesPage  = lazy(() => import('./pages/MessagesPage'));
+const FriendsPage        = lazy(() => import('./pages/FriendsPage'));
+const MessagesPage       = lazy(() => import('./pages/MessagesPage'));
+const ChatGeneralePage   = lazy(() => import('./pages/ChatGeneralePage'));
 
 // Skeleton minimo di fallback per Suspense
 function PaginaCaricamento() {
@@ -95,6 +96,7 @@ function AppLayout() {
               <Route path="/mod-panel" element={<ModPanel />} />
               <Route path="/amici" element={<FriendsPage />} />
               <Route path="/messaggi" element={<MessagesPage />} />
+              <Route path="/chat" element={<ChatGeneralePage />} />
             </Routes>
           </Suspense>
         </PageTransition>
