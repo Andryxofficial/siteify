@@ -1756,6 +1756,41 @@ body {
   background: var(--surface-1);
 }
 
+/* ── Bottone aggiungi amico (inline nei post) ── */
+.social-btn-add-friend {
+  padding: 2px 4px;
+  min-height: 0;
+  font-size: 0.72rem;
+  border-radius: var(--r-full);
+  color: var(--text-faint);
+  transition: color 0.15s, transform 0.15s;
+}
+
+.social-btn-add-friend:hover {
+  color: var(--primary);
+  background: var(--primary-light);
+  transform: scale(1.15);
+}
+
+.social-btn-add-friend.social-friend-ok {
+  color: var(--accent-spotify);
+  cursor: default;
+}
+
+.social-btn-add-friend.social-friend-pending {
+  color: var(--accent-warm);
+  cursor: default;
+}
+
+.social-btn-add-friend.social-friend-accept {
+  color: var(--accent-spotify);
+}
+
+.social-btn-add-friend.social-friend-accept:hover {
+  color: var(--accent-spotify);
+  background: rgba(34, 197, 94, 0.12);
+}
+
 /* ── Barra autenticazione ── */
 .social-barra-auth {
   padding: 0.85rem 1.1rem;

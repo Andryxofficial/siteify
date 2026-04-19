@@ -3,12 +3,13 @@ import { Redis } from '@upstash/redis';
 /**
  * Mod Commands & Timers API
  *
- * CRUD for chat commands and timers, restricted to whitelisted Twitch users
- * (streamer + moderators).
+ * CRUD for chat commands and timers, restricted to Twitch moderators.
  *
  * Redis data model:
  *   mod:commands  → Hash  { trigger: JSON string with response, cooldown, permission }
  *   mod:timers    → Hash  { name: JSON string with message, interval, enabled }
+ *   mod:whitelist → Set   of mod usernames (auto-synced from Twitch Helix)
+ *   mod:whitelist:ts → String  timestamp of last sync
  *
  * Permission levels for commands:
  *   "everyone"    — any viewer can use the command
@@ -16,8 +17,13 @@ import { Redis } from '@upstash/redis';
  *   "vip"         — only VIPs (and above)
  *   "mod"         — only moderators and broadcaster
  *
+ * Mod detection (smart, no manual updates):
+ *   1. Broadcaster always has access (first entry in MOD_USERNAMES or BROADCASTER_USERNAME)
+ *   2. When the broadcaster visits, their Twitch token (with moderation:read scope)
+ *      is used to fetch the real moderator list via Helix API → cached in Redis for 1h
+ *   3. Fallback: MOD_USERNAMES env var (comma-separated)
+ *
  * Auth: Authorization: Bearer <twitchAccessToken>
- *       User's login must be in MOD_USERNAMES env var (comma-separated).
  *
  * GET    /api/mod-commands                         → list all commands + timers + check isMod
  * POST   /api/mod-commands  { type, ...data }      → create/update a command or timer
@@ -26,6 +32,9 @@ import { Redis } from '@upstash/redis';
 
 const COMMANDS_KEY = 'mod:commands';
 const TIMERS_KEY = 'mod:timers';
+const MOD_WHITELIST_KEY = 'mod:whitelist';
+const MOD_SYNC_TS_KEY = 'mod:whitelist:ts';
+const MOD_SYNC_TTL = 3600; // 1 hour cache
 
 const MAX_TRIGGER = 50;
 const MAX_RESPONSE = 500;
@@ -47,6 +56,20 @@ function getModUsernames() {
     .filter(Boolean);
 }
 
+/**
+ * Get the broadcaster's username.
+ * Priority: BROADCASTER_USERNAME env var → first entry in MOD_USERNAMES.
+ */
+function getBroadcasterUsername() {
+  const explicit = (process.env.BROADCASTER_USERNAME || '').trim().toLowerCase();
+  if (explicit) return explicit;
+  const mods = getModUsernames();
+  return mods[0] || '';
+}
+
+/**
+ * Validate Twitch token and return user info + raw token for Helix calls.
+ */
 async function validateTwitch(authHeader) {
   if (!authHeader?.startsWith('Bearer ')) return null;
   const token = authHeader.split(' ')[1];
@@ -57,7 +80,80 @@ async function validateTwitch(authHeader) {
   if (!res.ok) return null;
   const data = await res.json();
   if (!data.login) return null;
-  return { login: data.login.toLowerCase() };
+  return {
+    login: data.login.toLowerCase(),
+    userId: data.user_id,
+    clientId: data.client_id,
+    scopes: data.scopes || [],
+    token,
+  };
+}
+
+/**
+ * Auto-sync moderator list from Twitch Helix API.
+ * Only works when the broadcaster is the one making the request
+ * (their token can access /moderation/moderators for their channel).
+ * Caches the result in Redis for MOD_SYNC_TTL seconds.
+ */
+async function syncModsFromTwitch(redis, twitchUser) {
+  const broadcaster = getBroadcasterUsername();
+  if (!broadcaster || twitchUser.login !== broadcaster) return;
+
+  // Check if we've synced recently
+  const lastSync = await redis.get(MOD_SYNC_TS_KEY);
+  if (lastSync && (Date.now() - Number(lastSync)) < MOD_SYNC_TTL * 1000) return;
+
+  // Need moderation:read scope
+  if (!twitchUser.scopes.includes('moderation:read')) return;
+
+  try {
+    const allMods = [];
+    let cursor = '';
+    // Paginate through all moderators (Twitch returns max 100 per page)
+    do {
+      const url = new URL('https://api.twitch.tv/helix/moderation/moderators');
+      url.searchParams.set('broadcaster_id', twitchUser.userId);
+      url.searchParams.set('first', '100');
+      if (cursor) url.searchParams.set('after', cursor);
+
+      const helixRes = await fetch(url.toString(), {
+        headers: {
+          Authorization: `Bearer ${twitchUser.token}`,
+          'Client-Id': twitchUser.clientId,
+        },
+      });
+
+      if (!helixRes.ok) break;
+      const helixData = await helixRes.json();
+      const mods = (helixData.data || []).map(m => m.user_login.toLowerCase());
+      allMods.push(...mods);
+      cursor = helixData.pagination?.cursor || '';
+    } while (cursor);
+
+    if (allMods.length > 0) {
+      // Replace the cached whitelist: delete old set, add all mods + broadcaster
+      await redis.del(MOD_WHITELIST_KEY);
+      await redis.sadd(MOD_WHITELIST_KEY, ...allMods, broadcaster);
+    }
+    await redis.set(MOD_SYNC_TS_KEY, String(Date.now()));
+  } catch (e) {
+    console.error('Mod sync from Twitch failed:', e);
+    // Non-fatal: fall back to env var + cached list
+  }
+}
+
+/**
+ * Check if a user is a moderator.
+ * Checks: env var MOD_USERNAMES + Redis cached whitelist (auto-synced from Twitch).
+ */
+async function isUserMod(redis, login) {
+  // Check env var first (always authoritative)
+  const envMods = getModUsernames();
+  if (envMods.includes(login)) return true;
+
+  // Check cached Twitch mod list
+  const inWhitelist = await redis.sismember(MOD_WHITELIST_KEY, login);
+  return !!inWhitelist;
 }
 
 export default async function handler(req, res) {
@@ -82,8 +178,13 @@ export default async function handler(req, res) {
 
   /* ─── Authenticate ─── */
   const twitchUser = await validateTwitch(req.headers.authorization);
-  const modList = getModUsernames();
-  const isMod = twitchUser ? modList.includes(twitchUser.login) : false;
+
+  // Try to auto-sync mod list from Twitch when the broadcaster visits
+  if (twitchUser) {
+    await syncModsFromTwitch(redis, twitchUser);
+  }
+
+  const isMod = twitchUser ? await isUserMod(redis, twitchUser.login) : false;
 
   /* ─── GET: list commands + timers ─── */
   if (req.method === 'GET') {
