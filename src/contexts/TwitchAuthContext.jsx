@@ -119,7 +119,7 @@ export function TwitchAuthProvider({ children }) {
         }
 
         // 2. No local keys — check server for passphrase-protected backup
-        // Gli errori di rete qui propagano al catch esterno, che esegue il retry
+        // Gli errori di rete qui si propagano al catch esterno, che esegue il retry
         // con backoff. Questo impedisce che un errore temporaneo di rete faccia
         // mostrare il dialog di setup, che genererebbe nuove chiavi incompatibili
         // con i messaggi già cifrati su altri dispositivi.
@@ -256,7 +256,11 @@ export function TwitchAuthProvider({ children }) {
       // Crea subito il backup automatico con le nuove chiavi
       if (twitchUserId) {
         const pubStr = await getFromIDB(`publicKeyString:${twitchUser}`).catch(() => null);
-        createAutoSyncBackup(privateKey, twitchUserId, twitchToken, pubStr).catch(() => {});
+        createAutoSyncBackup(privateKey, twitchUserId, twitchToken, pubStr)
+          .catch(e => {
+            console.warn('Auto-sync backup post-reset non riuscito:', e);
+            setE2eNeedsSync(true);
+          });
       }
     } catch (e) {
       console.error('E2E key reset failed:', e);
@@ -314,9 +318,14 @@ export function TwitchAuthProvider({ children }) {
       body: JSON.stringify({ action: 'register_key', publicKey: publicKeyString }),
     }).catch(() => {});
 
-    // Crea anche il backup automatico per accesso trasparente su altri dispositivi
+    // Crea il backup automatico in background per accesso trasparente su altri dispositivi.
+    // Se fallisce dopo tutti i tentativi, mostra il banner di sincronizzazione.
     if (twitchUserId) {
-      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString).catch(() => {});
+      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString)
+        .catch(e => {
+          console.warn('setupE2EPassphrase: auto-sync backup non riuscito:', e);
+          setE2eNeedsSync(true);
+        });
     }
 
     e2ePrivateKeyRef.current = privateKey;
@@ -374,7 +383,8 @@ export function TwitchAuthProvider({ children }) {
     // Aggiorna l'auto-sync backup dopo sblocco password, per non richiedere
     // la password di nuovo su dispositivi futuri
     if (twitchUserId) {
-      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString).catch(() => {});
+      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString)
+        .catch(e => console.warn('unlockE2EPassphrase: auto-sync backup non riuscito:', e));
     }
 
     e2ePrivateKeyRef.current = privateKey;
@@ -440,9 +450,14 @@ export function TwitchAuthProvider({ children }) {
       body: JSON.stringify({ action: 'register_key', publicKey: publicKeyString }),
     }).catch(() => {});
 
-    // Crea anche il backup automatico per accesso trasparente su altri dispositivi
+    // Crea il backup automatico in background per accesso trasparente su altri dispositivi.
+    // Se fallisce dopo tutti i tentativi, mostra il banner di sincronizzazione.
     if (twitchUserId) {
-      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString).catch(() => {});
+      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString)
+        .catch(e => {
+          console.warn('setupE2EPasskey: auto-sync backup non riuscito:', e);
+          setE2eNeedsSync(true);
+        });
     }
 
     e2ePrivateKeyRef.current = privateKey;
@@ -482,7 +497,8 @@ export function TwitchAuthProvider({ children }) {
 
     // Aggiorna l'auto-sync backup con le chiavi sbloccate
     if (twitchUserId) {
-      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString).catch(() => {});
+      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString)
+        .catch(e => console.warn('unlockE2EPasskey: auto-sync backup non riuscito:', e));
     }
 
     e2ePrivateKeyRef.current = privateKey;
@@ -527,14 +543,16 @@ export function TwitchAuthProvider({ children }) {
       setE2eReady(true);
       setE2eNeedsPassphrase(null);
       setE2eError(null);
-      // Crea solo il backup automatico — trasparente su altri dispositivi
+      // Crea solo il backup automatico — trasparente su altri dispositivi.
+      // Se fallisce, mostra il banner per invitare a impostare un metodo manuale.
       if (twitchUserId) {
         const pubStr = await getFromIDB(`publicKeyString:${twitchUser}`).catch(() => null);
         createAutoSyncBackup(privateKey, twitchUserId, twitchToken, pubStr)
-          .catch(e => console.warn('skipE2ESetup: auto-sync backup non riuscito:', e));
+          .catch(e => {
+            console.warn('skipE2ESetup: auto-sync backup non riuscito:', e);
+            setE2eNeedsSync(true);
+          });
       }
-      // Mostra il banner di sincronizzazione per invitare a impostare un metodo manuale
-      setE2eNeedsSync(true);
     } catch (e) {
       console.error('skipE2ESetup fallito:', e);
       setE2eError('Impossibile inizializzare la crittografia. Riprova.');
