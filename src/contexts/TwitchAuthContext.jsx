@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { ensureE2EKeysRegistered } from '../utils/e2eKeys';
+import { ensureE2EKeysRegistered, forceResetE2EKeys } from '../utils/e2eKeys';
 
 const CHIAVETWITCH = import.meta.env.VITE_CHIAVETWITCH;
 const STORAGE_KEY = 'twitchGameToken';
@@ -151,6 +151,24 @@ export function TwitchAuthProvider({ children }) {
     registerE2EKeys(twitchUser, twitchToken);
   }, [twitchUser, twitchToken, registerE2EKeys]);
 
+  /** Force-reset E2E keys: wipes old keys from IndexedDB and generates fresh ones.
+   *  Use when existing keys are corrupted and causing derivation failures. */
+  const resetE2E = useCallback(async () => {
+    if (!twitchUser || !twitchToken) return;
+    setE2eReady(false);
+    setE2eError(null);
+    e2ePrivateKeyRef.current = null;
+    try {
+      const privateKey = await forceResetE2EKeys(twitchUser, twitchToken);
+      e2ePrivateKeyRef.current = privateKey;
+      setE2eReady(true);
+      setE2eError(null);
+    } catch (e) {
+      console.error('E2E key reset failed:', e);
+      setE2eError('Reset chiavi fallito. Riprova.');
+    }
+  }, [twitchUser, twitchToken]);
+
   return (
     <TwitchAuthContext.Provider value={{
       twitchUser,
@@ -167,6 +185,7 @@ export function TwitchAuthProvider({ children }) {
       e2eError,
       e2ePrivateKeyRef,
       retryE2E,
+      resetE2E,
     }}>
       {children}
     </TwitchAuthContext.Provider>

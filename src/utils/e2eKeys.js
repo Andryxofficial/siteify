@@ -44,6 +44,16 @@ export async function setInIDB(key, value) {
   });
 }
 
+export async function deleteFromIDB(key) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 /* ─── Web Crypto helpers ─── */
 
 export async function generateKeyPair() {
@@ -202,4 +212,34 @@ export async function ensureE2EKeysRegistered(twitchUser, twitchToken) {
   } catch (e) { console.warn('Key sync check failed:', e); }
 
   return privateKey;
+}
+
+/**
+ * Force-reset E2E keys: deletes old keys from IndexedDB, generates a fresh pair,
+ * and registers the new public key on the server.
+ * Use when existing keys are corrupted or causing derivation failures.
+ * WARNING: this makes previously encrypted messages unreadable.
+ */
+export async function forceResetE2EKeys(twitchUser, twitchToken) {
+  // 1. Delete old keys from IndexedDB (may not exist, that's ok)
+  await deleteFromIDB(`privateKey:${twitchUser}`).catch((e) => console.warn('deleteFromIDB privateKey:', e));
+  await deleteFromIDB(`publicKeyString:${twitchUser}`).catch((e) => console.warn('deleteFromIDB publicKeyString:', e));
+
+  // 2. Generate fresh key pair
+  const keyPair = await generateKeyPair();
+  const publicKeyString = await exportPublicKey(keyPair.publicKey);
+
+  // 3. Register new public key on server
+  const regRes = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+    body: JSON.stringify({ action: 'register_key', publicKey: publicKeyString }),
+  });
+  if (!regRes.ok) throw new Error('Registrazione nuova chiave pubblica fallita');
+
+  // 4. Store new keys in IndexedDB
+  await setInIDB(`privateKey:${twitchUser}`, keyPair.privateKey);
+  await setInIDB(`publicKeyString:${twitchUser}`, publicKeyString);
+
+  return keyPair.privateKey;
 }
