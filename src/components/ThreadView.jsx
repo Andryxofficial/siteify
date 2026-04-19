@@ -3,9 +3,10 @@ import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Heart, MessageSquare, Clock, Send, Trash2, User,
-  Twitch, Film, Music, UserPlus, UserCheck, Loader,
+  Twitch, Film, Music,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
+import BottoneAggiungiAmico from './BottoneAggiungiAmico';
 import SEO from '../components/SEO';
 
 const MAPPA_CATEGORIE = {
@@ -44,89 +45,6 @@ const entrata = (ritardo = 0) => ({
   animate:    { opacity: 1, y: 0 },
   transition: { delay: ritardo, type: 'spring', stiffness: 220, damping: 24 },
 });
-
-/* ═══════════════════════════════════════
-   BOTTONE AGGIUNGI AMICO (inline)
-   ═══════════════════════════════════════ */
-function BottoneAggiungiAmico({ targetUser, twitchToken, currentUser }) {
-  const [stato, setStato] = useState(null);
-
-  const controlla = useCallback(async () => {
-    if (!twitchToken || !targetUser || !currentUser) return;
-    if (targetUser.toLowerCase() === currentUser.toLowerCase()) {
-      setStato('self');
-      return;
-    }
-    setStato('loading');
-    try {
-      const res = await fetch(`/api/friends?user=${encodeURIComponent(targetUser)}`, {
-        headers: { Authorization: `Bearer ${twitchToken}` },
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setStato(data.status || 'none');
-    } catch {
-      setStato('error');
-    }
-  }, [twitchToken, targetUser, currentUser]);
-
-  useEffect(() => { controlla(); }, [controlla]);
-
-  const inviaRichiesta = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!twitchToken) return;
-    setStato('loading');
-    try {
-      const res = await fetch('/api/friends', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
-        body: JSON.stringify({ action: 'send', target: targetUser }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Errore');
-      setStato(data.action === 'accepted' ? 'friends' : 'sent');
-    } catch {
-      setStato('error');
-    }
-  };
-
-  if (!currentUser || stato === 'self' || stato === null) return null;
-
-  if (stato === 'loading') {
-    return (
-      <span className="social-btn-azione social-btn-add-friend" title="Caricamento…">
-        <Loader size={12} className="spin" />
-      </span>
-    );
-  }
-  if (stato === 'friends') {
-    return (
-      <span className="social-btn-azione social-btn-add-friend social-friend-ok" title="Già amici">
-        <UserCheck size={12} />
-      </span>
-    );
-  }
-  if (stato === 'pending' || stato === 'sent') {
-    return (
-      <span className="social-btn-azione social-btn-add-friend social-friend-pending" title="Richiesta inviata">
-        <Clock size={12} />
-      </span>
-    );
-  }
-  if (stato === 'incoming') {
-    return (
-      <button className="social-btn-azione social-btn-add-friend social-friend-accept" title="Accetta richiesta di amicizia" onClick={inviaRichiesta}>
-        <UserCheck size={12} />
-      </button>
-    );
-  }
-  return (
-    <button className="social-btn-azione social-btn-add-friend" title="Aggiungi amico" onClick={inviaRichiesta}>
-      <UserPlus size={12} />
-    </button>
-  );
-}
 
 /* ═══════════════════════════════════════
    SCHEDA RISPOSTA

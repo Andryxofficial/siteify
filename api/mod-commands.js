@@ -130,11 +130,10 @@ async function syncModsFromTwitch(redis, twitchUser) {
       cursor = helixData.pagination?.cursor || '';
     } while (cursor);
 
-    if (allMods.length > 0) {
-      // Replace the cached whitelist: delete old set, add all mods + broadcaster
-      await redis.del(MOD_WHITELIST_KEY);
-      await redis.sadd(MOD_WHITELIST_KEY, ...allMods, broadcaster);
-    }
+    // Replace the cached whitelist: delete old set, add all mods + broadcaster
+    await redis.del(MOD_WHITELIST_KEY);
+    const members = [...new Set([...allMods, broadcaster])];
+    await redis.sadd(MOD_WHITELIST_KEY, ...members);
     await redis.set(MOD_SYNC_TS_KEY, String(Date.now()));
   } catch (e) {
     console.error('Mod sync from Twitch failed:', e);
