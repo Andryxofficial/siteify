@@ -512,6 +512,9 @@ export default async function handler(req, res) {
         const raw = await redis.get(`e2e_backup:${me}`);
         if (!raw) return res.status(404).json({ error: 'Nessun backup trovato. Configura prima un metodo di backup.' });
         const backup = typeof raw === 'string' ? JSON.parse(raw) : { ...raw };
+        if (backup.method !== 'passkey') {
+          return res.status(400).json({ error: 'La password di recupero può essere aggiunta solo a un backup passkey.' });
+        }
         backup.passwordBackup = { encryptedPrivateKey, salt, iv };
         await redis.set(`e2e_backup:${me}`, JSON.stringify(backup));
         return res.status(200).json({ ok: true });

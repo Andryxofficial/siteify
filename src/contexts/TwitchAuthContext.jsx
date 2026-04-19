@@ -430,7 +430,7 @@ export function TwitchAuthProvider({ children }) {
   const addE2EPasswordFallback = useCallback(async (passphrase) => {
     if (!twitchUser || !twitchToken) throw new Error('Non autenticato.');
     const privateKey = await getFromIDB(`privateKey:${twitchUser}`);
-    if (!privateKey) throw new Error('Chiave privata non trovata in questo dispositivo.');
+    if (!privateKey) throw new Error('Chiave privata non trovata su questo dispositivo. Sblocca prima i messaggi con la tua passkey, poi aggiungi la password di recupero.');
 
     const backup = await encryptPrivateKeyForBackup(privateKey, passphrase);
 
