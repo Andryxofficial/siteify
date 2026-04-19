@@ -452,19 +452,27 @@ export default async function handler(req, res) {
     }
 
     // Save encrypted private key backup (for cross-device sync)
+    // Supports both password (PBKDF2) and passkey (WebAuthn PRF) methods
     if (action === 'save_encrypted_key') {
       const encryptedPrivateKey = sanitize(req.body.encryptedPrivateKey, 5000);
-      const salt = sanitize(req.body.salt, 100);
+      const salt = req.body.salt ? sanitize(req.body.salt, 100) : null;
       const iv = sanitize(req.body.iv, 100);
+      const method = sanitize(req.body.method || 'password', 20);
+      const credentialId = req.body.credentialId ? sanitize(req.body.credentialId, 2000) : null;
       const publicKey = req.body.publicKey ? sanitize(req.body.publicKey, 2000) : null;
 
-      if (!encryptedPrivateKey || !salt || !iv) {
+      if (!encryptedPrivateKey || !iv) {
         return res.status(400).json({ error: 'Dati di backup mancanti.' });
+      }
+      if (method === 'password' && !salt) {
+        return res.status(400).json({ error: 'Salt richiesto per metodo password.' });
       }
 
       try {
-        const backup = JSON.stringify({ encryptedPrivateKey, salt, iv });
-        const ops = [redis.set(`e2e_backup:${me}`, backup)];
+        const backup = { encryptedPrivateKey, iv, method };
+        if (salt) backup.salt = salt;
+        if (credentialId) backup.credentialId = credentialId;
+        const ops = [redis.set(`e2e_backup:${me}`, JSON.stringify(backup))];
         if (publicKey) ops.push(redis.set(`userkeys:${me}`, publicKey));
         await Promise.all(ops);
         return res.status(200).json({ ok: true });

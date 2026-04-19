@@ -8,10 +8,14 @@ import {
   decryptPrivateKeyFromBackup,
   generateKeyPair,
   exportPublicKey,
+  isPasskeyPRFAvailable,
+  createPasskeyAndEncryptKey,
+  authenticatePasskeyAndDecryptKey,
 } from '../utils/e2eKeys';
 
 const CHIAVETWITCH = import.meta.env.VITE_CHIAVETWITCH;
 const STORAGE_KEY = 'twitchGameToken';
+const API_MSG = '/api/messages';
 
 const TwitchAuthContext = createContext(null);
 
@@ -312,6 +316,108 @@ export function TwitchAuthProvider({ children }) {
     setE2eError(null);
   }, [twitchUser, twitchToken]);
 
+  /** Setup passkey: create WebAuthn credential with PRF, encrypt key, backup to server */
+  const setupE2EPasskey = useCallback(async () => {
+    if (!twitchUser || !twitchToken) throw new Error('Non autenticato.');
+    const API = '/api/messages';
+
+    let privateKey = await getFromIDB(`privateKey:${twitchUser}`);
+    let publicKeyString = await getFromIDB(`publicKeyString:${twitchUser}`);
+
+    if (!privateKey) {
+      const keyPair = await generateKeyPair();
+      privateKey = keyPair.privateKey;
+      publicKeyString = await exportPublicKey(keyPair.publicKey);
+      await setInIDB(`privateKey:${twitchUser}`, privateKey);
+      await setInIDB(`publicKeyString:${twitchUser}`, publicKeyString);
+    }
+
+    if (!publicKeyString) {
+      const jwk = await crypto.subtle.exportKey('jwk', privateKey);
+      const pubJwk = { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y, key_ops: [] };
+      publicKeyString = JSON.stringify(pubJwk);
+      await setInIDB(`publicKeyString:${twitchUser}`, publicKeyString);
+    }
+
+    const backup = await createPasskeyAndEncryptKey(twitchUser, privateKey);
+
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+      body: JSON.stringify({
+        action: 'save_encrypted_key',
+        method: 'passkey',
+        encryptedPrivateKey: backup.encryptedPrivateKey,
+        iv: backup.iv,
+        credentialId: backup.credentialId,
+        publicKey: publicKeyString,
+      }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error || 'Errore nel salvataggio.');
+    }
+
+    await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+      body: JSON.stringify({ action: 'register_key', publicKey: publicKeyString }),
+    }).catch(() => {});
+
+    e2ePrivateKeyRef.current = privateKey;
+    setE2eReady(true);
+    setE2eNeedsPassphrase(null);
+    setE2eNeedsSync(false);
+    setE2eError(null);
+  }, [twitchUser, twitchToken]);
+
+  /** Unlock passkey: authenticate with WebAuthn PRF, decrypt key, store locally */
+  const unlockE2EPasskey = useCallback(async () => {
+    if (!twitchUser || !twitchToken) throw new Error('Non autenticato.');
+    const API = '/api/messages';
+
+    const res = await fetch(`${API}?action=get_encrypted_key`, {
+      headers: { Authorization: `Bearer ${twitchToken}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Backup non trovato.');
+
+    const privateKey = await authenticatePasskeyAndDecryptKey(
+      data.encryptedPrivateKey, data.iv, data.credentialId
+    );
+
+    const jwk = await crypto.subtle.exportKey('jwk', privateKey);
+    const pubJwk = { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y, key_ops: [] };
+    const publicKeyString = JSON.stringify(pubJwk);
+
+    await setInIDB(`privateKey:${twitchUser}`, privateKey);
+    await setInIDB(`publicKeyString:${twitchUser}`, publicKeyString);
+
+    await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+      body: JSON.stringify({ action: 'register_key', publicKey: publicKeyString }),
+    }).catch(() => {});
+
+    e2ePrivateKeyRef.current = privateKey;
+    setE2eReady(true);
+    setE2eNeedsPassphrase(null);
+    setE2eError(null);
+  }, [twitchUser, twitchToken]);
+
+  /** Get backup metadata (method, credentialId) without downloading encrypted key */
+  const getE2EBackupInfo = useCallback(async () => {
+    if (!twitchToken) return null;
+    try {
+      const res = await fetch(`${API_MSG}?action=get_encrypted_key`, {
+        headers: { Authorization: `Bearer ${twitchToken}` },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return { method: data.method || 'password', credentialId: data.credentialId || null };
+    } catch { return null; }
+  }, [twitchToken]);
+
   return (
     <TwitchAuthContext.Provider value={{
       twitchUser,
@@ -333,6 +439,9 @@ export function TwitchAuthProvider({ children }) {
       resetE2E,
       setupE2EPassphrase,
       unlockE2EPassphrase,
+      setupE2EPasskey,
+      unlockE2EPasskey,
+      getE2EBackupInfo,
     }}>
       {children}
     </TwitchAuthContext.Provider>
