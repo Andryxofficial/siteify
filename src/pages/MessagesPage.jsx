@@ -479,7 +479,7 @@ function KeySetupDialog({ mode, backupInfo, loadingBackupInfo, onSetupPassword, 
               aver prima riprovato più volte: il reset rende tutti i messaggi illeggibili.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxWidth: '300px', margin: '0 auto' }}>
-              <button className="btn btn-primary" onClick={() => { setLoading(true); onRetrySync?.(); setTimeout(() => setLoading(false), 5000); }} disabled={loading}>
+              <button className="btn btn-primary" onClick={() => onRetrySync?.()} disabled={loading}>
                 {loading ? <Loader size={14} className="spin" /> : <><RefreshCw size={14} /> Riprova sincronizzazione</>}
               </button>
               <AnimatePresence>

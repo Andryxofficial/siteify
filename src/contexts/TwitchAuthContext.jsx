@@ -139,10 +139,12 @@ export function TwitchAuthProvider({ children }) {
         // Usare invece 'sync_retry' per invitare l'utente a ritentare la sincronizzazione.
         try {
           const keyCheck = await fetch(`${API}?action=key&user=${encodeURIComponent(user)}`);
-          const keyData = await keyCheck.json();
-          if (keyData.publicKey) {
-            setE2eNeedsPassphrase('sync_retry');
-            return;
+          if (keyCheck.ok) {
+            const keyData = await keyCheck.json();
+            if (keyData.publicKey) {
+              setE2eNeedsPassphrase('sync_retry');
+              return;
+            }
           }
         } catch { /* non bloccante — in caso di errore procedi con setup */ }
         // Nessuna chiave ovunque → primo accesso reale
@@ -556,11 +558,13 @@ export function TwitchAuthProvider({ children }) {
       if (!existingKey) {
         try {
           const keyCheck = await fetch(`${API_MSG}?action=key&user=${encodeURIComponent(twitchUser)}`);
-          const keyData = await keyCheck.json().catch(() => ({}));
-          if (keyData.publicKey) {
-            // Chiavi esistenti su un altro dispositivo — non generare nuove chiavi
-            setE2eNeedsPassphrase('sync_retry');
-            return;
+          if (keyCheck.ok) {
+            const keyData = await keyCheck.json().catch(() => ({}));
+            if (keyData.publicKey) {
+              // Chiavi esistenti su un altro dispositivo — non generare nuove chiavi
+              setE2eNeedsPassphrase('sync_retry');
+              return;
+            }
           }
         } catch { /* non bloccante — procedi con la generazione per nuovo utente */ }
       }
