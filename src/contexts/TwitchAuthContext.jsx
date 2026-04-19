@@ -137,16 +137,18 @@ export function TwitchAuthProvider({ children }) {
         // dispositivo, ma l'auto-sync non è riuscito). In quel caso NON mostrare 'setup',
         // che genererebbe chiavi K2 incompatibili con i messaggi cifrati da K1 su Device 1.
         // Usare invece 'sync_retry' per invitare l'utente a ritentare la sincronizzazione.
-        try {
-          const keyCheck = await fetch(`${API}?action=key&user=${encodeURIComponent(user)}`);
-          if (keyCheck.ok) {
-            const keyData = await keyCheck.json();
-            if (keyData.publicKey) {
-              setE2eNeedsPassphrase('sync_retry');
-              return;
-            }
-          }
-        } catch { /* non bloccante — in caso di errore procedi con setup */ }
+        // IMPORTANTE: se il server risponde con 5xx, l'errore viene rilanciato al catch
+        // esterno che esegue il retry con backoff — mai cadere in 'setup' per un errore
+        // transitorio del server, altrimenti si genererebbero chiavi K2 incompatibili.
+        const keyCheck = await fetch(`${API}?action=key&user=${encodeURIComponent(user)}`);
+        if (!keyCheck.ok) {
+          throw new Error(`key endpoint error: ${keyCheck.status}`);
+        }
+        const keyData = await keyCheck.json();
+        if (keyData.publicKey) {
+          setE2eNeedsPassphrase('sync_retry');
+          return;
+        }
         // Nessuna chiave ovunque → primo accesso reale
         setE2eNeedsPassphrase('setup');
         return;
@@ -405,6 +407,7 @@ export function TwitchAuthProvider({ children }) {
     e2ePrivateKeyRef.current = privateKey;
     setE2eReady(true);
     setE2eNeedsPassphrase(null);
+    setE2eNeedsSync(false);
     setE2eError(null);
   }, [twitchUser, twitchToken, twitchUserId]);
 
@@ -519,6 +522,7 @@ export function TwitchAuthProvider({ children }) {
     e2ePrivateKeyRef.current = privateKey;
     setE2eReady(true);
     setE2eNeedsPassphrase(null);
+    setE2eNeedsSync(false);
     setE2eError(null);
   }, [twitchUser, twitchToken, twitchUserId]);
 
@@ -554,19 +558,31 @@ export function TwitchAuthProvider({ children }) {
     try {
       // Se non ci sono chiavi in IDB (possibile nuovo dispositivo), verifica se ne esistono
       // già sul server prima di generare nuove chiavi K2 che invaliderebbero i messaggi K1.
+      // IMPORTANTE: su errore di rete o risposta non-OK siamo conservativi: non generare K2.
+      // Un errore transitorio non deve mai portare alla generazione di chiavi incompatibili.
       const existingKey = await getFromIDB(`privateKey:${twitchUser}`).catch(() => null);
       if (!existingKey) {
+        let serverKeyExists = false;
         try {
           const keyCheck = await fetch(`${API_MSG}?action=key&user=${encodeURIComponent(twitchUser)}`);
-          if (keyCheck.ok) {
-            const keyData = await keyCheck.json().catch(() => ({}));
-            if (keyData.publicKey) {
-              // Chiavi esistenti su un altro dispositivo — non generare nuove chiavi
-              setE2eNeedsPassphrase('sync_retry');
-              return;
-            }
+          if (!keyCheck.ok) {
+            // Errore del server — non possiamo sapere se l'utente ha già chiavi.
+            // Usare sync_retry conservativo invece di generare K2.
+            setE2eNeedsPassphrase('sync_retry');
+            return;
           }
-        } catch { /* non bloccante — procedi con la generazione per nuovo utente */ }
+          const keyData = await keyCheck.json().catch(() => ({}));
+          serverKeyExists = !!keyData.publicKey;
+        } catch {
+          // Errore di rete — comportamento conservativo: non generare K2.
+          setE2eNeedsPassphrase('sync_retry');
+          return;
+        }
+        if (serverKeyExists) {
+          // Chiavi esistenti su un altro dispositivo — non generare nuove chiavi
+          setE2eNeedsPassphrase('sync_retry');
+          return;
+        }
       }
       // Genera (o usa) le chiavi locali e registra la chiave pubblica sul server
       const privateKey = await ensureE2EKeysRegistered(twitchUser, twitchToken);
