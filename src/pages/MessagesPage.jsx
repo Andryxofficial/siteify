@@ -413,7 +413,161 @@ function SyncBanner({ onSetup }) {
   );
 }
 
-/* ── FriendPicker ── */
+/* ── SecuritySettings ── */
+function SecuritySettings({ onClose, onShowSetup }) {
+  const { getE2EBackupInfo, resetE2E, addE2EPasswordFallback } = useTwitchAuth();
+  const [info, setInfo] = useState(null);
+  const [loadingInfo, setLoadingInfo] = useState(true);
+  const [fallbackPhrase, setFallbackPhrase] = useState('');
+  const [fallbackConfirm, setFallbackConfirm] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  useEffect(() => {
+    getE2EBackupInfo().then(i => { setInfo(i); setLoadingInfo(false); });
+  }, [getE2EBackupInfo]);
+
+  const handleAddFallback = async (e) => {
+    e?.preventDefault();
+    setError(''); setSuccess('');
+    if (fallbackPhrase.length < 8) { setError('Almeno 8 caratteri.'); return; }
+    if (fallbackPhrase !== fallbackConfirm) { setError('Le password non corrispondono.'); return; }
+    setBusy(true);
+    try {
+      await addE2EPasswordFallback(fallbackPhrase);
+      setInfo(i => ({ ...i, hasPasswordFallback: true }));
+      setSuccess('Password di recupero salvata con successo.');
+      setFallbackPhrase(''); setFallbackConfirm('');
+    } catch (err) { setError(err.message || 'Errore nel salvataggio.'); }
+    finally { setBusy(false); }
+  };
+
+  const handleReset = async () => {
+    setBusy(true);
+    try { await resetE2E(); onClose(); }
+    catch (err) { setError(err.message || 'Errore nel reset.'); setBusy(false); }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 0', borderBottom: '1px solid var(--glass-border)' }}>
+        <button className="mod-icon-btn" onClick={onClose}><ArrowLeft size={16} /></button>
+        <span style={{ fontWeight: 600, flex: 1, fontSize: '1rem' }}>Sicurezza chiavi E2E</span>
+        <Shield size={15} color="var(--primary)" />
+      </div>
+
+      <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+        {/* Status card */}
+        <div className="glass-card" style={{ padding: '0.85rem 1rem' }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stato backup chiavi</div>
+          {loadingInfo ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}><Loader size={13} className="spin" /> Caricamento…</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              {info ? (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {info.method === 'passkey' ? <Fingerprint size={14} color="#22c55e" /> : <Key size={14} color="#22c55e" />}
+                    <span style={{ fontWeight: 600, fontSize: '0.88rem', color: '#22c55e' }}>
+                      {info.method === 'passkey' ? 'Passkey' : 'Password'}
+                    </span>
+                    <span className="chip" style={{ fontSize: '0.68rem', background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)', padding: '0 0.4rem' }}>Attivo</span>
+                  </div>
+                  {info.method === 'passkey' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: info.hasPasswordFallback ? '#22c55e' : 'var(--text-faint)' }}>
+                      {info.hasPasswordFallback ? <Check size={12} /> : <X size={12} />}
+                      Password di recupero {info.hasPasswordFallback ? 'configurata' : 'non configurata'}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem' }}>
+                  <AlertTriangle size={14} color="#f87171" style={{ marginTop: '0.1rem', flexShrink: 0 }} />
+                  <p style={{ fontSize: '0.82rem', color: '#f87171', margin: 0, lineHeight: 1.4 }}>
+                    Nessun backup attivo. Se perdi questo dispositivo, le chat non saranno recuperabili.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Success message */}
+        <AnimatePresence>
+          {success && (
+            <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', color: '#22c55e' }}>
+              <Check size={14} /> {success}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Add password fallback — only when passkey is active but no fallback yet */}
+        {!loadingInfo && info?.method === 'passkey' && !info.hasPasswordFallback && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+              <Key size={13} style={{ verticalAlign: 'middle', marginRight: '0.3rem' }} />Aggiungi password di recupero
+            </div>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-faint)', margin: 0, lineHeight: 1.4 }}>
+              Permette di sbloccare i messaggi da PC o dispositivi dove la passkey non è disponibile.
+            </p>
+            <form onSubmit={handleAddFallback} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <input type="password" className="mod-input" placeholder="Password di recupero (min 8 caratteri)"
+                value={fallbackPhrase} onChange={e => setFallbackPhrase(e.target.value)} autoComplete="new-password" />
+              <input type="password" className="mod-input" placeholder="Conferma password"
+                value={fallbackConfirm} onChange={e => setFallbackConfirm(e.target.value)} autoComplete="new-password" />
+              <AnimatePresence>
+                {error && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ color: '#f87171', fontSize: '0.78rem', margin: 0 }}>{error}</motion.p>}
+              </AnimatePresence>
+              <button type="submit" className="btn btn-primary" disabled={busy} style={{ fontSize: '0.82rem' }}>
+                {busy ? <Loader size={13} className="spin" /> : <><Key size={13} /> Salva password</>}
+              </button>
+            </form>
+          </div>
+        )}
+
+        <hr style={{ border: 'none', borderTop: '1px solid var(--glass-border)', margin: 0 }} />
+
+        {/* Change backup method */}
+        <button className="btn btn-ghost" style={{ fontSize: '0.82rem', justifyContent: 'flex-start', gap: '0.5rem' }}
+          onClick={() => { onClose(); onShowSetup(); }}>
+          <KeyRound size={14} /> {info ? 'Cambia metodo di backup' : 'Configura backup'}
+        </button>
+
+        {/* Reset keys */}
+        {!confirmReset ? (
+          <button className="btn btn-ghost" style={{ fontSize: '0.82rem', color: 'var(--accent)', justifyContent: 'flex-start', gap: '0.5rem' }}
+            onClick={() => { setError(''); setConfirmReset(true); }} disabled={busy}>
+            <AlertTriangle size={14} /> Reset chiavi E2E
+          </button>
+        ) : (
+          <div className="glass-card" style={{ padding: '0.85rem', border: '1px solid rgba(248,113,113,0.3)' }}>
+            <p style={{ fontSize: '0.8rem', color: '#f87171', marginBottom: '0.6rem', lineHeight: 1.4 }}>
+              ⚠️ Genera nuove chiavi — i vecchi messaggi cifrati non saranno più leggibili.
+            </p>
+            <AnimatePresence>
+              {error && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ color: '#f87171', fontSize: '0.78rem', margin: '0 0 0.5rem' }}>{error}</motion.p>}
+            </AnimatePresence>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button className="btn btn-primary" style={{ fontSize: '0.78rem', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+                onClick={handleReset} disabled={busy}>
+                {busy ? <Loader size={12} className="spin" /> : 'Conferma reset'}
+              </button>
+              <button className="btn btn-ghost" style={{ fontSize: '0.78rem' }} onClick={() => setConfirmReset(false)} disabled={busy}>
+                Annulla
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+
 function FriendPicker({ twitchToken, existingConvos, onSelect, onClose }) {
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -502,7 +656,7 @@ function NotifSettings({ onClose }) {
 }
 
 /* ── ConversationsList ── */
-function ConversationsList({ conversations, onSelect, onNewMessage, onOpenSettings }) {
+function ConversationsList({ conversations, onSelect, onNewMessage, onOpenSettings, onOpenSecuritySettings }) {
   if (conversations.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
@@ -510,6 +664,9 @@ function ConversationsList({ conversations, onSelect, onNewMessage, onOpenSettin
         <p style={{ fontSize: '1rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Nessuna conversazione</p>
         <p style={{ fontSize: '0.82rem', color: 'var(--text-faint)', marginBottom: '1rem', lineHeight: 1.4 }}>Inizia a chattare con i tuoi amici.<br/>I messaggi sono crittografati E2E.</p>
         <button className="btn btn-primary" onClick={onNewMessage} style={{ fontSize: '0.88rem' }}><Plus size={15} /> Nuovo messaggio</button>
+        <button className="btn btn-ghost" style={{ fontSize: '0.78rem', marginTop: '0.5rem', display: 'inline-flex' }} onClick={onOpenSecuritySettings}>
+          <Shield size={13} /> Sicurezza chiavi
+        </button>
       </div>
     );
   }
@@ -517,6 +674,7 @@ function ConversationsList({ conversations, onSelect, onNewMessage, onOpenSettin
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0', borderBottom: '1px solid var(--glass-border)' }}>
         <span style={{ flex: 1, fontWeight: 600, fontSize: '0.95rem' }}>Chat</span>
+        <button className="mod-icon-btn" title="Sicurezza chiavi" onClick={onOpenSecuritySettings}><Shield size={15} /></button>
         <button className="mod-icon-btn" title="Notifiche" onClick={onOpenSettings}><Bell size={15} /></button>
         <button className="btn btn-primary" onClick={onNewMessage} style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', borderRadius: 'var(--r-full)' }}><Plus size={13} /> Nuova</button>
       </div>
@@ -912,6 +1070,7 @@ export default function MessagesPage() {
   const [activeChat, setActiveChat] = useState(searchParams.get('con') || null);
   const [showFriendPicker, setShowFriendPicker] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showSecuritySettings, setShowSecuritySettings] = useState(false);
   const [showPassphraseSetup, setShowPassphraseSetup] = useState(false);
   const [backupInfo, setBackupInfo] = useState(null);
 
@@ -933,7 +1092,10 @@ export default function MessagesPage() {
   useEffect(() => { if (isLoggedIn && ready) loadConversations(); }, [isLoggedIn, ready, loadConversations]);
 
   const selectChat = (user) => { setActiveChat(user); setShowFriendPicker(false); setSearchParams({ con: user }, { replace: true }); };
-  const goBack = () => { setActiveChat(null); setShowFriendPicker(false); setShowSettings(false); setSearchParams({}, { replace: true }); loadConversations(); };
+  const goBack = () => {
+    setActiveChat(null); setShowFriendPicker(false); setShowSettings(false);
+    setShowSecuritySettings(false); setSearchParams({}, { replace: true }); loadConversations();
+  };
 
   const skipPassphrase = async () => {
     try {
@@ -992,12 +1154,12 @@ export default function MessagesPage() {
         </span>
       </motion.div>
 
-      {e2eNeedsSync && !showPassphraseSetup && !sessionStorage.getItem('e2e_sync_skipped') && <SyncBanner onSetup={() => setShowPassphraseSetup(true)} />}
+      {e2eNeedsSync && !showPassphraseSetup && !showSecuritySettings && !sessionStorage.getItem('e2e_sync_skipped') && <SyncBanner onSetup={() => setShowPassphraseSetup(true)} />}
 
       {showPassphraseSetup && (
         <KeySetupDialog mode="setup"
           onSetupPassword={async (p) => { await setupE2EPassphrase(p); setShowPassphraseSetup(false); }}
-          onSetupPasskey={async () => { await setupE2EPasskey(); setShowPassphraseSetup(false); }}
+          onSetupPasskey={async (fp) => { await setupE2EPasskey(fp); setShowPassphraseSetup(false); }}
           onSkip={() => setShowPassphraseSetup(false)} />
       )}
 
@@ -1025,12 +1187,21 @@ export default function MessagesPage() {
               <motion.div key="settings" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <NotifSettings onClose={() => setShowSettings(false)} />
               </motion.div>
+            ) : showSecuritySettings ? (
+              <motion.div key="security" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                <SecuritySettings
+                  onClose={() => setShowSecuritySettings(false)}
+                  onShowSetup={() => { setShowSecuritySettings(false); setShowPassphraseSetup(true); }}
+                />
+              </motion.div>
             ) : (
               <motion.div key="list" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
                 {loading ? (
                   <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}><Loader size={20} className="spin" /> Caricamento…</div>
                 ) : (
-                  <ConversationsList conversations={conversations} onSelect={selectChat} onNewMessage={() => setShowFriendPicker(true)} onOpenSettings={() => setShowSettings(true)} />
+                  <ConversationsList conversations={conversations} onSelect={selectChat} onNewMessage={() => setShowFriendPicker(true)}
+                    onOpenSettings={() => setShowSettings(true)}
+                    onOpenSecuritySettings={() => setShowSecuritySettings(true)} />
                 )}
               </motion.div>
             )}

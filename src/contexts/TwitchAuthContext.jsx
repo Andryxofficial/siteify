@@ -426,6 +426,25 @@ export function TwitchAuthProvider({ children }) {
     setE2eError(null);
   }, [twitchUser, twitchToken]);
 
+  /** Add or update password fallback on an existing passkey backup */
+  const addE2EPasswordFallback = useCallback(async (passphrase) => {
+    if (!twitchUser || !twitchToken) throw new Error('Non autenticato.');
+    const privateKey = await getFromIDB(`privateKey:${twitchUser}`);
+    if (!privateKey) throw new Error('Chiave privata non trovata in questo dispositivo.');
+
+    const backup = await encryptPrivateKeyForBackup(privateKey, passphrase);
+
+    const res = await fetch(API_MSG, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+      body: JSON.stringify({ action: 'add_password_fallback', ...backup }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error || 'Errore nel salvataggio.');
+    }
+  }, [twitchUser, twitchToken]);
+
   /** Get backup metadata (method, credentialId, hasPasswordFallback) without downloading encrypted key */
   const getE2EBackupInfo = useCallback(async () => {
     if (!twitchToken) return null;
@@ -466,6 +485,7 @@ export function TwitchAuthProvider({ children }) {
       unlockE2EPassphrase,
       setupE2EPasskey,
       unlockE2EPasskey,
+      addE2EPasswordFallback,
       getE2EBackupInfo,
     }}>
       {children}
