@@ -10,6 +10,8 @@ import {
   exportPublicKey,
   createPasskeyAndEncryptKey,
   authenticatePasskeyAndDecryptKey,
+  createAutoSyncBackup,
+  restoreFromAutoSync,
 } from '../utils/e2eKeys';
 
 const CHIAVETWITCH = import.meta.env.VITE_CHIAVETWITCH;
@@ -50,6 +52,7 @@ export function TwitchAuthProvider({ children }) {
   const [twitchDisplay, setTwitchDisplay] = useState(null); // display_name
   const [twitchAvatar, setTwitchAvatar] = useState(null);   // profile_image_url
   const [twitchToken, setTwitchToken] = useState(null);
+  const [twitchUserId, setTwitchUserId] = useState(null);   // user_id numerico stabile
   const [loading, setLoading] = useState(true);
 
   // ── E2E key state (tracked, not fire-and-forget) ──
@@ -60,7 +63,7 @@ export function TwitchAuthProvider({ children }) {
   const e2ePrivateKeyRef = useRef(null);
 
   /* ── Register E2E keys — handles cross-device passphrase flow ── */
-  const registerE2EKeys = useCallback(async (user, token) => {
+  const registerE2EKeys = useCallback(async (user, token, userId) => {
     const API = '/api/messages';
     const MAX_RETRIES = 2;
 
@@ -82,7 +85,37 @@ export function TwitchAuthProvider({ children }) {
           } catch { /* non-blocking */ }
           // Best-effort: ensure public key is on server
           ensureE2EKeysRegistered(user, token).catch(() => {});
+          // Best-effort: create auto-sync backup se non esiste ancora
+          if (userId) {
+            const localPubStr = await getFromIDB(`publicKeyString:${user}`).catch(() => null);
+            createAutoSyncBackup(localKey, userId, token, localPubStr).catch(() => {});
+          }
           return;
+        }
+
+        // 1b. Nessuna chiave locale — prova il ripristino automatico via Twitch (trasparente)
+        if (userId) {
+          try {
+            const restoredKey = await restoreFromAutoSync(userId, token);
+            if (restoredKey) {
+              // Estrai la chiave pubblica dalla privata per salvarla in IDB
+              const jwk = await crypto.subtle.exportKey('jwk', restoredKey);
+              const pubJwk = { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y, key_ops: [] };
+              const publicKeyString = JSON.stringify(pubJwk);
+              await setInIDB(`privateKey:${user}`, restoredKey);
+              await setInIDB(`publicKeyString:${user}`, publicKeyString);
+              e2ePrivateKeyRef.current = restoredKey;
+              // Assicura che la chiave pubblica sia aggiornata sul server
+              await fetch(API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ action: 'register_key', publicKey: publicKeyString }),
+              }).catch(() => {});
+              setE2eReady(true);
+              setE2eError(null);
+              return;
+            }
+          } catch { /* ripristino auto non riuscito — procedi con flusso manuale */ }
         }
 
         // 2. No local keys — check server for passphrase-protected backup
@@ -121,10 +154,12 @@ export function TwitchAuthProvider({ children }) {
       const data = await res.json();
       setTwitchUser(data.login);
       setTwitchToken(token);
+      const userId = data.user_id || null;
+      setTwitchUserId(userId);
 
       // Register E2E keys (tracked with retry, so the user can receive messages
       // even before they ever visit /messaggi)
-      registerE2EKeys(data.login, token);
+      registerE2EKeys(data.login, token, userId);
 
       // Fetch full profile (display_name, avatar)
       try {
@@ -149,6 +184,7 @@ export function TwitchAuthProvider({ children }) {
       setTwitchUser(null);
       setTwitchDisplay(null);
       setTwitchAvatar(null);
+      setTwitchUserId(null);
     } finally {
       setLoading(false);
     }
@@ -181,6 +217,7 @@ export function TwitchAuthProvider({ children }) {
     setTwitchDisplay(null);
     setTwitchAvatar(null);
     setTwitchToken(null);
+    setTwitchUserId(null);
     setE2eReady(false);
     setE2eError(null);
     setE2eNeedsPassphrase(null);
@@ -195,8 +232,8 @@ export function TwitchAuthProvider({ children }) {
     setE2eError(null);
     setE2eNeedsPassphrase(null);
     e2ePrivateKeyRef.current = null;
-    registerE2EKeys(twitchUser, twitchToken);
-  }, [twitchUser, twitchToken, registerE2EKeys]);
+    registerE2EKeys(twitchUser, twitchToken, twitchUserId);
+  }, [twitchUser, twitchToken, twitchUserId, registerE2EKeys]);
 
   /** Force-reset E2E keys: wipes old keys from IndexedDB and generates fresh ones.
    *  Use when existing keys are corrupted and causing derivation failures. */
@@ -214,11 +251,16 @@ export function TwitchAuthProvider({ children }) {
       setE2eError(null);
       // Prompt to set up sync with new keys
       setE2eNeedsSync(true);
+      // Crea subito il backup automatico con le nuove chiavi
+      if (twitchUserId) {
+        const pubStr = await getFromIDB(`publicKeyString:${twitchUser}`).catch(() => null);
+        createAutoSyncBackup(privateKey, twitchUserId, twitchToken, pubStr).catch(() => {});
+      }
     } catch (e) {
       console.error('E2E key reset failed:', e);
       setE2eError('Reset chiavi fallito. Riprova.');
     }
-  }, [twitchUser, twitchToken]);
+  }, [twitchUser, twitchToken, twitchUserId]);
 
   /** Setup passphrase: generate keys (or use existing local ones) + encrypt + backup to server */
   const setupE2EPassphrase = useCallback(async (passphrase) => {
@@ -270,12 +312,17 @@ export function TwitchAuthProvider({ children }) {
       body: JSON.stringify({ action: 'register_key', publicKey: publicKeyString }),
     }).catch(() => {});
 
+    // Crea anche il backup automatico per accesso trasparente su altri dispositivi
+    if (twitchUserId) {
+      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString).catch(() => {});
+    }
+
     e2ePrivateKeyRef.current = privateKey;
     setE2eReady(true);
     setE2eNeedsPassphrase(null);
     setE2eNeedsSync(false);
     setE2eError(null);
-  }, [twitchUser, twitchToken]);
+  }, [twitchUser, twitchToken, twitchUserId]);
 
   /** Unlock passphrase: download encrypted key from server, decrypt, store locally */
   const unlockE2EPassphrase = useCallback(async (passphrase) => {
@@ -322,11 +369,17 @@ export function TwitchAuthProvider({ children }) {
       body: JSON.stringify({ action: 'register_key', publicKey: publicKeyString }),
     }).catch(() => {});
 
+    // Aggiorna l'auto-sync backup dopo sblocco password, per non richiedere
+    // la password di nuovo su dispositivi futuri
+    if (twitchUserId) {
+      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString).catch(() => {});
+    }
+
     e2ePrivateKeyRef.current = privateKey;
     setE2eReady(true);
     setE2eNeedsPassphrase(null);
     setE2eError(null);
-  }, [twitchUser, twitchToken]);
+  }, [twitchUser, twitchToken, twitchUserId]);
 
   /** Setup passkey: create WebAuthn credential with PRF, encrypt key, backup to server.
    *  @param {string|null} fallbackPassphrase — optional password stored as cross-device recovery */
@@ -385,12 +438,17 @@ export function TwitchAuthProvider({ children }) {
       body: JSON.stringify({ action: 'register_key', publicKey: publicKeyString }),
     }).catch(() => {});
 
+    // Crea anche il backup automatico per accesso trasparente su altri dispositivi
+    if (twitchUserId) {
+      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString).catch(() => {});
+    }
+
     e2ePrivateKeyRef.current = privateKey;
     setE2eReady(true);
     setE2eNeedsPassphrase(null);
     setE2eNeedsSync(false);
     setE2eError(null);
-  }, [twitchUser, twitchToken]);
+  }, [twitchUser, twitchToken, twitchUserId]);
 
   /** Unlock passkey: authenticate with WebAuthn PRF, decrypt key, store locally */
   const unlockE2EPasskey = useCallback(async () => {
@@ -420,11 +478,16 @@ export function TwitchAuthProvider({ children }) {
       body: JSON.stringify({ action: 'register_key', publicKey: publicKeyString }),
     }).catch(() => {});
 
+    // Aggiorna l'auto-sync backup con le chiavi sbloccate
+    if (twitchUserId) {
+      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString).catch(() => {});
+    }
+
     e2ePrivateKeyRef.current = privateKey;
     setE2eReady(true);
     setE2eNeedsPassphrase(null);
     setE2eError(null);
-  }, [twitchUser, twitchToken]);
+  }, [twitchUser, twitchToken, twitchUserId]);
 
   /** Add or update password fallback on an existing passkey backup */
   const addE2EPasswordFallback = useCallback(async (passphrase) => {
@@ -468,6 +531,7 @@ export function TwitchAuthProvider({ children }) {
       twitchDisplay,
       twitchAvatar,
       twitchToken,
+      twitchUserId,
       loading,
       isLoggedIn: !!twitchUser,
       clientId: CHIAVETWITCH,

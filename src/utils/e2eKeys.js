@@ -418,3 +418,130 @@ export async function authenticatePasskeyAndDecryptKey(encryptedPrivateKey, ivB6
     'jwk', jwk, { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey']
   );
 }
+
+/* ─── Auto-sync trasparente via Twitch OAuth ───────────────────────────────
+ *
+ * Meccanismo: il server genera un salt casuale per-utente (legato all'user_id Twitch,
+ * stabile tra login). Il client ottiene il salt, deriva una chiave AES via PBKDF2
+ * (userId + salt) e cifra/decifra la chiave privata ECDH localmente.
+ *
+ * Sicurezza: il server conosce il salt e l'userId → potrebbe ricostruire la chiave
+ * AES in teoria. Tuttavia, poiché il server valida già i token OAuth e non è
+ * zero-knowledge, questo è un trade-off accettabile per un'UX trasparente.
+ * Il backup manuale (password/passkey) rimane disponibile per chi vuole garanzie
+ * più forti.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+const AUTO_SYNC_DOMAIN = 'ANDRYXify-auto-sync-v1';
+
+/** Deriva una chiave AES-GCM-256 dall'userId Twitch + il salt fornito dal server */
+async function deriveAutoSyncKey(twitchUserId, saltB64, usage) {
+  // Valida il salt prima di decodificare per prevenire eccezioni atob()
+  if (typeof saltB64 !== 'string' || saltB64.length === 0) {
+    throw new Error('Salt non valido per il backup automatico.');
+  }
+  let saltBytes;
+  try {
+    saltBytes = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
+  } catch {
+    throw new Error('Salt non è un Base64 valido.');
+  }
+  if (saltBytes.length < 16) {
+    throw new Error('Salt troppo corto per essere sicuro.');
+  }
+  const rawMaterial = new TextEncoder().encode(`${twitchUserId}:${AUTO_SYNC_DOMAIN}`);
+  const keyMaterial = await crypto.subtle.importKey('raw', rawMaterial, 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: saltBytes, iterations: 400_000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    usage
+  );
+}
+
+/**
+ * Crea un backup automatico della chiave privata ECDH sul server,
+ * cifrato con una chiave derivata dall'identità Twitch.
+ * Viene chiamato silenziosamente in background — nessuna interazione utente.
+ *
+ * @param {CryptoKey} privateKey  — chiave privata ECDH da cifrare
+ * @param {string}    twitchUserId — user_id numerico stabile di Twitch
+ * @param {string}    twitchToken  — Bearer token per autenticarsi all'API
+ * @param {string}    publicKeyString — chiave pubblica JWK (opzionale, per re-sync)
+ */
+export async function createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString = null) {
+  if (!twitchUserId) return; // senza userId non possiamo creare il backup
+
+  // 1. Ottieni (o crea) il salt per-utente dal server
+  const saltRes = await fetch(`${API_URL}?action=get_sync_secret`, {
+    headers: { Authorization: `Bearer ${twitchToken}` },
+  });
+  if (!saltRes.ok) return; // non bloccare su errori di rete
+  const { salt } = await saltRes.json();
+  if (!salt) return;
+
+  // 2. Cifra la chiave privata localmente con AES-GCM
+  const aesKey = await deriveAutoSyncKey(twitchUserId, salt, ['encrypt']);
+  const jwk = await crypto.subtle.exportKey('jwk', privateKey);
+  const plaintext = new TextEncoder().encode(JSON.stringify(jwk));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, plaintext);
+
+  // 3. Invia il backup cifrato al server (non contiene la chiave di cifratura)
+  const body = {
+    action: 'save_auto_backup',
+    encryptedPrivateKey: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
+    iv: btoa(String.fromCharCode(...iv)),
+  };
+  if (publicKeyString) body.publicKey = publicKeyString;
+
+  await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+    body: JSON.stringify(body),
+  }).catch(e => console.warn('Auto-sync backup fallito (non bloccante):', e));
+}
+
+/**
+ * Ripristina la chiave privata ECDH dall'auto-sync backup in modo trasparente.
+ * Se il backup non esiste o c'è un errore, restituisce null (il caller gestisce il fallback).
+ *
+ * @param {string} twitchUserId — user_id numerico stabile di Twitch
+ * @param {string} twitchToken  — Bearer token
+ * @returns {CryptoKey|null}
+ */
+export async function restoreFromAutoSync(twitchUserId, twitchToken) {
+  if (!twitchUserId) return null;
+  try {
+    // 1. Recupera il salt per-utente
+    const saltRes = await fetch(`${API_URL}?action=get_sync_secret`, {
+      headers: { Authorization: `Bearer ${twitchToken}` },
+    });
+    if (!saltRes.ok) return null;
+    const { salt } = await saltRes.json();
+    if (!salt) return null;
+
+    // 2. Recupera il backup cifrato
+    const backupRes = await fetch(`${API_URL}?action=get_auto_backup`, {
+      headers: { Authorization: `Bearer ${twitchToken}` },
+    });
+    if (!backupRes.ok) return null;
+    const { encryptedPrivateKey, iv } = await backupRes.json();
+    if (!encryptedPrivateKey || !iv) return null;
+
+    // 3. Decifra localmente
+    const aesKey = await deriveAutoSyncKey(twitchUserId, salt, ['decrypt']);
+    const cipherBytes = Uint8Array.from(atob(encryptedPrivateKey), c => c.charCodeAt(0));
+    const ivBytes = Uint8Array.from(atob(iv), c => c.charCodeAt(0));
+    const plainBuffer = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: ivBytes }, aesKey, cipherBytes);
+    const jwk = JSON.parse(new TextDecoder().decode(plainBuffer));
+    // Importa la chiave privata
+    return crypto.subtle.importKey(
+      'jwk', jwk, { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey']
+    );
+  } catch (e) {
+    console.warn('Auto-sync restore fallito (non bloccante):', e);
+    return null;
+  }
+}

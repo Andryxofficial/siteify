@@ -82,7 +82,7 @@ async function validateTwitch(authHeader) {
   const data = await res.json();
   if (!data.login) return null;
 
-  return { login: data.login };
+  return { login: data.login, userId: data.user_id || null };
 }
 
 export default async function handler(req, res) {
@@ -241,6 +241,43 @@ export default async function handler(req, res) {
       } catch (e) {
         console.error('get_encrypted_key error:', e);
         return res.status(500).json({ error: 'Errore nel recupero del backup.' });
+      }
+    }
+
+    // Auto-sync: return (or create) the per-user server secret used for transparent cross-device restore.
+    // The secret is only returned to the authenticated account owner — the client uses it to derive
+    // an AES key locally (PBKDF2) and decrypt the stored ECDH private key.
+    if (action === 'get_sync_secret') {
+      try {
+        const userId = twitchUser.userId;
+        if (!userId) return res.status(400).json({ error: 'User ID non disponibile.' });
+        const saltKey = `e2e_sync_salt:${userId}`;
+        let salt = await redis.get(saltKey);
+        if (!salt) {
+          // Generate a cryptographically secure random 32-byte salt using Node.js crypto
+          const { randomBytes } = await import('crypto');
+          salt = randomBytes(32).toString('base64');
+          await redis.set(saltKey, salt);
+        }
+        return res.status(200).json({ salt: typeof salt === 'string' ? salt : Buffer.from(salt).toString('base64') });
+      } catch (e) {
+        console.error('get_sync_secret error:', e);
+        return res.status(500).json({ error: 'Errore nel recupero del segreto di sincronizzazione.' });
+      }
+    }
+
+    // Auto-sync: retrieve the automatically-synced encrypted key backup
+    if (action === 'get_auto_backup') {
+      try {
+        const userId = twitchUser.userId;
+        if (!userId) return res.status(400).json({ error: 'User ID non disponibile.' });
+        const raw = await redis.get(`e2e_auto_backup:${userId}`);
+        if (!raw) return res.status(404).json({ error: 'Nessun backup automatico trovato.' });
+        const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        return res.status(200).json(data);
+      } catch (e) {
+        console.error('get_auto_backup error:', e);
+        return res.status(500).json({ error: 'Errore nel recupero del backup automatico.' });
       }
     }
 
@@ -521,6 +558,30 @@ export default async function handler(req, res) {
       } catch (e) {
         console.error('add_password_fallback error:', e);
         return res.status(500).json({ error: 'Errore nel salvataggio.' });
+      }
+    }
+
+    // Salva il backup automatico (cifrato con chiave derivata dal segreto Twitch lato server).
+    // Questo permette il ripristino trasparente su qualsiasi dispositivo dove l'utente
+    // accede con lo stesso account Twitch, senza richiedere azioni manuali.
+    if (action === 'save_auto_backup') {
+      const encryptedPrivateKey = sanitize(req.body.encryptedPrivateKey, 5000);
+      const iv = sanitize(req.body.iv, 100);
+      const publicKey = req.body.publicKey ? sanitize(req.body.publicKey, 2000) : null;
+      if (!encryptedPrivateKey || !iv) {
+        return res.status(400).json({ error: 'Dati di backup automatico mancanti.' });
+      }
+      try {
+        const userId = twitchUser.userId;
+        if (!userId) return res.status(400).json({ error: 'User ID non disponibile.' });
+        const autoBackup = { encryptedPrivateKey, iv, createdAt: Date.now() };
+        const ops = [redis.set(`e2e_auto_backup:${userId}`, JSON.stringify(autoBackup))];
+        if (publicKey) ops.push(redis.set(`userkeys:${me}`, publicKey));
+        await Promise.all(ops);
+        return res.status(200).json({ ok: true });
+      } catch (e) {
+        console.error('save_auto_backup error:', e);
+        return res.status(500).json({ error: 'Errore nel salvataggio del backup automatico.' });
       }
     }
 
