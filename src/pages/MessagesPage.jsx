@@ -14,6 +14,7 @@ import {
   Loader, Shield, Clock, AlertTriangle, Pencil, Trash2, X, Plus,
   Image as ImageIcon, Check, RefreshCw, Bell,
   KeyRound, ChevronDown, Search, Fingerprint, Key,
+  Copy, CornerUpRight,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
@@ -694,6 +695,56 @@ function ConversationsList({ conversations, onSelect, onNewMessage, onOpenSettin
   );
 }
 
+/* ── ForwardFriendList ── */
+function ForwardFriendList({ twitchToken, onSelect, busy }) {
+  const [friends, setFriends] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    let c = false;
+    (async () => {
+      try {
+        const res = await fetch(FRIENDS_API, { headers: { Authorization: `Bearer ${twitchToken}` } });
+        if (res.ok) { const d = await res.json(); if (!c) setFriends(d.friends || []); }
+      } catch { /* silent */ } finally { if (!c) setLoading(false); }
+    })();
+    return () => { c = true; };
+  }, [twitchToken]);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    return q ? friends.filter(f => f.toLowerCase().includes(q)) : friends;
+  }, [friends, search]);
+
+  return (
+    <>
+      <div style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--glass-border)', flexShrink: 0 }}>
+        <div style={{ position: 'relative' }}>
+          <Search size={13} style={{ position: 'absolute', left: '0.6rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
+          <input type="text" className="mod-input" placeholder="Cerca amico…" value={search} onChange={e => setSearch(e.target.value)}
+            style={{ paddingLeft: '2rem', fontSize: '0.82rem', padding: '0.35rem 0.75rem 0.35rem 2rem' }} />
+        </div>
+      </div>
+      <div className="msg-forward-list">
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)' }}><Loader size={16} className="spin" /></div>
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-faint)', fontSize: '0.82rem' }}>
+            {friends.length === 0 ? 'Nessun amico.' : 'Nessun risultato.'}
+          </div>
+        ) : filtered.map(f => (
+          <button key={f} className="msg-forward-friend" onClick={() => onSelect(f)} disabled={busy}>
+            <div className="msg-avatar" style={{ width: 30, height: 30, fontSize: '0.8rem', flexShrink: 0 }}>{f[0]?.toUpperCase()}</div>
+            <span>{f}</span>
+            {busy && <Loader size={12} className="spin" style={{ marginLeft: 'auto' }} />}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
 /* ═══════════════════════════════════════
    CHAT VIEW
    ═══════════════════════════════════════ */
@@ -711,6 +762,10 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [mediaUploading, setMediaUploading] = useState(false);
   const [mediaPreview, setMediaPreview] = useState(null);
+  const [forwardingMsg, setForwardingMsg] = useState(null);
+  const [forwardBusy, setForwardBusy] = useState(false);
+  const [forwardSentTo, setForwardSentTo] = useState(null);
+  const [copiedMsgId, setCopiedMsgId] = useState(null);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -919,6 +974,42 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
 
   const onMsgPointerDown = (msgId) => { longPressRef.current = setTimeout(() => setMenuMsgId(msgId), LONG_PRESS_DURATION); };
   const onMsgPointerUp = () => { if (longPressRef.current) clearTimeout(longPressRef.current); };
+  const openMsgMenu = (msgId) => { clearTimeout(longPressRef.current); setMenuMsgId(msgId); };
+
+  const copyMessage = async (text, msgId) => {
+    setMenuMsgId(null);
+    try { await navigator.clipboard.writeText(text); } catch { /* silent */ }
+    setCopiedMsgId(msgId);
+    setTimeout(() => setCopiedMsgId(m => m === msgId ? null : m), 1800);
+  };
+
+  const openForward = (msg) => {
+    setMenuMsgId(null);
+    setForwardSentTo(null);
+    setForwardingMsg(msg);
+  };
+
+  const sendForward = async (toUser) => {
+    if (!forwardingMsg?.text || !privateKeyRef.current || forwardBusy) return;
+    setForwardBusy(true);
+    try {
+      const res = await fetch(`${API_URL}?action=key&user=${encodeURIComponent(toUser)}`);
+      const data = await res.json();
+      if (!data.publicKey) throw new Error(`${toUser} non ha ancora la chiave pubblica.`);
+      const theirPub = await importPublicKey(data.publicKey);
+      const fwdKey = await deriveKey(privateKeyRef.current, theirPub);
+      const { encrypted, iv } = await encryptMessage(fwdKey, forwardingMsg.text);
+      const sendRes = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+        body: JSON.stringify({ action: 'send', to: toUser, encrypted, iv }),
+      });
+      if (!sendRes.ok) { const d = await sendRes.json(); throw new Error(d.error || 'Errore'); }
+      setForwardSentTo(toUser);
+      setTimeout(() => setForwardingMsg(null), 1400);
+    } catch (err) { setError(err.message); setTimeout(() => setError(''), 4000); }
+    finally { setForwardBusy(false); }
+  };
 
   const handleInputChange = (e) => {
     const val = e.target.value;
@@ -977,13 +1068,20 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
             return (
               <div key={msg.id} className={`msg-wrapper ${isGrouped ? 'msg-grouped' : ''}`} style={{ alignSelf: isMine ? 'flex-end' : 'flex-start', maxWidth: '82%' }}>
                 <AnimatePresence>
-                  {isMenuOpen && !msg.deleted && isMine && (
+                  {isMenuOpen && !msg.deleted && (
                     <motion.div data-msg-menu initial={{ opacity: 0, scale: 0.9, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
-                      onPointerDown={e => e.stopPropagation()} className="msg-context-menu">
-                      {msg.text && <button className="msg-context-item" onClick={() => startEdit(msg)}><Pencil size={13} /> Modifica</button>}
-                      {confirmDelete === msg.id
+                      onPointerDown={e => e.stopPropagation()} className="msg-context-menu"
+                      style={{ [isMine ? 'right' : 'left']: 0 }}>
+                      {msg.text && (
+                        <button className="msg-context-item" onClick={() => copyMessage(msg.text, msg.id)}>
+                          {copiedMsgId === msg.id ? <><Check size={13} /> Copiato!</> : <><Copy size={13} /> Copia</>}
+                        </button>
+                      )}
+                      {msg.text && <button className="msg-context-item" onClick={() => openForward(msg)}><CornerUpRight size={13} /> Inoltra</button>}
+                      {isMine && msg.text && <button className="msg-context-item" onClick={() => startEdit(msg)}><Pencil size={13} /> Modifica</button>}
+                      {isMine && (confirmDelete === msg.id
                         ? <button className="msg-context-item msg-context-danger" onClick={() => deleteMessage(msg.id)}><Check size={13} /> Conferma</button>
-                        : <button className="msg-context-item msg-context-danger-light" onClick={() => setConfirmDelete(msg.id)}><Trash2 size={13} /> Elimina</button>}
+                        : <button className="msg-context-item msg-context-danger-light" onClick={() => setConfirmDelete(msg.id)}><Trash2 size={13} /> Elimina</button>)}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -994,8 +1092,10 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
                   </div>
                 )}
                 <div className={`msg-bubble ${isMine ? 'msg-mine' : 'msg-theirs'} ${isGrouped ? 'msg-bubble-grouped' : ''}`}
-                  onPointerDown={() => isMine && !msg.deleted && onMsgPointerDown(msg.id)} onPointerUp={onMsgPointerUp} onPointerLeave={onMsgPointerUp}
-                  style={{ cursor: isMine && !msg.deleted ? 'pointer' : 'default' }}>
+                  onPointerDown={(e) => { if (!msg.deleted) { e.preventDefault(); onMsgPointerDown(msg.id); } }}
+                  onPointerUp={onMsgPointerUp} onPointerLeave={onMsgPointerUp}
+                  onContextMenu={(e) => { e.preventDefault(); if (!msg.deleted) openMsgMenu(msg.id); }}
+                  style={{ cursor: msg.deleted ? 'default' : 'pointer' }}>
                   {msg.deleted ? <p className="msg-deleted-text">{'\u{1F5D1}'} Messaggio eliminato</p>
                     : msg.media ? <MediaBubble mediaId={msg.media.mediaId} mediaIv={msg.media.iv} mimeType={msg.media.mimeType} name={msg.media.name} aesKey={aesKey} twitchToken={twitchToken} />
                     : <p className="msg-text">{msg.text}</p>}
@@ -1013,6 +1113,25 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
           <motion.button className="msg-scroll-btn" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={scrollToBottom}>
             <ArrowDown size={16} />
           </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Forward overlay */}
+      <AnimatePresence>
+        {forwardingMsg && (
+          <motion.div className="msg-forward-overlay" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>
+            <div className="msg-forward-header">
+              <CornerUpRight size={14} color="var(--primary)" />
+              <span style={{ flex: 1 }}>Inoltra messaggio</span>
+              <button className="mod-icon-btn" onClick={() => setForwardingMsg(null)} disabled={forwardBusy}><X size={14} /></button>
+            </div>
+            <div className="msg-forward-preview">"{forwardingMsg.text?.slice(0, 80)}{(forwardingMsg.text?.length ?? 0) > 80 ? '…' : ''}"</div>
+            {forwardSentTo ? (
+              <div className="msg-forward-sent"><Check size={14} /> Inoltrato a <strong>{forwardSentTo}</strong></div>
+            ) : (
+              <ForwardFriendList twitchToken={twitchToken} onSelect={sendForward} busy={forwardBusy} />
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
 
