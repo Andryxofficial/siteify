@@ -60,7 +60,15 @@ export async function exportPublicKey(publicKey) {
 }
 
 export async function importPublicKey(jwkString) {
-  const jwk = JSON.parse(jwkString);
+  if (!jwkString || typeof jwkString !== 'string') {
+    throw new Error('Chiave pubblica mancante o non valida.');
+  }
+  let jwk;
+  try { jwk = JSON.parse(jwkString); }
+  catch { throw new Error('Chiave pubblica non è un JSON valido.'); }
+  if (!jwk || jwk.kty !== 'EC' || !jwk.x || !jwk.y) {
+    throw new Error('Chiave pubblica con formato non valido (campi EC mancanti).');
+  }
   return crypto.subtle.importKey(
     'jwk', jwk,
     { name: 'ECDH', namedCurve: 'P-256' },
@@ -70,6 +78,12 @@ export async function importPublicKey(jwkString) {
 }
 
 export async function deriveKey(privateKey, publicKey) {
+  if (!privateKey) {
+    throw new Error('Chiave privata non disponibile. Le chiavi E2E non sono ancora state inizializzate.');
+  }
+  if (!publicKey) {
+    throw new Error('Chiave pubblica del destinatario non disponibile.');
+  }
   return crypto.subtle.deriveKey(
     { name: 'ECDH', public: publicKey },
     privateKey,

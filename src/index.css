@@ -2977,7 +2977,7 @@ body {
 /* ─── UPDATE TOAST ────────────────────────────────────── */
 .update-toast {
   position: fixed;
-  bottom: 5.5rem;
+  bottom: 2rem;
   left: 50%;
   transform: translateX(-50%);
   z-index: 9999;
@@ -3011,8 +3011,25 @@ body {
 @keyframes spin-slow {
   to { transform: rotate(360deg); }
 }
-@media (min-width: 641px) {
+
+/* ── Mobile: position above the floating tab bar ── */
+@media (max-width: 640px) {
   .update-toast {
-    bottom: 2rem;
+    /* Tab bar is ~56px tall + 4px margin-bottom + safe-area + 10px breathing room */
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    left: 1rem;
+    right: 1rem;
+    transform: none;
+    max-width: none;
+    justify-content: center;
+    font-size: 0.78rem;
+    padding: 0.55rem 1rem;
+  }
+  .update-toast:active {
+    transform: scale(0.97);
+  }
+  /* PWA standalone: extra room for taller safe area */
+  .pwa-standalone .update-toast {
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   }
 }

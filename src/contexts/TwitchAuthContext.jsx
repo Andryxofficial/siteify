@@ -142,6 +142,15 @@ export function TwitchAuthProvider({ children }) {
     e2ePrivateKeyRef.current = null;
   }, []);
 
+  /** Allow manual retry of E2E key registration (e.g. after a transient failure) */
+  const retryE2E = useCallback(() => {
+    if (!twitchUser || !twitchToken) return;
+    setE2eReady(false);
+    setE2eError(null);
+    e2ePrivateKeyRef.current = null;
+    registerE2EKeys(twitchUser, twitchToken);
+  }, [twitchUser, twitchToken, registerE2EKeys]);
+
   return (
     <TwitchAuthContext.Provider value={{
       twitchUser,
@@ -157,6 +166,7 @@ export function TwitchAuthProvider({ children }) {
       e2eReady,
       e2eError,
       e2ePrivateKeyRef,
+      retryE2E,
     }}>
       {children}
     </TwitchAuthContext.Provider>
