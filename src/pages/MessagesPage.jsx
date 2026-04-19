@@ -978,9 +978,14 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
 
   const copyMessage = async (text, msgId) => {
     setMenuMsgId(null);
-    try { await navigator.clipboard.writeText(text); } catch { /* silent */ }
-    setCopiedMsgId(msgId);
-    setTimeout(() => setCopiedMsgId(m => m === msgId ? null : m), 1800);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedMsgId(msgId);
+      setTimeout(() => setCopiedMsgId(m => m === msgId ? null : m), 1800);
+    } catch {
+      setError('Impossibile copiare negli appunti.');
+      setTimeout(() => setError(''), 3000);
+    }
   };
 
   const openForward = (msg) => {
@@ -1069,19 +1074,20 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
               <div key={msg.id} className={`msg-wrapper ${isGrouped ? 'msg-grouped' : ''}`} style={{ alignSelf: isMine ? 'flex-end' : 'flex-start', maxWidth: '82%' }}>
                 <AnimatePresence>
                   {isMenuOpen && !msg.deleted && (
-                    <motion.div data-msg-menu initial={{ opacity: 0, scale: 0.9, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
+                    <motion.div data-msg-menu role="menu" aria-label="Opzioni messaggio"
+                      initial={{ opacity: 0, scale: 0.9, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
                       onPointerDown={e => e.stopPropagation()} className="msg-context-menu"
                       style={{ [isMine ? 'right' : 'left']: 0 }}>
                       {msg.text && (
-                        <button className="msg-context-item" onClick={() => copyMessage(msg.text, msg.id)}>
+                        <button role="menuitem" className="msg-context-item" onClick={() => copyMessage(msg.text, msg.id)}>
                           {copiedMsgId === msg.id ? <><Check size={13} /> Copiato!</> : <><Copy size={13} /> Copia</>}
                         </button>
                       )}
-                      {msg.text && <button className="msg-context-item" onClick={() => openForward(msg)}><CornerUpRight size={13} /> Inoltra</button>}
-                      {isMine && msg.text && <button className="msg-context-item" onClick={() => startEdit(msg)}><Pencil size={13} /> Modifica</button>}
+                      {msg.text && <button role="menuitem" className="msg-context-item" onClick={() => openForward(msg)}><CornerUpRight size={13} /> Inoltra</button>}
+                      {isMine && msg.text && <button role="menuitem" className="msg-context-item" onClick={() => startEdit(msg)}><Pencil size={13} /> Modifica</button>}
                       {isMine && (confirmDelete === msg.id
-                        ? <button className="msg-context-item msg-context-danger" onClick={() => deleteMessage(msg.id)}><Check size={13} /> Conferma</button>
-                        : <button className="msg-context-item msg-context-danger-light" onClick={() => setConfirmDelete(msg.id)}><Trash2 size={13} /> Elimina</button>)}
+                        ? <button role="menuitem" className="msg-context-item msg-context-danger" onClick={() => deleteMessage(msg.id)}><Check size={13} /> Conferma</button>
+                        : <button role="menuitem" className="msg-context-item msg-context-danger-light" onClick={() => setConfirmDelete(msg.id)}><Trash2 size={13} /> Elimina</button>)}
                     </motion.div>
                   )}
                 </AnimatePresence>
