@@ -259,8 +259,9 @@ function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onU
             <Fingerprint size={34} color="var(--primary)" style={{ marginBottom: '0.75rem' }} />
             <h2 style={{ fontSize: '1.1rem', marginBottom: '0.3rem' }}>Crea passkey</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.4 }}>
-              La passkey usa la biometria del dispositivo attuale.<br />
-              Aggiungi una <strong>password di recupero</strong> per sbloccare i messaggi anche da PC o altri dispositivi.
+              La passkey usa la biometria del tuo dispositivo.<br />
+              Puoi usarla anche da un altro device tramite QR code.<br />
+              Aggiungi una <strong>password di recupero</strong> come alternativa.
             </p>
             <div style={{ maxWidth: '300px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-faint)', textAlign: 'left', margin: '0 0 0.15rem' }}>Password di recupero (opzionale)</p>
@@ -330,7 +331,7 @@ function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onU
                     </button>
                   ) : (
                     <p style={{ color: 'var(--text-faint)', fontSize: '0.73rem', lineHeight: 1.4, margin: '0.15rem 0 0' }}>
-                      La passkey è legata al dispositivo originale. Se non puoi usarla, torna su quel dispositivo oppure resetta le chiavi.
+                      Se il tuo browser ti propone un QR code, scansionalo col telefono dove hai creato la passkey.
                     </p>
                   )}
                 </>
