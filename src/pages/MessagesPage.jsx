@@ -1266,7 +1266,7 @@ export default function MessagesPage() {
           /* Prima visita assoluta: inizializza tutte come lette per evitare falsi non-letti */
           if (!localStorage.getItem(CHIAVE_ULTIMA_LETTURA)) {
             const init = {};
-            convos.forEach(cv => { init[`${twitchUser}:${cv.user}`] = cv.lastMessageAt || Date.now(); });
+            convos.forEach(cv => { init[`${twitchUser}:${cv.user}`] = cv.lastMessageAt || 0; });
             localStorage.setItem(CHIAVE_ULTIMA_LETTURA, JSON.stringify(init));
             setNonLettiUtenti(new Set());
           } else {
