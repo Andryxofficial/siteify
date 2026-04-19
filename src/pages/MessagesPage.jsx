@@ -187,12 +187,13 @@ function ConversationsList({ conversations, onSelect }) {
 }
 
 /* ─── ChatView ─── */
-function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, onBack }) {
+function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, onBack, onResetE2E }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isKeyError, setIsKeyError] = useState(false);
   const [aesKey, setAesKey] = useState(null);
 
   // Edit state
@@ -240,6 +241,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
           if (!cancelled) {
             setAesKey(key);
             setError('');
+            setIsKeyError(false);
           }
           return; // success
         } catch (e) {
@@ -247,7 +249,8 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
           if (attempt < MAX_DERIVE_RETRIES) {
             await new Promise(r => setTimeout(r, DERIVE_RETRY_DELAY_MS * (attempt + 1)));
           } else if (!cancelled) {
-            setError('Impossibile derivare la chiave di crittografia. Riprova ricaricando la pagina.');
+            setError('Impossibile derivare la chiave di crittografia.');
+            setIsKeyError(true);
             setLoading(false);
           }
         }
@@ -528,9 +531,18 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
         {error && (
           <motion.div
             initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            style={{ overflow: 'hidden', background: 'rgba(239,68,68,0.12)', borderBottom: '1px solid rgba(239,68,68,0.25)', padding: '0.4rem 0.75rem', fontSize: '0.8rem', color: '#f87171', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+            style={{ overflow: 'hidden', background: 'rgba(239,68,68,0.12)', borderBottom: '1px solid rgba(239,68,68,0.25)', padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: '#f87171' }}
           >
-            <AlertTriangle size={13} /> {error}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <AlertTriangle size={13} /> {error}
+            </div>
+            {isKeyError && onResetE2E && (
+              <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <button className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }} onClick={onResetE2E}>
+                  <Shield size={11} /> Reset chiavi E2E
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -712,7 +724,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
 
 /* ─── Main page ─── */
 export default function MessagesPage() {
-  const { isLoggedIn, twitchUser, twitchToken, clientId, getTwitchLoginUrl, e2eReady: ready, e2eError: keyError, e2ePrivateKeyRef: privateKeyRef, retryE2E } = useTwitchAuth();
+  const { isLoggedIn, twitchUser, twitchToken, clientId, getTwitchLoginUrl, e2eReady: ready, e2eError: keyError, e2ePrivateKeyRef: privateKeyRef, retryE2E, resetE2E } = useTwitchAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [conversations, setConversations] = useState([]);
@@ -781,9 +793,14 @@ export default function MessagesPage() {
         <motion.div className="glass-panel" style={{ textAlign: 'center', padding: '2rem', color: 'var(--accent)' }} {...entrata(0.15)}>
           <AlertTriangle size={24} style={{ marginBottom: '0.5rem' }} />
           <p style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>{keyError}</p>
-          <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={retryE2E}>
-            <RefreshCw size={13} /> Riprova
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={retryE2E}>
+              <RefreshCw size={13} /> Riprova
+            </button>
+            <button className="btn btn-ghost" style={{ fontSize: '0.8rem' }} onClick={resetE2E}>
+              <Shield size={13} /> Reset chiavi E2E
+            </button>
+          </div>
         </motion.div>
       ) : (
         <motion.div className="glass-panel" style={{ padding: '1rem', minHeight: '460px' }} {...entrata(0.15)}>
@@ -797,6 +814,7 @@ export default function MessagesPage() {
                   privateKeyRef={privateKeyRef}
                   e2eReady={ready}
                   onBack={goBack}
+                  onResetE2E={resetE2E}
                 />
               </motion.div>
             ) : (
