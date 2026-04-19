@@ -2973,3 +2973,46 @@ body {
     max-height: 220px;
   }
 }
+
+/* ─── UPDATE TOAST ────────────────────────────────────── */
+.update-toast {
+  position: fixed;
+  bottom: 5.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.2rem;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: rgba(30, 40, 64, 0.92);
+  backdrop-filter: blur(24px) saturate(180%);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+  max-width: calc(100vw - 2rem);
+  -webkit-tap-highlight-color: transparent;
+}
+.update-toast:hover {
+  background: rgba(36, 48, 78, 0.96);
+}
+.update-toast:active {
+  transform: translateX(-50%) scale(0.97);
+}
+.update-toast-icon {
+  flex-shrink: 0;
+  animation: spin-slow 2s linear infinite;
+}
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+@media (min-width: 641px) {
+  .update-toast {
+    bottom: 2rem;
+  }
+}

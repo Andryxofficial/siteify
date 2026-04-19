@@ -16,7 +16,6 @@ import {
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import SEO from '../components/SEO';
 import {
-  ensureE2EKeysRegistered,
   importPublicKey,
   deriveKey,
   encryptMessage,
@@ -81,33 +80,6 @@ function tempoMsg(ts) {
   }
   return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
     + ' ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-}
-
-/* ─── useE2EKeys hook ─── */
-function useE2EKeys(twitchUser, twitchToken) {
-  const [ready, setReady] = useState(false);
-  const [error, setError] = useState(null);
-  const privateKeyRef = useRef(null);
-
-  useEffect(() => {
-    if (!twitchUser || !twitchToken) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const privateKey = await ensureE2EKeysRegistered(twitchUser, twitchToken);
-        if (!cancelled) {
-          privateKeyRef.current = privateKey;
-          setReady(true);
-        }
-      } catch (e) {
-        console.error('E2E key setup error:', e);
-        if (!cancelled) setError('Impossibile inizializzare la crittografia. Svuota la cache del browser e riprova.');
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [twitchUser, twitchToken]);
-
-  return { ready, error, privateKeyRef };
 }
 
 /* ─── MediaBubble — decrypt + render image/video ─── */
@@ -721,8 +693,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, onBack }) 
 
 /* ─── Main page ─── */
 export default function MessagesPage() {
-  const { isLoggedIn, twitchUser, twitchToken, clientId, getTwitchLoginUrl } = useTwitchAuth();
-  const { ready, error: keyError, privateKeyRef } = useE2EKeys(twitchUser, twitchToken);
+  const { isLoggedIn, twitchUser, twitchToken, clientId, getTwitchLoginUrl, e2eReady: ready, e2eError: keyError, e2ePrivateKeyRef: privateKeyRef } = useTwitchAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [conversations, setConversations] = useState([]);

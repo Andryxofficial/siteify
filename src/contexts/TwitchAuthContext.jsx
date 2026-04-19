@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { ensureE2EKeysRegistered } from '../utils/e2eKeys';
 
 const CHIAVETWITCH = import.meta.env.VITE_CHIAVETWITCH;
@@ -40,6 +40,33 @@ export function TwitchAuthProvider({ children }) {
   const [twitchToken, setTwitchToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // ── E2E key state (tracked, not fire-and-forget) ──
+  const [e2eReady, setE2eReady] = useState(false);
+  const [e2eError, setE2eError] = useState(null);
+  const e2ePrivateKeyRef = useRef(null);
+
+  /* ── Register E2E keys with retry ── */
+  const registerE2EKeys = useCallback(async (user, token) => {
+    const MAX_RETRIES = 2;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const privateKey = await ensureE2EKeysRegistered(user, token);
+        e2ePrivateKeyRef.current = privateKey;
+        setE2eReady(true);
+        setE2eError(null);
+        return;
+      } catch (e) {
+        console.warn(`E2E key registration attempt ${attempt + 1} failed:`, e);
+        if (attempt === MAX_RETRIES) {
+          setE2eError('Impossibile inizializzare la crittografia.');
+        } else {
+          // Wait before retry (500ms, 1000ms)
+          await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+        }
+      }
+    }
+  }, []);
+
   /* ── Validate a stored token against Twitch ── */
   const validateToken = useCallback(async (token) => {
     try {
@@ -51,9 +78,9 @@ export function TwitchAuthProvider({ children }) {
       setTwitchUser(data.login);
       setTwitchToken(token);
 
-      // Fire-and-forget: ensure E2E keys are ready so the user can receive messages
-      // even before they ever visit /messaggi
-      ensureE2EKeysRegistered(data.login, token).catch((e) => console.warn('Auto E2E key registration failed:', e));
+      // Register E2E keys (tracked with retry, so the user can receive messages
+      // even before they ever visit /messaggi)
+      registerE2EKeys(data.login, token);
 
       // Fetch full profile (display_name, avatar)
       try {
@@ -81,7 +108,7 @@ export function TwitchAuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [registerE2EKeys]);
 
   /* ── On mount: check URL hash for fresh token, else use stored ── */
   useEffect(() => {
@@ -110,6 +137,9 @@ export function TwitchAuthProvider({ children }) {
     setTwitchDisplay(null);
     setTwitchAvatar(null);
     setTwitchToken(null);
+    setE2eReady(false);
+    setE2eError(null);
+    e2ePrivateKeyRef.current = null;
   }, []);
 
   return (
@@ -123,6 +153,10 @@ export function TwitchAuthProvider({ children }) {
       clientId: CHIAVETWITCH,
       logout,
       getTwitchLoginUrl: buildTwitchLoginUrl,
+      // E2E encryption state
+      e2eReady,
+      e2eError,
+      e2ePrivateKeyRef,
     }}>
       {children}
     </TwitchAuthContext.Provider>

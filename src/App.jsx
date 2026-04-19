@@ -7,6 +7,7 @@ import Footer from './components/Footer';
 import PageTransition from './components/PageTransition';
 import useStandalone from './hooks/useStandalone';
 import useScrollToTop from './hooks/useScrollToTop';
+import UpdateToast from './components/UpdateToast';
 import Home from './pages/Home';
 import TwitchPage from './pages/TwitchPage';
 import YouTubePage from './pages/YouTubePage';
@@ -85,6 +86,7 @@ function AppLayout() {
         </PageTransition>
       </AnimatePresence>
       <Footer />
+      <UpdateToast />
     </div>
   );
 }

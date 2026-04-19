@@ -15,10 +15,15 @@ const STATIC_ASSETS = [
 
 // Install: pre-cache key static assets
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
+  // Don't skipWaiting automatically — let the client control when to activate
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
+});
+
+// Listen for client requesting activation
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 // Activate: remove ALL old caches (different CACHE_NAME = new deploy)
