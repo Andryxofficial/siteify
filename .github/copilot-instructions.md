@@ -303,6 +303,7 @@ npm run lint      # ESLint (flat config)
 
 ## 📏 Convenzioni di codice
 
+- **Lingua**: tutto il codice (commenti, stringhe UI, messaggi di errore, documentazione, nomi di costanti leggibili) deve essere scritto in **italiano** o **latino**, mai in inglese. I nomi tecnici di variabili/funzioni legati a framework o API possono restare in inglese (es. `useState`, `useEffect`, `className`), ma i commenti esplicativi e le stringhe visibili all'utente devono essere sempre in italiano.
 - Componenti React in **PascalCase** (`Navbar.jsx`, `Footer.jsx`)
 - File CSS specifici affiancati al componente (`SquirrelRadar.css` vicino a `tracker_scoiattoli.jsx`)
 - Icone da `lucide-react`; solo se mancante usare SVG custom in un componente dedicato
