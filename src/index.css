@@ -52,6 +52,10 @@
   --r-xl:   24px;
   --r-full: 9999px;
 
+  /* Layout */
+  --tab-bar-offset: 72px; /* mobile tab bar total height + breathing room */
+  --tab-bar-offset-pwa: 80px; /* PWA standalone: extra room for taller safe area */
+
   /* Transitions */
   --ease-spring:  cubic-bezier(0.22, 0.68, 0.35, 1);
   --ease-bounce:  cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -3015,8 +3019,7 @@ body {
 /* ── Mobile: position above the floating tab bar ── */
 @media (max-width: 640px) {
   .update-toast {
-    /* Tab bar is ~56px tall + 4px margin-bottom + safe-area + 10px breathing room */
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--tab-bar-offset) + env(safe-area-inset-bottom, 0px));
     left: 1rem;
     right: 1rem;
     transform: none;
@@ -3030,6 +3033,6 @@ body {
   }
   /* PWA standalone: extra room for taller safe area */
   .pwa-standalone .update-toast {
-    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--tab-bar-offset-pwa) + env(safe-area-inset-bottom, 0px));
   }
 }

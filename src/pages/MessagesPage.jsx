@@ -29,6 +29,7 @@ const POLL_ACTIVE = 1500;          // ms when tab is focused
 const POLL_HIDDEN = 6000;          // ms when tab is hidden
 const MAX_FILE_BYTES = 8_000_000;  // 8MB original file limit
 const LONG_PRESS_DURATION = 450;   // ms for mobile long-press context menu
+const DERIVE_RETRY_DELAY_MS = 600; // base delay between key derivation retries (multiplied by attempt)
 // Max base64-encoded encrypted blob accepted by the server (~1.1MB → ~800KB decoded)
 const MAX_MEDIA_B64 = 1_100_000;
 
@@ -244,7 +245,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
         } catch (e) {
           console.error(`Key derivation attempt ${attempt + 1} error:`, e);
           if (attempt < MAX_DERIVE_RETRIES) {
-            await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
+            await new Promise(r => setTimeout(r, DERIVE_RETRY_DELAY_MS * (attempt + 1)));
           } else if (!cancelled) {
             setError('Impossibile derivare la chiave di crittografia. Riprova ricaricando la pagina.');
             setLoading(false);
