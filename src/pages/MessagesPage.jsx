@@ -1262,7 +1262,7 @@ export default function MessagesPage() {
     if (e2eNeedsPassphrase === 'unlock' && getE2EBackupInfo) {
       setLoadingBackupInfo(true);
       getE2EBackupInfo()
-        .then(info => { setBackupInfo(info || null); })
+        .then(info => { setBackupInfo(info); })
         .finally(() => setLoadingBackupInfo(false));
     }
   }, [e2eNeedsPassphrase, getE2EBackupInfo]);
