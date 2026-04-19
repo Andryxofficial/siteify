@@ -161,7 +161,7 @@ function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onU
 
   const handlePasswordSetup = async (e) => {
     e?.preventDefault(); setError('');
-    if (phrase.length < 4) { setError('Almeno 4 caratteri.'); return; }
+    if (phrase.length < 8) { setError('Almeno 8 caratteri.'); return; }
     if (phrase !== confirm) { setError('Le password non corrispondono.'); return; }
     setLoading(true);
     try { await onSetupPassword(phrase); } catch (err) { setError(err.message || 'Errore.'); }
@@ -726,8 +726,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
     const result = [];
     let lastDateStr = '';
     for (const msg of messages) {
-      const d = new Date(Number(msg.createdAt));
-      const ds = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const ds = new Date(Number(msg.createdAt)).toLocaleDateString('it-IT');
       if (ds !== lastDateStr) { result.push({ type: 'date', ts: msg.createdAt, label: dateSeparatorLabel(msg.createdAt) }); lastDateStr = ds; }
       result.push({ type: 'msg', ...msg });
     }
@@ -890,7 +889,11 @@ export default function MessagesPage() {
   const goBack = () => { setActiveChat(null); setShowFriendPicker(false); setShowSettings(false); setSearchParams({}, { replace: true }); loadConversations(); };
 
   const skipPassphrase = async () => {
-    try { await setupE2EPassphrase(crypto.randomUUID()); } catch { retryE2E(); }
+    try {
+      await setupE2EPassphrase(crypto.randomUUID());
+      // Mark as deliberately skipped so we don't show sync banner again
+      sessionStorage.setItem('e2e_sync_skipped', '1');
+    } catch { retryE2E(); }
   };
 
   if (!isLoggedIn) {
@@ -942,7 +945,7 @@ export default function MessagesPage() {
         </span>
       </motion.div>
 
-      {e2eNeedsSync && !showPassphraseSetup && <SyncBanner onSetup={() => setShowPassphraseSetup(true)} />}
+      {e2eNeedsSync && !showPassphraseSetup && !sessionStorage.getItem('e2e_sync_skipped') && <SyncBanner onSetup={() => setShowPassphraseSetup(true)} />}
 
       {showPassphraseSetup && (
         <KeySetupDialog mode="setup"

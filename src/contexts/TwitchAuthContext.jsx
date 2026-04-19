@@ -8,7 +8,6 @@ import {
   decryptPrivateKeyFromBackup,
   generateKeyPair,
   exportPublicKey,
-  isPasskeyPRFAvailable,
   createPasskeyAndEncryptKey,
   authenticatePasskeyAndDecryptKey,
 } from '../utils/e2eKeys';
