@@ -36,6 +36,10 @@ const DERIVE_RETRY_DELAY_MS = 600;
 const MAX_MEDIA_B64 = 1_100_000;
 const NOTIF_PREFS_KEY = 'andryxify_msg_notif_prefs';
 
+/* Chiavi localStorage per il tracciamento dei messaggi non letti */
+const CHIAVE_ULTIMA_LETTURA = 'andryxify_msg_ultima_lettura';
+const CHIAVE_HA_NON_LETTI   = 'andryxify_ha_non_letti';
+
 function safeBlobUrl(url) {
   return typeof url === 'string' && url.startsWith('blob:') ? url : '';
 }
@@ -110,6 +114,41 @@ function getNotifPrefs() {
   catch { return { inApp: true, push: true, sound: true, muted: [] }; }
 }
 function saveNotifPrefs(p) { localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(p)); }
+
+/* ── Helpers per i messaggi non letti ── */
+
+/* Legge la mappa "ultima lettura" dal localStorage: { "utente:amico": timestamp } */
+function leggiUltimaLettura() {
+  try { return JSON.parse(localStorage.getItem(CHIAVE_ULTIMA_LETTURA)) || {}; }
+  catch { return {}; }
+}
+
+/* Salva il timestamp di ultima lettura per una conversazione */
+function salvaUltimaLettura(me, amico, ts) {
+  const dati = leggiUltimaLettura();
+  dati[`${me}:${amico}`] = ts;
+  localStorage.setItem(CHIAVE_ULTIMA_LETTURA, JSON.stringify(dati));
+}
+
+/* Notifica la Navbar (e le altre schede) del cambiamento dello stato non-letti */
+function notificaNonLetti(haNonLetti) {
+  if (haNonLetti) {
+    localStorage.setItem(CHIAVE_HA_NON_LETTI, '1');
+  } else {
+    localStorage.removeItem(CHIAVE_HA_NON_LETTI);
+  }
+  window.dispatchEvent(new CustomEvent('andryxify:non-letti', { detail: { haNonLetti } }));
+}
+
+/* Calcola quali conversazioni hanno messaggi non ancora letti */
+function calcolaNonLetti(conversazioni, me) {
+  const ultimaLettura = leggiUltimaLettura();
+  return new Set(
+    conversazioni
+      .filter(cv => cv.lastMessageAt > (ultimaLettura[`${me}:${cv.user}`] ?? 0))
+      .map(cv => cv.user)
+  );
+}
 
 /* ── MediaBubble ── */
 function MediaBubble({ mediaId, mediaIv, mimeType, name, aesKey, twitchToken }) {
@@ -657,7 +696,7 @@ function NotifSettings({ onClose }) {
 }
 
 /* ── ConversationsList ── */
-function ConversationsList({ conversations, onSelect, onNewMessage, onOpenSettings, onOpenSecuritySettings }) {
+function ConversationsList({ conversations, onSelect, onNewMessage, onOpenSettings, onOpenSecuritySettings, nonLettiUtenti = new Set() }) {
   if (conversations.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
@@ -680,16 +719,23 @@ function ConversationsList({ conversations, onSelect, onNewMessage, onOpenSettin
         <button className="btn btn-primary" onClick={onNewMessage} style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', borderRadius: 'var(--r-full)' }}><Plus size={13} /> Nuova</button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingTop: '0.5rem' }}>
-        {conversations.map(cv => (
-          <motion.button key={cv.user} className="msg-convo-item" onClick={() => onSelect(cv.user)} whileTap={{ scale: 0.98 }}>
-            <div className="msg-avatar">{cv.user[0]?.toUpperCase()}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: '0.92rem' }}>{cv.user}</div>
-              <div className="msg-convo-time"><Clock size={10} /> {tempoRelativo(cv.lastMessageAt)}</div>
-            </div>
-            <ChevronDown size={14} color="var(--text-faint)" style={{ transform: 'rotate(-90deg)', flexShrink: 0 }} />
-          </motion.button>
-        ))}
+        {conversations.map(cv => {
+          const nonLetto = nonLettiUtenti.has(cv.user);
+          return (
+            <motion.button key={cv.user} className="msg-convo-item" onClick={() => onSelect(cv.user)} whileTap={{ scale: 0.98 }}>
+              {/* Avatar con pallino non-letto sovrapposto */}
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <div className="msg-avatar">{cv.user[0]?.toUpperCase()}</div>
+                {nonLetto && <span className="msg-pallino" aria-label="Messaggi non letti" />}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: nonLetto ? 700 : 600, fontSize: '0.92rem' }}>{cv.user}</div>
+                <div className="msg-convo-time"><Clock size={10} /> {tempoRelativo(cv.lastMessageAt)}</div>
+              </div>
+              <ChevronDown size={14} color="var(--text-faint)" style={{ transform: 'rotate(-90deg)', flexShrink: 0 }} />
+            </motion.button>
+          );
+        })}
       </div>
     </div>
   );
@@ -1198,6 +1244,8 @@ export default function MessagesPage() {
   const [showSecuritySettings, setShowSecuritySettings] = useState(false);
   const [showPassphraseSetup, setShowPassphraseSetup] = useState(false);
   const [backupInfo, setBackupInfo] = useState(null);
+  /* Insieme degli utenti con almeno un messaggio non letto */
+  const [nonLettiUtenti, setNonLettiUtenti] = useState(new Set());
 
   useEffect(() => {
     if (e2eNeedsPassphrase === 'unlock' && getE2EBackupInfo) {
@@ -1210,13 +1258,36 @@ export default function MessagesPage() {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}?action=conversations`, { headers: { Authorization: `Bearer ${twitchToken}` } });
-      if (res.ok) { const d = await res.json(); setConversations(d.conversations || []); }
-    } catch { /* silent */ } finally { setLoading(false); }
-  }, [twitchToken]);
+      if (res.ok) {
+        const d = await res.json();
+        const convos = d.conversations || [];
+        setConversations(convos);
+        if (twitchUser) {
+          /* Prima visita assoluta: inizializza tutte come lette per evitare falsi non-letti */
+          if (!localStorage.getItem(CHIAVE_ULTIMA_LETTURA)) {
+            const init = {};
+            convos.forEach(cv => { init[`${twitchUser}:${cv.user}`] = cv.lastMessageAt || Date.now(); });
+            localStorage.setItem(CHIAVE_ULTIMA_LETTURA, JSON.stringify(init));
+            setNonLettiUtenti(new Set());
+          } else {
+            setNonLettiUtenti(calcolaNonLetti(convos, twitchUser));
+          }
+        }
+      }
+    } catch { /* silenzioso */ } finally { setLoading(false); }
+  }, [twitchToken, twitchUser]);
 
   useEffect(() => { if (isLoggedIn && ready) loadConversations(); }, [isLoggedIn, ready, loadConversations]);
 
-  const selectChat = (user) => { setActiveChat(user); setShowFriendPicker(false); setSearchParams({ con: user }, { replace: true }); };
+  /* Notifica la Navbar ogni volta che lo stato non-letti cambia */
+  useEffect(() => { notificaNonLetti(nonLettiUtenti.size > 0); }, [nonLettiUtenti]);
+
+  const selectChat = (user) => {
+    /* Segna la conversazione come letta prima di aprirla */
+    if (twitchUser) salvaUltimaLettura(twitchUser, user, Date.now());
+    setNonLettiUtenti(prev => { const next = new Set(prev); next.delete(user); return next; });
+    setActiveChat(user); setShowFriendPicker(false); setSearchParams({ con: user }, { replace: true });
+  };
   const goBack = () => {
     setActiveChat(null); setShowFriendPicker(false); setShowSettings(false);
     setShowSecuritySettings(false); setSearchParams({}, { replace: true }); loadConversations();
@@ -1225,7 +1296,7 @@ export default function MessagesPage() {
   const skipPassphrase = async () => {
     try {
       await setupE2EPassphrase(crypto.randomUUID());
-      // Mark as deliberately skipped so we don't show sync banner again
+      /* Segna come saltato intenzionalmente per non mostrare più il banner */
       sessionStorage.setItem('e2e_sync_skipped', '1');
     } catch { retryE2E(); }
   };
@@ -1326,7 +1397,8 @@ export default function MessagesPage() {
                 ) : (
                   <ConversationsList conversations={conversations} onSelect={selectChat} onNewMessage={() => setShowFriendPicker(true)}
                     onOpenSettings={() => setShowSettings(true)}
-                    onOpenSecuritySettings={() => setShowSecuritySettings(true)} />
+                    onOpenSecuritySettings={() => setShowSecuritySettings(true)}
+                    nonLettiUtenti={nonLettiUtenti} />
                 )}
               </motion.div>
             )}

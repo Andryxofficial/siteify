@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon } from 'lucide-react';
+import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon, MessageSquare as MessaggiIcon } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 import useScrollHeader from '../hooks/useScrollHeader';
 import { hapticLight } from '../utils/haptics';
 
 const LOGO_URL = '/Firma_Andryx.png';
+
+/* Chiave localStorage condivisa con MessagesPage per il badge non-letti */
+const CHIAVE_NON_LETTI = 'andryxify_ha_non_letti';
 
 const NAV_LINKS = [
   { path: '/',          label: 'Home',      Icon: HomeIcon      },
@@ -17,7 +20,24 @@ const NAV_LINKS = [
   { path: '/podcast',   label: 'Podcast',   Icon: MicIcon       },
   { path: '/tiktok',    label: 'TikTok',    Icon: ({ size }) => <TikTokIcon size={size} /> },
   { path: '/gioco',     label: 'Gioco',     Icon: GameIcon      },
+  { path: '/messaggi',  label: 'Messaggi',  Icon: MessaggiIcon  },
 ];
+
+/* Legge lo stato non-letti dal localStorage e si aggiorna via eventi */
+function useNonLetti() {
+  const [haNonLetti, setHaNonLetti] = useState(() => !!localStorage.getItem(CHIAVE_NON_LETTI));
+  useEffect(() => {
+    const suEvento  = (e) => setHaNonLetti(e.detail?.haNonLetti ?? false);
+    const suStorage = (e) => { if (e.key === CHIAVE_NON_LETTI) setHaNonLetti(!!e.newValue); };
+    window.addEventListener('andryxify:non-letti', suEvento);
+    window.addEventListener('storage', suStorage);
+    return () => {
+      window.removeEventListener('andryxify:non-letti', suEvento);
+      window.removeEventListener('storage', suStorage);
+    };
+  }, []);
+  return haNonLetti;
+}
 
 /* ─────────────────────────────────────────────────────────
    MOBILE BOTTOM TAB BAR  (iOS-style, liquid glass)
@@ -26,7 +46,7 @@ const NAV_LINKS = [
    no DOM measurements, no imperative animate(), works on
    framer-motion v10/11/12.
    ───────────────────────────────────────────────────────── */
-function MobileTabBar({ activePath }) {
+function MobileTabBar({ activePath, haNonLetti }) {
   const activeIdx   = NAV_LINKS.findIndex(l => l.path === activePath);
   const tabWidthPct = 100 / NAV_LINKS.length;
 
@@ -65,7 +85,11 @@ function MobileTabBar({ activePath }) {
                 animate={{ y: isActive ? -2 : 0, scale: isActive ? 1.12 : 1 }}
                 transition={{ type: 'spring', stiffness: 420, damping: 26 }}
               >
-                <Icon size={22} />
+                {/* Pallino non-letti sovrapposto all'icona */}
+                <span style={{ position: 'relative', display: 'flex' }}>
+                  <Icon size={22} />
+                  {path === '/messaggi' && haNonLetti && <span className="tab-pallino" aria-hidden="true" />}
+                </span>
               </motion.span>
               <motion.span
                 className="tab-label"
@@ -95,6 +119,7 @@ export default function Navbar() {
   const linksContainerRef = useRef(null);
   const linkRefs          = useRef({});
   const headerVisible     = useScrollHeader();
+  const haNonLetti        = useNonLetti();
 
   const [hoveredPath, setHoveredPath] = useState(null);
   const [pillPos,     setPillPos]     = useState({ left: 0, width: 0 });
@@ -188,9 +213,11 @@ export default function Navbar() {
                       >
                         <motion.span
                           whileHover={{ scale: 1.15, rotate: 4 }}
-                          style={{ display: 'flex', pointerEvents: 'none' }}
+                          style={{ display: 'flex', pointerEvents: 'none', position: 'relative' }}
                         >
                           <Icon size={16} />
+                          {/* Pallino non-letti sul link Messaggi */}
+                          {path === '/messaggi' && haNonLetti && <span className="nav-pallino" aria-hidden="true" />}
                         </motion.span>
                         <span className="nav-label" style={{ pointerEvents: 'none' }}>{label}</span>
                       </Link>
@@ -203,8 +230,8 @@ export default function Navbar() {
         )}
       </AnimatePresence>
 
-      {/* ── Bottom tab bar (mobile only) ── */}
-      <MobileTabBar activePath={location.pathname} />
+      {/* ── Tab bar inferiore (solo mobile) — passa lo stato non-letti ── */}
+      <MobileTabBar activePath={location.pathname} haNonLetti={haNonLetti} />
     </>
   );
 }
