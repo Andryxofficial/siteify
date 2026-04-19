@@ -331,7 +331,8 @@ function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onU
                     </button>
                   ) : (
                     <p style={{ color: 'var(--text-faint)', fontSize: '0.73rem', lineHeight: 1.4, margin: '0.15rem 0 0' }}>
-                      Se il tuo browser ti propone un QR code, scansionalo col telefono dove hai creato la passkey.
+                      Clicca &quot;Usa passkey&quot; — se il browser mostra un QR code, scansionalo col telefono.<br />
+                      Non funziona? Usa il reset chiavi qui sotto.
                     </p>
                   )}
                 </>
