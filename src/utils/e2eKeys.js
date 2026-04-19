@@ -70,12 +70,19 @@ export async function exportPublicKey(publicKey) {
 }
 
 export async function importPublicKey(jwkString) {
-  if (!jwkString || typeof jwkString !== 'string') {
+  if (!jwkString) {
     throw new Error('Chiave pubblica mancante o non valida.');
   }
   let jwk;
-  try { jwk = JSON.parse(jwkString); }
-  catch { throw new Error('Chiave pubblica non è un JSON valido.'); }
+  if (typeof jwkString === 'string') {
+    try { jwk = JSON.parse(jwkString); }
+    catch { throw new Error('Chiave pubblica non è un JSON valido.'); }
+  } else if (typeof jwkString === 'object' && jwkString !== null) {
+    // @upstash/redis may auto-parse the stored JSON string into an object
+    jwk = jwkString;
+  } else {
+    throw new Error('Chiave pubblica mancante o non valida.');
+  }
   if (!jwk || jwk.kty !== 'EC' || !jwk.x || !jwk.y) {
     throw new Error('Chiave pubblica con formato non valido (campi EC mancanti).');
   }
