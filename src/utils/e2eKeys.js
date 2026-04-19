@@ -77,7 +77,7 @@ export async function importPublicKey(jwkString) {
   if (typeof jwkString === 'string') {
     try { jwk = JSON.parse(jwkString); }
     catch { throw new Error('Chiave pubblica non è un JSON valido.'); }
-  } else if (typeof jwkString === 'object') {
+  } else if (typeof jwkString === 'object' && jwkString !== null) {
     // @upstash/redis may auto-parse the stored JSON string into an object
     jwk = jwkString;
   } else {

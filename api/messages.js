@@ -115,9 +115,14 @@ export default async function handler(req, res) {
       if (!user) return res.status(400).json({ error: 'Username richiesto.' });
       const key = await redis.get(`userkeys:${user}`);
       // @upstash/redis may auto-parse the stored JSON string into an object; normalize to string
-      const publicKey = key !== null && key !== undefined
-        ? (typeof key === 'object' ? JSON.stringify(key) : String(key))
-        : null;
+      let publicKey = null;
+      if (key !== null && key !== undefined) {
+        if (typeof key === 'object') {
+          try { publicKey = JSON.stringify(key); } catch { publicKey = null; }
+        } else {
+          publicKey = String(key);
+        }
+      }
       return res.status(200).json({ user, publicKey });
     }
 
