@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Heart, MessageSquare, Clock, Send, Trash2, User,
-  Twitch,
+  Twitch, Film, Music,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import SEO from '../components/SEO';
@@ -316,6 +316,32 @@ export default function ThreadView() {
 
         {/* Corpo del post */}
         <div className="social-corpo-thread">{post.body}</div>
+
+        {/* Media content */}
+        {post.mediaUrl && post.mediaType === 'video' && (
+          <div className="social-media-preview" style={{ margin: '1rem 0' }}>
+            <video src={post.mediaUrl} controls preload="metadata" className="social-media-video">
+              Il tuo browser non supporta il tag video.
+            </video>
+          </div>
+        )}
+        {post.mediaUrl && post.mediaType === 'audio' && (
+          <div className="social-media-preview" style={{ margin: '1rem 0' }}>
+            <div className="social-media-audio-wrapper">
+              <Music size={16} color="var(--primary)" />
+              <audio src={post.mediaUrl} controls preload="metadata" className="social-media-audio">
+                Il tuo browser non supporta il tag audio.
+              </audio>
+            </div>
+          </div>
+        )}
+        {post.mediaUrl && !post.mediaType && (
+          <div className="social-media-preview" style={{ margin: '1rem 0' }}>
+            <a href={post.mediaUrl} target="_blank" rel="noopener noreferrer" className="social-media-link">
+              <Film size={14} /> Apri media allegato
+            </a>
+          </div>
+        )}
 
         {/* Azioni */}
         <div className="social-azioni-thread">

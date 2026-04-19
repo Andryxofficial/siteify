@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Twitch, Youtube, Instagram, Mic, ArrowUpRight } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
+import DiscordIcon from './DiscordIcon';
 
 const links = [
   {
@@ -42,6 +43,14 @@ const links = [
     icon: <Mic size={22} />,
     url: 'https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9',
     color: '#1DB954',
+  },
+  {
+    id: 'discord',
+    title: 'Discord',
+    desc: 'Chat vocale e community',
+    icon: <DiscordIcon size={22} />,
+    url: 'https://discord.gg/BuckKZ4',
+    color: '#5865F2',
   },
 ];
 

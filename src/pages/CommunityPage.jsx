@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, Heart, Clock, Send, X, ChevronLeft, ChevronRight,
-  Twitch, LogIn, Plus, User, Bell, BellOff, Trophy,
+  Twitch, LogIn, Plus, User, Bell, BellOff, Trophy, Film, Music,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
@@ -84,6 +84,32 @@ function SchedaPost({ post, onMiPiace }) {
             {/* Anteprima testo */}
             <p className="social-anteprima-testo">{post.body}</p>
 
+            {/* Media preview */}
+            {post.mediaUrl && post.mediaType === 'video' && (
+              <div className="social-media-preview" onClick={e => e.preventDefault()}>
+                <video src={post.mediaUrl} controls preload="metadata" className="social-media-video">
+                  Il tuo browser non supporta il tag video.
+                </video>
+              </div>
+            )}
+            {post.mediaUrl && post.mediaType === 'audio' && (
+              <div className="social-media-preview" onClick={e => e.preventDefault()}>
+                <div className="social-media-audio-wrapper">
+                  <Music size={16} color="var(--primary)" />
+                  <audio src={post.mediaUrl} controls preload="metadata" className="social-media-audio">
+                    Il tuo browser non supporta il tag audio.
+                  </audio>
+                </div>
+              </div>
+            )}
+            {post.mediaUrl && !post.mediaType && (
+              <div className="social-media-preview" onClick={e => e.preventDefault()}>
+                <a href={post.mediaUrl} target="_blank" rel="noopener noreferrer" className="social-media-link">
+                  <Film size={14} /> Apri media
+                </a>
+              </div>
+            )}
+
             {/* Azioni */}
             <div className="social-azioni-riga">
               <button
@@ -113,6 +139,8 @@ function EditorPost({ onChiudi, onCreato }) {
   const [titolo, setTitolo] = useState('');
   const [testo, setTesto] = useState('');
   const [categoria, setCategoria] = useState('generale');
+  const [mediaUrl, setMediaUrl] = useState('');
+  const [mediaType, setMediaType] = useState('');
   const [invio, setInvio] = useState(false);
   const [errore, setErrore] = useState('');
 
@@ -122,13 +150,18 @@ function EditorPost({ onChiudi, onCreato }) {
     setInvio(true);
     setErrore('');
     try {
+      const payload = { title: titolo.trim(), body: testo.trim(), tag: categoria };
+      if (mediaUrl.trim()) {
+        payload.mediaUrl = mediaUrl.trim();
+        payload.mediaType = mediaType || '';
+      }
       const res = await fetch('/api/community', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${twitchToken}`,
         },
-        body: JSON.stringify({ title: titolo.trim(), body: testo.trim(), tag: categoria }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Errore');
@@ -203,6 +236,37 @@ function EditorPost({ onChiudi, onCreato }) {
           className="social-campo social-area-testo"
           required
         />
+
+        {/* Media URL (optional) */}
+        <div className="social-media-sezione">
+          <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.4rem' }}>
+            {[
+              { value: '',      label: '📝 Testo' },
+              { value: 'video', label: '🎥 Video' },
+              { value: 'audio', label: '🎵 Audio' },
+            ].map(t => (
+              <button key={t.value} type="button" className="chip" onClick={() => setMediaType(t.value)}
+                style={{
+                  fontSize: '0.68rem', padding: '2px 8px', cursor: 'pointer',
+                  background: mediaType === t.value ? 'rgba(var(--primary-rgb, 99,102,241), 0.15)' : 'transparent',
+                  color: mediaType === t.value ? 'var(--primary)' : 'var(--text-faint)',
+                  border: `1px solid ${mediaType === t.value ? 'var(--primary)' : 'var(--glass-border)'}`,
+                }}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {mediaType && (
+            <input
+              type="url"
+              placeholder={mediaType === 'video' ? 'https://esempio.com/video.mp4' : 'https://esempio.com/audio.mp3'}
+              value={mediaUrl}
+              onChange={(e) => setMediaUrl(e.target.value)}
+              className="social-campo"
+              style={{ fontSize: '0.82rem' }}
+            />
+          )}
+        </div>
 
         <div className="social-editor-piede">
           <span className="social-contatore">{testo.length}/2000</span>
