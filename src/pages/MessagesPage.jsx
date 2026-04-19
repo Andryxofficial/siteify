@@ -14,6 +14,7 @@ import {
   Loader, Shield, Clock, AlertTriangle, Pencil, Trash2, X, Plus,
   Image as ImageIcon, Check, RefreshCw, Bell,
   KeyRound, ChevronDown, Search, Fingerprint, Key,
+  Copy, CornerUpRight,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
@@ -259,8 +260,9 @@ function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onU
             <Fingerprint size={34} color="var(--primary)" style={{ marginBottom: '0.75rem' }} />
             <h2 style={{ fontSize: '1.1rem', marginBottom: '0.3rem' }}>Crea passkey</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.4 }}>
-              La passkey usa la biometria del dispositivo attuale.<br />
-              Aggiungi una <strong>password di recupero</strong> per sbloccare i messaggi anche da PC o altri dispositivi.
+              La passkey usa la biometria del tuo dispositivo.<br />
+              Puoi usarla anche da un altro device tramite QR code.<br />
+              Aggiungi una <strong>password di recupero</strong> come alternativa.
             </p>
             <div style={{ maxWidth: '300px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-faint)', textAlign: 'left', margin: '0 0 0.15rem' }}>Password di recupero (opzionale)</p>
@@ -330,7 +332,8 @@ function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onU
                     </button>
                   ) : (
                     <p style={{ color: 'var(--text-faint)', fontSize: '0.73rem', lineHeight: 1.4, margin: '0.15rem 0 0' }}>
-                      La passkey è legata al dispositivo originale. Se non puoi usarla, torna su quel dispositivo oppure resetta le chiavi.
+                      Clicca &quot;Usa passkey&quot; — se il browser mostra un QR code, scansionalo col telefono dove hai creato la passkey.<br />
+                      Se non funziona, usa il pulsante &quot;Hai dimenticato? Reset chiavi&quot; qui sotto.
                     </p>
                   )}
                 </>
@@ -411,7 +414,161 @@ function SyncBanner({ onSetup }) {
   );
 }
 
-/* ── FriendPicker ── */
+/* ── SecuritySettings ── */
+function SecuritySettings({ onClose, onShowSetup }) {
+  const { getE2EBackupInfo, resetE2E, addE2EPasswordFallback } = useTwitchAuth();
+  const [info, setInfo] = useState(null);
+  const [loadingInfo, setLoadingInfo] = useState(true);
+  const [fallbackPhrase, setFallbackPhrase] = useState('');
+  const [fallbackConfirm, setFallbackConfirm] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  useEffect(() => {
+    getE2EBackupInfo().then(i => { setInfo(i); setLoadingInfo(false); });
+  }, [getE2EBackupInfo]);
+
+  const handleAddFallback = async (e) => {
+    e?.preventDefault();
+    setError(''); setSuccess('');
+    if (fallbackPhrase.length < 8) { setError('Almeno 8 caratteri.'); return; }
+    if (fallbackPhrase !== fallbackConfirm) { setError('Le password non corrispondono.'); return; }
+    setBusy(true);
+    try {
+      await addE2EPasswordFallback(fallbackPhrase);
+      setInfo(i => ({ ...i, hasPasswordFallback: true }));
+      setSuccess('Password di recupero salvata con successo.');
+      setFallbackPhrase(''); setFallbackConfirm('');
+    } catch (err) { setError(err.message || 'Errore nel salvataggio.'); }
+    finally { setBusy(false); }
+  };
+
+  const handleReset = async () => {
+    setBusy(true);
+    try { await resetE2E(); onClose(); }
+    catch (err) { setError(err.message || 'Errore nel reset.'); setBusy(false); }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 0', borderBottom: '1px solid var(--glass-border)' }}>
+        <button className="mod-icon-btn" onClick={onClose}><ArrowLeft size={16} /></button>
+        <span style={{ fontWeight: 600, flex: 1, fontSize: '1rem' }}>Sicurezza chiavi E2E</span>
+        <Shield size={15} color="var(--primary)" />
+      </div>
+
+      <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+        {/* Status card */}
+        <div className="glass-card" style={{ padding: '0.85rem 1rem' }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stato backup chiavi</div>
+          {loadingInfo ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}><Loader size={13} className="spin" /> Caricamento…</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              {info ? (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {info.method === 'passkey' ? <Fingerprint size={14} color="#22c55e" /> : <Key size={14} color="#22c55e" />}
+                    <span style={{ fontWeight: 600, fontSize: '0.88rem', color: '#22c55e' }}>
+                      {info.method === 'passkey' ? 'Passkey' : 'Password'}
+                    </span>
+                    <span className="chip" style={{ fontSize: '0.68rem', background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)', padding: '0 0.4rem' }}>Attivo</span>
+                  </div>
+                  {info.method === 'passkey' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: info.hasPasswordFallback ? '#22c55e' : 'var(--text-faint)' }}>
+                      {info.hasPasswordFallback ? <Check size={12} /> : <X size={12} />}
+                      Password di recupero {info.hasPasswordFallback ? 'configurata' : 'non configurata'}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem' }}>
+                  <AlertTriangle size={14} color="#f87171" style={{ marginTop: '0.1rem', flexShrink: 0 }} />
+                  <p style={{ fontSize: '0.82rem', color: '#f87171', margin: 0, lineHeight: 1.4 }}>
+                    Nessun backup attivo. Se perdi questo dispositivo, le chat non saranno recuperabili.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Success message */}
+        <AnimatePresence>
+          {success && (
+            <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', color: '#22c55e' }}>
+              <Check size={14} /> {success}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Add password fallback — only when passkey is active but no fallback yet */}
+        {!loadingInfo && info?.method === 'passkey' && !info.hasPasswordFallback && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+              <Key size={13} style={{ verticalAlign: 'middle', marginRight: '0.3rem' }} />Aggiungi password di recupero
+            </div>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-faint)', margin: 0, lineHeight: 1.4 }}>
+              Permette di sbloccare i messaggi da PC o dispositivi dove la passkey non è disponibile.
+            </p>
+            <form onSubmit={handleAddFallback} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <input type="password" className="mod-input" placeholder="Password di recupero (min 8 caratteri)"
+                value={fallbackPhrase} onChange={e => setFallbackPhrase(e.target.value)} autoComplete="new-password" />
+              <input type="password" className="mod-input" placeholder="Conferma password"
+                value={fallbackConfirm} onChange={e => setFallbackConfirm(e.target.value)} autoComplete="new-password" />
+              <AnimatePresence>
+                {error && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ color: '#f87171', fontSize: '0.78rem', margin: 0 }}>{error}</motion.p>}
+              </AnimatePresence>
+              <button type="submit" className="btn btn-primary" disabled={busy} style={{ fontSize: '0.82rem' }}>
+                {busy ? <Loader size={13} className="spin" /> : <><Key size={13} /> Salva password</>}
+              </button>
+            </form>
+          </div>
+        )}
+
+        <hr style={{ border: 'none', borderTop: '1px solid var(--glass-border)', margin: 0 }} />
+
+        {/* Change backup method */}
+        <button className="btn btn-ghost" style={{ fontSize: '0.82rem', justifyContent: 'flex-start', gap: '0.5rem' }}
+          onClick={() => { onClose(); onShowSetup(); }}>
+          <KeyRound size={14} /> {info ? 'Cambia metodo di backup' : 'Configura backup'}
+        </button>
+
+        {/* Reset keys */}
+        {!confirmReset ? (
+          <button className="btn btn-ghost" style={{ fontSize: '0.82rem', color: 'var(--accent)', justifyContent: 'flex-start', gap: '0.5rem' }}
+            onClick={() => { setError(''); setConfirmReset(true); }} disabled={busy}>
+            <AlertTriangle size={14} /> Reset chiavi E2E
+          </button>
+        ) : (
+          <div className="glass-card" style={{ padding: '0.85rem', border: '1px solid rgba(248,113,113,0.3)' }}>
+            <p style={{ fontSize: '0.8rem', color: '#f87171', marginBottom: '0.6rem', lineHeight: 1.4 }}>
+              ⚠️ Genera nuove chiavi — i vecchi messaggi cifrati non saranno più leggibili.
+            </p>
+            <AnimatePresence>
+              {error && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ color: '#f87171', fontSize: '0.78rem', margin: '0 0 0.5rem' }}>{error}</motion.p>}
+            </AnimatePresence>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button className="btn btn-primary" style={{ fontSize: '0.78rem', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+                onClick={handleReset} disabled={busy}>
+                {busy ? <Loader size={12} className="spin" /> : 'Conferma reset'}
+              </button>
+              <button className="btn btn-ghost" style={{ fontSize: '0.78rem' }} onClick={() => setConfirmReset(false)} disabled={busy}>
+                Annulla
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+
 function FriendPicker({ twitchToken, existingConvos, onSelect, onClose }) {
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -500,7 +657,7 @@ function NotifSettings({ onClose }) {
 }
 
 /* ── ConversationsList ── */
-function ConversationsList({ conversations, onSelect, onNewMessage, onOpenSettings }) {
+function ConversationsList({ conversations, onSelect, onNewMessage, onOpenSettings, onOpenSecuritySettings }) {
   if (conversations.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
@@ -508,6 +665,9 @@ function ConversationsList({ conversations, onSelect, onNewMessage, onOpenSettin
         <p style={{ fontSize: '1rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Nessuna conversazione</p>
         <p style={{ fontSize: '0.82rem', color: 'var(--text-faint)', marginBottom: '1rem', lineHeight: 1.4 }}>Inizia a chattare con i tuoi amici.<br/>I messaggi sono crittografati E2E.</p>
         <button className="btn btn-primary" onClick={onNewMessage} style={{ fontSize: '0.88rem' }}><Plus size={15} /> Nuovo messaggio</button>
+        <button className="btn btn-ghost" style={{ fontSize: '0.78rem', marginTop: '0.5rem', display: 'inline-flex' }} onClick={onOpenSecuritySettings}>
+          <Shield size={13} /> Sicurezza chiavi
+        </button>
       </div>
     );
   }
@@ -515,6 +675,7 @@ function ConversationsList({ conversations, onSelect, onNewMessage, onOpenSettin
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0', borderBottom: '1px solid var(--glass-border)' }}>
         <span style={{ flex: 1, fontWeight: 600, fontSize: '0.95rem' }}>Chat</span>
+        <button className="mod-icon-btn" title="Sicurezza chiavi" onClick={onOpenSecuritySettings}><Shield size={15} /></button>
         <button className="mod-icon-btn" title="Notifiche" onClick={onOpenSettings}><Bell size={15} /></button>
         <button className="btn btn-primary" onClick={onNewMessage} style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', borderRadius: 'var(--r-full)' }}><Plus size={13} /> Nuova</button>
       </div>
@@ -531,6 +692,56 @@ function ConversationsList({ conversations, onSelect, onNewMessage, onOpenSettin
         ))}
       </div>
     </div>
+  );
+}
+
+/* ── ForwardFriendList ── */
+function ForwardFriendList({ twitchToken, onSelect, busy }) {
+  const [friends, setFriends] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    let c = false;
+    (async () => {
+      try {
+        const res = await fetch(FRIENDS_API, { headers: { Authorization: `Bearer ${twitchToken}` } });
+        if (res.ok) { const d = await res.json(); if (!c) setFriends(d.friends || []); }
+      } catch { /* silent */ } finally { if (!c) setLoading(false); }
+    })();
+    return () => { c = true; };
+  }, [twitchToken]);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    return q ? friends.filter(f => f.toLowerCase().includes(q)) : friends;
+  }, [friends, search]);
+
+  return (
+    <>
+      <div style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--glass-border)', flexShrink: 0 }}>
+        <div style={{ position: 'relative' }}>
+          <Search size={13} style={{ position: 'absolute', left: '0.6rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
+          <input type="text" className="mod-input" placeholder="Cerca amico…" value={search} onChange={e => setSearch(e.target.value)}
+            style={{ paddingLeft: '2rem', fontSize: '0.82rem', padding: '0.35rem 0.75rem 0.35rem 2rem' }} />
+        </div>
+      </div>
+      <div className="msg-forward-list">
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)' }}><Loader size={16} className="spin" /></div>
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-faint)', fontSize: '0.82rem' }}>
+            {friends.length === 0 ? 'Nessun amico.' : 'Nessun risultato.'}
+          </div>
+        ) : filtered.map(f => (
+          <button key={f} className="msg-forward-friend" onClick={() => onSelect(f)} disabled={busy}>
+            <div className="msg-avatar" style={{ width: 30, height: 30, fontSize: '0.8rem', flexShrink: 0 }}>{f[0]?.toUpperCase()}</div>
+            <span>{f}</span>
+            {busy && <Loader size={12} className="spin" style={{ marginLeft: 'auto' }} />}
+          </button>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -551,6 +762,10 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [mediaUploading, setMediaUploading] = useState(false);
   const [mediaPreview, setMediaPreview] = useState(null);
+  const [forwardingMsg, setForwardingMsg] = useState(null);
+  const [forwardBusy, setForwardBusy] = useState(false);
+  const [forwardSentTo, setForwardSentTo] = useState(null);
+  const [copiedMsgId, setCopiedMsgId] = useState(null);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -759,6 +974,47 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
 
   const onMsgPointerDown = (msgId) => { longPressRef.current = setTimeout(() => setMenuMsgId(msgId), LONG_PRESS_DURATION); };
   const onMsgPointerUp = () => { if (longPressRef.current) clearTimeout(longPressRef.current); };
+  const openMsgMenu = (msgId) => { clearTimeout(longPressRef.current); setMenuMsgId(msgId); };
+
+  const copyMessage = async (text, msgId) => {
+    setMenuMsgId(null);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedMsgId(msgId);
+      setTimeout(() => setCopiedMsgId(m => m === msgId ? null : m), 1800);
+    } catch {
+      setError('Impossibile copiare negli appunti.');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const openForward = (msg) => {
+    setMenuMsgId(null);
+    setForwardSentTo(null);
+    setForwardingMsg(msg);
+  };
+
+  const sendForward = async (toUser) => {
+    if (!forwardingMsg?.text || !privateKeyRef.current || forwardBusy) return;
+    setForwardBusy(true);
+    try {
+      const res = await fetch(`${API_URL}?action=key&user=${encodeURIComponent(toUser)}`);
+      const data = await res.json();
+      if (!data.publicKey) throw new Error(`${toUser} non ha ancora la chiave pubblica.`);
+      const theirPub = await importPublicKey(data.publicKey);
+      const fwdKey = await deriveKey(privateKeyRef.current, theirPub);
+      const { encrypted, iv } = await encryptMessage(fwdKey, forwardingMsg.text);
+      const sendRes = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+        body: JSON.stringify({ action: 'send', to: toUser, encrypted, iv }),
+      });
+      if (!sendRes.ok) { const d = await sendRes.json(); throw new Error(d.error || 'Errore'); }
+      setForwardSentTo(toUser);
+      setTimeout(() => setForwardingMsg(null), 1400);
+    } catch (err) { setError(err.message); setTimeout(() => setError(''), 4000); }
+    finally { setForwardBusy(false); }
+  };
 
   const handleInputChange = (e) => {
     const val = e.target.value;
@@ -817,13 +1073,21 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
             return (
               <div key={msg.id} className={`msg-wrapper ${isGrouped ? 'msg-grouped' : ''}`} style={{ alignSelf: isMine ? 'flex-end' : 'flex-start', maxWidth: '82%' }}>
                 <AnimatePresence>
-                  {isMenuOpen && !msg.deleted && isMine && (
-                    <motion.div data-msg-menu initial={{ opacity: 0, scale: 0.9, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
-                      onPointerDown={e => e.stopPropagation()} className="msg-context-menu">
-                      {msg.text && <button className="msg-context-item" onClick={() => startEdit(msg)}><Pencil size={13} /> Modifica</button>}
-                      {confirmDelete === msg.id
-                        ? <button className="msg-context-item msg-context-danger" onClick={() => deleteMessage(msg.id)}><Check size={13} /> Conferma</button>
-                        : <button className="msg-context-item msg-context-danger-light" onClick={() => setConfirmDelete(msg.id)}><Trash2 size={13} /> Elimina</button>}
+                  {isMenuOpen && !msg.deleted && (
+                    <motion.div data-msg-menu role="menu" aria-label="Opzioni messaggio"
+                      initial={{ opacity: 0, scale: 0.9, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
+                      onPointerDown={e => e.stopPropagation()} className="msg-context-menu"
+                      style={{ [isMine ? 'right' : 'left']: 0 }}>
+                      {msg.text && (
+                        <button role="menuitem" className="msg-context-item" onClick={() => copyMessage(msg.text, msg.id)}>
+                          {copiedMsgId === msg.id ? <><Check size={13} /> Copiato!</> : <><Copy size={13} /> Copia</>}
+                        </button>
+                      )}
+                      {msg.text && <button role="menuitem" className="msg-context-item" onClick={() => openForward(msg)}><CornerUpRight size={13} /> Inoltra</button>}
+                      {isMine && msg.text && <button role="menuitem" className="msg-context-item" onClick={() => startEdit(msg)}><Pencil size={13} /> Modifica</button>}
+                      {isMine && (confirmDelete === msg.id
+                        ? <button role="menuitem" className="msg-context-item msg-context-danger" onClick={() => deleteMessage(msg.id)}><Check size={13} /> Conferma</button>
+                        : <button role="menuitem" className="msg-context-item msg-context-danger-light" onClick={() => setConfirmDelete(msg.id)}><Trash2 size={13} /> Elimina</button>)}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -834,8 +1098,10 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
                   </div>
                 )}
                 <div className={`msg-bubble ${isMine ? 'msg-mine' : 'msg-theirs'} ${isGrouped ? 'msg-bubble-grouped' : ''}`}
-                  onPointerDown={() => isMine && !msg.deleted && onMsgPointerDown(msg.id)} onPointerUp={onMsgPointerUp} onPointerLeave={onMsgPointerUp}
-                  style={{ cursor: isMine && !msg.deleted ? 'pointer' : 'default' }}>
+                  onPointerDown={(e) => { if (!msg.deleted) { e.preventDefault(); onMsgPointerDown(msg.id); } }}
+                  onPointerUp={onMsgPointerUp} onPointerLeave={onMsgPointerUp}
+                  onContextMenu={(e) => { e.preventDefault(); if (!msg.deleted) openMsgMenu(msg.id); }}
+                  style={{ cursor: msg.deleted ? 'default' : 'pointer' }}>
                   {msg.deleted ? <p className="msg-deleted-text">{'\u{1F5D1}'} Messaggio eliminato</p>
                     : msg.media ? <MediaBubble mediaId={msg.media.mediaId} mediaIv={msg.media.iv} mimeType={msg.media.mimeType} name={msg.media.name} aesKey={aesKey} twitchToken={twitchToken} />
                     : <p className="msg-text">{msg.text}</p>}
@@ -853,6 +1119,25 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
           <motion.button className="msg-scroll-btn" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={scrollToBottom}>
             <ArrowDown size={16} />
           </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Forward overlay */}
+      <AnimatePresence>
+        {forwardingMsg && (
+          <motion.div className="msg-forward-overlay" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>
+            <div className="msg-forward-header">
+              <CornerUpRight size={14} color="var(--primary)" />
+              <span style={{ flex: 1 }}>Inoltra messaggio</span>
+              <button className="mod-icon-btn" onClick={() => setForwardingMsg(null)} disabled={forwardBusy}><X size={14} /></button>
+            </div>
+            <div className="msg-forward-preview">"{forwardingMsg.text?.slice(0, 80)}{(forwardingMsg.text?.length ?? 0) > 80 ? '…' : ''}"</div>
+            {forwardSentTo ? (
+              <div className="msg-forward-sent"><Check size={14} /> Inoltrato a <strong>{forwardSentTo}</strong></div>
+            ) : (
+              <ForwardFriendList twitchToken={twitchToken} onSelect={sendForward} busy={forwardBusy} />
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -910,6 +1195,7 @@ export default function MessagesPage() {
   const [activeChat, setActiveChat] = useState(searchParams.get('con') || null);
   const [showFriendPicker, setShowFriendPicker] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showSecuritySettings, setShowSecuritySettings] = useState(false);
   const [showPassphraseSetup, setShowPassphraseSetup] = useState(false);
   const [backupInfo, setBackupInfo] = useState(null);
 
@@ -931,7 +1217,10 @@ export default function MessagesPage() {
   useEffect(() => { if (isLoggedIn && ready) loadConversations(); }, [isLoggedIn, ready, loadConversations]);
 
   const selectChat = (user) => { setActiveChat(user); setShowFriendPicker(false); setSearchParams({ con: user }, { replace: true }); };
-  const goBack = () => { setActiveChat(null); setShowFriendPicker(false); setShowSettings(false); setSearchParams({}, { replace: true }); loadConversations(); };
+  const goBack = () => {
+    setActiveChat(null); setShowFriendPicker(false); setShowSettings(false);
+    setShowSecuritySettings(false); setSearchParams({}, { replace: true }); loadConversations();
+  };
 
   const skipPassphrase = async () => {
     try {
@@ -990,12 +1279,12 @@ export default function MessagesPage() {
         </span>
       </motion.div>
 
-      {e2eNeedsSync && !showPassphraseSetup && !sessionStorage.getItem('e2e_sync_skipped') && <SyncBanner onSetup={() => setShowPassphraseSetup(true)} />}
+      {e2eNeedsSync && !showPassphraseSetup && !showSecuritySettings && !sessionStorage.getItem('e2e_sync_skipped') && <SyncBanner onSetup={() => setShowPassphraseSetup(true)} />}
 
       {showPassphraseSetup && (
         <KeySetupDialog mode="setup"
           onSetupPassword={async (p) => { await setupE2EPassphrase(p); setShowPassphraseSetup(false); }}
-          onSetupPasskey={async () => { await setupE2EPasskey(); setShowPassphraseSetup(false); }}
+          onSetupPasskey={async (fp) => { await setupE2EPasskey(fp); setShowPassphraseSetup(false); }}
           onSkip={() => setShowPassphraseSetup(false)} />
       )}
 
@@ -1023,12 +1312,21 @@ export default function MessagesPage() {
               <motion.div key="settings" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <NotifSettings onClose={() => setShowSettings(false)} />
               </motion.div>
+            ) : showSecuritySettings ? (
+              <motion.div key="security" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                <SecuritySettings
+                  onClose={() => setShowSecuritySettings(false)}
+                  onShowSetup={() => { setShowSecuritySettings(false); setShowPassphraseSetup(true); }}
+                />
+              </motion.div>
             ) : (
               <motion.div key="list" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
                 {loading ? (
                   <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}><Loader size={20} className="spin" /> Caricamento…</div>
                 ) : (
-                  <ConversationsList conversations={conversations} onSelect={selectChat} onNewMessage={() => setShowFriendPicker(true)} onOpenSettings={() => setShowSettings(true)} />
+                  <ConversationsList conversations={conversations} onSelect={selectChat} onNewMessage={() => setShowFriendPicker(true)}
+                    onOpenSettings={() => setShowSettings(true)}
+                    onOpenSecuritySettings={() => setShowSecuritySettings(true)} />
                 )}
               </motion.div>
             )}

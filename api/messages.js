@@ -500,6 +500,30 @@ export default async function handler(req, res) {
       }
     }
 
+    // Add or update password fallback on an existing backup (for passkey backups)
+    if (action === 'add_password_fallback') {
+      const encryptedPrivateKey = sanitize(req.body.encryptedPrivateKey, 5000);
+      const salt = sanitize(req.body.salt, 100);
+      const iv = sanitize(req.body.iv, 100);
+      if (!encryptedPrivateKey || !salt || !iv) {
+        return res.status(400).json({ error: 'Dati mancanti per il backup password.' });
+      }
+      try {
+        const raw = await redis.get(`e2e_backup:${me}`);
+        if (!raw) return res.status(404).json({ error: 'Nessun backup trovato. Configura prima un metodo di backup.' });
+        const backup = typeof raw === 'string' ? JSON.parse(raw) : { ...raw };
+        if (backup.method !== 'passkey') {
+          return res.status(400).json({ error: 'La password di recupero può essere aggiunta solo a un backup passkey.' });
+        }
+        backup.passwordBackup = { encryptedPrivateKey, salt, iv };
+        await redis.set(`e2e_backup:${me}`, JSON.stringify(backup));
+        return res.status(200).json({ ok: true });
+      } catch (e) {
+        console.error('add_password_fallback error:', e);
+        return res.status(500).json({ error: 'Errore nel salvataggio.' });
+      }
+    }
+
     // Save notification preferences
     if (action === 'save_notif_prefs') {
       const prefs = req.body.prefs;

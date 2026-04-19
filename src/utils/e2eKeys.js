@@ -299,12 +299,17 @@ export async function decryptPrivateKeyFromBackup(encryptedPrivateKey, saltB64, 
 
 const PRF_SALT = new TextEncoder().encode('ANDRYXify-e2e-v1');
 
-/** Check if passkeys with PRF extension are available on this device */
+/** Check if passkeys with PRF extension are available (locally or via cross-device hybrid) */
 export async function isPasskeyPRFAvailable() {
   if (typeof window === 'undefined' || !window.PublicKeyCredential) return false;
   try {
+    // Platform authenticator (Face ID, Touch ID, Windows Hello) → best case
     const platformOk = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-    return platformOk;
+    if (platformOk) return true;
+    // No local platform authenticator, but WebAuthn is still available.
+    // The browser can use hybrid transport (phone-as-authenticator via QR + Bluetooth)
+    // so passkeys should still be offered.
+    return true;
   } catch { return false; }
 }
 
@@ -341,7 +346,6 @@ export async function createPasskeyAndEncryptKey(username, privateKey) {
         { alg: -257, type: 'public-key' },
       ],
       authenticatorSelection: {
-        authenticatorAttachment: 'platform',
         userVerification: 'required',
         residentKey: 'preferred',
       },
@@ -381,6 +385,7 @@ export async function authenticatePasskeyAndDecryptKey(encryptedPrivateKey, ivB6
     allowCredentials.push({
       id: Uint8Array.from(atob(credentialIdB64), c => c.charCodeAt(0)),
       type: 'public-key',
+      transports: ['internal', 'hybrid'],
     });
   }
 
