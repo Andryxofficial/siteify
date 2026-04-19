@@ -18,6 +18,7 @@ import CommunityPage from './pages/CommunityPage';
 import ThreadView from './components/ThreadView';
 //segreto
 import Scoiattoli from './pages/tracker_scoiattoli';
+import ModPanel from './pages/ModPanel';
 import './index.css';
 
 /* ─── Gestore globale OAuth Twitch ───
@@ -74,6 +75,7 @@ function AppLayout() {
             <Route path="/socialify/:postId" element={<ThreadView />} />
 
             <Route path="/scoiattoli" element={<Scoiattoli />} />
+            <Route path="/mod-panel" element={<ModPanel />} />
             
           </Routes>
         </PageTransition>

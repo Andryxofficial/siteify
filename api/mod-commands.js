@@ -7,8 +7,14 @@ import { Redis } from '@upstash/redis';
  * (streamer + moderators).
  *
  * Redis data model:
- *   mod:commands  → Hash  { trigger: JSON string with response, cooldown }
+ *   mod:commands  → Hash  { trigger: JSON string with response, cooldown, permission }
  *   mod:timers    → Hash  { name: JSON string with message, interval, enabled }
+ *
+ * Permission levels for commands:
+ *   "everyone"    — any viewer can use the command
+ *   "subscriber"  — only subscribers (and above)
+ *   "vip"         — only VIPs (and above)
+ *   "mod"         — only moderators and broadcaster
  *
  * Auth: Authorization: Bearer <twitchAccessToken>
  *       User's login must be in MOD_USERNAMES env var (comma-separated).
@@ -25,6 +31,7 @@ const MAX_TRIGGER = 50;
 const MAX_RESPONSE = 500;
 const MAX_TIMER_NAME = 50;
 const MAX_TIMER_MSG = 500;
+const VALID_PERMISSIONS = ['everyone', 'subscriber', 'vip', 'mod'];
 
 function sanitize(str, maxLen) {
   if (typeof str !== 'string') return '';
@@ -105,7 +112,7 @@ export default async function handler(req, res) {
             const parsed = typeof val === 'string' ? JSON.parse(val) : val;
             commands.push({ trigger, ...parsed });
           } catch {
-            commands.push({ trigger, response: String(val), cooldown: 0 });
+            commands.push({ trigger, response: String(val), cooldown: 0, permission: 'everyone' });
           }
         }
       }
@@ -148,6 +155,7 @@ export default async function handler(req, res) {
         const trigger = sanitize(req.body.trigger, MAX_TRIGGER).toLowerCase().replace(/^!/, '');
         const response = sanitize(req.body.response, MAX_RESPONSE);
         const cooldown = Math.max(0, Math.min(3600, parseInt(req.body.cooldown) || 0));
+        const permission = VALID_PERMISSIONS.includes(req.body.permission) ? req.body.permission : 'everyone';
 
         if (!trigger || trigger.length < 1) {
           return res.status(400).json({ error: 'Il trigger del comando è obbligatorio.' });
@@ -156,8 +164,8 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: 'La risposta del comando è obbligatoria.' });
         }
 
-        await redis.hset(COMMANDS_KEY, { [trigger]: JSON.stringify({ response, cooldown }) });
-        return res.status(200).json({ ok: true, trigger, response, cooldown });
+        await redis.hset(COMMANDS_KEY, { [trigger]: JSON.stringify({ response, cooldown, permission }) });
+        return res.status(200).json({ ok: true, trigger, response, cooldown, permission });
       }
 
       if (type === 'timer') {

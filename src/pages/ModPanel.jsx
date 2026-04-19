@@ -3,6 +3,7 @@
  *
  * Hidden route (/mod-panel), not in navbar.
  * Shows CRUD UI for chat commands and timers stored in Redis.
+ * Each command has a permission level (everyone/subscriber/vip/mod).
  * Requires Twitch login + username in MOD_USERNAMES whitelist.
  */
 import { useState, useEffect, useCallback } from 'react';
@@ -10,11 +11,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, Terminal, Timer, Plus, Trash2, Save, X, Copy, Check, LogIn,
   Twitch, ToggleLeft, ToggleRight, Loader, AlertTriangle, Clock, MessageSquare,
+  Users, Star, Crown, Edit2,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import SEO from '../components/SEO';
 
 const API_URL = '/api/mod-commands';
+
+const PERMISSION_OPTIONS = [
+  { value: 'everyone',   label: 'Tutti',       icon: Users, color: 'var(--secondary)' },
+  { value: 'subscriber', label: 'Sub',         icon: Star,  color: 'var(--accent-twitch)' },
+  { value: 'vip',        label: 'VIP',         icon: Crown, color: 'var(--accent-warm)' },
+  { value: 'mod',        label: 'Mod',         icon: Shield, color: 'var(--accent)' },
+];
+
+function getPermissionInfo(value) {
+  return PERMISSION_OPTIONS.find(p => p.value === value) || PERMISSION_OPTIONS[0];
+}
 
 const entrata = (ritardo = 0) => ({
   initial:    { opacity: 0, y: 16 },
@@ -36,10 +49,11 @@ function CommandForm({ initial, onSave, onCancel, saving }) {
   const [trigger, setTrigger] = useState(initial?.trigger || '');
   const [response, setResponse] = useState(initial?.response || '');
   const [cooldown, setCooldown] = useState(initial?.cooldown ?? 10);
+  const [permission, setPermission] = useState(initial?.permission || 'everyone');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ trigger: trigger.trim(), response: response.trim(), cooldown: Number(cooldown) });
+    onSave({ trigger: trigger.trim(), response: response.trim(), cooldown: Number(cooldown), permission });
   };
 
   return (
@@ -82,6 +96,27 @@ function CommandForm({ initial, onSave, onCancel, saving }) {
           rows={3}
         />
       </label>
+      <div className="mod-permission-row">
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+          <Shield size={13} style={{ verticalAlign: 'middle' }} /> Chi può usarlo:
+        </span>
+        <div className="mod-permission-options">
+          {PERMISSION_OPTIONS.map(opt => {
+            const Icon = opt.icon;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                className={`mod-permission-btn${permission === opt.value ? ' mod-permission-btn-active' : ''}`}
+                onClick={() => setPermission(opt.value)}
+                style={permission === opt.value ? { borderColor: opt.color, color: opt.color } : {}}
+              >
+                <Icon size={13} /> {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
       <div className="mod-form-actions">
         <button type="submit" className="btn-primary" disabled={saving}>
           <Save size={14} /> {initial?.trigger ? 'Salva' : 'Aggiungi'}
@@ -482,30 +517,42 @@ export default function ModPanel() {
               </p>
             ) : (
               <div className="mod-list">
-                {commands.map(cmd => (
-                  <motion.div key={cmd.trigger} className="mod-item glass-card" layout {...entrata(0)}>
-                    <div className="mod-item-header">
-                      <code className="mod-trigger">!{cmd.trigger}</code>
-                      {cmd.cooldown > 0 && (
-                        <span className="chip" style={{ fontSize: '0.7rem' }}>
-                          <Clock size={10} /> {cmd.cooldown}s
+                {commands.map(cmd => {
+                  const perm = getPermissionInfo(cmd.permission);
+                  const PermIcon = perm.icon;
+                  return (
+                    <motion.div key={cmd.trigger} className="mod-item glass-card" layout {...entrata(0)}>
+                      <div className="mod-item-header">
+                        <code className="mod-trigger">!{cmd.trigger}</code>
+                        <span className="chip mod-chip-permission" style={{
+                          fontSize: '0.7rem',
+                          background: `${perm.color}18`,
+                          color: perm.color,
+                          border: `1px solid ${perm.color}30`,
+                        }}>
+                          <PermIcon size={10} /> {perm.label}
                         </span>
-                      )}
-                      <div className="mod-item-actions">
-                        <CopyButton text={`!${cmd.trigger}`} />
-                        <button className="mod-icon-btn" title="Modifica"
-                          onClick={() => { setEditingCmd(cmd); setShowCmdForm(true); }}>
-                          <Save size={14} />
-                        </button>
-                        <button className="mod-icon-btn mod-icon-btn-danger" title="Elimina"
-                          onClick={() => deleteCommand(cmd.trigger)}>
-                          <Trash2 size={14} />
-                        </button>
+                        {cmd.cooldown > 0 && (
+                          <span className="chip" style={{ fontSize: '0.7rem' }}>
+                            <Clock size={10} /> {cmd.cooldown}s
+                          </span>
+                        )}
+                        <div className="mod-item-actions">
+                          <CopyButton text={`!${cmd.trigger}`} />
+                          <button className="mod-icon-btn" title="Modifica"
+                            onClick={() => { setEditingCmd(cmd); setShowCmdForm(true); }}>
+                            <Edit2 size={14} />
+                          </button>
+                          <button className="mod-icon-btn mod-icon-btn-danger" title="Elimina"
+                            onClick={() => deleteCommand(cmd.trigger)}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <p className="mod-item-body">{cmd.response}</p>
-                  </motion.div>
-                ))}
+                      <p className="mod-item-body">{cmd.response}</p>
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -570,7 +617,7 @@ export default function ModPanel() {
                         <CopyButton text={t.message} />
                         <button className="mod-icon-btn" title="Modifica"
                           onClick={() => { setEditingTimer(t); setShowTimerForm(true); }}>
-                          <Save size={14} />
+                          <Edit2 size={14} />
                         </button>
                         <button className="mod-icon-btn mod-icon-btn-danger" title="Elimina"
                           onClick={() => deleteTimer(t.name)}>

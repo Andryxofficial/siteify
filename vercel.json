@@ -19,6 +19,10 @@
     "api/community-replies.js": {
       "memory": 128,
       "maxDuration": 10
+    },
+    "api/mod-commands.js": {
+      "memory": 128,
+      "maxDuration": 10
     }
   },
   "headers": [
