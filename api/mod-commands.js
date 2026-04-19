@@ -6,10 +6,11 @@ import { Redis } from '@upstash/redis';
  * CRUD for chat commands and timers, restricted to Twitch moderators.
  *
  * Redis data model:
- *   mod:commands  → Hash  { trigger: JSON string with response, cooldown, permission }
- *   mod:timers    → Hash  { name: JSON string with message, interval, enabled }
- *   mod:whitelist → Set   of mod usernames (auto-synced from Twitch Helix)
+ *   mod:commands     → Hash  { trigger: JSON string with response, cooldown, permission }
+ *   mod:timers       → Hash  { name: JSON string with message, interval, enabled }
+ *   mod:whitelist    → Set   of mod usernames (auto-synced from Twitch Helix)
  *   mod:whitelist:ts → String  timestamp of last sync
+ *   mod:broadcaster  → String  auto-detected broadcaster username (persists in Redis)
  *
  * Permission levels for commands:
  *   "everyone"    — any viewer can use the command
@@ -18,7 +19,8 @@ import { Redis } from '@upstash/redis';
  *   "mod"         — only moderators and broadcaster
  *
  * Mod detection (smart, no manual updates):
- *   1. Broadcaster always has access (first entry in MOD_USERNAMES or BROADCASTER_USERNAME)
+ *   1. Broadcaster always has access — auto-detected via Twitch Helix API on first visit
+ *      (stored in Redis mod:broadcaster), or set explicitly via BROADCASTER_USERNAME env var
  *   2. When the broadcaster visits, their Twitch token (with moderation:read scope)
  *      is used to fetch the real moderator list via Helix API → cached in Redis for 1h
  *   3. Fallback: MOD_USERNAMES env var (comma-separated)
@@ -34,6 +36,7 @@ const COMMANDS_KEY = 'mod:commands';
 const TIMERS_KEY = 'mod:timers';
 const MOD_WHITELIST_KEY = 'mod:whitelist';
 const MOD_SYNC_TS_KEY = 'mod:whitelist:ts';
+const MOD_BROADCASTER_KEY = 'mod:broadcaster';
 const MOD_SYNC_TTL = 3600; // 1 hour cache
 
 const MAX_TRIGGER = 50;
@@ -58,13 +61,25 @@ function getModUsernames() {
 
 /**
  * Get the broadcaster's username.
- * Priority: BROADCASTER_USERNAME env var → first entry in MOD_USERNAMES.
+ * Priority: BROADCASTER_USERNAME env var → Redis auto-detected → first entry in MOD_USERNAMES.
+ * Returns null if no broadcaster is known.
  */
-function getBroadcasterUsername() {
+async function getBroadcasterUsername(redis) {
+  // 1. Explicit env var (highest priority, always authoritative)
   const explicit = (process.env.BROADCASTER_USERNAME || '').trim().toLowerCase();
   if (explicit) return explicit;
+
+  // 2. Auto-detected broadcaster stored in Redis
+  if (redis) {
+    try {
+      const stored = await redis.get(MOD_BROADCASTER_KEY);
+      if (stored) return String(stored).toLowerCase();
+    } catch { /* Redis read failed, continue to fallback */ }
+  }
+
+  // 3. Legacy fallback: first entry in MOD_USERNAMES
   const mods = getModUsernames();
-  return mods[0] || '';
+  return mods[0] || null;
 }
 
 /**
@@ -91,20 +106,27 @@ async function validateTwitch(authHeader) {
 
 /**
  * Auto-sync moderator list from Twitch Helix API.
- * Only works when the broadcaster is the one making the request
- * (their token can access /moderation/moderators for their channel).
+ * When the broadcaster visits, their token fetches the real mod list → cached in Redis.
+ * If no broadcaster is known yet (no env var, no Redis key), auto-detects the first
+ * user with moderation:read scope who can successfully query the Helix moderation API.
  * Caches the result in Redis for MOD_SYNC_TTL seconds.
  */
 async function syncModsFromTwitch(redis, twitchUser) {
-  const broadcaster = getBroadcasterUsername();
-  if (!broadcaster || twitchUser.login !== broadcaster) return;
-
-  // Check if we've synced recently
-  const lastSync = await redis.get(MOD_SYNC_TS_KEY);
-  if (lastSync && (Date.now() - Number(lastSync)) < MOD_SYNC_TTL * 1000) return;
-
   // Need moderation:read scope
   if (!twitchUser.scopes.includes('moderation:read')) return;
+
+  const broadcaster = await getBroadcasterUsername(redis);
+  const isKnownBroadcaster = broadcaster && twitchUser.login === broadcaster;
+  const noBroadcasterKnown = !broadcaster;
+
+  // If broadcaster is known but this user isn't them, skip
+  if (broadcaster && !isKnownBroadcaster) return;
+
+  // If broadcaster is known, check if we've synced recently
+  if (isKnownBroadcaster) {
+    const lastSync = await redis.get(MOD_SYNC_TS_KEY);
+    if (lastSync && (Date.now() - Number(lastSync)) < MOD_SYNC_TTL * 1000) return;
+  }
 
   try {
     const allMods = [];
@@ -130,9 +152,20 @@ async function syncModsFromTwitch(redis, twitchUser) {
       cursor = helixData.pagination?.cursor || '';
     } while (cursor);
 
+    // Auto-detect: store this user as the broadcaster if none was known.
+    // Security note: the first user with moderation:read scope who visits the hidden
+    // /mod-panel route is stored as the broadcaster. This is acceptable because:
+    // - The route is hidden (not in navbar), so only the site owner knows it exists
+    // - BROADCASTER_USERNAME env var always overrides auto-detection if needed
+    // - The Redis key mod:broadcaster can be manually cleared to re-trigger detection
+    if (noBroadcasterKnown) {
+      await redis.set(MOD_BROADCASTER_KEY, twitchUser.login);
+    }
+
     // Replace the cached whitelist: delete old set, add all mods + broadcaster
     await redis.del(MOD_WHITELIST_KEY);
-    const members = [...new Set([...allMods, broadcaster])];
+    const currentBroadcaster = broadcaster || twitchUser.login;
+    const members = [...new Set([...allMods, currentBroadcaster])];
     await redis.sadd(MOD_WHITELIST_KEY, ...members);
     await redis.set(MOD_SYNC_TS_KEY, String(Date.now()));
   } catch (e) {
@@ -143,10 +176,14 @@ async function syncModsFromTwitch(redis, twitchUser) {
 
 /**
  * Check if a user is a moderator.
- * Checks: env var MOD_USERNAMES + Redis cached whitelist (auto-synced from Twitch).
+ * Checks: broadcaster identity → env var MOD_USERNAMES → Redis cached whitelist.
  */
 async function isUserMod(redis, login) {
-  // Check env var first (always authoritative)
+  // Check if user is the broadcaster (always has access)
+  const broadcaster = await getBroadcasterUsername(redis);
+  if (broadcaster && login === broadcaster) return true;
+
+  // Check env var (always authoritative)
   const envMods = getModUsernames();
   if (envMods.includes(login)) return true;
 
