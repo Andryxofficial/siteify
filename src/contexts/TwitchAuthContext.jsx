@@ -155,7 +155,7 @@ export function TwitchAuthProvider({ children }) {
       } catch (e) {
         console.warn(`E2E init attempt ${attempt + 1} failed:`, e);
         if (attempt === MAX_RETRIES) {
-          setE2eError('Impossibile verificare le chiavi. Controlla la connessione e riprova.');
+          setE2eError('Impossibile verificare le chiavi. Controlla la tua connessione e riprova; se il problema persiste il servizio potrebbe essere temporaneamente non disponibile.');
         } else {
           await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
         }
