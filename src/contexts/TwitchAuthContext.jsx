@@ -119,24 +119,43 @@ export function TwitchAuthProvider({ children }) {
         }
 
         // 2. No local keys — check server for passphrase-protected backup
-        try {
-          const r = await fetch(`${API}?action=has_passphrase`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const d = await r.json();
-          if (d.hasPassphrase) {
-            setE2eNeedsPassphrase('unlock');
-            return; // wait for user to enter passphrase
-          }
-        } catch { /* fall through to setup */ }
+        // Gli errori di rete qui si propagano al catch esterno, che esegue il retry
+        // con backoff. Questo impedisce che un errore temporaneo di rete faccia
+        // mostrare il dialog di setup, che genererebbe nuove chiavi incompatibili
+        // con i messaggi già cifrati su altri dispositivi.
+        const r = await fetch(`${API}?action=has_passphrase`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const d = await r.json();
+        if (d.hasPassphrase) {
+          setE2eNeedsPassphrase('unlock');
+          return; // attendi che l'utente inserisca la passphrase
+        }
 
-        // 3. No local keys, no backup — need first-time passphrase setup
+        // 3. Nessuna chiave locale, nessun backup manuale — verifica se esiste già una
+        // chiave pubblica registrata sul server (ovvero l'utente ha chiavi su un altro
+        // dispositivo, ma l'auto-sync non è riuscito). In quel caso NON mostrare 'setup',
+        // che genererebbe chiavi K2 incompatibili con i messaggi cifrati da K1 su Device 1.
+        // Usare invece 'sync_retry' per invitare l'utente a ritentare la sincronizzazione.
+        // IMPORTANTE: se il server risponde con 5xx, l'errore viene rilanciato al catch
+        // esterno che esegue il retry con backoff — mai cadere in 'setup' per un errore
+        // transitorio del server, altrimenti si genererebbero chiavi K2 incompatibili.
+        const keyCheck = await fetch(`${API}?action=key&user=${encodeURIComponent(user)}`);
+        if (!keyCheck.ok) {
+          throw new Error(`key endpoint error: ${keyCheck.status}`);
+        }
+        const keyData = await keyCheck.json();
+        if (keyData.publicKey) {
+          setE2eNeedsPassphrase('sync_retry');
+          return;
+        }
+        // Nessuna chiave ovunque → primo accesso reale
         setE2eNeedsPassphrase('setup');
         return;
       } catch (e) {
         console.warn(`E2E init attempt ${attempt + 1} failed:`, e);
         if (attempt === MAX_RETRIES) {
-          setE2eError('Impossibile inizializzare la crittografia.');
+          setE2eError('Impossibile verificare le chiavi. Controlla la tua connessione e riprova; se il problema persiste il servizio potrebbe essere temporaneamente non disponibile.');
         } else {
           await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
         }
@@ -254,7 +273,11 @@ export function TwitchAuthProvider({ children }) {
       // Crea subito il backup automatico con le nuove chiavi
       if (twitchUserId) {
         const pubStr = await getFromIDB(`publicKeyString:${twitchUser}`).catch(() => null);
-        createAutoSyncBackup(privateKey, twitchUserId, twitchToken, pubStr).catch(() => {});
+        createAutoSyncBackup(privateKey, twitchUserId, twitchToken, pubStr)
+          .catch(e => {
+            console.warn('Auto-sync backup post-reset non riuscito:', e);
+            setE2eNeedsSync(true);
+          });
       }
     } catch (e) {
       console.error('E2E key reset failed:', e);
@@ -312,9 +335,14 @@ export function TwitchAuthProvider({ children }) {
       body: JSON.stringify({ action: 'register_key', publicKey: publicKeyString }),
     }).catch(() => {});
 
-    // Crea anche il backup automatico per accesso trasparente su altri dispositivi
+    // Crea il backup automatico in background per accesso trasparente su altri dispositivi.
+    // Se fallisce dopo tutti i tentativi, mostra il banner di sincronizzazione.
     if (twitchUserId) {
-      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString).catch(() => {});
+      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString)
+        .catch(e => {
+          console.warn('setupE2EPassphrase: auto-sync backup non riuscito:', e);
+          setE2eNeedsSync(true);
+        });
     }
 
     e2ePrivateKeyRef.current = privateKey;
@@ -372,12 +400,14 @@ export function TwitchAuthProvider({ children }) {
     // Aggiorna l'auto-sync backup dopo sblocco password, per non richiedere
     // la password di nuovo su dispositivi futuri
     if (twitchUserId) {
-      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString).catch(() => {});
+      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString)
+        .catch(e => console.warn('unlockE2EPassphrase: auto-sync backup non riuscito:', e));
     }
 
     e2ePrivateKeyRef.current = privateKey;
     setE2eReady(true);
     setE2eNeedsPassphrase(null);
+    setE2eNeedsSync(false);
     setE2eError(null);
   }, [twitchUser, twitchToken, twitchUserId]);
 
@@ -438,9 +468,14 @@ export function TwitchAuthProvider({ children }) {
       body: JSON.stringify({ action: 'register_key', publicKey: publicKeyString }),
     }).catch(() => {});
 
-    // Crea anche il backup automatico per accesso trasparente su altri dispositivi
+    // Crea il backup automatico in background per accesso trasparente su altri dispositivi.
+    // Se fallisce dopo tutti i tentativi, mostra il banner di sincronizzazione.
     if (twitchUserId) {
-      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString).catch(() => {});
+      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString)
+        .catch(e => {
+          console.warn('setupE2EPasskey: auto-sync backup non riuscito:', e);
+          setE2eNeedsSync(true);
+        });
     }
 
     e2ePrivateKeyRef.current = privateKey;
@@ -480,12 +515,14 @@ export function TwitchAuthProvider({ children }) {
 
     // Aggiorna l'auto-sync backup con le chiavi sbloccate
     if (twitchUserId) {
-      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString).catch(() => {});
+      createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString)
+        .catch(e => console.warn('unlockE2EPasskey: auto-sync backup non riuscito:', e));
     }
 
     e2ePrivateKeyRef.current = privateKey;
     setE2eReady(true);
     setE2eNeedsPassphrase(null);
+    setE2eNeedsSync(false);
     setE2eError(null);
   }, [twitchUser, twitchToken, twitchUserId]);
 
@@ -507,6 +544,67 @@ export function TwitchAuthProvider({ children }) {
       throw new Error(d.error || 'Errore nel salvataggio.');
     }
   }, [twitchUser, twitchToken]);
+
+  /**
+   * Salta la configurazione del backup manuale (password/passkey).
+   * Genera le chiavi localmente, le registra sul server (chiave pubblica)
+   * e crea SOLO il backup automatico (auto-sync via Twitch userId).
+   * NON crea `e2e_backup:user` con una password inaccessibile — questo
+   * evitava che Device 2 vedesse il dialog "Inserisci password" senza poterlo
+   * sbloccare, portando l'utente al reset e alla perdita di tutti i messaggi.
+   */
+  const skipE2ESetup = useCallback(async () => {
+    if (!twitchUser || !twitchToken) return;
+    try {
+      // Se non ci sono chiavi in IDB (possibile nuovo dispositivo), verifica se ne esistono
+      // già sul server prima di generare nuove chiavi K2 che invaliderebbero i messaggi K1.
+      // IMPORTANTE: su errore di rete o risposta non-OK siamo conservativi: non generare K2.
+      // Un errore transitorio non deve mai portare alla generazione di chiavi incompatibili.
+      const existingKey = await getFromIDB(`privateKey:${twitchUser}`).catch(() => null);
+      if (!existingKey) {
+        let serverKeyExists = false;
+        try {
+          const keyCheck = await fetch(`${API_MSG}?action=key&user=${encodeURIComponent(twitchUser)}`);
+          if (!keyCheck.ok) {
+            // Errore del server — non possiamo sapere se l'utente ha già chiavi.
+            // Usare sync_retry conservativo invece di generare K2.
+            setE2eNeedsPassphrase('sync_retry');
+            return;
+          }
+          const keyData = await keyCheck.json().catch(() => ({}));
+          serverKeyExists = !!keyData.publicKey;
+        } catch {
+          // Errore di rete — comportamento conservativo: non generare K2.
+          setE2eNeedsPassphrase('sync_retry');
+          return;
+        }
+        if (serverKeyExists) {
+          // Chiavi esistenti su un altro dispositivo — non generare nuove chiavi
+          setE2eNeedsPassphrase('sync_retry');
+          return;
+        }
+      }
+      // Genera (o usa) le chiavi locali e registra la chiave pubblica sul server
+      const privateKey = await ensureE2EKeysRegistered(twitchUser, twitchToken);
+      e2ePrivateKeyRef.current = privateKey;
+      setE2eReady(true);
+      setE2eNeedsPassphrase(null);
+      setE2eError(null);
+      // Crea solo il backup automatico — trasparente su altri dispositivi.
+      // Se fallisce, mostra il banner per invitare a impostare un metodo manuale.
+      if (twitchUserId) {
+        const pubStr = await getFromIDB(`publicKeyString:${twitchUser}`).catch(() => null);
+        createAutoSyncBackup(privateKey, twitchUserId, twitchToken, pubStr)
+          .catch(e => {
+            console.warn('skipE2ESetup: auto-sync backup non riuscito:', e);
+            setE2eNeedsSync(true);
+          });
+      }
+    } catch (e) {
+      console.error('skipE2ESetup fallito:', e);
+      setE2eError('Impossibile inizializzare la crittografia. Riprova.');
+    }
+  }, [twitchUser, twitchToken, twitchUserId]);
 
   /** Get backup metadata (method, credentialId, hasPasswordFallback) without downloading encrypted key */
   const getE2EBackupInfo = useCallback(async () => {
@@ -550,6 +648,7 @@ export function TwitchAuthProvider({ children }) {
       setupE2EPasskey,
       unlockE2EPasskey,
       addE2EPasswordFallback,
+      skipE2ESetup,
       getE2EBackupInfo,
     }}>
       {children}

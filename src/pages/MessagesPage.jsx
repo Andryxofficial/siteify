@@ -189,8 +189,8 @@ function MediaBubble({ mediaId, mediaIv, mimeType, name, aesKey, twitchToken }) 
    - mode: 'unlock' -> auto-detects stored method, offers alternative
    Once completed, keys are in IndexedDB -> no more prompts on this device.
    ═══════════════════════════════════════════════ */
-function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onUnlockPassword, onUnlockPasskey, onSkip, onResetKeys }) {
-  const [view, setView] = useState(mode === 'unlock' ? 'unlock' : 'choose');
+function KeySetupDialog({ mode, backupInfo, loadingBackupInfo, onSetupPassword, onSetupPasskey, onUnlockPassword, onUnlockPasskey, onSkip, onResetKeys, onRetrySync }) {
+  const [view, setView] = useState(mode === 'unlock' ? 'unlock' : mode === 'sync_retry' ? 'sync_retry' : 'choose');
   const [phrase, setPhrase] = useState('');
   const [confirm, setConfirm] = useState('');
   // Extra fields for the passkey setup step (optional password fallback)
@@ -199,6 +199,7 @@ function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onU
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [passkeyAvailable, setPasskeyAvailable] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   useEffect(() => { isPasskeyPRFAvailable().then(setPasskeyAvailable); }, []);
 
@@ -351,56 +352,91 @@ function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onU
           <motion.div key="unlock" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <Lock size={32} color="var(--primary)" style={{ marginBottom: '0.75rem' }} />
             <h2 style={{ fontSize: '1.1rem', marginBottom: '0.3rem' }}>Sblocca i messaggi</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.4 }}>
-              {backupInfo?.method === 'passkey'
-                ? 'Usa la passkey per accedere da questo dispositivo.'
-                : 'Inserisci la password per accedere da questo dispositivo.'}
-            </p>
 
-            <div style={{ maxWidth: '300px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {backupInfo?.method === 'passkey' ? (
-                <>
-                  <button className="msg-method-btn" onClick={handlePasskeyUnlock} disabled={loading} style={{ justifyContent: 'center' }}>
-                    <Fingerprint size={22} />
-                    <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>Usa passkey</span>
-                    {loading && <Loader size={14} className="spin" />}
-                  </button>
-                  {backupInfo?.hasPasswordFallback ? (
-                    <button type="button" className="btn btn-ghost" onClick={() => { setView('unlock-password'); setError(''); }} style={{ fontSize: '0.78rem' }}>
-                      <Key size={12} /> Usa password di recupero invece
-                    </button>
+            {loadingBackupInfo ? (
+              <div style={{ padding: '1.25rem 0 0.5rem', color: 'var(--text-muted)' }}>
+                <Loader size={22} className="spin" style={{ marginBottom: '0.5rem' }} />
+                <p style={{ fontSize: '0.82rem', margin: '0.4rem 0 0' }}>Caricamento metodo di accesso…</p>
+              </div>
+            ) : (
+              <>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.4 }}>
+                  {backupInfo?.method === 'passkey'
+                    ? 'Usa la passkey per accedere da questo dispositivo.'
+                    : 'Inserisci la password per accedere da questo dispositivo.'}
+                </p>
+
+                <div style={{ maxWidth: '300px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {backupInfo?.method === 'passkey' ? (
+                    <>
+                      <button className="msg-method-btn" onClick={handlePasskeyUnlock} disabled={loading} style={{ justifyContent: 'center' }}>
+                        <Fingerprint size={22} />
+                        <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>Usa passkey</span>
+                        {loading && <Loader size={14} className="spin" />}
+                      </button>
+                      {backupInfo?.hasPasswordFallback ? (
+                        <button type="button" className="btn btn-ghost" onClick={() => { setView('unlock-password'); setError(''); }} style={{ fontSize: '0.78rem' }}>
+                          <Key size={12} /> Usa password di recupero invece
+                        </button>
+                      ) : (
+                        <p style={{ color: 'var(--text-faint)', fontSize: '0.73rem', lineHeight: 1.4, margin: '0.15rem 0 0' }}>
+                          Clicca &quot;Usa passkey&quot; — se il browser mostra un QR code, scansionalo col telefono dove hai creato la passkey.<br />
+                          Se non funziona, usa il pulsante &quot;Hai dimenticato? Reset chiavi&quot; qui sotto.
+                        </p>
+                      )}
+                    </>
                   ) : (
-                    <p style={{ color: 'var(--text-faint)', fontSize: '0.73rem', lineHeight: 1.4, margin: '0.15rem 0 0' }}>
-                      Clicca &quot;Usa passkey&quot; — se il browser mostra un QR code, scansionalo col telefono dove hai creato la passkey.<br />
-                      Se non funziona, usa il pulsante &quot;Hai dimenticato? Reset chiavi&quot; qui sotto.
-                    </p>
+                    <form onSubmit={handlePasswordUnlock} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <input type="password" className="mod-input" placeholder="Password" value={phrase} onChange={e => setPhrase(e.target.value)} autoFocus autoComplete="current-password" />
+                      <button type="submit" className="btn btn-primary" disabled={loading}>
+                        {loading ? <Loader size={14} className="spin" /> : <><Lock size={14} /> Sblocca</>}
+                      </button>
+                      {passkeyAvailable && (
+                        <button type="button" className="btn btn-ghost" onClick={handlePasskeyUnlock} disabled={loading} style={{ fontSize: '0.78rem' }}>
+                          <Fingerprint size={12} /> Usa passkey invece
+                        </button>
+                      )}
+                    </form>
                   )}
-                </>
-              ) : (
-                <form onSubmit={handlePasswordUnlock} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <input type="password" className="mod-input" placeholder="Password" value={phrase} onChange={e => setPhrase(e.target.value)} autoFocus autoComplete="current-password" />
-                  <button type="submit" className="btn btn-primary" disabled={loading}>
-                    {loading ? <Loader size={14} className="spin" /> : <><Lock size={14} /> Sblocca</>}
-                  </button>
-                  {passkeyAvailable && (
-                    <button type="button" className="btn btn-ghost" onClick={handlePasskeyUnlock} disabled={loading} style={{ fontSize: '0.78rem' }}>
-                      <Fingerprint size={12} /> Usa passkey invece
+
+                  <AnimatePresence>
+                    {error && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ color: '#f87171', fontSize: '0.8rem', margin: 0 }}>{error}</motion.p>}
+                  </AnimatePresence>
+
+                  {onResetKeys && !confirmReset && (
+                    <button type="button" className="btn btn-ghost" onClick={() => setConfirmReset(true)}
+                      style={{ fontSize: '0.75rem', color: 'var(--accent)', marginTop: '0.5rem' }}>
+                      <AlertTriangle size={12} /> Hai dimenticato? Reset chiavi
                     </button>
                   )}
-                </form>
-              )}
 
-              <AnimatePresence>
-                {error && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ color: '#f87171', fontSize: '0.8rem', margin: 0 }}>{error}</motion.p>}
-              </AnimatePresence>
-
-              {onResetKeys && (
-                <button type="button" className="btn btn-ghost" onClick={onResetKeys}
-                  style={{ fontSize: '0.75rem', color: 'var(--accent)', marginTop: '0.5rem' }}>
-                  <AlertTriangle size={12} /> Hai dimenticato? Reset chiavi
-                </button>
-              )}
-            </div>
+                  <AnimatePresence>
+                    {onResetKeys && confirmReset && (
+                      <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                        className="glass-card" style={{ padding: '0.85rem', border: '1px solid rgba(248,113,113,0.35)', marginTop: '0.5rem', textAlign: 'left' }}>
+                        <p style={{ fontSize: '0.78rem', color: '#f87171', margin: '0 0 0.3rem', lineHeight: 1.5 }}>
+                          ⚠️ <strong>Attenzione:</strong> il reset genera chiavi completamente nuove.
+                        </p>
+                        <p style={{ fontSize: '0.78rem', color: '#f87171', margin: '0 0 0.6rem', lineHeight: 1.5 }}>
+                          <strong>Tutti i messaggi su tutti i tuoi dispositivi diventeranno illeggibili per sempre.</strong>
+                        </p>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button className="btn btn-ghost" style={{ fontSize: '0.78rem' }}
+                            onClick={() => setConfirmReset(false)}>
+                            Annulla
+                          </button>
+                          <button className="btn btn-primary"
+                            style={{ fontSize: '0.78rem', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+                            onClick={onResetKeys}>
+                            Sì, resetta le chiavi
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </>
+            )}
 
             <p style={{ color: 'var(--text-faint)', fontSize: '0.7rem', marginTop: '1rem', lineHeight: 1.4 }}>
               Il reset genera nuove chiavi — i vecchi messaggi non saranno più leggibili.
@@ -428,6 +464,56 @@ function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onU
                 <ArrowLeft size={12} /> Indietro
               </button>
             </form>
+          </motion.div>
+        )}
+
+        {/* ── Sync retry (auto-sync fallito su nuovo dispositivo con chiavi esistenti) ── */}
+        {view === 'sync_retry' && (
+          <motion.div key="sync_retry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <RefreshCw size={34} color="var(--accent)" style={{ marginBottom: '0.75rem' }} />
+            <h2 style={{ fontSize: '1.1rem', marginBottom: '0.3rem' }}>Sincronizzazione non riuscita</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+              Stai accedendo da un nuovo dispositivo, ma la sincronizzazione automatica
+              delle chiavi non è andata a buon fine.<br /><br />
+              Controlla la connessione e riprova. <strong>Non eseguire il reset</strong> senza
+              aver prima riprovato più volte: il reset rende tutti i messaggi illeggibili.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxWidth: '300px', margin: '0 auto' }}>
+              <button className="btn btn-primary" onClick={() => onRetrySync?.()} disabled={loading}>
+                {loading ? <Loader size={14} className="spin" /> : <><RefreshCw size={14} /> Riprova sincronizzazione</>}
+              </button>
+              <AnimatePresence>
+                {error && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ color: '#f87171', fontSize: '0.8rem', margin: 0 }}>{error}</motion.p>}
+              </AnimatePresence>
+              {onResetKeys && !confirmReset && (
+                <button type="button" className="btn btn-ghost"
+                  style={{ fontSize: '0.75rem', color: 'var(--accent)', marginTop: '0.25rem' }}
+                  onClick={() => setConfirmReset(true)}>
+                  <AlertTriangle size={12} /> Reset chiavi (ultima risorsa)
+                </button>
+              )}
+              <AnimatePresence>
+                {onResetKeys && confirmReset && (
+                  <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    className="glass-card" style={{ padding: '0.85rem', border: '1px solid rgba(248,113,113,0.35)', textAlign: 'left' }}>
+                    <p style={{ fontSize: '0.78rem', color: '#f87171', margin: '0 0 0.3rem', lineHeight: 1.5 }}>
+                      ⚠️ <strong>Attenzione:</strong> il reset genera chiavi completamente nuove.
+                    </p>
+                    <p style={{ fontSize: '0.78rem', color: '#f87171', margin: '0 0 0.6rem', lineHeight: 1.5 }}>
+                      <strong>Tutti i messaggi su tutti i dispositivi diventeranno illeggibili per sempre.</strong>
+                    </p>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button className="btn btn-ghost" style={{ fontSize: '0.78rem' }} onClick={() => setConfirmReset(false)}>Annulla</button>
+                      <button className="btn btn-primary"
+                        style={{ fontSize: '0.78rem', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+                        onClick={onResetKeys}>
+                        Sì, resetta le chiavi
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1233,6 +1319,7 @@ export default function MessagesPage() {
     retryE2E, resetE2E,
     setupE2EPassphrase, unlockE2EPassphrase,
     setupE2EPasskey, unlockE2EPasskey,
+    skipE2ESetup,
     getE2EBackupInfo,
   } = useTwitchAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1244,12 +1331,17 @@ export default function MessagesPage() {
   const [showSecuritySettings, setShowSecuritySettings] = useState(false);
   const [showPassphraseSetup, setShowPassphraseSetup] = useState(false);
   const [backupInfo, setBackupInfo] = useState(null);
+  const [loadingBackupInfo, setLoadingBackupInfo] = useState(false);
+  const [confirmKeyErrorReset, setConfirmKeyErrorReset] = useState(false);
   /* Insieme degli utenti con almeno un messaggio non letto */
   const [nonLettiUtenti, setNonLettiUtenti] = useState(new Set());
 
   useEffect(() => {
     if (e2eNeedsPassphrase === 'unlock' && getE2EBackupInfo) {
-      getE2EBackupInfo().then(info => { if (info) setBackupInfo(info); });
+      setLoadingBackupInfo(true);
+      getE2EBackupInfo()
+        .then(info => { setBackupInfo(info); })
+        .finally(() => setLoadingBackupInfo(false));
     }
   }, [e2eNeedsPassphrase, getE2EBackupInfo]);
 
@@ -1295,7 +1387,7 @@ export default function MessagesPage() {
 
   const skipPassphrase = async () => {
     try {
-      await setupE2EPassphrase(crypto.randomUUID());
+      await skipE2ESetup();
       /* Segna come saltato intenzionalmente per non mostrare più il banner */
       sessionStorage.setItem('e2e_sync_skipped', '1');
     } catch { retryE2E(); }
@@ -1325,12 +1417,14 @@ export default function MessagesPage() {
         <KeySetupDialog
           mode={e2eNeedsPassphrase}
           backupInfo={backupInfo}
+          loadingBackupInfo={loadingBackupInfo}
           onSetupPassword={setupE2EPassphrase}
           onSetupPasskey={setupE2EPasskey}
           onUnlockPassword={unlockE2EPassphrase}
           onUnlockPasskey={unlockE2EPasskey}
           onSkip={e2eNeedsPassphrase === 'setup' ? skipPassphrase : null}
-          onResetKeys={e2eNeedsPassphrase === 'unlock' ? resetE2E : null}
+          onResetKeys={['unlock', 'sync_retry'].includes(e2eNeedsPassphrase) ? resetE2E : null}
+          onRetrySync={e2eNeedsPassphrase === 'sync_retry' ? retryE2E : null}
         />
       </div>
     );
@@ -1363,10 +1457,25 @@ export default function MessagesPage() {
         <motion.div className="glass-panel" style={{ textAlign: 'center', padding: '2rem', color: 'var(--accent)' }} {...entrata(0.15)}>
           <AlertTriangle size={24} style={{ marginBottom: '0.5rem' }} />
           <p style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>{keyError}</p>
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={retryE2E}><RefreshCw size={13} /> Riprova</button>
-            <button className="btn btn-ghost" style={{ fontSize: '0.8rem' }} onClick={resetE2E}><Shield size={13} /> Reset chiavi</button>
-          </div>
+          {!confirmKeyErrorReset ? (
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={retryE2E}><RefreshCw size={13} /> Riprova</button>
+              <button className="btn btn-ghost" style={{ fontSize: '0.8rem' }} onClick={() => setConfirmKeyErrorReset(true)}><Shield size={13} /> Reset chiavi</button>
+            </div>
+          ) : (
+            <div className="glass-card" style={{ padding: '0.85rem', border: '1px solid rgba(248,113,113,0.35)', marginTop: '0.25rem', textAlign: 'left' }}>
+              <p style={{ fontSize: '0.78rem', color: '#f87171', margin: '0 0 0.3rem', lineHeight: 1.5 }}>
+                ⚠️ <strong>Attenzione:</strong> il reset genera chiavi completamente nuove.
+              </p>
+              <p style={{ fontSize: '0.78rem', color: '#f87171', margin: '0 0 0.6rem', lineHeight: 1.5 }}>
+                <strong>Tutti i messaggi esistenti diventeranno illeggibili per sempre.</strong>
+              </p>
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                <button className="btn btn-ghost" style={{ fontSize: '0.78rem' }} onClick={() => setConfirmKeyErrorReset(false)}>Annulla</button>
+                <button className="btn btn-primary" style={{ fontSize: '0.78rem', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }} onClick={resetE2E}>Sì, resetta</button>
+              </div>
+            </div>
+          )}
         </motion.div>
       ) : (
         <motion.div className="glass-panel msg-main-panel" {...entrata(0.15)}>
