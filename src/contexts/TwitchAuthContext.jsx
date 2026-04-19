@@ -132,7 +132,20 @@ export function TwitchAuthProvider({ children }) {
           return; // attendi che l'utente inserisca la passphrase
         }
 
-        // 3. Nessuna chiave locale, nessun backup — primo accesso → setup
+        // 3. Nessuna chiave locale, nessun backup manuale — verifica se esiste già una
+        // chiave pubblica registrata sul server (ovvero l'utente ha chiavi su un altro
+        // dispositivo, ma l'auto-sync non è riuscito). In quel caso NON mostrare 'setup',
+        // che genererebbe chiavi K2 incompatibili con i messaggi cifrati da K1 su Device 1.
+        // Usare invece 'sync_retry' per invitare l'utente a ritentare la sincronizzazione.
+        try {
+          const keyCheck = await fetch(`${API}?action=key&user=${encodeURIComponent(user)}`);
+          const keyData = await keyCheck.json();
+          if (keyData.publicKey) {
+            setE2eNeedsPassphrase('sync_retry');
+            return;
+          }
+        } catch { /* non bloccante — in caso di errore procedi con setup */ }
+        // Nessuna chiave ovunque → primo accesso reale
         setE2eNeedsPassphrase('setup');
         return;
       } catch (e) {
@@ -537,6 +550,20 @@ export function TwitchAuthProvider({ children }) {
   const skipE2ESetup = useCallback(async () => {
     if (!twitchUser || !twitchToken) return;
     try {
+      // Se non ci sono chiavi in IDB (possibile nuovo dispositivo), verifica se ne esistono
+      // già sul server prima di generare nuove chiavi K2 che invaliderebbero i messaggi K1.
+      const existingKey = await getFromIDB(`privateKey:${twitchUser}`).catch(() => null);
+      if (!existingKey) {
+        try {
+          const keyCheck = await fetch(`${API_MSG}?action=key&user=${encodeURIComponent(twitchUser)}`);
+          const keyData = await keyCheck.json().catch(() => ({}));
+          if (keyData.publicKey) {
+            // Chiavi esistenti su un altro dispositivo — non generare nuove chiavi
+            setE2eNeedsPassphrase('sync_retry');
+            return;
+          }
+        } catch { /* non bloccante — procedi con la generazione per nuovo utente */ }
+      }
       // Genera (o usa) le chiavi locali e registra la chiave pubblica sul server
       const privateKey = await ensureE2EKeysRegistered(twitchUser, twitchToken);
       e2ePrivateKeyRef.current = privateKey;
