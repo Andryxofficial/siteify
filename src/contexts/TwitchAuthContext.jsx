@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { ensureE2EKeysRegistered } from '../utils/e2eKeys';
 
 const CHIAVETWITCH = import.meta.env.VITE_CHIAVETWITCH;
 const STORAGE_KEY = 'twitchGameToken';
@@ -49,6 +50,10 @@ export function TwitchAuthProvider({ children }) {
       const data = await res.json();
       setTwitchUser(data.login);
       setTwitchToken(token);
+
+      // Fire-and-forget: ensure E2E keys are ready so the user can receive messages
+      // even before they ever visit /messaggi
+      ensureE2EKeysRegistered(data.login, token).catch(() => {});
 
       // Fetch full profile (display_name, avatar)
       try {

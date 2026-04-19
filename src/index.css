@@ -2947,12 +2947,27 @@ body {
   border-radius: 4px;
 }
 
+/* ── Message hover actions (edit/delete icons, visible on desktop hover) ── */
+.msg-wrapper .msg-hover-actions {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.msg-wrapper:hover .msg-hover-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* Spin utility for loaders — see .spin class above (mod panel section) */
 
 @media (max-width: 640px) {
   .msg-bubble {
     max-width: 88%;
     padding: 0.5rem 0.75rem;
+  }
+  /* On mobile hide hover actions (long-press context menu is used instead) */
+  .msg-wrapper .msg-hover-actions {
+    display: none;
   }
   .social-media-video {
     max-height: 220px;

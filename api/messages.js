@@ -1,4 +1,5 @@
 import { Redis } from '@upstash/redis';
+import { randomUUID } from 'crypto';
 
 /**
  * E2E Encrypted Messages API — Private messaging for ANDRYXify
@@ -11,31 +12,58 @@ import { Redis } from '@upstash/redis';
  *   - Messages expire after 30 days (TTL)
  *
  * Redis data model:
- *   userkeys:<user>              → String (base64-encoded ECDH public key JWK)
+ *   userkeys:<user>              → String (ECDH public key JWK)
  *   conversations:<user>         → Sorted Set (score = last message timestamp, member = otherUser)
- *   messages:<user1>:<user2>     → List of JSON { id, from, to, encrypted, iv, createdAt }
+ *   messages:<user1>:<user2>     → List of JSON { id, from, to, encrypted, iv, createdAt,
+ *                                    editedAt?, deleted? }
  *                                  (canonical order: sorted usernames)
  *   msg:counter                  → String (auto-increment message ID)
+ *   media:<uuid>                 → String (base64-encoded encrypted media blob)
+ *   media:<uuid>:meta            → String (JSON: { from, to, mimeType, name, createdAt })
  *
  * Endpoints:
- *   GET    /api/messages?action=key&user=<username>    → get public key of a user
+ *   GET    /api/messages?action=key&user=<username>              → public key of a user
  *   POST   /api/messages  { action: "register_key", publicKey }  → register own public key
- *   GET    /api/messages?action=conversations          → list all conversations
- *   GET    /api/messages?action=history&with=<user>&cursor=<n>  → get message history
- *   POST   /api/messages  { action: "send", to, encrypted, iv } → send encrypted message
- *   GET    /api/messages?action=poll&with=<user>&after=<id>     → poll new messages
+ *   GET    /api/messages?action=conversations                     → list all conversations
+ *   GET    /api/messages?action=history&with=<user>&cursor=<n>   → message history
+ *   POST   /api/messages  { action: "send", to, encrypted, iv }  → send message
+ *   GET    /api/messages?action=poll&with=<user>&after=<id>&since=<ts> → new + edited msgs
+ *   POST   /api/messages  { action: "edit", msgId, convoWith, encrypted, iv }  → edit msg
+ *   POST   /api/messages  { action: "delete", msgId, convoWith } → soft-delete msg
+ *   POST   /api/messages  { action: "upload_media", data, mimeType, name } → upload media
+ *   GET    /api/messages?action=media&id=<uuid>                  → fetch encrypted media
  */
 
-const MAX_MSG_SIZE = 8000; // encrypted blob max size
+const MAX_MSG_SIZE = 8000;   // encrypted text blob max size (bytes)
+const MAX_MEDIA_SIZE = 1_100_000; // ~1MB base64 — fits in Upstash 1MB value limit
 const MSG_TTL_DAYS = 30;
 const MSG_TTL_SECONDS = MSG_TTL_DAYS * 86400;
 const MAX_HISTORY = 50;
 const RATE_LIMIT_SECONDS = 2;
+const MAX_SCAN = 500; // max messages to scan for edit/delete
 
 function sanitize(str, maxLen) {
   if (typeof str !== 'string') return '';
   // eslint-disable-next-line no-control-regex
   return str.trim().slice(0, maxLen).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+}
+
+/**
+ * Scan a Redis list for a message by id. Returns { index, msg } or null.
+ * Scans at most MAX_SCAN entries (from the end — most recent edits are recent messages).
+ */
+async function findMsgInList(redis, listKey, msgId) {
+  const len = await redis.llen(listKey);
+  if (!len) return null;
+  const start = Math.max(0, len - MAX_SCAN);
+  const raw = await redis.lrange(listKey, start, len - 1);
+  for (let i = raw.length - 1; i >= 0; i--) {
+    try {
+      const m = typeof raw[i] === 'string' ? JSON.parse(raw[i]) : raw[i];
+      if (m.id === msgId) return { index: start + i, msg: m };
+    } catch { /* skip malformed */ }
+  }
+  return null;
 }
 
 /** Canonical conversation key — alphabetically sorted usernames */
@@ -142,7 +170,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // Poll for new messages
+    // Poll for new messages AND edited/deleted messages since a given timestamp
     if (action === 'poll') {
       const withUser = sanitize(req.query?.with, 50).toLowerCase();
       if (!withUser) return res.status(400).json({ error: 'Destinatario richiesto.' });
@@ -150,22 +178,58 @@ export default async function handler(req, res) {
       try {
         const key = `messages:${convoKey(me, withUser)}`;
         const afterId = req.query?.after;
+        const since = Number(req.query?.since) || 0; // timestamp — return changed msgs since
         const raw = await redis.lrange(key, -50, -1); // last 50
 
-        let messages = (raw || []).map(m => {
+        const all = (raw || []).map(m => {
           try { return typeof m === 'string' ? JSON.parse(m) : m; }
           catch { return null; }
         }).filter(Boolean);
 
+        // New messages (after lastMsgId)
+        let newMessages = all;
         if (afterId) {
-          const idx = messages.findIndex(m => m.id === afterId);
-          if (idx >= 0) messages = messages.slice(idx + 1);
+          const idx = all.findIndex(m => m.id === afterId);
+          if (idx >= 0) newMessages = all.slice(idx + 1);
         }
 
-        return res.status(200).json({ messages });
+        // Changed messages (edited or deleted after `since`)
+        const changed = since > 0
+          ? all.filter(m =>
+            (m.editedAt && m.editedAt > since) ||
+            (m.deleted && m.deletedAt && m.deletedAt > since)
+          )
+          : [];
+
+        return res.status(200).json({ messages: newMessages, changed });
       } catch (e) {
         console.error('Messages poll error:', e);
         return res.status(500).json({ error: 'Errore nel polling dei messaggi.' });
+      }
+    }
+
+    // Fetch encrypted media blob
+    if (action === 'media') {
+      const mediaId = sanitize(req.query?.id, 100);
+      if (!mediaId) return res.status(400).json({ error: 'ID media richiesto.' });
+
+      try {
+        const metaRaw = await redis.get(`media:${mediaId}:meta`);
+        if (!metaRaw) return res.status(404).json({ error: 'Media non trovato.' });
+        const meta = typeof metaRaw === 'string' ? JSON.parse(metaRaw) : metaRaw;
+
+        // Only the two parties of the conversation can access the media
+        if (meta.from !== me && meta.to !== me) {
+          return res.status(403).json({ error: 'Non autorizzato.' });
+        }
+
+        const data = await redis.get(`media:${mediaId}`);
+        if (!data) return res.status(404).json({ error: 'Media non trovato.' });
+
+        return res.status(200).json({ data, mimeType: meta.mimeType, name: meta.name });
+      } catch (e) {
+        console.error('Messages get_media error:', e);
+        return res.status(500).json({ error: 'Errore nel recupero del media.' });
       }
     }
 
@@ -245,6 +309,100 @@ export default async function handler(req, res) {
       } catch (e) {
         console.error('Messages send error:', e);
         return res.status(500).json({ error: 'Errore nell\'invio del messaggio.' });
+      }
+    }
+
+    // Edit an existing message (only own messages)
+    if (action === 'edit') {
+      const convoWith = sanitize(req.body.convoWith, 50).toLowerCase();
+      const msgId = sanitize(req.body.msgId, 50);
+      const encrypted = sanitize(req.body.encrypted, MAX_MSG_SIZE);
+      const iv = sanitize(req.body.iv, 100);
+
+      if (!convoWith || !msgId || !encrypted || !iv) {
+        return res.status(400).json({ error: 'Campi richiesti mancanti.' });
+      }
+
+      const isFriend = await redis.sismember(`friends:${me}`, convoWith);
+      if (!isFriend) return res.status(403).json({ error: 'Non autorizzato.' });
+
+      try {
+        const listKey = `messages:${convoKey(me, convoWith)}`;
+        const found = await findMsgInList(redis, listKey, msgId);
+        if (!found) return res.status(404).json({ error: 'Messaggio non trovato.' });
+        if (found.msg.from !== me) return res.status(403).json({ error: 'Puoi modificare solo i tuoi messaggi.' });
+        if (found.msg.deleted) return res.status(400).json({ error: 'Impossibile modificare un messaggio eliminato.' });
+
+        const updated = { ...found.msg, encrypted, iv, editedAt: Date.now() };
+        await redis.lset(listKey, found.index, JSON.stringify(updated));
+        return res.status(200).json({ ok: true });
+      } catch (e) {
+        console.error('Messages edit error:', e);
+        return res.status(500).json({ error: 'Errore nella modifica del messaggio.' });
+      }
+    }
+
+    // Soft-delete a message (only own messages)
+    if (action === 'delete') {
+      const convoWith = sanitize(req.body.convoWith, 50).toLowerCase();
+      const msgId = sanitize(req.body.msgId, 50);
+
+      if (!convoWith || !msgId) {
+        return res.status(400).json({ error: 'Campi richiesti mancanti.' });
+      }
+
+      const isFriend = await redis.sismember(`friends:${me}`, convoWith);
+      if (!isFriend) return res.status(403).json({ error: 'Non autorizzato.' });
+
+      try {
+        const listKey = `messages:${convoKey(me, convoWith)}`;
+        const found = await findMsgInList(redis, listKey, msgId);
+        if (!found) return res.status(404).json({ error: 'Messaggio non trovato.' });
+        if (found.msg.from !== me) return res.status(403).json({ error: 'Puoi eliminare solo i tuoi messaggi.' });
+
+        const tombstone = {
+          id: found.msg.id,
+          from: found.msg.from,
+          to: found.msg.to,
+          createdAt: found.msg.createdAt,
+          deleted: true,
+          deletedAt: Date.now(),
+        };
+        await redis.lset(listKey, found.index, JSON.stringify(tombstone));
+        return res.status(200).json({ ok: true });
+      } catch (e) {
+        console.error('Messages delete error:', e);
+        return res.status(500).json({ error: 'Errore nell\'eliminazione del messaggio.' });
+      }
+    }
+
+    // Upload encrypted media blob (image / video)
+    if (action === 'upload_media') {
+      const to = sanitize(req.body.to, 50).toLowerCase();
+      const data = req.body.data; // base64-encoded encrypted bytes
+      const mimeType = sanitize(req.body.mimeType || '', 100);
+      const name = sanitize(req.body.name || 'file', 200);
+
+      if (!to || to === me) return res.status(400).json({ error: 'Destinatario non valido.' });
+      if (!data || typeof data !== 'string') return res.status(400).json({ error: 'Data richiesta.' });
+      if (data.length > MAX_MEDIA_SIZE) return res.status(413).json({ error: 'File troppo grande (max ~800KB).' });
+
+      const isFriend = await redis.sismember(`friends:${me}`, to);
+      if (!isFriend) return res.status(403).json({ error: 'Puoi inviare media solo agli amici.' });
+
+      try {
+        const mediaId = randomUUID();
+        const meta = JSON.stringify({ from: me, to, mimeType, name, createdAt: Date.now() });
+
+        await Promise.all([
+          redis.set(`media:${mediaId}`, data, { ex: MSG_TTL_SECONDS }),
+          redis.set(`media:${mediaId}:meta`, meta, { ex: MSG_TTL_SECONDS }),
+        ]);
+
+        return res.status(201).json({ mediaId });
+      } catch (e) {
+        console.error('Messages upload_media error:', e);
+        return res.status(500).json({ error: 'Errore nel caricamento del media.' });
       }
     }
 
