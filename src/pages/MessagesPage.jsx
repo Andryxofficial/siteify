@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Lock, Send, ArrowLeft, MessageSquare, Users, Twitch, LogIn,
   Loader, Shield, Clock, AlertTriangle, Pencil, Trash2, X,
-  Image as ImageIcon, Video, Check,
+  Image as ImageIcon, Video, Check, RefreshCw,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import SEO from '../components/SEO';
@@ -29,6 +29,7 @@ const POLL_ACTIVE = 1500;          // ms when tab is focused
 const POLL_HIDDEN = 6000;          // ms when tab is hidden
 const MAX_FILE_BYTES = 8_000_000;  // 8MB original file limit
 const LONG_PRESS_DURATION = 450;   // ms for mobile long-press context menu
+const DERIVE_RETRY_DELAY_MS = 600; // base delay between key derivation retries (multiplied by attempt)
 // Max base64-encoded encrypted blob accepted by the server (~1.1MB → ~800KB decoded)
 const MAX_MEDIA_B64 = 1_100_000;
 
@@ -186,7 +187,7 @@ function ConversationsList({ conversations, onSelect }) {
 }
 
 /* ─── ChatView ─── */
-function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, onBack }) {
+function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, onBack }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -216,26 +217,44 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, onBack }) 
 
   // ── Derive shared AES key ──
   useEffect(() => {
+    // Wait until E2E keys are fully initialized
+    if (!e2eReady || !privateKeyRef.current) return;
+
     let cancelled = false;
+    const MAX_DERIVE_RETRIES = 2;
+
     (async () => {
-      try {
-        const res = await fetch(`${API_URL}?action=key&user=${encodeURIComponent(withUser)}`);
-        const data = await res.json();
-        if (!data.publicKey) {
-          setError(`${withUser} non ha ancora effettuato il login. Chiedigli di accedere al sito con Twitch.`);
-          setLoading(false);
-          return;
+      for (let attempt = 0; attempt <= MAX_DERIVE_RETRIES; attempt++) {
+        if (cancelled) return;
+        try {
+          const res = await fetch(`${API_URL}?action=key&user=${encodeURIComponent(withUser)}`);
+          const data = await res.json();
+          if (cancelled) return;
+          if (!data.publicKey) {
+            setError(`${withUser} non ha ancora effettuato il login. Chiedigli di accedere al sito con Twitch.`);
+            setLoading(false);
+            return;
+          }
+          const theirPub = await importPublicKey(data.publicKey);
+          const key = await deriveKey(privateKeyRef.current, theirPub);
+          if (!cancelled) {
+            setAesKey(key);
+            setError('');
+          }
+          return; // success
+        } catch (e) {
+          console.error(`Key derivation attempt ${attempt + 1} error:`, e);
+          if (attempt < MAX_DERIVE_RETRIES) {
+            await new Promise(r => setTimeout(r, DERIVE_RETRY_DELAY_MS * (attempt + 1)));
+          } else if (!cancelled) {
+            setError('Impossibile derivare la chiave di crittografia. Riprova ricaricando la pagina.');
+            setLoading(false);
+          }
         }
-        const theirPub = await importPublicKey(data.publicKey);
-        const key = await deriveKey(privateKeyRef.current, theirPub);
-        if (!cancelled) setAesKey(key);
-      } catch (e) {
-        console.error('Key derivation error:', e);
-        if (!cancelled) setError('Impossibile derivare la chiave di crittografia.');
       }
     })();
     return () => { cancelled = true; };
-  }, [withUser, privateKeyRef]);
+  }, [withUser, e2eReady, privateKeyRef]);
 
   // ── Decrypt helper (text or media payload) ──
   const decryptMsg = useCallback(async (msg, key) => {
@@ -693,7 +712,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, onBack }) 
 
 /* ─── Main page ─── */
 export default function MessagesPage() {
-  const { isLoggedIn, twitchUser, twitchToken, clientId, getTwitchLoginUrl, e2eReady: ready, e2eError: keyError, e2ePrivateKeyRef: privateKeyRef } = useTwitchAuth();
+  const { isLoggedIn, twitchUser, twitchToken, clientId, getTwitchLoginUrl, e2eReady: ready, e2eError: keyError, e2ePrivateKeyRef: privateKeyRef, retryE2E } = useTwitchAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [conversations, setConversations] = useState([]);
@@ -761,7 +780,10 @@ export default function MessagesPage() {
       {keyError ? (
         <motion.div className="glass-panel" style={{ textAlign: 'center', padding: '2rem', color: 'var(--accent)' }} {...entrata(0.15)}>
           <AlertTriangle size={24} style={{ marginBottom: '0.5rem' }} />
-          <p style={{ fontSize: '0.85rem' }}>{keyError}</p>
+          <p style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>{keyError}</p>
+          <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={retryE2E}>
+            <RefreshCw size={13} /> Riprova
+          </button>
         </motion.div>
       ) : (
         <motion.div className="glass-panel" style={{ padding: '1rem', minHeight: '460px' }} {...entrata(0.15)}>
@@ -773,6 +795,7 @@ export default function MessagesPage() {
                   twitchUser={twitchUser}
                   twitchToken={twitchToken}
                   privateKeyRef={privateKeyRef}
+                  e2eReady={ready}
                   onBack={goBack}
                 />
               </motion.div>
