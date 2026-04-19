@@ -26,9 +26,17 @@ import {
 } from '../utils/e2eKeys';
 
 const API_URL = '/api/messages';
-const POLL_ACTIVE = 1500;   // ms when tab is focused
-const POLL_HIDDEN = 6000;   // ms when tab is hidden
-const MAX_FILE_BYTES = 8_000_000; // 8MB original file limit
+const POLL_ACTIVE = 1500;          // ms when tab is focused
+const POLL_HIDDEN = 6000;          // ms when tab is hidden
+const MAX_FILE_BYTES = 8_000_000;  // 8MB original file limit
+const LONG_PRESS_DURATION = 450;   // ms for mobile long-press context menu
+// Max base64-encoded encrypted blob accepted by the server (~1.1MB → ~800KB decoded)
+const MAX_MEDIA_B64 = 1_100_000;
+
+/** Ensure a blob URL is actually a blob: URL before putting it in the DOM */
+function safeBlobUrl(url) {
+  return typeof url === 'string' && url.startsWith('blob:') ? url : '';
+}
 
 /* ─── Image compression via canvas ─── */
 async function compressImage(file, maxDim = 1280, quality = 0.82) {
@@ -48,12 +56,12 @@ async function compressImage(file, maxDim = 1280, quality = 0.82) {
       canvas.height = height;
       canvas.getContext('2d').drawImage(img, 0, 0, width, height);
       canvas.toBlob(
-        (blob) => blob ? resolve(blob) : reject(new Error('Compressione fallita')),
+        (blob) => blob ? resolve(blob) : reject(new Error('Impossibile comprimere l\'immagine. Prova con un formato diverso.')),
         file.type === 'image/png' ? 'image/png' : 'image/jpeg',
         quality,
       );
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Immagine non valida')); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Impossibile caricare l\'immagine. Il file potrebbe essere corrotto o in un formato non supportato.')); };
     img.src = url;
   });
 }
@@ -122,7 +130,8 @@ function MediaBubble({ mediaId, mediaIv, mimeType, name, aesKey, twitchToken }) 
         const blob = new Blob([buffer], { type: mimeType || data.mimeType || 'application/octet-stream' });
         url = URL.createObjectURL(blob);
         if (!cancelled) setBlobUrl(url);
-      } catch {
+      } catch (e) {
+        console.warn('Media fetch/decrypt error:', e);
         if (!cancelled) setErr(true);
       } finally {
         if (!cancelled) setLoading(false);
@@ -146,10 +155,11 @@ function MediaBubble({ mediaId, mediaIv, mimeType, name, aesKey, twitchToken }) 
   }
 
   const isVideo = mimeType && mimeType.startsWith('video/');
+  const safeUrl = safeBlobUrl(blobUrl);
   if (isVideo) {
     return (
       <video
-        src={blobUrl}
+        src={safeUrl}
         controls
         style={{ maxWidth: '100%', maxHeight: '240px', borderRadius: '8px', display: 'block' }}
       />
@@ -157,10 +167,10 @@ function MediaBubble({ mediaId, mediaIv, mimeType, name, aesKey, twitchToken }) 
   }
   return (
     <img
-      src={blobUrl}
+      src={safeUrl}
       alt={name || 'immagine'}
       style={{ maxWidth: '100%', maxHeight: '240px', borderRadius: '8px', display: 'block', cursor: 'zoom-in' }}
-      onClick={() => window.open(blobUrl, '_blank')}
+      onClick={() => window.open(safeUrl, '_blank')}
     />
   );
 }
@@ -327,7 +337,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, onBack }) 
           }
           setMessages(prev => prev.map(m => changedMap.has(m.id) ? changedMap.get(m.id) : m));
         }
-      } catch { /* silent */ }
+      } catch (e) { console.warn('Poll error:', e); }
     };
 
     const getInterval = () => document.hidden ? POLL_HIDDEN : POLL_ACTIVE;
@@ -465,13 +475,13 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, onBack }) 
     try {
       let { file } = mediaPreview;
       if (!mediaPreview.isVideo) {
-        try { const c = await compressImage(file); if (c) file = c; } catch { /* use original */ }
+        try { const c = await compressImage(file); if (c) file = c; } catch (e) { console.warn('Image compression failed, using original:', e); }
       }
       const buffer = await file.arrayBuffer();
       const { data: encData, iv: mediaIv } = await encryptBytes(aesKey, buffer);
 
-      if (encData.length > 1_100_000) {
-        throw new Error('File troppo grande dopo la compressione (max ~800KB). Riduci le dimensioni.');
+      if (encData.length > MAX_MEDIA_B64) {
+        throw new Error('File troppo grande dopo la codifica (max ~800KB compressi). Riduci le dimensioni.');
       }
 
       const uploadRes = await fetch(API_URL, {
@@ -505,7 +515,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, onBack }) 
 
   /* ── Long-press for mobile context menu ── */
   const onMsgPointerDown = (msgId) => {
-    longPressRef.current = setTimeout(() => setMenuMsgId(msgId), 450);
+    longPressRef.current = setTimeout(() => setMenuMsgId(msgId), LONG_PRESS_DURATION);
   };
   const onMsgPointerUp = () => { if (longPressRef.current) clearTimeout(longPressRef.current); };
 
@@ -645,8 +655,8 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, onBack }) 
             style={{ overflow: 'hidden', borderTop: '1px solid var(--glass-border)', padding: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', flexShrink: 0 }}
           >
             {mediaPreview.isVideo
-              ? <video src={mediaPreview.objectUrl} style={{ height: '56px', borderRadius: '6px', objectFit: 'cover', flexShrink: 0 }} />
-              : <img src={mediaPreview.objectUrl} alt="preview" style={{ height: '56px', borderRadius: '6px', objectFit: 'cover', flexShrink: 0 }} />
+              ? <video src={safeBlobUrl(mediaPreview.objectUrl)} style={{ height: '56px', borderRadius: '6px', objectFit: 'cover', flexShrink: 0 }} />
+              : <img src={safeBlobUrl(mediaPreview.objectUrl)} alt="preview" style={{ height: '56px', borderRadius: '6px', objectFit: 'cover', flexShrink: 0 }} />
             }
             <span style={{ flex: 1, fontSize: '0.78rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {mediaPreview.file.name}

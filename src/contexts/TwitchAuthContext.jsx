@@ -53,7 +53,7 @@ export function TwitchAuthProvider({ children }) {
 
       // Fire-and-forget: ensure E2E keys are ready so the user can receive messages
       // even before they ever visit /messaggi
-      ensureE2EKeysRegistered(data.login, token).catch(() => {});
+      ensureE2EKeysRegistered(data.login, token).catch((e) => console.warn('Auto E2E key registration failed:', e));
 
       // Fetch full profile (display_name, avatar)
       try {

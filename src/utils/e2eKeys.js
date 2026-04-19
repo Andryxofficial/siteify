@@ -147,8 +147,9 @@ export async function ensureE2EKeysRegistered(twitchUser, twitchToken) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
         body: JSON.stringify({ action: 'register_key', publicKey: publicKeyString }),
-      }).catch(() => {});
-    } catch {
+      }).catch((e) => console.warn('Key re-registration failed (migration):', e));
+    } catch (e) {
+      console.warn('Public key migration failed, will generate new pair:', e);
       // If extraction fails (e.g. old non-extractable key), generate fresh pair below
       privateKey = null;
       publicKeyString = null;
@@ -182,9 +183,9 @@ export async function ensureE2EKeysRegistered(twitchUser, twitchToken) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
         body: JSON.stringify({ action: 'register_key', publicKey: publicKeyString }),
-      }).catch(() => {});
+      }).catch((e) => console.warn('Key re-sync failed:', e));
     }
-  } catch { /* best effort */ }
+  } catch (e) { console.warn('Key sync check failed:', e); }
 
   return privateKey;
 }

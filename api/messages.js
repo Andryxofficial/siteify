@@ -61,7 +61,7 @@ async function findMsgInList(redis, listKey, msgId) {
     try {
       const m = typeof raw[i] === 'string' ? JSON.parse(raw[i]) : raw[i];
       if (m.id === msgId) return { index: start + i, msg: m };
-    } catch { /* skip malformed */ }
+    } catch (e) { console.warn('Malformed message in list:', e); }
   }
   return null;
 }
