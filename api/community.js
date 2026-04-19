@@ -25,8 +25,10 @@ import { GENERAL_KEY, getMonthlyKey, getCurrentSeason, getLevel, getDecayedXp, g
  */
 
 const VALID_TAGS = ['generale', 'giochi', 'stream', 'tech', 'meme', 'suggerimenti'];
+const VALID_MEDIA_TYPES = ['video', 'audio', ''];
 const MAX_TITLE = 120;
 const MAX_BODY = 2000;
+const MAX_MEDIA_URL = 500;
 const MAX_PER_PAGE = 50;
 const DEFAULT_PER_PAGE = 20;
 const RATE_LIMIT_SECONDS = 30; // min seconds between posts
@@ -221,11 +223,23 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Devi effettuare il login con Twitch.' });
       }
 
-      const { title: rawTitle, body: rawBody, tag: rawTag } = req.body || {};
+      const { title: rawTitle, body: rawBody, tag: rawTag, mediaUrl: rawMediaUrl, mediaType: rawMediaType } = req.body || {};
 
       const title = censorProfanity(sanitize(rawTitle, MAX_TITLE));
       const body = censorProfanity(sanitize(rawBody, MAX_BODY));
       const tag = VALID_TAGS.includes(rawTag) ? rawTag : 'generale';
+
+      // Validate media (optional)
+      let mediaUrl = '';
+      let mediaType = '';
+      if (rawMediaUrl) {
+        mediaUrl = sanitize(rawMediaUrl, MAX_MEDIA_URL);
+        mediaType = VALID_MEDIA_TYPES.includes(rawMediaType) ? rawMediaType : '';
+        // Basic URL validation — must be HTTPS
+        if (mediaUrl && !mediaUrl.startsWith('https://')) {
+          return res.status(400).json({ error: 'L\'URL del media deve iniziare con https://.' });
+        }
+      }
 
       if (!title || title.length < 3) {
         return res.status(400).json({ error: 'Il titolo deve avere almeno 3 caratteri.' });
@@ -254,6 +268,8 @@ export default async function handler(req, res) {
         title,
         body,
         tag,
+        mediaUrl,
+        mediaType,
         createdAt: now,
         replyCount: 0,
         likeCount: 0,

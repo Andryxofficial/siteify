@@ -23,6 +23,14 @@
     "api/mod-commands.js": {
       "memory": 128,
       "maxDuration": 10
+    },
+    "api/friends.js": {
+      "memory": 128,
+      "maxDuration": 10
+    },
+    "api/messages.js": {
+      "memory": 128,
+      "maxDuration": 10
     }
   },
   "headers": [

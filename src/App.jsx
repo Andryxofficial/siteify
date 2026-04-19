@@ -19,6 +19,8 @@ import ThreadView from './components/ThreadView';
 //segreto
 import Scoiattoli from './pages/tracker_scoiattoli';
 import ModPanel from './pages/ModPanel';
+import FriendsPage from './pages/FriendsPage';
+import MessagesPage from './pages/MessagesPage';
 import './index.css';
 
 /* ─── Gestore globale OAuth Twitch ───
@@ -76,6 +78,8 @@ function AppLayout() {
 
             <Route path="/scoiattoli" element={<Scoiattoli />} />
             <Route path="/mod-panel" element={<ModPanel />} />
+            <Route path="/amici" element={<FriendsPage />} />
+            <Route path="/messaggi" element={<MessagesPage />} />
             
           </Routes>
         </PageTransition>
