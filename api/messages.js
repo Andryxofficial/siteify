@@ -234,7 +234,10 @@ export default async function handler(req, res) {
         const raw = await redis.get(`e2e_backup:${me}`);
         if (!raw) return res.status(404).json({ error: 'Nessun backup trovato.' });
         const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        return res.status(200).json(data);
+        return res.status(200).json({
+          ...data,
+          hasPasswordFallback: !!(data.passwordBackup?.encryptedPrivateKey),
+        });
       } catch (e) {
         console.error('get_encrypted_key error:', e);
         return res.status(500).json({ error: 'Errore nel recupero del backup.' });
@@ -460,6 +463,8 @@ export default async function handler(req, res) {
       const method = sanitize(req.body.method || 'password', 20);
       const credentialId = req.body.credentialId ? sanitize(req.body.credentialId, 2000) : null;
       const publicKey = req.body.publicKey ? sanitize(req.body.publicKey, 2000) : null;
+      // Optional password fallback for passkey backups (enables cross-device recovery)
+      const rawPasswordBackup = req.body.passwordBackup || null;
 
       if (!encryptedPrivateKey || !iv) {
         return res.status(400).json({ error: 'Dati di backup mancanti.' });
@@ -467,11 +472,24 @@ export default async function handler(req, res) {
       if (method === 'password' && !salt) {
         return res.status(400).json({ error: 'Salt richiesto per metodo password.' });
       }
+      if (rawPasswordBackup) {
+        const pbEnc = sanitize(rawPasswordBackup.encryptedPrivateKey, 5000);
+        const pbSalt = sanitize(rawPasswordBackup.salt, 100);
+        const pbIv = sanitize(rawPasswordBackup.iv, 100);
+        if (!pbEnc || !pbSalt || !pbIv) {
+          return res.status(400).json({ error: 'passwordBackup incompleto.' });
+        }
+        // Store sanitized values to avoid re-processing below
+        rawPasswordBackup._sanitized = { encryptedPrivateKey: pbEnc, salt: pbSalt, iv: pbIv };
+      }
 
       try {
         const backup = { encryptedPrivateKey, iv, method };
         if (salt) backup.salt = salt;
         if (credentialId) backup.credentialId = credentialId;
+        if (rawPasswordBackup) {
+          backup.passwordBackup = rawPasswordBackup._sanitized;
+        }
         const ops = [redis.set(`e2e_backup:${me}`, JSON.stringify(backup))];
         if (publicKey) ops.push(redis.set(`userkeys:${me}`, publicKey));
         await Promise.all(ops);

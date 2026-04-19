@@ -153,6 +153,9 @@ function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onU
   const [view, setView] = useState(mode === 'unlock' ? 'unlock' : 'choose');
   const [phrase, setPhrase] = useState('');
   const [confirm, setConfirm] = useState('');
+  // Extra fields for the passkey setup step (optional password fallback)
+  const [pkFallback, setPkFallback] = useState('');
+  const [pkFallbackConfirm, setPkFallbackConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [passkeyAvailable, setPasskeyAvailable] = useState(false);
@@ -169,8 +172,14 @@ function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onU
   };
 
   const handlePasskeySetup = async () => {
-    setError(''); setLoading(true);
-    try { await onSetupPasskey(); }
+    setError('');
+    // Validate optional fallback password before triggering WebAuthn dialog
+    if (pkFallback) {
+      if (pkFallback.length < 8) { setError('La password di recupero deve avere almeno 8 caratteri.'); return; }
+      if (pkFallback !== pkFallbackConfirm) { setError('Le password di recupero non corrispondono.'); return; }
+    }
+    setLoading(true);
+    try { await onSetupPasskey(pkFallback || null); }
     catch (err) {
       if (err.message === 'PRF_NOT_SUPPORTED') setError('Passkey PRF non supportata. Usa una password.');
       else setError(err.name === 'NotAllowedError' ? 'Operazione annullata.' : (err.message || 'Errore.'));
@@ -190,7 +199,7 @@ function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onU
     setError(''); setLoading(true);
     try { await onUnlockPasskey(); }
     catch (err) {
-      if (err.message === 'PRF_NOT_SUPPORTED') setError('Passkey PRF non disponibile.');
+      if (err.message === 'PRF_NOT_SUPPORTED') setError('Passkey PRF non disponibile su questo dispositivo.');
       else setError(err.name === 'NotAllowedError' ? 'Autenticazione annullata.' : 'Errore di autenticazione.');
     }
     finally { setLoading(false); }
@@ -210,13 +219,12 @@ function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onU
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxWidth: '300px', margin: '0 auto' }}>
               {passkeyAvailable && (
-                <button className="msg-method-btn" onClick={handlePasskeySetup} disabled={loading}>
+                <button className="msg-method-btn" onClick={() => { setError(''); setView('passkey-setup'); }} disabled={loading}>
                   <Fingerprint size={20} />
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ fontWeight: 600, fontSize: '0.92rem' }}>Passkey</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>Face ID, impronta, biometria</div>
                   </div>
-                  {loading && <Loader size={14} className="spin" style={{ marginLeft: 'auto' }} />}
                 </button>
               )}
 
@@ -242,6 +250,34 @@ function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onU
             <p style={{ color: 'var(--text-faint)', fontSize: '0.7rem', marginTop: '1.25rem', lineHeight: 1.4 }}>
               🔒 Le credenziali non lasciano mai il tuo dispositivo.
             </p>
+          </motion.div>
+        )}
+
+        {/* ── Passkey setup (with optional password fallback) ── */}
+        {view === 'passkey-setup' && (
+          <motion.div key="passkey-setup" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <Fingerprint size={34} color="var(--primary)" style={{ marginBottom: '0.75rem' }} />
+            <h2 style={{ fontSize: '1.1rem', marginBottom: '0.3rem' }}>Crea passkey</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.4 }}>
+              La passkey usa la biometria del dispositivo attuale.<br />
+              Aggiungi una <strong>password di recupero</strong> per sbloccare i messaggi anche da PC o altri dispositivi.
+            </p>
+            <div style={{ maxWidth: '300px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-faint)', textAlign: 'left', margin: '0 0 0.15rem' }}>Password di recupero (opzionale)</p>
+              <input type="password" className="mod-input" placeholder="Password (lascia vuoto per saltare)" value={pkFallback} onChange={e => setPkFallback(e.target.value)} autoComplete="new-password" />
+              {pkFallback && (
+                <input type="password" className="mod-input" placeholder="Conferma password" value={pkFallbackConfirm} onChange={e => setPkFallbackConfirm(e.target.value)} autoComplete="new-password" />
+              )}
+              <AnimatePresence>
+                {error && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ color: '#f87171', fontSize: '0.8rem', margin: 0 }}>{error}</motion.p>}
+              </AnimatePresence>
+              <button className="btn btn-primary" onClick={handlePasskeySetup} disabled={loading} style={{ marginTop: '0.25rem' }}>
+                {loading ? <Loader size={14} className="spin" /> : <><Fingerprint size={14} /> Crea passkey</>}
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={() => { setView('choose'); setError(''); setPkFallback(''); setPkFallbackConfirm(''); }} style={{ fontSize: '0.8rem' }}>
+                <ArrowLeft size={12} /> Indietro
+              </button>
+            </div>
           </motion.div>
         )}
 
@@ -288,9 +324,15 @@ function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onU
                     <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>Usa passkey</span>
                     {loading && <Loader size={14} className="spin" />}
                   </button>
-                  <button type="button" className="btn btn-ghost" onClick={() => setView('unlock-password')} style={{ fontSize: '0.78rem' }}>
-                    Usa password invece
-                  </button>
+                  {backupInfo?.hasPasswordFallback ? (
+                    <button type="button" className="btn btn-ghost" onClick={() => { setView('unlock-password'); setError(''); }} style={{ fontSize: '0.78rem' }}>
+                      <Key size={12} /> Usa password di recupero invece
+                    </button>
+                  ) : (
+                    <p style={{ color: 'var(--text-faint)', fontSize: '0.73rem', lineHeight: 1.4, margin: '0.15rem 0 0' }}>
+                      La passkey è legata al dispositivo originale. Se non puoi usarla, torna su quel dispositivo oppure resetta le chiavi.
+                    </p>
+                  )}
                 </>
               ) : (
                 <form onSubmit={handlePasswordUnlock} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -328,9 +370,12 @@ function KeySetupDialog({ mode, backupInfo, onSetupPassword, onSetupPasskey, onU
         {view === 'unlock-password' && (
           <motion.div key="unlock-pw" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <Key size={32} color="var(--primary)" style={{ marginBottom: '0.75rem' }} />
-            <h2 style={{ fontSize: '1.1rem', marginBottom: '0.3rem' }}>Password</h2>
+            <h2 style={{ fontSize: '1.1rem', marginBottom: '0.3rem' }}>Password di recupero</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.4 }}>
+              Inserisci la password di recupero impostata quando hai creato la passkey.
+            </p>
             <form onSubmit={handlePasswordUnlock} style={{ maxWidth: '300px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <input type="password" className="mod-input" placeholder="Password" value={phrase} onChange={e => setPhrase(e.target.value)} autoFocus autoComplete="current-password" />
+              <input type="password" className="mod-input" placeholder="Password di recupero" value={phrase} onChange={e => setPhrase(e.target.value)} autoFocus autoComplete="current-password" />
               <AnimatePresence>
                 {error && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ color: '#f87171', fontSize: '0.8rem', margin: 0 }}>{error}</motion.p>}
               </AnimatePresence>
