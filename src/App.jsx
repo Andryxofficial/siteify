@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, lazy, Suspense } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { TwitchAuthProvider } from './contexts/TwitchAuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -110,6 +112,8 @@ function App() {
         <TwitchOAuthRedirect />
         <AppLayout />
       </TwitchAuthProvider>
+      <Analytics />
+      <SpeedInsights />
     </Router>
   );
 }

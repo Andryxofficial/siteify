@@ -782,7 +782,8 @@ function NotifSettings({ onClose }) {
 }
 
 /* ── ConversationsList ── */
-function ConversationsList({ conversations, onSelect, onNewMessage, onOpenSettings, onOpenSecuritySettings, nonLettiUtenti = new Set() }) {
+function ConversationsList({ conversations, onSelect, onNewMessage, onOpenSettings, onOpenSecuritySettings, nonLettiUtenti = new Set(), e2eNeedsSync }) {
+  const [syncBannerDismissed, setSyncBannerDismissed] = useState(false);
   if (conversations.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
@@ -804,6 +805,13 @@ function ConversationsList({ conversations, onSelect, onNewMessage, onOpenSettin
         <button className="mod-icon-btn" title="Notifiche" onClick={onOpenSettings}><Bell size={15} /></button>
         <button className="btn btn-primary" onClick={onNewMessage} style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', borderRadius: 'var(--r-full)' }}><Plus size={13} /> Nuova</button>
       </div>
+      {e2eNeedsSync && !syncBannerDismissed && (
+        <motion.div className="glass-card" style={{ margin: '0.5rem', padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,180,50,0.12)', border: '1px solid rgba(255,180,50,0.25)' }} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+          <AlertTriangle size={18} style={{ color: '#ffb432', flexShrink: 0 }} />
+          <span style={{ fontSize: '0.82rem', flex: 1 }}>Le tue chiavi non sono ancora sincronizzate su altri dispositivi</span>
+          <button className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }} onClick={() => setSyncBannerDismissed(true)}>Ignora</button>
+        </motion.div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingTop: '0.5rem' }}>
         {conversations.map(cv => {
           const nonLetto = nonLettiUtenti.has(cv.user);
@@ -1172,6 +1180,11 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
         <button className="mod-icon-btn" onClick={onBack}><ArrowLeft size={16} /></button>
         <div className="msg-avatar msg-avatar-sm">{withUser[0]?.toUpperCase()}</div>
         <span style={{ fontWeight: 600, flex: 1, fontSize: '0.95rem' }}>{withUser}</span>
+        {aesKey ? (
+          <Lock size={14} style={{ color: '#4ade80', marginLeft: 4 }} title="Cifratura attiva" />
+        ) : (
+          <AlertTriangle size={14} style={{ color: '#fbbf24', marginLeft: 4 }} title="Cifratura non verificata" />
+        )}
         <span className="chip" style={{ fontSize: '0.65rem', background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)', padding: '0.15rem 0.5rem' }}><Lock size={9} /> E2E</span>
       </div>
 
@@ -1316,6 +1329,7 @@ export default function MessagesPage() {
     isLoggedIn, twitchUser, twitchToken, clientId, getTwitchLoginUrl,
     e2eReady: ready, e2eError: keyError, e2ePrivateKeyRef: privateKeyRef,
     e2eNeedsPassphrase, e2eNeedsSync,
+    e2eSetupToast, clearE2eToast,
     retryE2E, resetE2E,
     setupE2EPassphrase, unlockE2EPassphrase,
     setupE2EPasskey, unlockE2EPasskey,
@@ -1432,6 +1446,15 @@ export default function MessagesPage() {
 
   return (
     <div className="main-content">
+      {e2eSetupToast && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+          onClick={clearE2eToast}
+          style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 10000, padding: '0.6rem 1.2rem', borderRadius: 12, background: e2eSetupToast.includes('✓') ? 'rgba(74,222,128,0.18)' : 'rgba(255,180,50,0.18)', border: `1px solid ${e2eSetupToast.includes('✓') ? 'rgba(74,222,128,0.3)' : 'rgba(255,180,50,0.3)'}`, backdropFilter: 'blur(12px)', fontSize: '0.85rem', cursor: 'pointer' }}
+        >
+          {e2eSetupToast}
+        </motion.div>
+      )}
       <SEO title="Messaggi" description="Messaggi crittografati end-to-end" path="/messaggi" />
       <section className="header" style={{ paddingTop: '1rem', paddingBottom: '0.5rem' }}>
         <motion.h1 className="title" {...entrata(0.05)}><Lock size={24} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} /><span className="text-gradient">Messaggi</span></motion.h1>
@@ -1507,7 +1530,8 @@ export default function MessagesPage() {
                   <ConversationsList conversations={conversations} onSelect={selectChat} onNewMessage={() => setShowFriendPicker(true)}
                     onOpenSettings={() => setShowSettings(true)}
                     onOpenSecuritySettings={() => setShowSecuritySettings(true)}
-                    nonLettiUtenti={nonLettiUtenti} />
+                    nonLettiUtenti={nonLettiUtenti}
+                    e2eNeedsSync={e2eNeedsSync} />
                 )}
               </motion.div>
             )}

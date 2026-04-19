@@ -36,8 +36,20 @@ const MONTH_NAMES = [
 
 /* ─── Key helpers ─── */
 
+/**
+ * Converte un Date in data locale italiana (Europe/Rome).
+ * Necessario perché il reset settimanale deve avvenire a mezzanotte italiana,
+ * non a mezzanotte UTC (dove c'è 1-2h di differenza).
+ */
+function italianDate(now = new Date()) {
+  const s = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' }); // YYYY-MM-DD
+  const [y, m, d] = s.split('-').map(Number);
+  return { year: y, month: m - 1, day: d }; // month 0-based
+}
+
 function getWeeklyKey(season, now = new Date()) {
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const it = italianDate(now);
+  const d = new Date(Date.UTC(it.year, it.month, it.day));
   d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
@@ -49,20 +61,23 @@ function getMonthlyKey(season) {
 }
 
 function getCurrentSeason(now = new Date()) {
-  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  const it = italianDate(now);
+  return `${it.year}-${String(it.month + 1).padStart(2, '0')}`;
 }
 
 function getCurrentMonthLabel(now = new Date()) {
-  return `${MONTH_NAMES[now.getUTCMonth()]} ${now.getUTCFullYear()}`;
+  const it = italianDate(now);
+  return `${MONTH_NAMES[it.month]} ${it.year}`;
 }
 
 /** Returns up to `lookback` completed months before the current one, oldest first. */
 function getCompletedSeasons(now = new Date(), lookback = 12) {
+  const it = italianDate(now);
   const result = [];
   for (let i = lookback; i >= 1; i--) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const d = new Date(Date.UTC(it.year, it.month - i, 1));
     const year = d.getUTCFullYear();
-    const month = d.getUTCMonth(); // 0-based
+    const month = d.getUTCMonth();
     result.push({
       season: `${year}-${String(month + 1).padStart(2, '0')}`,
       label: `${MONTH_NAMES[month]} ${year}`,
