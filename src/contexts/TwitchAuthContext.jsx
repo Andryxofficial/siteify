@@ -60,7 +60,7 @@ export function TwitchAuthProvider({ children }) {
         if (attempt === MAX_RETRIES) {
           setE2eError('Impossibile inizializzare la crittografia.');
         } else {
-          // Wait before retry (500ms, 1500ms)
+          // Wait before retry (500ms, 1000ms)
           await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
         }
       }
