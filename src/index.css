@@ -2088,6 +2088,33 @@ body {
    SOCIALify — Classifica XP
    ══════════════════════════════════════ */
 
+/* Quick-access links (Amici, Messaggi, Mod Panel) */
+.social-quick-links {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 0.75rem;
+}
+
+.social-quick-link {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0.6rem 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.18s, border-color 0.18s, background 0.18s;
+}
+
+.social-quick-link:hover {
+  color: var(--primary);
+  border-color: rgba(224, 64, 251, 0.25);
+  background: var(--primary-light);
+}
+
 /* Main tabs: Feed | Classifica */
 .social-tabs-principali {
   display: flex;

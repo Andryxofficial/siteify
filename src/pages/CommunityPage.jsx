@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, Heart, Clock, Send, X, ChevronLeft, ChevronRight,
   Twitch, LogIn, Plus, User, Bell, BellOff, Trophy, Film, Music,
+  Users, Lock, Shield,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
@@ -698,6 +699,24 @@ export default function CommunityPage() {
           )}
         </div>
       </motion.div>
+
+      {/* Quick links: Amici, Messaggi, Mod Panel (solo se loggati) */}
+      {isLoggedIn && (
+        <motion.div {...entrata(0.20)} className="social-quick-links">
+          <Link to="/amici" className="social-quick-link glass-card">
+            <Users size={18} />
+            <span>Amici</span>
+          </Link>
+          <Link to="/messaggi" className="social-quick-link glass-card">
+            <Lock size={18} />
+            <span>Messaggi</span>
+          </Link>
+          <Link to="/mod-panel" className="social-quick-link glass-card">
+            <Shield size={18} />
+            <span>Mod Panel</span>
+          </Link>
+        </motion.div>
+      )}
 
       {/* Tab principali: Feed | Classifica */}
       <motion.div {...entrata(0.22)} className="social-tabs-principali">
