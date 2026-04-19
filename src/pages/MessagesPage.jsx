@@ -1269,6 +1269,7 @@ export default function MessagesPage() {
     retryE2E, resetE2E,
     setupE2EPassphrase, unlockE2EPassphrase,
     setupE2EPasskey, unlockE2EPasskey,
+    skipE2ESetup,
     getE2EBackupInfo,
   } = useTwitchAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1281,6 +1282,7 @@ export default function MessagesPage() {
   const [showPassphraseSetup, setShowPassphraseSetup] = useState(false);
   const [backupInfo, setBackupInfo] = useState(null);
   const [loadingBackupInfo, setLoadingBackupInfo] = useState(false);
+  const [confirmKeyErrorReset, setConfirmKeyErrorReset] = useState(false);
   /* Insieme degli utenti con almeno un messaggio non letto */
   const [nonLettiUtenti, setNonLettiUtenti] = useState(new Set());
 
@@ -1335,7 +1337,7 @@ export default function MessagesPage() {
 
   const skipPassphrase = async () => {
     try {
-      await setupE2EPassphrase(crypto.randomUUID());
+      await skipE2ESetup();
       /* Segna come saltato intenzionalmente per non mostrare più il banner */
       sessionStorage.setItem('e2e_sync_skipped', '1');
     } catch { retryE2E(); }
@@ -1404,10 +1406,25 @@ export default function MessagesPage() {
         <motion.div className="glass-panel" style={{ textAlign: 'center', padding: '2rem', color: 'var(--accent)' }} {...entrata(0.15)}>
           <AlertTriangle size={24} style={{ marginBottom: '0.5rem' }} />
           <p style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>{keyError}</p>
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={retryE2E}><RefreshCw size={13} /> Riprova</button>
-            <button className="btn btn-ghost" style={{ fontSize: '0.8rem' }} onClick={resetE2E}><Shield size={13} /> Reset chiavi</button>
-          </div>
+          {!confirmKeyErrorReset ? (
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={retryE2E}><RefreshCw size={13} /> Riprova</button>
+              <button className="btn btn-ghost" style={{ fontSize: '0.8rem' }} onClick={() => setConfirmKeyErrorReset(true)}><Shield size={13} /> Reset chiavi</button>
+            </div>
+          ) : (
+            <div className="glass-card" style={{ padding: '0.85rem', border: '1px solid rgba(248,113,113,0.35)', marginTop: '0.25rem', textAlign: 'left' }}>
+              <p style={{ fontSize: '0.78rem', color: '#f87171', margin: '0 0 0.3rem', lineHeight: 1.5 }}>
+                ⚠️ <strong>Attenzione:</strong> il reset genera chiavi completamente nuove.
+              </p>
+              <p style={{ fontSize: '0.78rem', color: '#f87171', margin: '0 0 0.6rem', lineHeight: 1.5 }}>
+                <strong>Tutti i messaggi esistenti diventeranno illeggibili per sempre.</strong>
+              </p>
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                <button className="btn btn-ghost" style={{ fontSize: '0.78rem' }} onClick={() => setConfirmKeyErrorReset(false)}>Annulla</button>
+                <button className="btn btn-primary" style={{ fontSize: '0.78rem', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }} onClick={resetE2E}>Sì, resetta</button>
+              </div>
+            </div>
+          )}
         </motion.div>
       ) : (
         <motion.div className="glass-panel msg-main-panel" {...entrata(0.15)}>

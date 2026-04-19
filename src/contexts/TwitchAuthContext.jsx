@@ -510,6 +510,37 @@ export function TwitchAuthProvider({ children }) {
     }
   }, [twitchUser, twitchToken]);
 
+  /**
+   * Salta la configurazione del backup manuale (password/passkey).
+   * Genera le chiavi localmente, le registra sul server (chiave pubblica)
+   * e crea SOLO il backup automatico (auto-sync via Twitch userId).
+   * NON crea `e2e_backup:user` con una password inaccessibile — questo
+   * evitava che Device 2 vedesse il dialog "Inserisci password" senza poterlo
+   * sbloccare, portando l'utente al reset e alla perdita di tutti i messaggi.
+   */
+  const skipE2ESetup = useCallback(async () => {
+    if (!twitchUser || !twitchToken) return;
+    try {
+      // Genera (o usa) le chiavi locali e registra la chiave pubblica sul server
+      const privateKey = await ensureE2EKeysRegistered(twitchUser, twitchToken);
+      e2ePrivateKeyRef.current = privateKey;
+      setE2eReady(true);
+      setE2eNeedsPassphrase(null);
+      setE2eError(null);
+      // Crea solo il backup automatico — trasparente su altri dispositivi
+      if (twitchUserId) {
+        const pubStr = await getFromIDB(`publicKeyString:${twitchUser}`).catch(() => null);
+        createAutoSyncBackup(privateKey, twitchUserId, twitchToken, pubStr)
+          .catch(e => console.warn('skipE2ESetup: auto-sync backup non riuscito:', e));
+      }
+      // Mostra il banner di sincronizzazione per invitare a impostare un metodo manuale
+      setE2eNeedsSync(true);
+    } catch (e) {
+      console.error('skipE2ESetup fallito:', e);
+      setE2eError('Impossibile inizializzare la crittografia. Riprova.');
+    }
+  }, [twitchUser, twitchToken, twitchUserId]);
+
   /** Get backup metadata (method, credentialId, hasPasswordFallback) without downloading encrypted key */
   const getE2EBackupInfo = useCallback(async () => {
     if (!twitchToken) return null;
@@ -552,6 +583,7 @@ export function TwitchAuthProvider({ children }) {
       setupE2EPasskey,
       unlockE2EPasskey,
       addE2EPasswordFallback,
+      skipE2ESetup,
       getE2EBackupInfo,
     }}>
       {children}
