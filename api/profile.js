@@ -211,7 +211,7 @@ export default async function handler(req, res) {
           }
           const cleaned = sanitize(String(value), MAX_SOCIAL_LENGTH);
           if (cleaned && !isValidUrl(cleaned)) {
-            return res.status(400).json({ error: `URL non valido per ${key}: ${cleaned}` });
+            return res.status(400).json({ error: `URL non valido per ${key}.` });
           }
           cleanSocials[key] = cleaned;
         }

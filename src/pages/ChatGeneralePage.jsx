@@ -48,7 +48,13 @@ export default function ChatGeneralePage() {
       const res = await fetch(`${CHAT_API}?action=messages&limit=100`);
       if (res.ok) {
         const data = await res.json();
-        setMessages(data.messages || []);
+        setMessages((prev) => {
+          const newMsgs = data.messages || [];
+          // Merge evitando duplicati (mantiene messaggi ottimistici)
+          const ids = new Set(newMsgs.map((m) => m.id));
+          const optimistic = prev.filter((m) => !ids.has(m.id));
+          return [...optimistic, ...newMsgs];
+        });
       }
     } catch { /* silenzioso */ }
   }, []);
@@ -61,9 +67,16 @@ export default function ChatGeneralePage() {
     return () => clearInterval(pollRef.current);
   }, [tab, fetchMessages]);
 
-  // Auto-scroll verso il basso quando arrivano nuovi messaggi
+  // Auto-scroll solo se l'utente è già vicino al fondo
+  const chatContainerRef = useRef(null);
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = chatContainerRef.current;
+    if (!container) return;
+    // column-reverse: scrollTop 0 = fondo; valori negativi = scrollato verso l'alto
+    const isNearBottom = Math.abs(container.scrollTop) < 80;
+    if (isNearBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   // Invio messaggio
@@ -91,8 +104,11 @@ export default function ChatGeneralePage() {
       }
 
       setText('');
-      // Aggiunge il messaggio subito senza attendere il polling
-      setMessages((prev) => [data.message, ...prev]);
+      // Aggiunge il messaggio subito evitando duplicati dal polling
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === data.message.id)) return prev;
+        return [data.message, ...prev];
+      });
     } catch {
       setError('Errore di rete.');
     } finally {
@@ -182,6 +198,7 @@ export default function ChatGeneralePage() {
             <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', height: 'min(600px, 75vh)' }}>
               {/* Lista messaggi */}
               <div
+                ref={chatContainerRef}
                 style={{
                   flex: 1,
                   overflowY: 'auto',
