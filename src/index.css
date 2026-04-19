@@ -80,9 +80,9 @@ body {
   min-height: 100svh;
   overflow-x: hidden;
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -8%, rgba(224,64,251,.12) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 0% 100%,   rgba(0,229,255,.07) 0%, transparent 50%),
-    radial-gradient(ellipse 50% 35% at 100% 30%,  rgba(145,70,255,.06) 0%, transparent 45%),
+    radial-gradient(ellipse 80% 50% at 50% -8%, rgba(224,64,251,.14) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 0% 100%,   rgba(0,229,255,.08) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 35% at 100% 30%,  rgba(145,70,255,.07) 0%, transparent 45%),
     radial-gradient(ellipse 40% 30% at 50% 60%,   rgba(255,107,107,.04) 0%, transparent 40%),
     linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-deep) 100%);
   background-attachment: fixed;
@@ -143,6 +143,7 @@ body::before {
   position: relative;
   overflow: hidden;
   transition: box-shadow .35s var(--ease-glass), border-color .35s var(--ease-glass);
+  contain: layout style;
 }
 
 /* Subtle top highlight — premium surface sheen */
@@ -182,6 +183,7 @@ body::before {
               border-color .3s var(--ease-glass);
   overflow: hidden;
   position: relative;
+  contain: layout style;
 }
 
 /* Top highlight on cards */
@@ -224,7 +226,7 @@ body::before {
    ═══════════════════════════════════════════════════ */
 
 .text-gradient {
-  background: linear-gradient(135deg, var(--primary) 0%, #A855F7 50%, var(--secondary) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, #C084FC 45%, var(--secondary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -491,11 +493,12 @@ body::before {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary), #A855F7);
+  background: linear-gradient(135deg, var(--primary), #A855F7 60%, #818CF8);
   color: white;
   box-shadow:
-    0 4px 20px rgba(224,64,251,.25),
-    0 0 0 1px rgba(224,64,251,.20);
+    0 4px 20px rgba(224,64,251,.30),
+    0 0 0 1px rgba(224,64,251,.22),
+    inset 0 1px 0 rgba(255,255,255,.15);
 }
 
 .btn-primary:hover {
@@ -815,6 +818,11 @@ body::before {
     animation: none;
   }
 
+  /* contain non bloccante: migliora perf scroll su mobile */
+  .links-grid > * {
+    contain: layout style;
+  }
+
   .links-grid { grid-template-columns: 1fr; gap: 0.65rem; }
 
   .section-title { font-size: 1.25rem; }
@@ -982,6 +990,19 @@ nav.navbar-container.glass-panel {
 
 .tab-item.active {
   color: rgba(255, 255, 255, 0.96);
+}
+
+/* Indicatore notifica sopra l'icona del tab */
+.tab-icon-badge {
+  position: absolute;
+  top: -2px;
+  right: -6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 6px var(--primary);
+  border: 1.5px solid var(--bg-dark);
 }
 
 .tab-icon {
@@ -2963,8 +2984,8 @@ body {
 
 .msg-mine {
   align-self: flex-end;
-  background: linear-gradient(135deg, rgba(99,102,241,0.28), rgba(99,102,241,0.12));
-  border: 1px solid rgba(99,102,241,0.22);
+  background: linear-gradient(135deg, rgba(120,87,255,0.35), rgba(168,85,247,0.20));
+  border: 1px solid rgba(120,87,255,0.28);
   border-bottom-right-radius: 4px;
 }
 
@@ -3464,6 +3485,30 @@ body {
   .msg-scroll-btn { bottom: 70px; right: 10px; }
   .msg-chat-container { min-height: 350px; }
   .social-media-video { max-height: 220px; }
+
+  /* Riduci padding conversazioni su mobile per massimizzare spazio chat */
+  .msg-convo-item {
+    padding: 0.7rem 0.6rem;
+    min-height: 58px;
+  }
+
+  /* Chat scroll area: usa contain per migliorare il perf di scroll */
+  .msg-scroll-area {
+    contain: layout style;
+  }
+
+  /* Ingrandisci input su mobile per touch più comodo */
+  .msg-textarea {
+    font-size: 0.95rem;
+    min-height: 42px;
+    padding: 0.65rem 0.9rem;
+  }
+
+  /* Send button più grande su mobile */
+  .msg-send-btn {
+    min-width: 40px;
+    height: 40px;
+  }
 }
 
 /* ─── UPDATE TOAST ────────────────────────────────────── */
