@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Twitch, Youtube, Instagram, Mic } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
+import DiscordIcon from './DiscordIcon';
 
 const LOGO_URL = '/Firma_Andryx.png';
 
@@ -10,6 +11,7 @@ const socials = [
   { href: 'https://instagram.com/andryxify',   icon: <Instagram size={18}/>, label: 'Instagram', color: '#E1306C' },
   { href: 'https://tiktok.com/@andryxify',     icon: <TikTokIcon size={18}/>, label: 'TikTok',  color: '#00F2FE' },
   { href: 'https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9', icon: <Mic size={18}/>, label: 'Podcast', color: '#1DB954' },
+  { href: 'https://discord.gg/BuckKZ4',        icon: <DiscordIcon size={18}/>, label: 'Discord', color: '#5865F2' },
 ];
 
 export default function Footer() {

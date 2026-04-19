@@ -349,25 +349,23 @@ export default function FriendsPage() {
       )}
 
       {/* Discord integration */}
-      {import.meta.env.VITE_DISCORD_INVITE && (
-        <motion.div className="glass-panel" style={{ padding: '1.25rem', marginTop: '1rem', textAlign: 'center' }} {...entrata(0.2)}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-            🎮 Vuoi parlare in vocale?
-          </h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-            Unisciti al server Discord della community per chat vocali, stanze tematiche e altro!
-          </p>
-          <a
-            href={import.meta.env.VITE_DISCORD_INVITE}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-primary"
-            style={{ fontSize: '0.85rem', padding: '0.5rem 1.3rem', background: 'linear-gradient(135deg, #5865F2, #7289DA)' }}
-          >
-            <ExternalLink size={14} /> Unisciti al Discord
-          </a>
-        </motion.div>
-      )}
+      <motion.div className="glass-panel" style={{ padding: '1.25rem', marginTop: '1rem', textAlign: 'center' }} {...entrata(0.2)}>
+        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+          🎮 Vuoi parlare in vocale?
+        </h3>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+          Unisciti al server Discord della community per chat vocali, stanze tematiche e altro!
+        </p>
+        <a
+          href="https://discord.gg/BuckKZ4"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-primary"
+          style={{ fontSize: '0.85rem', padding: '0.5rem 1.3rem', background: 'linear-gradient(135deg, #5865F2, #7289DA)' }}
+        >
+          <ExternalLink size={14} /> Unisciti al Discord
+        </a>
+      </motion.div>
     </div>
   );
 }
