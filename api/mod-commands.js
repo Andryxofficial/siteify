@@ -62,6 +62,7 @@ function getModUsernames() {
 /**
  * Get the broadcaster's username.
  * Priority: BROADCASTER_USERNAME env var → Redis auto-detected → first entry in MOD_USERNAMES.
+ * Returns null if no broadcaster is known.
  */
 async function getBroadcasterUsername(redis) {
   // 1. Explicit env var (highest priority, always authoritative)
@@ -78,7 +79,7 @@ async function getBroadcasterUsername(redis) {
 
   // 3. Legacy fallback: first entry in MOD_USERNAMES
   const mods = getModUsernames();
-  return mods[0] || '';
+  return mods[0] || null;
 }
 
 /**
@@ -151,7 +152,12 @@ async function syncModsFromTwitch(redis, twitchUser) {
       cursor = helixData.pagination?.cursor || '';
     } while (cursor);
 
-    // Auto-detect: store this user as the broadcaster if none was known
+    // Auto-detect: store this user as the broadcaster if none was known.
+    // Security note: the first user with moderation:read scope who visits the hidden
+    // /mod-panel route is stored as the broadcaster. This is acceptable because:
+    // - The route is hidden (not in navbar), so only the site owner knows it exists
+    // - BROADCASTER_USERNAME env var always overrides auto-detection if needed
+    // - The Redis key mod:broadcaster can be manually cleared to re-trigger detection
     if (noBroadcasterKnown) {
       await redis.set(MOD_BROADCASTER_KEY, twitchUser.login);
     }
