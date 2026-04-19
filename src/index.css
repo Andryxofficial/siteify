@@ -143,7 +143,7 @@ body::before {
   position: relative;
   overflow: hidden;
   transition: box-shadow .35s var(--ease-glass), border-color .35s var(--ease-glass);
-  contain: layout style;
+  contain: style;
 }
 
 /* Subtle top highlight — premium surface sheen */
@@ -183,7 +183,7 @@ body::before {
               border-color .3s var(--ease-glass);
   overflow: hidden;
   position: relative;
-  contain: layout style;
+  contain: style;
 }
 
 /* Top highlight on cards */
@@ -3568,4 +3568,149 @@ body {
   .pwa-standalone .update-toast {
     bottom: calc(var(--tab-bar-offset-pwa) + env(safe-area-inset-bottom, 0px));
   }
+}
+
+/* ═══════════════════════════════════════════════════
+   VISUAL POLISH v4 — "Figo & Veloce"
+   Miglioramenti selettivi senza impatto performance
+   ═══════════════════════════════════════════════════ */
+
+/* ── Titolo sezione con accento gradient ── */
+.section-title-gradient {
+  font-family: 'Space Grotesk', 'Outfit', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -.5px;
+  margin-bottom: 1.25rem;
+  background: linear-gradient(135deg, var(--text-main) 0%, rgba(200,180,255,0.9) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Link item: indicatore hover a sinistra ── */
+.link-item {
+  transition: border-color .25s var(--ease-glass),
+              box-shadow .25s var(--ease-glass),
+              transform .25s var(--ease-spring);
+}
+
+@media (min-width: 641px) {
+  .link-item:hover {
+    transform: translateX(4px);
+    box-shadow:
+      0 4px 20px rgba(0,0,0,0.30),
+      inset 0 0 0 1px rgba(255,255,255,0.06);
+  }
+}
+
+/* ── Active tab sul tab bar: label più luminosa ── */
+.tab-item.active .tab-label {
+  background: linear-gradient(135deg, var(--primary), #C084FC);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Chip: hover leggermente più visibile ── */
+.chip {
+  transition: box-shadow .2s, transform .2s;
+}
+
+/* ── Focus ring globale accessibile ── */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ── Scrollbar globale raffinata ── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  {
+  background: rgba(255,255,255,0.12);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+
+/* ── Selezione testo branded ── */
+::selection {
+  background: rgba(224,64,251,0.30);
+  color: #fff;
+}
+
+/* ── Foto profilo: hover leggero scale ── */
+.profile-img-container:hover {
+  transform: scale(1.04);
+  transition: transform .4s var(--ease-spring);
+}
+
+/* ── Social btn Twitch: glow più vivido ── */
+.social-btn-twitch:hover {
+  box-shadow: 0 6px 28px rgba(145, 70, 255, .45);
+  transform: translateY(-1px);
+}
+
+/* ── Sezione "Trovami su" — emoji animate ── */
+@keyframes float-up-down {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-4px); }
+}
+
+/* ── Migliori transizioni per i pulsanti su mobile ── */
+@media (max-width: 640px) {
+  .btn {
+    transition: transform .18s var(--ease-spring), box-shadow .18s var(--ease-glass);
+  }
+  .btn:active {
+    transform: scale(0.95) !important;
+  }
+  .glass-card:active {
+    transform: scale(0.97);
+  }
+  .link-item:active {
+    transform: scale(0.97);
+  }
+}
+
+/* ── App container: padding orizzontale uniforme su mobile ── */
+@media (max-width: 640px) {
+  .app-container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+
+/* ── msg-bubble: micro-animazione al tap su mobile ── */
+@media (max-width: 640px) {
+  .msg-bubble:active {
+    opacity: 0.85;
+    transition: opacity .1s;
+  }
+}
+
+/* ── Indicatore caricamento pagina (Suspense) ── */
+.glass-panel.skeleton {
+  contain: strict;
+}
+
+/* ── Chip live dot: animazione più fluida ── */
+.chip-live-dot {
+  animation: blink-dot 1.8s ease-in-out infinite;
+}
+
+/* ── Bottone ghost: shimmer lieve al hover (solo desktop) ── */
+@media (min-width: 641px) {
+  .btn-ghost:hover::before {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+  }
+}
+
+/* ── Glass panel: no contain:layout per i pannelli che usano position:sticky figli ── */
+.msg-main-panel,
+.game-layout > .glass-panel {
+  contain: style;
 }
