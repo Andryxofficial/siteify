@@ -135,12 +135,12 @@ function CommandForm({ initial, onSave, onCancel, saving }) {
 function TimerForm({ initial, onSave, onCancel, saving }) {
   const [name, setName] = useState(initial?.name || '');
   const [message, setMessage] = useState(initial?.message || '');
-  const [interval, setInterval_] = useState(initial?.interval ?? 300);
+  const [intervalSec, setIntervalSec] = useState(initial?.interval ?? 300);
   const [enabled, setEnabled] = useState(initial?.enabled ?? true);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ name: name.trim(), message: message.trim(), interval: Number(interval), enabled });
+    onSave({ name: name.trim(), message: message.trim(), interval: Number(intervalSec), enabled });
   };
 
   return (
@@ -163,8 +163,8 @@ function TimerForm({ initial, onSave, onCancel, saving }) {
           <Clock size={14} /> Intervallo (sec)
           <input
             type="number"
-            value={interval}
-            onChange={e => setInterval_(e.target.value)}
+            value={intervalSec}
+            onChange={e => setIntervalSec(e.target.value)}
             min={60}
             max={7200}
             className="mod-input mod-input-small"
