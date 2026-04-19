@@ -250,3 +250,47 @@ export async function forceResetE2EKeys(twitchUser, twitchToken) {
 
   return keyPair.privateKey;
 }
+
+/* ─── Passphrase-protected key backup (cross-device sync) ─── */
+
+/** Derive an AES-GCM-256 key from a passphrase + salt using PBKDF2 */
+export async function derivePassphraseKey(passphrase, salt) {
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(passphrase), 'PBKDF2', false, ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100_000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+/** Encrypt an ECDH private key with a user passphrase for server backup */
+export async function encryptPrivateKeyForBackup(privateKey, passphrase) {
+  const jwk = await crypto.subtle.exportKey('jwk', privateKey);
+  const plaintext = new TextEncoder().encode(JSON.stringify(jwk));
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const aesKey = await derivePassphraseKey(passphrase, salt);
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, plaintext);
+  return {
+    encryptedPrivateKey: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
+    salt: btoa(String.fromCharCode(...salt)),
+    iv: btoa(String.fromCharCode(...iv)),
+  };
+}
+
+/** Decrypt an ECDH private key from a server backup using the user passphrase */
+export async function decryptPrivateKeyFromBackup(encryptedPrivateKey, saltB64, ivB64, passphrase) {
+  const cipherBytes = Uint8Array.from(atob(encryptedPrivateKey), c => c.charCodeAt(0));
+  const salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
+  const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
+  const aesKey = await derivePassphraseKey(passphrase, salt);
+  const plainBuffer = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, cipherBytes);
+  const jwk = JSON.parse(new TextDecoder().decode(plainBuffer));
+  return crypto.subtle.importKey(
+    'jwk', jwk, { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey']
+  );
+}

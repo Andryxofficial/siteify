@@ -217,6 +217,42 @@ export default async function handler(req, res) {
       }
     }
 
+    // Check if user has a passphrase-protected key backup (for cross-device sync)
+    if (action === 'has_passphrase') {
+      try {
+        const data = await redis.get(`e2e_backup:${me}`);
+        return res.status(200).json({ hasPassphrase: !!data });
+      } catch (e) {
+        console.error('has_passphrase error:', e);
+        return res.status(500).json({ error: 'Errore nel controllo del backup.' });
+      }
+    }
+
+    // Get encrypted private key backup (for restoring on a new device)
+    if (action === 'get_encrypted_key') {
+      try {
+        const raw = await redis.get(`e2e_backup:${me}`);
+        if (!raw) return res.status(404).json({ error: 'Nessun backup trovato.' });
+        const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        return res.status(200).json(data);
+      } catch (e) {
+        console.error('get_encrypted_key error:', e);
+        return res.status(500).json({ error: 'Errore nel recupero del backup.' });
+      }
+    }
+
+    // Get notification preferences
+    if (action === 'notif_prefs') {
+      try {
+        const raw = await redis.get(`notif_prefs:${me}`);
+        const prefs = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : {};
+        return res.status(200).json({ prefs });
+      } catch (e) {
+        console.error('notif_prefs error:', e);
+        return res.status(500).json({ error: 'Errore nel caricamento preferenze.' });
+      }
+    }
+
     // Fetch encrypted media blob
     if (action === 'media') {
       const mediaId = sanitize(req.query?.id, 100);
@@ -412,6 +448,54 @@ export default async function handler(req, res) {
       } catch (e) {
         console.error('Messages upload_media error:', e);
         return res.status(500).json({ error: 'Errore nel caricamento del media.' });
+      }
+    }
+
+    // Save encrypted private key backup (for cross-device sync)
+    if (action === 'save_encrypted_key') {
+      const encryptedPrivateKey = sanitize(req.body.encryptedPrivateKey, 5000);
+      const salt = sanitize(req.body.salt, 100);
+      const iv = sanitize(req.body.iv, 100);
+      const publicKey = req.body.publicKey ? sanitize(req.body.publicKey, 2000) : null;
+
+      if (!encryptedPrivateKey || !salt || !iv) {
+        return res.status(400).json({ error: 'Dati di backup mancanti.' });
+      }
+
+      try {
+        const backup = JSON.stringify({ encryptedPrivateKey, salt, iv });
+        const ops = [redis.set(`e2e_backup:${me}`, backup)];
+        if (publicKey) ops.push(redis.set(`userkeys:${me}`, publicKey));
+        await Promise.all(ops);
+        return res.status(200).json({ ok: true });
+      } catch (e) {
+        console.error('save_encrypted_key error:', e);
+        return res.status(500).json({ error: 'Errore nel salvataggio del backup.' });
+      }
+    }
+
+    // Save notification preferences
+    if (action === 'save_notif_prefs') {
+      const prefs = req.body.prefs;
+      if (!prefs || typeof prefs !== 'object') {
+        return res.status(400).json({ error: 'Preferenze non valide.' });
+      }
+      try {
+        // Sanitize: only allow known keys with boolean/string values
+        const clean = {};
+        const ALLOWED = ['inApp', 'push', 'sound'];
+        for (const k of ALLOWED) {
+          if (k in prefs) clean[k] = !!prefs[k];
+        }
+        // Per-conversation mutes: array of usernames
+        if (Array.isArray(prefs.muted)) {
+          clean.muted = prefs.muted.slice(0, 200).map(u => sanitize(String(u), 50).toLowerCase()).filter(Boolean);
+        }
+        await redis.set(`notif_prefs:${me}`, JSON.stringify(clean));
+        return res.status(200).json({ ok: true });
+      } catch (e) {
+        console.error('save_notif_prefs error:', e);
+        return res.status(500).json({ error: 'Errore nel salvataggio preferenze.' });
       }
     }
 
