@@ -473,8 +473,8 @@ async function deriveAutoSyncKey(twitchUserId, saltB64, usage) {
 export async function createAutoSyncBackup(privateKey, twitchUserId, twitchToken, publicKeyString = null) {
   if (!twitchUserId) return; // senza userId non possiamo creare il backup
 
-  const MAX_TRIES = 3;
-  for (let attempt = 0; attempt < MAX_TRIES; attempt++) {
+  const MAX_TENTATIVI = 3;
+  for (let attempt = 0; attempt < MAX_TENTATIVI; attempt++) {
     try {
       if (attempt > 0) {
         await new Promise(r => setTimeout(r, 1000 * attempt));
@@ -511,10 +511,10 @@ export async function createAutoSyncBackup(privateKey, twitchUserId, twitchToken
       if (!saveRes.ok) throw new Error(`save_auto_backup: ${saveRes.status}`);
       return; // successo
     } catch (e) {
-      if (attempt < MAX_TRIES - 1) {
-        console.warn(`Auto-sync backup tentativo ${attempt + 1}/${MAX_TRIES} fallito:`, e);
+      if (attempt < MAX_TENTATIVI - 1) {
+        console.warn(`Auto-sync backup tentativo ${attempt + 1}/${MAX_TENTATIVI} fallito:`, e);
       } else {
-        console.warn('Auto-sync backup fallito dopo', MAX_TRIES, 'tentativi:', e);
+        console.warn('Auto-sync backup fallito dopo', MAX_TENTATIVI, 'tentativi:', e);
       }
     }
   }

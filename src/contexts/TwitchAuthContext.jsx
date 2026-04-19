@@ -119,8 +119,10 @@ export function TwitchAuthProvider({ children }) {
         }
 
         // 2. No local keys — check server for passphrase-protected backup
-        // Nota: nessun try/catch interno — errori di rete vengono gestiti dal retry
-        // esterno invece di fare pericoloso fallthrough al dialog di setup
+        // Gli errori di rete qui propagano al catch esterno, che esegue il retry
+        // con backoff. Questo impedisce che un errore temporaneo di rete faccia
+        // mostrare il dialog di setup, che genererebbe nuove chiavi incompatibili
+        // con i messaggi già cifrati su altri dispositivi.
         const r = await fetch(`${API}?action=has_passphrase`, {
           headers: { Authorization: `Bearer ${token}` },
         });

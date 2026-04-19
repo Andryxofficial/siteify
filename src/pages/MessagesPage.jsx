@@ -414,8 +414,10 @@ function KeySetupDialog({ mode, backupInfo, loadingBackupInfo, onSetupPassword, 
                     {onResetKeys && confirmReset && (
                       <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                         className="glass-card" style={{ padding: '0.85rem', border: '1px solid rgba(248,113,113,0.35)', marginTop: '0.5rem', textAlign: 'left' }}>
+                        <p style={{ fontSize: '0.78rem', color: '#f87171', margin: '0 0 0.3rem', lineHeight: 1.5 }}>
+                          ⚠️ <strong>Attenzione:</strong> il reset genera chiavi completamente nuove.
+                        </p>
                         <p style={{ fontSize: '0.78rem', color: '#f87171', margin: '0 0 0.6rem', lineHeight: 1.5 }}>
-                          ⚠️ <strong>Attenzione:</strong> il reset genera chiavi completamente nuove.<br />
                           <strong>Tutti i messaggi su tutti i tuoi dispositivi diventeranno illeggibili per sempre.</strong>
                         </p>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
