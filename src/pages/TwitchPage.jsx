@@ -18,6 +18,7 @@ export default function TwitchPage() {
         title="Twitch — Live Streaming & Gaming"
         description="Guarda le dirette live di ANDRYXify (Andrea Taliento) su Twitch. Streaming di videogiochi, interazione in chat e community gaming italiana. Segui il canale Twitch e attiva le notifiche!"
         path="/twitch"
+        keywords="twitch andryxify, live streaming gaming, streamer italiano twitch, diretta videogiochi"
       />
       <header style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 className="title">

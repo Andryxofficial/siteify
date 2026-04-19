@@ -129,6 +129,36 @@ export default async function handler(req, res) {
   /* ─── GET: list posts OR single post ─── */
   if (req.method === 'GET') {
     try {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+
+      if (url.searchParams.get('action') === 'favorites') {
+        const authHeader = req.headers.authorization || req.headers['authorization'];
+        if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Non autenticato' });
+        const user = await validateTwitch(authHeader);
+        if (!user) return res.status(401).json({ error: 'Token non valido' });
+
+        const ids = await redis.smembers(`favorites:${user.login}`);
+        if (!ids || ids.length === 0) return res.status(200).json({ posts: [] });
+
+        const posts = [];
+        for (const id of ids.slice(0, 50)) {
+          const post = await redis.hgetall(`community:post:${id}`);
+          if (post && post.id) posts.push(post);
+        }
+        posts.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+        return res.status(200).json({ posts });
+      }
+
+      if (url.searchParams.get('action') === 'is_favorite') {
+        const authHeader = req.headers.authorization || req.headers['authorization'];
+        if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Non autenticato' });
+        const user = await validateTwitch(authHeader);
+        if (!user) return res.status(401).json({ error: 'Token non valido' });
+        const postId = url.searchParams.get('postId');
+        const favorited = await redis.sismember(`favorites:${user.login}`, postId);
+        return res.status(200).json({ favorited: !!favorited });
+      }
+
       // Single post fetch: GET /api/community?id=<postId>
       const singleId = req.query?.id;
       if (singleId) {
@@ -320,8 +350,17 @@ export default async function handler(req, res) {
       }
 
       const { postId, action } = req.body || {};
-      if (!postId || !['like', 'unlike'].includes(action)) {
+      if (!postId || !['like', 'unlike', 'favorite', 'unfavorite'].includes(action)) {
         return res.status(400).json({ error: 'Richiesta non valida.' });
+      }
+
+      if (action === 'favorite') {
+        await redis.sadd(`favorites:${twitchUser.login}`, postId);
+        return res.status(200).json({ ok: true, favorited: true });
+      }
+      if (action === 'unfavorite') {
+        await redis.srem(`favorites:${twitchUser.login}`, postId);
+        return res.status(200).json({ ok: true, favorited: false });
       }
 
       const postKey = `community:post:${postId}`;

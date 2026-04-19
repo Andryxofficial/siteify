@@ -103,6 +103,21 @@ function parseScores(raw) {
   return result;
 }
 
+/* ─── VIP helpers ─── */
+
+/** Restituisce ora e giorno della settimana in timezone italiano */
+function getItalianDateTime(now = new Date()) {
+  const hour = parseInt(now.toLocaleString('en-GB', { timeZone: 'Europe/Rome', hour: 'numeric', hour12: false }));
+  const day = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Rome' })).getDay();
+  return { hour, day };
+}
+
+/** Finestra VIP: Domenica ≥ 23:00 → Lunedì < 10:00 (ora italiana) */
+function isVipWindowOpen(now = new Date()) {
+  const { hour, day } = getItalianDateTime(now);
+  return (day === 0 && hour >= 23) || (day === 1 && hour < 10);
+}
+
 /* ─── Handler ─── */
 
 export default async function handler(req, res) {
@@ -133,6 +148,44 @@ export default async function handler(req, res) {
 
   /* ─── GET: fetch leaderboard data ─── */
   if (req.method === 'GET') {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+
+    if (url.searchParams.get('action') === 'vip_winner_status') {
+      // Richiede autenticazione
+      const authHeader = req.headers.authorization || req.headers['authorization'];
+      if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Non autenticato' });
+      const token = authHeader.split(' ')[1];
+      const valRes = await fetch('https://id.twitch.tv/oauth2/validate', { headers: { Authorization: `OAuth ${token}` } });
+      if (!valRes.ok) return res.status(401).json({ error: 'Token non valido' });
+      const valData = await valRes.json();
+      const username = valData.login;
+
+      const season = getCurrentSeason(now);
+      const weeklyKey = getWeeklyKey(season, now);
+
+      // Chi è il vincitore settimanale?
+      const top = await redis.zrange(weeklyKey, 0, 0, { rev: true, withScores: true });
+      const winner = top?.[0]?.member || top?.[0]?.value || (typeof top?.[0] === 'string' ? top[0] : null);
+      const isWinner = !!winner && String(winner).toLowerCase() === username.toLowerCase();
+
+      // Finestra VIP: Domenica ≥ 23:00 → Lunedì < 10:00 (ora italiana)
+      const windowOpen = isVipWindowOpen(now);
+
+      // Stato grant
+      const grantKey = `lb:vip_grant:${weeklyKey}`;
+      const grantData = await redis.hgetall(grantKey);
+      const alreadyGranted = !!grantData?.grantee;
+
+      return res.status(200).json({
+        isWinner,
+        canGrant: isWinner && windowOpen && !alreadyGranted,
+        alreadyGranted,
+        grantee: grantData?.grantee || null,
+        windowOpen,
+        weekKey: weeklyKey,
+      });
+    }
+
     try {
       const weeklyKey = getWeeklyKey(requestedSeason, now);
       const monthlyKey = getMonthlyKey(requestedSeason);
@@ -177,7 +230,51 @@ export default async function handler(req, res) {
   /* ─── POST: submit score ─── */
   if (req.method === 'POST') {
     try {
-      const { score, season: bodySeason } = req.body;
+      const body = req.body || {};
+
+      if (body.action === 'grant_vip') {
+        const authHeader = req.headers.authorization || req.headers['authorization'];
+        if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Non autenticato' });
+        const token = authHeader.split(' ')[1];
+        const valRes = await fetch('https://id.twitch.tv/oauth2/validate', { headers: { Authorization: `OAuth ${token}` } });
+        if (!valRes.ok) return res.status(401).json({ error: 'Token non valido' });
+        const valData = await valRes.json();
+        const username = valData.login;
+
+        const targetUsername = typeof body.targetUsername === 'string' ? body.targetUsername.trim().toLowerCase().slice(0, 50) : '';
+        if (!targetUsername || targetUsername === username) return res.status(400).json({ error: 'Nome utente non valido' });
+
+        const season = getCurrentSeason(now);
+        const weeklyKey = getWeeklyKey(season, now);
+
+        // Verifica finestra temporale
+        const windowOpen = isVipWindowOpen(now);
+        if (!windowOpen) return res.status(400).json({ error: 'La finestra per assegnare il VIP non è aperta' });
+
+        // Verifica vincitore
+        const top = await redis.zrange(weeklyKey, 0, 0, { rev: true, withScores: true });
+        const winner = top?.[0]?.member || top?.[0]?.value || (typeof top?.[0] === 'string' ? top[0] : null);
+        if (!winner || String(winner).toLowerCase() !== username.toLowerCase()) {
+          return res.status(403).json({ error: 'Non sei il vincitore settimanale' });
+        }
+
+        // Verifica non già assegnato
+        const grantKey = `lb:vip_grant:${weeklyKey}`;
+        const existing = await redis.hget(grantKey, 'grantee');
+        if (existing) return res.status(400).json({ error: 'Hai già assegnato il VIP questa settimana' });
+
+        // Salva grant
+        await redis.hset(grantKey, { winner: username, grantee: targetUsername, grantedAt: Date.now().toString() });
+        await redis.expire(grantKey, 864000); // 10 giorni
+
+        // Log audit
+        await redis.lpush('lb:vip_log', JSON.stringify({ winner: username, grantee: targetUsername, weekKey: weeklyKey, grantedAt: Date.now() }));
+        await redis.ltrim('lb:vip_log', 0, 99);
+
+        return res.status(200).json({ ok: true, grantee: targetUsername });
+      }
+
+      const { score, season: bodySeason } = body;
       const targetSeason = (bodySeason || currentSeason).replace(/[^0-9-]/g, '');
 
       if (typeof score !== 'number' || score < 0 || !Number.isFinite(score) || score > 999999) {

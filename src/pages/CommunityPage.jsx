@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, Heart, Clock, Send, X, ChevronLeft, ChevronRight,
   Twitch, LogIn, Plus, User, Bell, BellOff, Trophy, Film, Music,
-  Users, Lock, Shield,
+  Users, Lock, Shield, Star,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
@@ -47,6 +47,39 @@ const entrata = (ritardo = 0) => ({
    ═══════════════════════════════════════ */
 function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
   const cat = infoCategoria(post.tag);
+  const [favorito, setFavorito] = useState(false);
+
+  // Controlla se il post è nei preferiti
+  useEffect(() => {
+    if (!twitchToken || !post.id) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/community?action=is_favorite&postId=${post.id}`, {
+          headers: { Authorization: `Bearer ${twitchToken}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setFavorito(!!data.favorited);
+        }
+      } catch { /* silenzioso */ }
+    })();
+  }, [twitchToken, post.id]);
+
+  const toggleFavorito = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!twitchToken) return;
+    const nuovoStato = !favorito;
+    setFavorito(nuovoStato);
+    try {
+      await fetch('/api/community', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+        body: JSON.stringify({ postId: post.id, action: nuovoStato ? 'favorite' : 'unfavorite' }),
+      });
+    } catch { setFavorito(!nuovoStato); }
+  };
+
   return (
     <motion.div layout {...entrata(0)}>
       <Link
@@ -125,6 +158,13 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
               >
                 <Heart size={14} fill={post.liked ? 'var(--accent)' : 'none'} color={post.liked ? 'var(--accent)' : 'var(--text-faint)'} />
                 <span>{post.likeCount || 0}</span>
+              </button>
+              <button
+                className="social-btn-azione"
+                onClick={toggleFavorito}
+                title={favorito ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
+              >
+                <Star size={14} fill={favorito ? '#facc15' : 'none'} color={favorito ? '#facc15' : 'var(--text-faint)'} />
               </button>
               <span className="social-btn-azione" style={{ pointerEvents: 'none' }}>
                 <MessageSquare size={14} color="var(--text-faint)" />
@@ -650,6 +690,7 @@ export default function CommunityPage() {
         title="SOCIALify"
         description="SOCIALify — Il punto di ritrovo della community di ANDRYXify. Crea discussioni, condividi idee e connettiti. Accedi con Twitch!"
         path="/socialify"
+        keywords="community gaming, forum streamer, socialify andryxify, discussioni twitch community"
       />
 
       {/* Intestazione */}

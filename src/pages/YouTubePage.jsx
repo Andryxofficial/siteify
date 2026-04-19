@@ -33,6 +33,7 @@ export default function YouTubePage() {
         title="YouTube — Video, Highlights & Approfondimenti"
         description="Guarda i video di ANDRYXify su YouTube: gameplay, highlights, approfondimenti su intelligenza artificiale e gaming. Iscriviti al canale YouTube di Andrea Taliento!"
         path="/youtube"
+        keywords="youtube andryxify, video gaming, highlights gameplay, intelligenza artificiale video"
       />
       <header style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 className="title"><span style={{ color: '#FF0000' }}>YouTube</span> Hub</h1>

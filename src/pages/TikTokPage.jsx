@@ -19,6 +19,7 @@ export default function TikTokPage() {
         title="TikTok — Clip, Trend & Gaming"
         description="Le clip più divertenti di ANDRYXify su TikTok: gaming, intelligenza artificiale, trend e pillole di intrattenimento. Seguimi su TikTok!"
         path="/tiktok"
+        keywords="tiktok andryxify, clip gaming, video brevi streamer, trend tiktok italiano"
       />
       <header style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 className="title">

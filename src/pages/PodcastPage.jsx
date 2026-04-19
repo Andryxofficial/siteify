@@ -32,6 +32,7 @@ export default function PodcastPage() {
         title="Podcast — Umanità o IA?"
         description="Ascolta il podcast 'Umanità o IA?' di ANDRYXify (Andrea Taliento). Episodi su intelligenza artificiale, gaming, tecnologia e il futuro dell'umanità. Disponibile su Spotify e Apple Podcast."
         path="/podcast"
+        keywords="podcast intelligenza artificiale, umanità o ia, podcast tecnologia italiano, spotify podcast gaming"
       />
       {/* Hero */}
       <header className="header" style={{ marginBottom: '1rem' }}>

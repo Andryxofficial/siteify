@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { TwitchAuthProvider } from './contexts/TwitchAuthContext';
 import Navbar from './components/Navbar';
+import SchermataCampione from './components/SchermataCampione';
 import Footer from './components/Footer';
 import PageTransition from './components/PageTransition';
 import useStandalone from './hooks/useStandalone';
@@ -78,6 +79,7 @@ function AppLayout() {
   return (
     <div className={`app-container${isStandalone ? ' pwa-standalone' : ''}`}>
       <Navbar />
+      <SchermataCampione />
       <AnimatePresence mode="wait">
         <PageTransition key={location.pathname}>
           <Suspense fallback={<PaginaCaricamento />}>

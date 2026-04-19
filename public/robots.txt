@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /scoiattoli
+Disallow: /mod-panel
 
 Sitemap: https://andryxify.it/sitemap.xml
