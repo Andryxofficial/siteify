@@ -250,3 +250,166 @@ export async function forceResetE2EKeys(twitchUser, twitchToken) {
 
   return keyPair.privateKey;
 }
+
+/* ─── Passphrase-protected key backup (cross-device sync) ─── */
+
+/** Derive an AES-GCM-256 key from a passphrase + salt using PBKDF2 */
+export async function derivePassphraseKey(passphrase, salt) {
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(passphrase), 'PBKDF2', false, ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 600_000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+/** Encrypt an ECDH private key with a user passphrase for server backup */
+export async function encryptPrivateKeyForBackup(privateKey, passphrase) {
+  const jwk = await crypto.subtle.exportKey('jwk', privateKey);
+  const plaintext = new TextEncoder().encode(JSON.stringify(jwk));
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const aesKey = await derivePassphraseKey(passphrase, salt);
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, plaintext);
+  return {
+    encryptedPrivateKey: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
+    salt: btoa(String.fromCharCode(...salt)),
+    iv: btoa(String.fromCharCode(...iv)),
+  };
+}
+
+/** Decrypt an ECDH private key from a server backup using the user passphrase */
+export async function decryptPrivateKeyFromBackup(encryptedPrivateKey, saltB64, ivB64, passphrase) {
+  const cipherBytes = Uint8Array.from(atob(encryptedPrivateKey), c => c.charCodeAt(0));
+  const salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
+  const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
+  const aesKey = await derivePassphraseKey(passphrase, salt);
+  const plainBuffer = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, cipherBytes);
+  const jwk = JSON.parse(new TextDecoder().decode(plainBuffer));
+  return crypto.subtle.importKey(
+    'jwk', jwk, { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey']
+  );
+}
+
+/* ─── Passkey (WebAuthn PRF) key backup ─── */
+
+const PRF_SALT = new TextEncoder().encode('ANDRYXify-e2e-v1');
+
+/** Check if passkeys with PRF extension are available on this device */
+export async function isPasskeyPRFAvailable() {
+  if (typeof window === 'undefined' || !window.PublicKeyCredential) return false;
+  try {
+    const platformOk = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    return platformOk;
+  } catch { return false; }
+}
+
+/**
+ * Import raw PRF output bytes as an AES-GCM key for encrypting/decrypting the ECDH private key.
+ */
+async function prfToAesKey(prfOutput, usage) {
+  // HKDF-derive a proper AES key from the PRF output for domain separation
+  const keyMaterial = await crypto.subtle.importKey('raw', prfOutput, 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: PRF_SALT, info: new TextEncoder().encode('e2e-backup') },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    usage
+  );
+}
+
+/**
+ * Create a passkey (WebAuthn credential) with PRF and encrypt the ECDH private key.
+ * Returns { credentialId, encryptedPrivateKey, iv } ready for server storage.
+ */
+export async function createPasskeyAndEncryptKey(username, privateKey) {
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  const userId = new TextEncoder().encode(username.slice(0, 64));
+
+  const credential = await navigator.credentials.create({
+    publicKey: {
+      challenge,
+      rp: { name: 'ANDRYXify', id: window.location.hostname },
+      user: { id: userId, name: username, displayName: username },
+      pubKeyCredParams: [
+        { alg: -7, type: 'public-key' },
+        { alg: -257, type: 'public-key' },
+      ],
+      authenticatorSelection: {
+        authenticatorAttachment: 'platform',
+        userVerification: 'required',
+        residentKey: 'preferred',
+      },
+      extensions: {
+        prf: { eval: { first: PRF_SALT } },
+      },
+    },
+  });
+
+  const prfResult = credential.getClientExtensionResults()?.prf;
+  if (!prfResult?.results?.first) {
+    throw new Error('PRF_NOT_SUPPORTED');
+  }
+
+  const prfBytes = new Uint8Array(prfResult.results.first);
+  const aesKey = await prfToAesKey(prfBytes, ['encrypt']);
+
+  const jwk = await crypto.subtle.exportKey('jwk', privateKey);
+  const plaintext = new TextEncoder().encode(JSON.stringify(jwk));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, plaintext);
+
+  return {
+    credentialId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
+    encryptedPrivateKey: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
+    iv: btoa(String.fromCharCode(...iv)),
+  };
+}
+
+/**
+ * Authenticate with an existing passkey and decrypt the ECDH private key.
+ * @param {string|null} credentialIdB64 — if provided, limits to this credential
+ */
+export async function authenticatePasskeyAndDecryptKey(encryptedPrivateKey, ivB64, credentialIdB64) {
+  const allowCredentials = [];
+  if (credentialIdB64) {
+    allowCredentials.push({
+      id: Uint8Array.from(atob(credentialIdB64), c => c.charCodeAt(0)),
+      type: 'public-key',
+    });
+  }
+
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  const assertion = await navigator.credentials.get({
+    publicKey: {
+      challenge,
+      allowCredentials: allowCredentials.length > 0 ? allowCredentials : undefined,
+      userVerification: 'required',
+      extensions: {
+        prf: { eval: { first: PRF_SALT } },
+      },
+    },
+  });
+
+  const prfResult = assertion.getClientExtensionResults()?.prf;
+  if (!prfResult?.results?.first) {
+    throw new Error('PRF_NOT_SUPPORTED');
+  }
+
+  const prfBytes = new Uint8Array(prfResult.results.first);
+  const aesKey = await prfToAesKey(prfBytes, ['decrypt']);
+
+  const cipherBytes = Uint8Array.from(atob(encryptedPrivateKey), c => c.charCodeAt(0));
+  const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
+  const plainBuffer = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, cipherBytes);
+  const jwk = JSON.parse(new TextDecoder().decode(plainBuffer));
+
+  return crypto.subtle.importKey(
+    'jwk', jwk, { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey']
+  );
+}
