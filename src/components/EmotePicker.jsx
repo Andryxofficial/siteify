@@ -129,6 +129,7 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
                 <button
                   type="button"
                   onClick={() => setRicerca('')}
+                  title="Cancella ricerca"
                   style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 2, display: 'flex' }}
                 >
                   <X size={13} />

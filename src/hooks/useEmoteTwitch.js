@@ -111,7 +111,7 @@ export function useEmoteTwitch(twitchToken) {
   const renderTestoConEmote = useCallback((testo) => {
     if (!testo || mappaEmote.size === 0) return [testo || ''];
 
-    const parole = testo.split(/( +)/); // mantiene gli spazi come separatori
+    const parole = testo.split(/(\s+)/); // mantiene spazi/tab/newline come separatori
     const risultato = [];
     let testoAccumulato = '';
 

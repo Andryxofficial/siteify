@@ -1312,11 +1312,8 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
             emoteCanale={emoteCanale}
             emoteGlobali={emoteGlobali}
             onSelect={(nome) => {
-              if (editingId) {
-                setEditText(prev => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + nome + ' ');
-              } else {
-                setInput(prev => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + nome + ' ');
-              }
+              const setter = editingId ? setEditText : setInput;
+              setter(prev => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + nome + ' ');
               inputRef.current?.focus();
             }}
             disabled={!aesKey || mediaUploading}
