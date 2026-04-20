@@ -245,7 +245,16 @@ export async function forceResetE2EKeys(twitchUser, twitchToken) {
   });
   if (!regRes.ok) throw new Error('Registrazione nuova chiave pubblica fallita');
 
-  // 4. Store new keys in IndexedDB
+  // 4. Elimina i vecchi backup dal server per evitare che Device 2 ripristini
+  //    una chiave obsoleta (K1) tramite password o auto-sync, portando a messaggi
+  //    non decifrabili dopo il reset.
+  await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+    body: JSON.stringify({ action: 'clear_e2e_backups' }),
+  }).catch((e) => console.warn('clear_e2e_backups non riuscito (non bloccante):', e));
+
+  // 5. Store new keys in IndexedDB
   await setInIDB(`privateKey:${twitchUser}`, keyPair.privateKey);
   await setInIDB(`publicKeyString:${twitchUser}`, publicKeyString);
 

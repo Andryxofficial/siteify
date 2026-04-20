@@ -585,6 +585,24 @@ export default async function handler(req, res) {
       }
     }
 
+    // Cancella tutti i backup E2E dell'utente (chiamato dopo un reset delle chiavi,
+    // per evitare che Device 2 ripristini una chiave obsoleta con password/auto-sync).
+    // Nota: i backup usano schemi di chiave diversi per design:
+    //   e2e_backup:<username>     → backup manuale (password/passkey), indicizzato per username
+    //   e2e_auto_backup:<userId>  → backup automatico, indicizzato per user_id Twitch (stabile)
+    if (action === 'clear_e2e_backups') {
+      try {
+        const userId = twitchUser.userId;
+        const ops = [redis.del(`e2e_backup:${me}`)];
+        if (userId) ops.push(redis.del(`e2e_auto_backup:${userId}`));
+        await Promise.all(ops);
+        return res.status(200).json({ ok: true });
+      } catch (e) {
+        console.error('clear_e2e_backups error:', e);
+        return res.status(500).json({ error: 'Errore nella pulizia dei backup.' });
+      }
+    }
+
     // Save notification preferences
     if (action === 'save_notif_prefs') {
       const prefs = req.body.prefs;

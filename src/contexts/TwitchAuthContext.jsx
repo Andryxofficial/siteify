@@ -97,7 +97,11 @@ export function TwitchAuthProvider({ children }) {
           // Best-effort: create auto-sync backup se non esiste ancora
           if (userId) {
             const localPubStr = await getFromIDB(`publicKeyString:${user}`).catch(() => null);
-            createAutoSyncBackup(localKey, userId, token, localPubStr).catch(() => {});
+            createAutoSyncBackup(localKey, userId, token, localPubStr).catch(() => {
+              // Se il backup auto-sync fallisce, notifica l'utente affinché configuri
+              // un metodo di backup manuale (password o passkey) come alternativa.
+              setE2eNeedsSync(true);
+            });
           }
           return;
         }
@@ -111,6 +115,43 @@ export function TwitchAuthProvider({ children }) {
               const jwk = await crypto.subtle.exportKey('jwk', restoredKey);
               const pubJwk = { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y, key_ops: [] };
               const publicKeyString = JSON.stringify(pubJwk);
+
+              // Verifica che la chiave ripristinata corrisponda alla chiave pubblica
+              // attualmente registrata sul server. Se non corrisponde, il backup auto-sync
+              // è obsoleto (ad es. dopo un reset delle chiavi il cui aggiornamento auto-sync
+              // è fallito). In quel caso NON usare la chiave obsoleta: salterebbe la verifica
+              // e si sovrascriverebbero le chiave corrette sul server, rendendo impossibile
+              // decifrare tutti i messaggi inviati dopo il reset.
+              try {
+                const serverKeyRes = await fetch(`${API}?action=key&user=${encodeURIComponent(user)}`);
+                if (serverKeyRes.ok) {
+                  const serverKeyData = await serverKeyRes.json();
+                  if (serverKeyData.publicKey) {
+                    let serverJwk;
+                    try {
+                      serverJwk = typeof serverKeyData.publicKey === 'string'
+                        ? JSON.parse(serverKeyData.publicKey)
+                        : serverKeyData.publicKey;
+                    } catch { /* impossibile parsare il JWK del server — continua normalmente */ }
+                    if (serverJwk && (serverJwk.x !== pubJwk.x || serverJwk.y !== pubJwk.y)) {
+                      // Il backup auto-sync contiene una chiave diversa da quella registrata:
+                      // scarta il ripristino e procedi con il flusso manuale (password/passkey).
+                      throw new Error('backup-obsoleto');
+                    }
+                    if (!serverJwk) {
+                      // JWK server non interpretabile — non possiamo verificare la corrispondenza:
+                      // scarta il backup per sicurezza.
+                      throw new Error('verifica-server-fallita');
+                    }
+                  }
+                }
+              } catch (e) {
+                if (e.message === 'backup-obsoleto' || e.message === 'verifica-server-fallita') throw e;
+                // Errore di rete nel controllo server — non possiamo verificare: scarta
+                // il backup per sicurezza e procedi con il flusso manuale.
+                throw new Error(`verifica-server-fallita: ${e.message}`);
+              }
+
               await setInIDB(`privateKey:${user}`, restoredKey);
               await setInIDB(`publicKeyString:${user}`, publicKeyString);
               e2ePrivateKeyRef.current = restoredKey;
@@ -124,7 +165,7 @@ export function TwitchAuthProvider({ children }) {
               setE2eError(null);
               return;
             }
-          } catch { /* ripristino auto non riuscito — procedi con flusso manuale */ }
+          } catch { /* ripristino auto non riuscito o backup obsoleto — procedi con flusso manuale */ }
         }
 
         // 2. No local keys — check server for passphrase-protected backup
@@ -294,10 +335,13 @@ export function TwitchAuthProvider({ children }) {
       setE2eError(null);
       // Prompt to set up sync with new keys
       setE2eNeedsSync(true);
-      // Crea subito il backup automatico con le nuove chiavi
+      // Crea subito il backup automatico con le nuove chiavi.
+      // Se ha successo, non è necessario il banner sync (il ripristino avverrà automaticamente).
+      // Se fallisce, il banner rimane per invitare a configurare un backup manuale.
       if (twitchUserId) {
         const pubStr = await getFromIDB(`publicKeyString:${twitchUser}`).catch(() => null);
         createAutoSyncBackup(privateKey, twitchUserId, twitchToken, pubStr)
+          .then(() => setE2eNeedsSync(false))
           .catch(e => {
             console.warn('Auto-sync backup post-reset non riuscito:', e);
             setE2eNeedsSync(true);
@@ -410,6 +454,36 @@ export function TwitchAuthProvider({ children }) {
     const jwk = await crypto.subtle.exportKey('jwk', privateKey);
     const pubJwk = { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y, key_ops: [] };
     const publicKeyString = JSON.stringify(pubJwk);
+
+    // Verifica che la chiave decifrata corrisponda alla chiave pubblica corrente sul server.
+    // Se non corrisponde, il backup è obsoleto (es. dopo un reset su un altro dispositivo):
+    // usare questa chiave sovrascrivere la chiave corretta e rendere illeggibili i messaggi.
+    try {
+      const keyCheck = await fetch(`${API}?action=key&user=${encodeURIComponent(twitchUser)}`);
+      if (keyCheck.ok) {
+        const keyData = await keyCheck.json();
+        if (keyData.publicKey) {
+          let serverJwk;
+          try {
+            serverJwk = typeof keyData.publicKey === 'string'
+              ? JSON.parse(keyData.publicKey)
+              : keyData.publicKey;
+          } catch { /* noop */ }
+          if (serverJwk && (serverJwk.x !== pubJwk.x || serverJwk.y !== pubJwk.y)) {
+            throw new Error(
+              'Il backup password contiene una chiave obsoleta. ' +
+              'Le chiavi E2E sono state resettate su un altro dispositivo. ' +
+              'Usa "Reset chiavi" nelle impostazioni per rigenerare le chiavi su questo dispositivo.'
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (e.message.startsWith('Il backup password')) throw e;
+      // Errore di rete nel controllo: procedi con cautela (il worst case è
+      // sovrascrivere una chiave corrente, ma bloccare l'utente sarebbe peggio)
+      console.warn('unlockE2EPassphrase: verifica chiave server non riuscita:', e);
+    }
 
     // Store locally
     await setInIDB(`privateKey:${twitchUser}`, privateKey);
@@ -529,6 +603,32 @@ export function TwitchAuthProvider({ children }) {
     const jwk = await crypto.subtle.exportKey('jwk', privateKey);
     const pubJwk = { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y, key_ops: [] };
     const publicKeyString = JSON.stringify(pubJwk);
+
+    // Verifica coerenza con la chiave pubblica sul server (vedi unlockE2EPassphrase)
+    try {
+      const keyCheck = await fetch(`${API}?action=key&user=${encodeURIComponent(twitchUser)}`);
+      if (keyCheck.ok) {
+        const keyData = await keyCheck.json();
+        if (keyData.publicKey) {
+          let serverJwk;
+          try {
+            serverJwk = typeof keyData.publicKey === 'string'
+              ? JSON.parse(keyData.publicKey)
+              : keyData.publicKey;
+          } catch { /* noop */ }
+          if (serverJwk && (serverJwk.x !== pubJwk.x || serverJwk.y !== pubJwk.y)) {
+            throw new Error(
+              'Il backup passkey contiene una chiave obsoleta. ' +
+              'Le chiavi E2E sono state resettate su un altro dispositivo. ' +
+              'Usa "Reset chiavi" nelle impostazioni per rigenerare le chiavi su questo dispositivo.'
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (e.message.startsWith('Il backup passkey')) throw e;
+      console.warn('unlockE2EPasskey: verifica chiave server non riuscita:', e);
+    }
 
     await setInIDB(`privateKey:${twitchUser}`, privateKey);
     await setInIDB(`publicKeyString:${twitchUser}`, publicKeyString);
