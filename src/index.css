@@ -1092,12 +1092,13 @@ nav.navbar-container.glass-panel {
 .mobile-tab-pill {
   position: absolute;
   top: 4px;
+  left: 0;
   height: calc(100% - 8px);
   border-radius: 12px;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
-  will-change: left, width;
+  will-change: transform;
 
   background: linear-gradient(180deg, rgba(130,170,240,0.08) 0%, rgba(100,140,255,0.03) 100%);
   backdrop-filter: blur(16px) saturate(180%);
