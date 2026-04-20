@@ -1,5 +1,5 @@
 /**
- * Chat.jsx — Gestione comandi, timer, citazioni e contatori.
+ * Chat.jsx — Gestione comandi, timer, citazioni, contatori e parole chiave.
  * Migrazione completa dalla vecchia ModPanel con tab interne.
  */
 import { useState, useEffect, useCallback } from 'react';
@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Terminal, Timer, Quote, Hash, Plus, Trash2, Save, X, Copy, Check,
   Edit2, Clock, ToggleLeft, ToggleRight, Loader, Shield, Users, Star, Crown,
-  MessageSquare, RefreshCw,
+  MessageSquare, RefreshCw, Sparkles,
 } from 'lucide-react';
 
 const API = '/api/mod-commands';
@@ -34,22 +34,30 @@ function CopyBtn({ text }) {
   );
 }
 
-/* ── COMMAND FORM ── */
-function CommandForm({ initial, onSave, onCancel, saving }) {
+/* ── COMMAND FORM (riusato sia per !comandi che per keyword) ── */
+function CommandForm({ initial, tipo: tipoFisso, onSave, onCancel, saving }) {
   const [trigger,    setTrigger]    = useState(initial?.trigger    || '');
   const [response,   setResponse]   = useState(initial?.response   || '');
   const [cooldown,   setCooldown]   = useState(initial?.cooldown   ?? 10);
   const [permission, setPermission] = useState(initial?.permission || 'everyone');
+  const isKeyword = tipoFisso === 'keyword';
   return (
-    <form onSubmit={e => { e.preventDefault(); onSave({ trigger: trigger.trim(), response: response.trim(), cooldown: Number(cooldown), permission }); }} className="mod-form glass-card" style={{ padding: '1.25rem' }}>
+    <form onSubmit={e => { e.preventDefault(); onSave({ trigger: trigger.trim(), response: response.trim(), cooldown: Number(cooldown), permission, tipo: tipoFisso || 'comando' }); }} className="mod-form glass-card" style={{ padding: '1.25rem' }}>
       <div className="mod-form-row">
-        <label><Terminal size={13} /> Trigger
-          <input className="mod-input" value={trigger} onChange={e => setTrigger(e.target.value)} placeholder="sito" maxLength={50} required disabled={!!initial?.trigger} />
+        <label>
+          {isKeyword ? <><Sparkles size={13} /> Parola chiave</> : <><Terminal size={13} /> Trigger</>}
+          <input className="mod-input" value={trigger} onChange={e => setTrigger(e.target.value)}
+            placeholder={isKeyword ? 'sito (senza !)' : 'sito'} maxLength={50} required disabled={!!initial?.trigger} />
         </label>
         <label><Clock size={13} /> Cooldown (s)
           <input type="number" className="mod-input mod-input-small" value={cooldown} onChange={e => setCooldown(e.target.value)} min={0} max={3600} />
         </label>
       </div>
+      {isKeyword && (
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem', lineHeight: 1.4 }}>
+          Il bot risponderà ogni volta che la parola chiave appare nel messaggio (anche senza !, case insensitive).
+        </p>
+      )}
       <label><MessageSquare size={13} /> Risposta
         <textarea className="mod-input mod-textarea" value={response} onChange={e => setResponse(e.target.value)} placeholder="🔗 Ecco il sito…" maxLength={500} required rows={2} />
       </label>
@@ -119,6 +127,8 @@ export default function Chat({ token }) {
 
   const [showCmdForm,    setShowCmdForm]    = useState(false);
   const [editingCmd,     setEditingCmd]     = useState(null);
+  const [showKwForm,     setShowKwForm]     = useState(false);
+  const [editingKw,      setEditingKw]      = useState(null);
   const [showTimerForm,  setShowTimerForm]  = useState(false);
   const [editingTimer,   setEditingTimer]   = useState(null);
   const [quoteText,      setQuoteText]      = useState('');
@@ -175,11 +185,16 @@ export default function Chat({ token }) {
     setCounterName(''); setCounterLabel('');
   };
 
+  // Separa comandi normali (!) da parole chiave
+  const comandiNormali = (data.commands || []).filter(c => !c.tipo || c.tipo === 'comando');
+  const paroleChiave   = (data.commands || []).filter(c => c.tipo === 'keyword');
+
   const TABS = [
-    { k: 'commands', label: 'Comandi', icon: Terminal, count: data.commands?.length },
-    { k: 'timers',   label: 'Timer',   icon: Timer,    count: data.timers?.length },
-    { k: 'quotes',   label: 'Citazioni', icon: Quote,  count: data.quotes?.length },
-    { k: 'counters', label: 'Contatori', icon: Hash,   count: data.counters?.length },
+    { k: 'commands', label: 'Comandi', icon: Terminal,  count: comandiNormali.length },
+    { k: 'keywords', label: 'Parole chiave', icon: Sparkles, count: paroleChiave.length },
+    { k: 'timers',   label: 'Timer',   icon: Timer,     count: data.timers?.length },
+    { k: 'quotes',   label: 'Citazioni', icon: Quote,   count: data.quotes?.length },
+    { k: 'counters', label: 'Contatori', icon: Hash,    count: data.counters?.length },
   ];
 
   if (loading) return <div style={{ textAlign: 'center', padding: '3rem' }}><Loader size={28} className="spin" style={{ color: 'var(--primary)' }} /></div>;
@@ -205,7 +220,7 @@ export default function Chat({ token }) {
       </div>
 
       <div className="glass-panel" style={{ padding: '1.5rem' }}>
-        {/* ── COMANDI ── */}
+        {/* ── COMANDI ! ── */}
         {tab === 'commands' && (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -218,15 +233,15 @@ export default function Chat({ token }) {
             <AnimatePresence>
               {showCmdForm && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ marginBottom: '1rem', overflow: 'hidden' }}>
-                  <CommandForm initial={editingCmd} onSave={async d => { await post({ type: 'command', ...d }); setShowCmdForm(false); setEditingCmd(null); }} onCancel={() => { setShowCmdForm(false); setEditingCmd(null); }} saving={saving} />
+                  <CommandForm tipo="comando" initial={editingCmd} onSave={async d => { await post({ type: 'command', ...d }); setShowCmdForm(false); setEditingCmd(null); }} onCancel={() => { setShowCmdForm(false); setEditingCmd(null); }} saving={saving} />
                 </motion.div>
               )}
             </AnimatePresence>
-            {data.commands?.length === 0 && !showCmdForm && (
+            {comandiNormali.length === 0 && !showCmdForm && (
               <p style={{ color: 'var(--text-faint)', fontSize: '0.85rem', textAlign: 'center', padding: '1.5rem 0' }}>Nessun comando. Clicca "Nuovo" per aggiungerne uno.</p>
             )}
             <div className="mod-list">
-              {(data.commands || []).map(cmd => {
+              {comandiNormali.map(cmd => {
                 const perm = getPermInfo(cmd.permission);
                 const PI = perm.icon;
                 return (
@@ -244,6 +259,59 @@ export default function Chat({ token }) {
                       </div>
                     </div>
                     <p className="mod-item-body">{cmd.response}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* ── PAROLE CHIAVE (keyword naturali) ── */}
+        {tab === 'keywords' && (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 600 }}><Sparkles size={15} style={{ verticalAlign: 'middle', marginRight: '0.35rem' }} />Parole Chiave</h3>
+              {!showKwForm && (
+                <button className="btn-primary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.7rem' }}
+                  onClick={() => { setEditingKw(null); setShowKwForm(true); }}><Plus size={13} /> Nuova</button>
+              )}
+            </div>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '1rem', lineHeight: 1.5 }}>
+              Il bot risponde quando la parola chiave viene menzionata in chat, <strong>senza bisogno del !</strong>.
+              La corrispondenza è case-insensitive e segue il confine di parola: <code className="mod-trigger">sito</code> risponde a
+              "visita il sito!" ma <em>non</em> a "visitositoweb". Cooldown e permessi funzionano come i comandi normali.
+            </p>
+            <AnimatePresence>
+              {showKwForm && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ marginBottom: '1rem', overflow: 'hidden' }}>
+                  <CommandForm tipo="keyword" initial={editingKw} onSave={async d => { await post({ type: 'command', ...d }); setShowKwForm(false); setEditingKw(null); }} onCancel={() => { setShowKwForm(false); setEditingKw(null); }} saving={saving} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {paroleChiave.length === 0 && !showKwForm && (
+              <p style={{ color: 'var(--text-faint)', fontSize: '0.85rem', textAlign: 'center', padding: '1.5rem 0' }}>Nessuna parola chiave. Clicca "Nuova" per aggiungerne una.</p>
+            )}
+            <div className="mod-list">
+              {paroleChiave.map(kw => {
+                const perm = getPermInfo(kw.permission);
+                const PI = perm.icon;
+                return (
+                  <div key={kw.trigger} className="mod-item glass-card">
+                    <div className="mod-item-header">
+                      <span className="mod-trigger" style={{ background: 'rgba(var(--secondary-rgb,100,180,255),0.12)', borderColor: 'rgba(var(--secondary-rgb,100,180,255),0.25)' }}>
+                        <Sparkles size={10} style={{ verticalAlign: 'middle', marginRight: 3 }} />{kw.trigger}
+                      </span>
+                      <span className="chip mod-chip-permission" style={{ fontSize: '0.68rem', background: `${perm.color}18`, color: perm.color, border: `1px solid ${perm.color}30` }}>
+                        <PI size={10} /> {perm.label}
+                      </span>
+                      {kw.cooldown > 0 && <span className="chip" style={{ fontSize: '0.68rem' }}><Clock size={10} /> {kw.cooldown}s</span>}
+                      <div className="mod-item-actions">
+                        <CopyBtn text={kw.trigger} />
+                        <button className="mod-icon-btn" onClick={() => { setEditingKw(kw); setShowKwForm(true); }}><Edit2 size={13} /></button>
+                        <button className="mod-icon-btn mod-icon-btn-danger" onClick={() => { if (confirm(`Eliminare keyword "${kw.trigger}"?`)) del({ type: 'command', key: kw.trigger }); }}><Trash2 size={13} /></button>
+                      </div>
+                    </div>
+                    <p className="mod-item-body">{kw.response}</p>
                   </div>
                 );
               })}
