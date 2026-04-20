@@ -1511,13 +1511,32 @@ export default function MessagesPage() {
   /* Notifica la Navbar ogni volta che lo stato non-letti cambia */
   useEffect(() => { notificaNonLetti(nonLettiUtenti.size > 0); }, [nonLettiUtenti]);
 
+  /**
+   * Segna una conversazione come "letta" ora.
+   * Usata sia all'ingresso che durante/uscita dalla chat per evitare
+   * falsi pallini di non-letto (il bug principale della v1).
+   */
+  const segnaLetta = useCallback((utente) => {
+    if (!twitchUser || !utente) return;
+    salvaUltimaLettura(twitchUser, utente, Date.now());
+    setNonLettiUtenti(prev => {
+      if (!prev.has(utente)) return prev;
+      const next = new Set(prev);
+      next.delete(utente);
+      return next;
+    });
+  }, [twitchUser]);
+
   const selectChat = (user) => {
-    /* Segna la conversazione come letta prima di aprirla */
-    if (twitchUser) salvaUltimaLettura(twitchUser, user, Date.now());
-    setNonLettiUtenti(prev => { const next = new Set(prev); next.delete(user); return next; });
+    segnaLetta(user);
     setActiveChat(user); setShowFriendPicker(false); setSearchParams({ con: user }, { replace: true });
   };
+
   const goBack = () => {
+    /* ── FIX v2: segna la conversazione come letta PRIMA di ricaricare ──
+       Nella v1 questo mancava, causando il pallino di non-letto
+       sui propri messaggi inviati durante la sessione di chat. */
+    if (activeChat) segnaLetta(activeChat);
     setActiveChat(null); setShowFriendPicker(false); setShowSettings(false);
     setShowSecuritySettings(false); setSearchParams({}, { replace: true }); loadConversations();
   };
@@ -1628,7 +1647,7 @@ export default function MessagesPage() {
           <AnimatePresence mode="wait">
             {activeChat ? (
               <motion.div key="chat" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} style={{ height: '100%' }}>
-                <ChatView withUser={activeChat} twitchUser={twitchUser} twitchToken={twitchToken} privateKeyRef={privateKeyRef} e2eReady={ready} onBack={goBack} onResetE2E={resetE2E} emoteCanale={emoteCanale} emoteGlobali={emoteGlobali} renderTestoConEmote={renderTestoConEmote} />
+                <ChatView withUser={activeChat} twitchUser={twitchUser} twitchToken={twitchToken} privateKeyRef={privateKeyRef} e2eReady={ready} onBack={goBack} onResetE2E={resetE2E} onSegnaLetta={() => segnaLetta(activeChat)} emoteCanale={emoteCanale} emoteGlobali={emoteGlobali} renderTestoConEmote={renderTestoConEmote} />
               </motion.div>
             ) : showFriendPicker ? (
               <motion.div key="picker" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>

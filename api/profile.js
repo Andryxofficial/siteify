@@ -66,7 +66,7 @@ async function validateTwitch(authHeader) {
     }
   } catch { /* best effort */ }
 
-  return { login: data.login, avatar, displayName };
+  return { login: data.login, avatar, displayName, clientId, token };
 }
 
 export default async function handler(req, res) {
@@ -132,12 +132,33 @@ export default async function handler(req, res) {
       const now = new Date();
       const season = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-      const [posts, friendCount, scoreGeneral, scoreMonthly] = await Promise.all([
+      const [postCount, friendCount, scoreGeneral, scoreMonthly] = await Promise.all([
         redis.zcard(`community:user:${username}`).catch(() => 0),
         redis.scard(`friends:${username}`).catch(() => 0),
         redis.zscore('lb:general', username).catch(() => null),
         redis.zscore(`lb:${season}:monthly`, username).catch(() => null),
       ]);
+
+      // Recupera avatar e display_name dell'utente target tramite Twitch helix
+      let targetAvatar = null;
+      let targetDisplay = username;
+
+      if (twitchUser?.token && twitchUser?.clientId) {
+        try {
+          const twitchProfileRes = await fetch(
+            `https://api.twitch.tv/helix/users?login=${encodeURIComponent(username)}`,
+            { headers: { Authorization: `Bearer ${twitchUser.token}`, 'Client-Id': twitchUser.clientId } },
+          );
+          if (twitchProfileRes.ok) {
+            const tpd = await twitchProfileRes.json();
+            const tu = tpd.data?.[0];
+            if (tu) {
+              targetAvatar = tu.profile_image_url || null;
+              targetDisplay = tu.display_name || username;
+            }
+          }
+        } catch { /* best effort — il profilo funziona comunque senza avatar */ }
+      }
 
       // Parsa i socials se presenti
       let socials = {};
@@ -149,21 +170,19 @@ export default async function handler(req, res) {
         }
       }
 
+      // Risposta flat — il frontend legge direttamente profilo.postCount, profilo.bio, ecc.
       return res.status(200).json({
-        profile: {
-          bio: profile.bio || '',
-          socials,
-          friendRequestsOpen: profile.friendRequestsOpen !== 'false',
-          profileVisibility: visibility,
-          theme: profile.theme || 'default',
-          updatedAt: profile.updatedAt ? Number(profile.updatedAt) : null,
-        },
-        stats: {
-          posts: posts || 0,
-          friends: friendCount || 0,
-          scoreGeneral: scoreGeneral ? Number(scoreGeneral) : null,
-          scoreMonthly: scoreMonthly ? Number(scoreMonthly) : null,
-        },
+        bio: profile.bio || '',
+        socials,
+        friendRequestsOpen: profile.friendRequestsOpen !== 'false',
+        profileVisibility: visibility,
+        theme: profile.theme || 'default',
+        updatedAt: profile.updatedAt ? Number(profile.updatedAt) : null,
+        avatar: targetAvatar,
+        display: targetDisplay,
+        postCount: postCount || 0,
+        friendCount: friendCount || 0,
+        gameScore: scoreGeneral ? Number(scoreGeneral) : (scoreMonthly ? Number(scoreMonthly) : 0),
         isOwnProfile,
       });
     } catch (e) {
