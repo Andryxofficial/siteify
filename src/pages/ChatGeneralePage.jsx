@@ -8,6 +8,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { MessageCircle, Send, Twitch, Users, LogIn } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
+import { useEmoteTwitch } from '../hooks/useEmoteTwitch';
+import EmotePicker from '../components/EmotePicker';
 import SEO from '../components/SEO';
 
 const CHAT_API = '/api/chat';
@@ -33,6 +35,7 @@ function tempoFa(ts) {
 
 export default function ChatGeneralePage() {
   const { isLoggedIn, twitchToken, getTwitchLoginUrl } = useTwitchAuth();
+  const { emoteCanale, emoteGlobali, renderTestoConEmote } = useEmoteTwitch(twitchToken);
 
   const [tab, setTab] = useState('twitch'); // twitch | sito
   const tabBarRef = useRef(null);
@@ -251,7 +254,7 @@ export default function ChatGeneralePage() {
                         </span>
                       </div>
                       <p style={{ margin: '0.2rem 0 0', fontSize: '0.88rem', wordBreak: 'break-word' }}>
-                        {msg.text}
+                        {renderTestoConEmote(msg.text)}
                       </p>
                     </div>
                   </div>
@@ -269,6 +272,12 @@ export default function ChatGeneralePage() {
                   alignItems: 'center',
                 }}
               >
+                <EmotePicker
+                  emoteCanale={emoteCanale}
+                  emoteGlobali={emoteGlobali}
+                  onSelect={(nome) => setText(prev => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + nome + ' ')}
+                  disabled={sending}
+                />
                 <input
                   type="text"
                   value={text}
