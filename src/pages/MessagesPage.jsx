@@ -1652,6 +1652,7 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
   }, [menuAperto, mostraReazioni]);
 
   /* Long-press su mobile per aprire menu contestuale */
+  useEffect(() => () => clearTimeout(longPressTimer.current), []);
   const onTouchStart = useCallback(() => {
     touchMoved.current = false;
     longPressTimer.current = setTimeout(() => {
@@ -1725,7 +1726,7 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
               {msg.mediaDecifrato ? (
                 <img src={msg.mediaDecifrato} alt="Immagine"
                   className="msg-media-img"
-                  onClick={(e) => { e.stopPropagation(); onApriMedia && onApriMedia(msg.mediaDecifrato); }} />
+                  onClick={(e) => { e.stopPropagation(); onApriMedia?.(msg.mediaDecifrato); }} />
               ) : (
                 <div className="msg-media-loading"><Loader size={18} className="spin" /> Caricamento…</div>
               )}
