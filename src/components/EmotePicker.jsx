@@ -2,17 +2,24 @@
  * EmotePicker — Pannello per selezionare e inserire emote Twitch
  *
  * Mostra le emote del canale (prima) e le globali (dopo) in un pannello
- * scrollabile. Cliccando un'emote, viene invocato `onSelect(nome)`.
+ * scrollabile con 7 colonne. Cliccando un'emote, viene invocato `onSelect(nome)`.
+ * Supporta navigazione da tastiera (frecce, Invio, Escape) e ricerca.
  */
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Smile, Search, X, Twitch } from 'lucide-react';
 
+/** Numero fisso di colonne nella griglia emote */
+const EMOTE_GRID_COLONNE = 7;
+
 export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disabled }) {
-  const [aperto, setAperto] = useState(false);
+  const [aperto, setAperto]   = useState(false);
   const [ricerca, setRicerca] = useState('');
+  const [indFocus, setIndFocus] = useState(-1);
   const pannelloRef = useRef(null);
-  const btnRef = useRef(null);
+  const btnRef      = useRef(null);
+  const inputRef    = useRef(null);
+  const gridRef     = useRef(null);
 
   // Chiudi pannello cliccando fuori
   useEffect(() => {
@@ -21,12 +28,28 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
       if (
         pannelloRef.current && !pannelloRef.current.contains(e.target) &&
         btnRef.current && !btnRef.current.contains(e.target)
-      ) {
-        setAperto(false);
-      }
+      ) setAperto(false);
     };
     document.addEventListener('pointerdown', handleClick);
     return () => document.removeEventListener('pointerdown', handleClick);
+  }, [aperto]);
+
+  // Focus sul campo ricerca quando si apre
+  useEffect(() => {
+    if (aperto) {
+      setTimeout(() => {
+        setIndFocus(-1);
+        inputRef.current?.focus();
+      }, 50);
+    }
+  }, [aperto]);
+
+  // Chiudi con Escape
+  useEffect(() => {
+    if (!aperto) return;
+    const handleKey = (e) => { if (e.key === 'Escape') setAperto(false); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
   }, [aperto]);
 
   const togglePannello = useCallback(() => {
@@ -36,6 +59,7 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
 
   const handleSelect = useCallback((nome) => {
     onSelect?.(nome);
+    setAperto(false);
   }, [onSelect]);
 
   const filtro = ricerca.trim().toLowerCase();
@@ -43,13 +67,67 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
   const filtraEmote = (lista) =>
     filtro ? lista.filter(e => e.nome.toLowerCase().includes(filtro)) : lista;
 
-  const canaleFiltered = filtraEmote(emoteCanale || []);
+  const canaleFiltered  = filtraEmote(emoteCanale  || []);
   const globaliFiltered = filtraEmote(emoteGlobali || []);
-  const nessunaEmote = canaleFiltered.length === 0 && globaliFiltered.length === 0;
-  const tutteVuote = (!emoteCanale || emoteCanale.length === 0) && (!emoteGlobali || emoteGlobali.length === 0);
+
+  // Lista piatta di tutte le emote visibili, per navigazione a tastiera
+  const tuttiItems = useMemo(
+    () => [...canaleFiltered, ...globaliFiltered],
+    [canaleFiltered, globaliFiltered],
+  );
+
+  const nessunaEmote = tuttiItems.length === 0;
+  const tutteVuote   = (!emoteCanale || emoteCanale.length === 0) && (!emoteGlobali || emoteGlobali.length === 0);
+
+  // Scorri automaticamente l'emote selezionata in vista (deve stare prima del return condizionale)
+  useEffect(() => {
+    if (indFocus < 0 || !gridRef.current) return;
+    const btns = gridRef.current.querySelectorAll('button[data-emote]');
+    btns[indFocus]?.scrollIntoView({ block: 'nearest' });
+  }, [indFocus]);
 
   // Se non ci sono emote caricate, non mostrare il bottone
   if (tutteVuote) return null;
+
+  const COLONNE = EMOTE_GRID_COLONNE;
+
+  // Navigazione da tastiera nella griglia
+  const handleGridKeyDown = (e) => {
+    if (!tuttiItems.length) return;
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setIndFocus(i => Math.min(i + 1, tuttiItems.length - 1));
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setIndFocus(i => Math.max(i - 1, 0));
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setIndFocus(i => Math.min(i + COLONNE, tuttiItems.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setIndFocus(i => {
+        const n = i - COLONNE;
+        if (n < 0) { inputRef.current?.focus(); return -1; }
+        return n;
+      });
+    } else if (e.key === 'Enter' && indFocus >= 0) {
+      e.preventDefault();
+      handleSelect(tuttiItems[indFocus].nome);
+    } else if (e.key === 'Tab') {
+      setAperto(false);
+    }
+  };
+
+  // Quando l'utente preme ArrowDown nel campo ricerca → sposta focus sulla griglia
+  const handleInputKeyDown = (e) => {
+    if (e.key === 'ArrowDown' && tuttiItems.length > 0) {
+      e.preventDefault();
+      setIndFocus(0);
+      gridRef.current?.focus();
+    } else if (e.key === 'Escape') {
+      setAperto(false);
+    }
+  };
 
   return (
     <div style={{ position: 'relative' }}>
@@ -92,13 +170,14 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
               bottom: '100%',
               left: 0,
               marginBottom: '0.5rem',
-              width: 'min(320px, 85vw)',
-              maxHeight: '300px',
+              width: 'min(300px, 88vw)',
               display: 'flex',
               flexDirection: 'column',
-              zIndex: 100,
+              zIndex: 200,
               padding: 0,
               overflow: 'hidden',
+              maxWidth: 'none',
+              margin: '0 0 0.5rem 0',
             }}
           >
             {/* Barra ricerca */}
@@ -108,12 +187,15 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
               gap: '0.4rem',
               padding: '0.5rem 0.6rem',
               borderBottom: '1px solid rgba(130,170,240,0.1)',
+              flexShrink: 0,
             }}>
               <Search size={14} style={{ opacity: 0.5, flexShrink: 0 }} />
               <input
+                ref={inputRef}
                 type="text"
                 value={ricerca}
-                onChange={e => setRicerca(e.target.value)}
+                onChange={e => { setRicerca(e.target.value); setIndFocus(-1); }}
+                onKeyDown={handleInputKeyDown}
                 placeholder="Cerca emote..."
                 style={{
                   flex: 1,
@@ -137,8 +219,21 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
               )}
             </div>
 
-            {/* Griglia emote */}
-            <div style={{ overflowY: 'auto', padding: '0.4rem' }}>
+            {/* Griglia emote — area scrollabile con navigazione tastiera */}
+            <div
+              ref={gridRef}
+              tabIndex={indFocus >= 0 ? 0 : -1}
+              onKeyDown={handleGridKeyDown}
+              style={{
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                maxHeight: '260px',
+                padding: '0.4rem',
+                width: '100%',
+                boxSizing: 'border-box',
+                outline: 'none',
+              }}
+            >
               {nessunaEmote && (
                 <p style={{ textAlign: 'center', opacity: 0.5, fontSize: '0.8rem', padding: '1rem' }}>
                   {filtro ? 'Nessuna emote trovata' : 'Nessuna emote disponibile'}
@@ -149,59 +244,23 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
               {canaleFiltered.length > 0 && (
                 <>
                   <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.3rem',
+                    display: 'flex', alignItems: 'center', gap: '0.3rem',
                     padding: '0.2rem 0.3rem 0.4rem',
-                    fontSize: '0.72rem',
-                    fontWeight: 600,
-                    opacity: 0.6,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
+                    fontSize: '0.72rem', fontWeight: 600, opacity: 0.6,
+                    textTransform: 'uppercase', letterSpacing: '0.04em',
                   }}>
                     <Twitch size={11} /> Canale
                   </div>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(36px, 1fr))',
-                    gap: '2px',
-                  }}>
-                    {canaleFiltered.map(e => (
-                      <button
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${EMOTE_GRID_COLONNE}, 1fr)`, gap: '2px', width: '100%' }}>
+                    {canaleFiltered.map((e, i) => (
+                      <BotoneEmote
                         key={e.id}
-                        type="button"
-                        onClick={() => handleSelect(e.nome)}
-                        title={e.nome}
-                        style={{
-                          background: 'transparent',
-                          border: '1px solid transparent',
-                          borderRadius: 8,
-                          padding: '4px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'background 0.15s, border-color 0.15s',
-                        }}
-                        onMouseEnter={ev => {
-                          ev.currentTarget.style.background = 'rgba(130,170,240,0.12)';
-                          ev.currentTarget.style.borderColor = 'rgba(130,170,240,0.2)';
-                        }}
-                        onMouseLeave={ev => {
-                          ev.currentTarget.style.background = 'transparent';
-                          ev.currentTarget.style.borderColor = 'transparent';
-                        }}
-                      >
-                        <img
-                          src={e.url}
-                          srcSet={`${e.url} 1x, ${e.url2x} 2x`}
-                          alt={e.nome}
-                          loading="lazy"
-                          width={28}
-                          height={28}
-                          style={{ display: 'block' }}
-                        />
-                      </button>
+                        emote={e}
+                        indiceGlobale={i}
+                        indFocus={indFocus}
+                        onSelect={handleSelect}
+                        onHover={setIndFocus}
+                      />
                     ))}
                   </div>
                 </>
@@ -211,59 +270,23 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
               {globaliFiltered.length > 0 && (
                 <>
                   <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.3rem',
+                    display: 'flex', alignItems: 'center', gap: '0.3rem',
                     padding: '0.6rem 0.3rem 0.4rem',
-                    fontSize: '0.72rem',
-                    fontWeight: 600,
-                    opacity: 0.6,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
+                    fontSize: '0.72rem', fontWeight: 600, opacity: 0.6,
+                    textTransform: 'uppercase', letterSpacing: '0.04em',
                   }}>
                     <Twitch size={11} /> Globali
                   </div>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(36px, 1fr))',
-                    gap: '2px',
-                  }}>
-                    {globaliFiltered.map(e => (
-                      <button
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${EMOTE_GRID_COLONNE}, 1fr)`, gap: '2px', width: '100%' }}>
+                    {globaliFiltered.map((e, i) => (
+                      <BotoneEmote
                         key={e.id}
-                        type="button"
-                        onClick={() => handleSelect(e.nome)}
-                        title={e.nome}
-                        style={{
-                          background: 'transparent',
-                          border: '1px solid transparent',
-                          borderRadius: 8,
-                          padding: '4px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'background 0.15s, border-color 0.15s',
-                        }}
-                        onMouseEnter={ev => {
-                          ev.currentTarget.style.background = 'rgba(130,170,240,0.12)';
-                          ev.currentTarget.style.borderColor = 'rgba(130,170,240,0.2)';
-                        }}
-                        onMouseLeave={ev => {
-                          ev.currentTarget.style.background = 'transparent';
-                          ev.currentTarget.style.borderColor = 'transparent';
-                        }}
-                      >
-                        <img
-                          src={e.url}
-                          srcSet={`${e.url} 1x, ${e.url2x} 2x`}
-                          alt={e.nome}
-                          loading="lazy"
-                          width={28}
-                          height={28}
-                          style={{ display: 'block' }}
-                        />
-                      </button>
+                        emote={e}
+                        indiceGlobale={canaleFiltered.length + i}
+                        indFocus={indFocus}
+                        onSelect={handleSelect}
+                        onHover={setIndFocus}
+                      />
                     ))}
                   </div>
                 </>
@@ -273,5 +296,41 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+/** Singolo bottone emote con highlight focus da tastiera */
+function BotoneEmote({ emote, indiceGlobale, indFocus, onSelect, onHover }) {
+  const focusato = indFocus === indiceGlobale;
+  return (
+    <button
+      data-emote={emote.nome}
+      type="button"
+      onClick={() => onSelect(emote.nome)}
+      onMouseEnter={() => onHover(indiceGlobale)}
+      title={emote.nome}
+      style={{
+        background: focusato ? 'rgba(130,170,240,0.18)' : 'transparent',
+        border: `1px solid ${focusato ? 'rgba(130,170,240,0.35)' : 'transparent'}`,
+        borderRadius: 8,
+        padding: '4px',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'background 0.12s, border-color 0.12s',
+        outline: 'none',
+      }}
+    >
+      <img
+        src={emote.url}
+        srcSet={`${emote.url} 1x, ${emote.url2x} 2x`}
+        alt={emote.nome}
+        loading="lazy"
+        width={28}
+        height={28}
+        style={{ display: 'block', objectFit: 'contain' }}
+      />
+    </button>
   );
 }

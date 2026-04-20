@@ -4,7 +4,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, User, Bell, Shield, Palette, Eye, Database, LogOut, Check, AlertTriangle, RefreshCw, Download, Trash2, LogIn } from 'lucide-react';
+import { Settings, User, Bell, Shield, Palette, Eye, Database, LogOut, Check, Download, LogIn } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import SEO from '../components/SEO';
@@ -52,8 +52,7 @@ function Interruttore({ attivo, onChange, etichetta }) {
 export default function SettingsPage() {
   const {
     isLoggedIn, twitchUser, twitchDisplay, twitchAvatar, twitchToken,
-    e2eReady, e2eError, e2eNeedsSync, retryE2E, resetE2E, logout,
-    clientId, getTwitchLoginUrl,
+    logout, clientId, getTwitchLoginUrl,
   } = useTwitchAuth();
 
   // Notifiche
@@ -70,9 +69,6 @@ export default function SettingsPage() {
   // Privacy
   const [privacy, setPrivacy] = useState({ friendRequestsOpen: true, visibility: 'public' });
   const [privacyLoading, setPrivacyLoading] = useState(false);
-
-  // E2E reset
-  const [confermaResetE2E, setConfermaResetE2E] = useState(0);
 
   // Carica privacy dal server
   useEffect(() => {
@@ -123,14 +119,6 @@ export default function SettingsPage() {
     finally { setPrivacyLoading(false); }
   }, [twitchToken]);
 
-  const gestisciResetE2E = () => {
-    if (confermaResetE2E < 2) {
-      setConfermaResetE2E(prev => prev + 1);
-      return;
-    }
-    resetE2E();
-    setConfermaResetE2E(0);
-  };
 
   const esportaDati = () => {
     const dati = {
@@ -224,42 +212,14 @@ export default function SettingsPage() {
         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.8rem', fontSize: '1rem' }}>
           <Shield size={18} /> Sicurezza E2E
         </h3>
-        <div style={{ fontSize: '0.85rem', marginBottom: '0.8rem' }}>
-          {e2eReady && (
-            <span style={{ color: '#4ade80', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <Check size={14} /> Crittografia end-to-end attiva
-            </span>
-          )}
-          {e2eError && (
-            <span style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <AlertTriangle size={14} /> Errore: {e2eError}
-            </span>
-          )}
-          {e2eNeedsSync && (
-            <span style={{ color: '#ffb300', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <RefreshCw size={14} /> Sincronizzazione necessaria
-            </span>
-          )}
-          {!e2eReady && !e2eError && !e2eNeedsSync && (
-            <span style={{ color: 'var(--text-muted)' }}>Stato E2E non inizializzato</span>
-          )}
-        </div>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem', lineHeight: 1.5 }}>
+          La crittografia end-to-end è configurata direttamente nella sezione Messaggi.
+          Puoi gestire le chiavi, aggiungere dispositivi o reimpostare la crittografia da lì.
+        </p>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {(e2eError || e2eNeedsSync) && (
-            <button className="btn btn-ghost" style={{ fontSize: '0.8rem' }} onClick={retryE2E}>
-              <RefreshCw size={13} /> Riprova
-            </button>
-          )}
-          <button
-            className="btn btn-ghost"
-            style={{ fontSize: '0.8rem', color: confermaResetE2E > 0 ? 'var(--accent)' : undefined }}
-            onClick={gestisciResetE2E}
-          >
-            <Trash2 size={13} />
-            {confermaResetE2E === 0 && 'Reset chiavi E2E'}
-            {confermaResetE2E === 1 && 'Sei sicuro?'}
-            {confermaResetE2E === 2 && 'Conferma definitiva'}
-          </button>
+          <Link to="/messaggi" className="btn btn-ghost" style={{ fontSize: '0.82rem' }}>
+            <Check size={13} /> Vai a Messaggi
+          </Link>
         </div>
       </motion.section>
 
