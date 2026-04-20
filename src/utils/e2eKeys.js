@@ -281,32 +281,7 @@ export async function deleteSyncEphemeralPair(sessionId) {
 }
 
 /**
- * Cifra la chiave privata identity per la consegna al joiner.
- * Usa ECDH(initiatorEphemeralPriv, joinerEphemeralPub) → AES-GCM.
- */
-export async function encryptKeyForSync(identityPrivKey, joinerEphemeralPubJwk) {
-  const joinerPub   = await importPublicKey(joinerEphemeralPubJwk);
-  const jwk         = await crypto.subtle.exportKey('jwk', identityPrivKey);
-  const plain       = new TextEncoder().encode(JSON.stringify(jwk));
-  const sharedKey   = await crypto.subtle.deriveKey(
-    { name: 'ECDH', public: joinerPub },
-    // Il parametro privateKey qui è la chiave efimera dell'initiator, non identity
-    // Nota: questa funzione riceve la chiave efimera privata dell'initiator
-    identityPrivKey, // ATTENZIONE: questo è un alias — vedi sotto
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt']
-  );
-  const iv     = crypto.getRandomValues(new Uint8Array(12));
-  const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, sharedKey, plain);
-  return {
-    encryptedKey: btoa(String.fromCharCode(...new Uint8Array(cipher))),
-    iv: btoa(String.fromCharCode(...iv)),
-  };
-}
-
-/**
- * Cifra la chiave privata identity per sync — versione corretta con chiave efimera separata.
+ * Cifra la chiave privata identity per sync.
  * @param {CryptoKey} initiatorEphemeralPrivKey — chiave efimera PRIVATA dell'initiator
  * @param {CryptoKey} identityPrivKey — chiave identity da trasferire
  * @param {string} joinerEphemeralPubJwk — chiave efimera PUBBLICA del joiner (JWK)

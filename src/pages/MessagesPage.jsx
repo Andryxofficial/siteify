@@ -60,12 +60,11 @@ async function apiFetch(token, path, opts = {}) {
   return res.json();
 }
 
-/* ─── Estrae chiave pubblica da una privata ECDH ─── */
+/* ─── Estrae chiave pubblica da una privata ECDH (senza importazione ridondante) ─── */
 async function estraiChiavePubblica(privKey) {
   const jwkPriv = await crypto.subtle.exportKey('jwk', privKey);
   const pubJwk = { kty: jwkPriv.kty, crv: jwkPriv.crv, x: jwkPriv.x, y: jwkPriv.y, key_ops: [], ext: true };
-  const pubKey = await crypto.subtle.importKey('jwk', pubJwk, { name: 'ECDH', namedCurve: 'P-256' }, true, []);
-  return exportPublicKey(pubKey);
+  return JSON.stringify(pubJwk);
 }
 
 /* ─── Formatta timestamp in orario breve ─── */

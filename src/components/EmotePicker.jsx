@@ -9,6 +9,9 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Smile, Search, X, Twitch } from 'lucide-react';
 
+/** Numero fisso di colonne nella griglia emote */
+const EMOTE_GRID_COLONNE = 7;
+
 export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disabled }) {
   const [aperto, setAperto]   = useState(false);
   const [ricerca, setRicerca] = useState('');
@@ -86,7 +89,7 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
   // Se non ci sono emote caricate, non mostrare il bottone
   if (tutteVuote) return null;
 
-  const COLONNE = 7;
+  const COLONNE = EMOTE_GRID_COLONNE;
 
   // Navigazione da tastiera nella griglia
   const handleGridKeyDown = (e) => {
@@ -248,7 +251,7 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
                   }}>
                     <Twitch size={11} /> Canale
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', width: '100%' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${EMOTE_GRID_COLONNE}, 1fr)`, gap: '2px', width: '100%' }}>
                     {canaleFiltered.map((e, i) => (
                       <BotoneEmote
                         key={e.id}
@@ -274,7 +277,7 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
                   }}>
                     <Twitch size={11} /> Globali
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', width: '100%' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${EMOTE_GRID_COLONNE}, 1fr)`, gap: '2px', width: '100%' }}>
                     {globaliFiltered.map((e, i) => (
                       <BotoneEmote
                         key={e.id}
