@@ -402,7 +402,6 @@ export default async function handler(req, res) {
         const raw = await redis.get(`sync:${sessionId}`);
         if (!raw) return res.status(404).json({ error: 'Sessione scaduta.' });
         const session = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        if (session.owner === me) return res.status(400).json({ error: 'Non puoi sincronizzare con te stesso.' });
         if (session.status !== 'waiting') return res.status(409).json({ error: 'Sessione già utilizzata.' });
         const updated = JSON.stringify({ ...session, joinerEphemeralPubKey, joiner: me, status: 'joined' });
         const ttlLeft = await redis.ttl(`sync:${sessionId}`);

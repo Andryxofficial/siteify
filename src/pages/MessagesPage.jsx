@@ -85,9 +85,24 @@ function formatData(ts) {
   return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-/* ─── Copia negli appunti ─── */
+/* ─── Copia negli appunti con fallback ─── */
 async function copiaNeglAppunti(testo) {
-  try { await navigator.clipboard.writeText(testo); } catch { /* ignora */ }
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(testo);
+      return true;
+    }
+  } catch { /* fallback sotto */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = testo;
+    ta.style.cssText = 'position:fixed;opacity:0;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    return true;
+  } catch { return false; }
 }
 
 /* ═══════════════════════════════════════════════
@@ -125,6 +140,29 @@ function FaseSetupPrimo({ username, token, onComplete }) {
         const { privateKey } = await generateAndRegisterNewKeys(username, token);
         if (annullato) return;
         privKeyTmpRef.current = privateKey;
+
+        /* ── Tenta salvataggio automatico nel portachiavi ── */
+        const prfOk = await isPasskeyPRFAvailable().catch(() => false);
+        if (prfOk && !annullato) {
+          setStato('salvataggio-portachiavi');
+          try {
+            const { credentialId, encryptedPrivateKey, iv } = await createPasskeyAndEncryptKey(username, privateKey);
+            if (annullato) return;
+            const pubKeyStr = await estraiChiavePubblica(privateKey);
+            await apiFetch(token, '', {
+              method: 'POST',
+              body: JSON.stringify({ action: 'save_passkey_backup', credentialId, encryptedPrivateKey, iv, publicKey: pubKeyStr }),
+            });
+            if (annullato) return;
+            privKeyTmpRef.current = null;
+            onComplete(privateKey);
+            return;
+          } catch (e) {
+            /* PRF non supportato o utente ha annullato → mostra opzioni manuali */
+            if (e?.message !== 'PRF_NOT_SUPPORTED') console.warn('Auto-passkey salvataggio fallito:', e);
+            if (annullato) return;
+          }
+        }
         setStato('backup');
       } catch (e) {
         if (!annullato) setErrore(`Errore nella generazione chiavi: ${e.message}`);
@@ -200,10 +238,10 @@ function FaseSetupPrimo({ username, token, onComplete }) {
           <AlertTriangle size={16} /> {errore}
         </div>
       )}
-      {stato === 'generazione' && (
+      {(stato === 'generazione' || stato === 'salvataggio-portachiavi') && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--text-faint)' }}>
           <Loader size={18} className="spin" />
-          <span>Generazione chiavi in corso…</span>
+          <span>{stato === 'salvataggio-portachiavi' ? 'Salvataggio nel Portachiavi…' : 'Generazione chiavi in corso…'}</span>
         </div>
       )}
       {stato === 'backup' && (
@@ -275,11 +313,46 @@ function FaseSetupJoiner({ username, token, onComplete }) {
   const pollTimerRef = useRef(null);
 
   useEffect(() => {
-    fetch(`${API}?action=has_passkey_backup&user=${username}`)
-      .then(r => r.json())
-      .then(d => setHaBackup(!!d.hasBackup))
-      .catch(() => {});
-    isPasskeyPRFAvailable().then(setPasskeyDispo).catch(() => {});
+    let annullato = false;
+    async function controllaEAutoRipristina() {
+      try {
+        const [backupRes, prfOk] = await Promise.all([
+          fetch(`${API}?action=has_passkey_backup&user=${username}`).then(r => r.json()),
+          isPasskeyPRFAvailable().catch(() => false),
+        ]);
+        if (annullato) return;
+        const hb = !!backupRes.hasBackup;
+        setHaBackup(hb);
+        setPasskeyDispo(prfOk);
+
+        /* ── Tentativo automatico di ripristino da portachiavi ── */
+        if (hb && prfOk) {
+          setMetodo('passkey');
+          setStato('caricamento');
+          try {
+            const backup = await apiFetch(token, '?action=get_passkey_backup', {});
+            if (annullato) return;
+            const privKey = await authenticatePasskeyAndDecryptKey(backup.encryptedPrivateKey, backup.iv, backup.credentialId);
+            if (annullato) return;
+            await saveAndRegisterKeyPair(username, token, privKey, backup.publicKey);
+            setStato('ok');
+            setTimeout(() => onComplete(privKey), 600);
+            return;
+          } catch (e) {
+            /* Utente ha annullato o PRF fallito → mostra selezione metodo */
+            console.warn('Auto-passkey ripristino fallito:', e);
+            if (annullato) return;
+            setMetodo(null);
+            setStato('attesa');
+          }
+        }
+      } catch {
+        if (!annullato) { setHaBackup(false); setPasskeyDispo(false); }
+      }
+    }
+    controllaEAutoRipristina();
+    return () => { annullato = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username]);
 
   useEffect(() => {
@@ -679,6 +752,7 @@ function PannelloSyncInitiator({ token, privateKeyRef, onChiudi }) {
   const [codice, setCodice] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [errore, setErrore] = useState('');
+  const [copiato, setCopiato] = useState(false);
   const pollTimerRef = useRef(null);
   const ephPairRef = useRef(null);
   const sessIdRef = useRef('');
@@ -785,8 +859,8 @@ function PannelloSyncInitiator({ token, privateKeyRef, onChiudi }) {
             {codice}
           </div>
           <button className="btn btn-ghost" style={{ marginBottom: 16, fontSize: '0.8rem' }}
-            onClick={() => copiaNeglAppunti(codice)}>
-            <Copy size={14} /> Copia codice
+            onClick={async () => { const ok = await copiaNeglAppunti(codice); if (ok) { setCopiato(true); setTimeout(() => setCopiato(false), 2000); } }}>
+            {copiato ? <><Check size={14} /> Copiato!</> : <><Copy size={14} /> Copia codice</>}
           </button>
           {qrDataUrl && (
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
