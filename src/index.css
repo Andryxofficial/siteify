@@ -27,8 +27,8 @@
   --surface-4:  rgba(255,255,255,0.14);
 
   /* Glass — simplified, premium feel */
-  --glass-bg:        linear-gradient(160deg, rgba(18,20,35,0.80) 0%, rgba(22,26,45,0.60) 100%);
-  --glass-bg-flat:   rgba(16, 18, 32, 0.65);
+  --glass-bg:        linear-gradient(160deg, rgba(18,20,35,0.85) 0%, rgba(22,26,45,0.68) 100%);
+  --glass-bg-flat:   rgba(16, 18, 32, 0.72);
   --glass-border:    rgba(255, 255, 255, 0.08);
   --glass-border-hi: rgba(255, 255, 255, 0.14);
   --glass-highlight: rgba(255, 255, 255, 0.06);
@@ -131,8 +131,8 @@ body::before {
 
 .glass-panel {
   background: var(--glass-bg);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
   border: 1px solid var(--glass-border);
   border-radius: var(--r-xl);
   box-shadow: var(--glass-shadow);
@@ -173,9 +173,9 @@ body::before {
 }
 
 .glass-card {
-  background: linear-gradient(160deg, rgba(18,20,35,0.75) 0%, rgba(14,16,28,0.50) 100%);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  background: linear-gradient(160deg, rgba(18,20,35,0.80) 0%, rgba(14,16,28,0.58) 100%);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
   border: 1px solid var(--glass-border);
   border-radius: var(--r-md);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
@@ -3133,14 +3133,11 @@ body {
 /* ── Context menu ── */
 .msg-context-menu {
   position: absolute;
-  top: -4px;
-  right: 0;
-  transform: translateY(-100%);
   background: var(--surface-1, rgba(30,35,55,0.95));
   border: 1px solid var(--glass-border);
   border-radius: 12px;
   padding: 0.25rem;
-  z-index: 10;
+  z-index: 50;
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
@@ -3167,15 +3164,16 @@ body {
 
 /* ── Forward overlay ── */
 .msg-forward-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: var(--surface-1, rgba(20,24,40,0.96));
-  backdrop-filter: blur(16px);
-  border-radius: inherit;
+  backdrop-filter: blur(28px);
   z-index: 20;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
 }
 .msg-forward-header {
   display: flex;
