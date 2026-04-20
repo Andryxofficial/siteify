@@ -159,6 +159,7 @@ function FaseSetupPrimo({ username, token, onComplete }) {
             return;
           } catch (e) {
             /* PRF non supportato o utente ha annullato → mostra opzioni manuali */
+            if (e?.message !== 'PRF_NOT_SUPPORTED') console.warn('Auto-passkey salvataggio fallito:', e);
             if (annullato) return;
           }
         }
@@ -337,8 +338,9 @@ function FaseSetupJoiner({ username, token, onComplete }) {
             setStato('ok');
             setTimeout(() => onComplete(privKey), 600);
             return;
-          } catch {
+          } catch (e) {
             /* Utente ha annullato o PRF fallito → mostra selezione metodo */
+            console.warn('Auto-passkey ripristino fallito:', e);
             if (annullato) return;
             setMetodo(null);
             setStato('attesa');
