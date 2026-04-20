@@ -1,49 +1,30 @@
 {
-  "functions": {
-    "api/ikigai-bridge.js": {
-      "memory": 128,
-      "maxDuration": 10
-    },
-    "api/leaderboard.js": {
-      "memory": 128,
-      "maxDuration": 10
-    },
-    "api/reset-leaderboard.js": {
-      "memory": 128,
-      "maxDuration": 10
-    },
-    "api/community.js": {
-      "memory": 128,
-      "maxDuration": 10
-    },
-    "api/community-replies.js": {
-      "memory": 128,
-      "maxDuration": 10
-    },
-    "api/mod-commands.js": {
-      "memory": 128,
-      "maxDuration": 10
-    },
-    "api/friends.js": {
-      "memory": 128,
-      "maxDuration": 10
-    },
-    "api/messages.js": {
-      "memory": 256,
-      "maxDuration": 15
-    },
-    "api/chat.js": {
-      "memory": 128,
-      "maxDuration": 10
-    },
-    "api/profile.js": {
-      "memory": 128,
-      "maxDuration": 10
-    },
-    "api/emotes.js": {
-      "memory": 128,
-      "maxDuration": 10
+  "crons": [
+    {
+      "path": "/api/mod-stats?action=snapshot",
+      "schedule": "0 3 * * *"
     }
+  ],
+  "functions": {
+    "api/ikigai-bridge.js": { "memory": 128, "maxDuration": 10 },
+    "api/leaderboard.js":   { "memory": 128, "maxDuration": 10 },
+    "api/reset-leaderboard.js": { "memory": 128, "maxDuration": 10 },
+    "api/community.js":      { "memory": 128, "maxDuration": 10 },
+    "api/community-replies.js": { "memory": 128, "maxDuration": 10 },
+    "api/mod-commands.js":   { "memory": 128, "maxDuration": 10 },
+    "api/mod-channel.js":    { "memory": 128, "maxDuration": 15 },
+    "api/mod-events.js":     { "memory": 128, "maxDuration": 15 },
+    "api/mod-users.js":      { "memory": 128, "maxDuration": 15 },
+    "api/mod-moderation.js": { "memory": 128, "maxDuration": 15 },
+    "api/mod-polls.js":      { "memory": 128, "maxDuration": 15 },
+    "api/mod-stats.js":      { "memory": 128, "maxDuration": 15 },
+    "api/mod-overlays.js":   { "memory": 128, "maxDuration": 10 },
+    "api/mod-schedule.js":   { "memory": 128, "maxDuration": 15 },
+    "api/friends.js":        { "memory": 128, "maxDuration": 10 },
+    "api/messages.js":       { "memory": 256, "maxDuration": 15 },
+    "api/chat.js":           { "memory": 128, "maxDuration": 10 },
+    "api/profile.js":        { "memory": 128, "maxDuration": 10 },
+    "api/emotes.js":         { "memory": 128, "maxDuration": 10 }
   },
   "headers": [
     {

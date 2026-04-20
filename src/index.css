@@ -4480,3 +4480,314 @@ img.msg-avatar {
   margin: -2px 1px;
   object-fit: contain;
 }
+
+/* ═══════════════════════════════════════════════════
+   MOD PANEL — Dashboard completa stile StreamElements
+   ═══════════════════════════════════════════════════ */
+
+/* ── Layout shell ── */
+.mod-panel-shell {
+  width: 100%;
+}
+
+.mod-panel-layout {
+  display: grid;
+  grid-template-columns: 196px 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+/* ── Sidebar desktop ── */
+.mod-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  position: sticky;
+  top: 100px;
+}
+
+.mod-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.83rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background .2s, color .2s, border-color .2s;
+}
+
+.mod-nav-item:hover {
+  background: var(--surface-2);
+  color: var(--text-main);
+}
+
+.mod-nav-item-active {
+  font-weight: 600;
+}
+
+/* ── Mobile tab bar mod ── */
+.mod-mobile-tabs {
+  display: none;
+  gap: 0.3rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+  scrollbar-width: none;
+}
+.mod-mobile-tabs::-webkit-scrollbar { display: none; }
+
+.mod-mobile-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--r-full);
+  border: 1px solid var(--vetro-bordo-colore);
+  background: var(--surface-1);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .2s, color .2s, border-color .2s;
+}
+
+.mod-mobile-tab-active {
+  background: var(--surface-3);
+  font-weight: 600;
+}
+
+/* ── Form elements ── */
+.mod-input {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--vetro-bordo-colore);
+  border-radius: var(--r-sm);
+  color: var(--text-main);
+  font-size: 0.85rem;
+  padding: 0.45rem 0.65rem;
+  outline: none;
+  font-family: inherit;
+  transition: border-color .2s;
+  display: block;
+  margin-top: 0.2rem;
+}
+
+.mod-input:focus {
+  border-color: var(--primary);
+}
+
+.mod-input-small {
+  width: 80px;
+}
+
+.mod-textarea {
+  resize: vertical;
+  min-height: 56px;
+}
+
+.mod-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.mod-form-row {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.mod-form-row label {
+  flex: 1;
+  min-width: 100px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.mod-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+/* ── Permessi ── */
+.mod-permission-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.mod-permission-options {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.mod-permission-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--r-full);
+  border: 1px solid var(--vetro-bordo-colore);
+  background: var(--surface-1);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.mod-permission-btn:hover {
+  background: var(--surface-3);
+}
+
+.mod-permission-btn-active {
+  background: var(--surface-3);
+  font-weight: 600;
+}
+
+/* ── Lista item ── */
+.mod-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mod-item {
+  padding: 0.65rem 0.9rem;
+}
+
+.mod-item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.mod-item-body {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.mod-item-actions {
+  display: flex;
+  gap: 0.2rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.mod-trigger {
+  font-family: 'Courier New', monospace;
+  font-size: 0.82rem;
+  color: var(--secondary);
+  background: rgba(0,229,255,0.08);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+/* ── Icon buttons ── */
+.mod-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background .2s, color .2s;
+  flex-shrink: 0;
+}
+
+.mod-icon-btn:hover {
+  background: var(--surface-3);
+  color: var(--text-main);
+}
+
+.mod-icon-btn-danger:hover {
+  background: rgba(255,107,107,0.15);
+  color: var(--accent);
+}
+
+/* ── Tab interna sezione ── */
+.mod-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--r-full);
+  border: 1px solid var(--vetro-bordo-colore);
+  background: var(--surface-1);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+
+.mod-tab:hover {
+  background: var(--surface-3);
+  color: var(--text-main);
+}
+
+.mod-tab-active {
+  background: var(--primary-light);
+  border-color: rgba(224,64,251,0.3);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ── Badge contatore ── */
+.mod-badge {
+  font-size: 0.65rem;
+  background: var(--surface-3);
+  color: var(--text-muted);
+  border-radius: var(--r-full);
+  padding: 0 5px;
+  min-width: 16px;
+  text-align: center;
+}
+
+/* ── Spinner ── */
+.spin {
+  animation: spinAnim 0.7s linear infinite;
+}
+@keyframes spinAnim {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Overlay OBS: sfondo trasparente ── */
+.overlay-page {
+  background: transparent !important;
+}
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  .mod-panel-layout {
+    grid-template-columns: 1fr;
+  }
+  .mod-sidebar {
+    display: none;
+  }
+  .mod-mobile-tabs {
+    display: flex;
+  }
+}

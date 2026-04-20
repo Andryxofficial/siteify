@@ -27,13 +27,16 @@ import { Redis } from '@upstash/redis';
  *
  * Auth: Authorization: Bearer <twitchAccessToken>
  *
- * GET    /api/mod-commands                         → list all commands + timers + check isMod
- * POST   /api/mod-commands  { type, ...data }      → create/update a command or timer
- * DELETE /api/mod-commands  { type, key }           → delete a command or timer
+ * GET    /api/mod-commands                         → list all commands + timers + quotes + counters + check isMod
+ * POST   /api/mod-commands  { type, ...data }      → create/update a command, timer, quote or counter
+ * PATCH  /api/mod-commands  { type:'counter', key, delta }  → incrementa/decrementa un counter
+ * DELETE /api/mod-commands  { type, key }           → delete a command, timer, quote or counter
  */
 
 const COMMANDS_KEY = 'mod:commands';
-const TIMERS_KEY = 'mod:timers';
+const TIMERS_KEY   = 'mod:timers';
+const QUOTES_KEY   = 'mod:quotes';
+const COUNTERS_KEY = 'mod:counters';
 const MOD_WHITELIST_KEY = 'mod:whitelist';
 const MOD_SYNC_TS_KEY = 'mod:whitelist:ts';
 const MOD_BROADCASTER_KEY = 'mod:broadcaster';
@@ -194,7 +197,7 @@ async function isUserMod(redis, login) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -237,9 +240,11 @@ export default async function handler(req, res) {
     }
 
     try {
-      const [commandsRaw, timersRaw] = await Promise.all([
+      const [commandsRaw, timersRaw, quotesRaw, countersRaw] = await Promise.all([
         redis.hgetall(COMMANDS_KEY),
         redis.hgetall(TIMERS_KEY),
+        redis.lrange(QUOTES_KEY, 0, -1),
+        redis.hgetall(COUNTERS_KEY),
       ]);
 
       const commands = [];
@@ -268,7 +273,25 @@ export default async function handler(req, res) {
       }
       timers.sort((a, b) => a.name.localeCompare(b.name));
 
-      return res.status(200).json({ commands, timers, isMod: true });
+      const quotes = (quotesRaw || []).map((q, i) => {
+        try { return { index: i + 1, ...(typeof q === 'string' ? JSON.parse(q) : q) }; }
+        catch { return { index: i + 1, text: String(q), addedAt: null }; }
+      });
+
+      const counters = [];
+      if (countersRaw) {
+        for (const [name, val] of Object.entries(countersRaw)) {
+          try {
+            const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+            counters.push({ name, ...parsed });
+          } catch {
+            counters.push({ name, value: parseInt(val) || 0, label: name });
+          }
+        }
+      }
+      counters.sort((a, b) => a.name.localeCompare(b.name));
+
+      return res.status(200).json({ commands, timers, quotes, counters, isMod: true });
     } catch (e) {
       console.error('ModCommands GET error:', e);
       return res.status(500).json({ error: 'Errore nel recupero dei dati.' });
@@ -322,19 +345,60 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true, name, message, interval, enabled });
       }
 
-      return res.status(400).json({ error: 'Tipo non valido. Usa "command" o "timer".' });
+      if (type === 'quote') {
+        const text = sanitize(req.body.text, 500);
+        if (!text) return res.status(400).json({ error: 'Il testo della citazione è obbligatorio.' });
+        const entry = JSON.stringify({ text, addedBy: twitchUser.login, addedAt: new Date().toISOString() });
+        if (req.body.index !== undefined) {
+          // Aggiorna una quote esistente per index (0-based in Redis, 1-based in UI)
+          const idx = parseInt(req.body.index) - 1;
+          await redis.lset(QUOTES_KEY, idx, entry);
+        } else {
+          await redis.rpush(QUOTES_KEY, entry);
+        }
+        return res.status(200).json({ ok: true, text });
+      }
+
+      if (type === 'counter') {
+        const name    = sanitize(req.body.name, 50).toLowerCase().replace(/\s+/g, '-');
+        const label   = sanitize(req.body.label || req.body.name, 50);
+        const value   = Math.max(0, parseInt(req.body.value) || 0);
+        if (!name) return res.status(400).json({ error: 'Il nome del contatore è obbligatorio.' });
+        await redis.hset(COUNTERS_KEY, { [name]: JSON.stringify({ value, label }) });
+        return res.status(200).json({ ok: true, name, value, label });
+      }
+
+      return res.status(400).json({ error: 'Tipo non valido. Usa "command", "timer", "quote" o "counter".' });
     } catch (e) {
       console.error('ModCommands POST error:', e);
       return res.status(500).json({ error: 'Errore nel salvataggio.' });
     }
   }
 
-  /* ─── DELETE: remove command or timer ─── */
+  /* ─── PATCH: incrementa/decrementa un counter ─── */
+  if (req.method === 'PATCH') {
+    if (!twitchUser) return res.status(401).json({ error: 'Token mancante.' });
+    if (!isMod)      return res.status(403).json({ error: 'Accesso riservato.' });
+    try {
+      const { type, key, delta } = req.body || {};
+      if (type !== 'counter') return res.status(400).json({ error: 'Solo i counter supportano PATCH.' });
+      if (!key) return res.status(400).json({ error: 'key obbligatorio.' });
+      const raw = await redis.hget(COUNTERS_KEY, key);
+      const current = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : { value: 0, label: key };
+      const newValue = Math.max(0, (current.value || 0) + (parseInt(delta) || 1));
+      await redis.hset(COUNTERS_KEY, { [key]: JSON.stringify({ ...current, value: newValue }) });
+      return res.status(200).json({ ok: true, name: key, value: newValue });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  /* ─── DELETE: remove command, timer, quote or counter ─── */
   if (req.method === 'DELETE') {
     try {
       const { type, key } = req.body || {};
 
-      if (!key || typeof key !== 'string') {
+      if (!key && type !== 'quote') {
         return res.status(400).json({ error: 'Chiave mancante.' });
       }
 
@@ -348,7 +412,21 @@ export default async function handler(req, res) {
         return res.status(200).json({ deleted: true, type: 'timer', key });
       }
 
-      return res.status(400).json({ error: 'Tipo non valido. Usa "command" o "timer".' });
+      if (type === 'quote') {
+        // Rimuove la quote per indice (1-based) usando un tombstone + lrem
+        const idx = parseInt(req.body.index) - 1;
+        const tombstone = '__DELETED__';
+        await redis.lset(QUOTES_KEY, idx, tombstone);
+        await redis.lrem(QUOTES_KEY, 1, tombstone);
+        return res.status(200).json({ deleted: true, type: 'quote', index: req.body.index });
+      }
+
+      if (type === 'counter') {
+        await redis.hdel(COUNTERS_KEY, key);
+        return res.status(200).json({ deleted: true, type: 'counter', key });
+      }
+
+      return res.status(400).json({ error: 'Tipo non valido. Usa "command", "timer", "quote" o "counter".' });
     } catch (e) {
       console.error('ModCommands DELETE error:', e);
       return res.status(500).json({ error: 'Errore nella cancellazione.' });

@@ -31,6 +31,11 @@ const ChatGeneralePage   = lazy(() => import('./pages/ChatGeneralePage'));
 const SettingsPage       = lazy(() => import('./pages/SettingsPage'));
 const ProfiloPage        = lazy(() => import('./pages/ProfiloPage'));
 
+// Overlay OBS — layout minimo senza navbar/footer
+const GoalsOverlay  = lazy(() => import('./pages/overlay/GoalsOverlay'));
+const EventsOverlay = lazy(() => import('./pages/overlay/EventsOverlay'));
+const AlertsOverlay = lazy(() => import('./pages/overlay/AlertsOverlay'));
+
 /* ─── Error Boundary ───
    Cattura qualsiasi errore JavaScript durante il rendering di un componente figlio
    e mostra un messaggio di errore invece di lasciare la pagina completamente bianca.
@@ -163,7 +168,13 @@ function App() {
     <Router>
       <TwitchAuthProvider>
         <TwitchOAuthRedirect />
-        <AppLayout />
+        {/* Layout overlay — no navbar/footer, sfondo trasparente */}
+        <Routes>
+          <Route path="/overlay/goals"  element={<Suspense fallback={null}><GoalsOverlay /></Suspense>} />
+          <Route path="/overlay/events" element={<Suspense fallback={null}><EventsOverlay /></Suspense>} />
+          <Route path="/overlay/alerts" element={<Suspense fallback={null}><AlertsOverlay /></Suspense>} />
+          <Route path="*" element={<AppLayout />} />
+        </Routes>
       </TwitchAuthProvider>
       <Analytics />
       <SpeedInsights />
