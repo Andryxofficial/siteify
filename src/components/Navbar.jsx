@@ -24,10 +24,11 @@ const NAV_LINKS = [
 ];
 
 const MOBILE_LINKS = [
-  { path: '/',          label: 'Home',      Icon: HomeIcon      },
-  { path: '/socialify', label: 'SOCIALify', Icon: UsersIcon     },
-  { path: '/gioco',     label: 'Gioco',     Icon: GameIcon      },
-  { path: '/chat',      label: 'Chat',      Icon: MessageCircleIcon },
+  { path: '/',              label: 'Home',        Icon: HomeIcon          },
+  { path: '/socialify',     label: 'SOCIALify',   Icon: UsersIcon         },
+  { path: '/gioco',         label: 'Gioco',       Icon: GameIcon          },
+  { path: '/chat',          label: 'Chat',        Icon: MessageCircleIcon },
+  { path: '/impostazioni',  label: 'Impostazioni', Icon: SettingsIcon     },
 ];
 
 /* Elasticità ai bordi della bolla trascinabile (0 = rigido, 1 = libero) */

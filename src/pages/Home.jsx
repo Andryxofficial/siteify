@@ -38,9 +38,13 @@ export default function Home() {
       />
       {/* ── Hero ── */}
       <section className="header" style={{ paddingTop: '1.5rem', paddingBottom: '0.5rem' }}>
-        <motion.h1 className="title" {...up(0.05)} style={{ letterSpacing: '-2.5px' }}>
-          <span className="text-gradient">ANDRYX</span>ify
-        </motion.h1>
+        <motion.div {...up(0.05)} style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.9rem' }}>
+          <img
+            src="/Firma_Andryx.png"
+            alt="ANDRYXify"
+            style={{ height: 'clamp(60px, 14vw, 110px)', width: 'auto', objectFit: 'contain' }}
+          />
+        </motion.div>
         <motion.p className="subtitle" {...up(0.15)}>
           Esplorando il confine tra{' '}
           <span style={{ color: 'var(--primary)',   fontWeight: 600 }}>Umanità</span>,{' '}
