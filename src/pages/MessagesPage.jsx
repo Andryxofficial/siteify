@@ -1853,6 +1853,7 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const regIntervalRef = useRef(null);
+  const reazioniCaricateRef = useRef(new Set());
 
   /* ─── Ottieni chiave AES condivisa ─── */
   const ottieniAesKey = useCallback(async () => {
@@ -2096,8 +2097,12 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
   /* ─── Registrazione vocale ─── */
   async function avviaRegistrazione() {
     try {
+      const supportaWebm = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm');
+      const supportaMp4 = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/mp4');
+      if (!supportaWebm && !supportaMp4) { setErrore('Il tuo browser non supporta la registrazione audio.'); return; }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4' });
+      const mimeType = supportaWebm ? 'audio/webm' : 'audio/mp4';
+      const recorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = recorder;
       chunksRef.current = [];
       setDurataReg(0);
@@ -2110,7 +2115,7 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
         if (chunksRef.current.length > 0) {
           const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
           const ext = recorder.mimeType.includes('webm') ? 'webm' : 'm4a';
-          const file = new File([blob], `vocale.${ext}`, { type: recorder.mimeType });
+          const file = new File([blob], `vocale_${Date.now()}.${ext}`, { type: recorder.mimeType });
           caricaMedia(file);
         }
         setRegistrando(false);
@@ -2155,8 +2160,13 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
   /* ─── Carica reazioni per i messaggi visibili ─── */
   useEffect(() => {
     if (messaggi.length === 0) return;
-    /* Carica reazioni per gli ultimi 30 messaggi non eliminati */
-    const idsDaCaricare = messaggi.filter(m => !m.eliminato).slice(-30).map(m => m.id);
+    /* Carica reazioni solo per messaggi non ancora controllati */
+    const idsDaCaricare = messaggi
+      .filter(m => !m.eliminato && !reazioniCaricateRef.current.has(m.id))
+      .slice(-30)
+      .map(m => m.id);
+    if (idsDaCaricare.length === 0) return;
+    idsDaCaricare.forEach(id => reazioniCaricateRef.current.add(id));
     let attivo = true;
     Promise.all(
       idsDaCaricare.map(id =>
@@ -2169,7 +2179,7 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
       if (!attivo) return;
       const nuove = {};
       results.forEach(r => { if (r.reactions.length > 0) nuove[r.id] = r.reactions; });
-      setReazioni(prev => ({ ...prev, ...nuove }));
+      if (Object.keys(nuove).length > 0) setReazioni(prev => ({ ...prev, ...nuove }));
     });
     return () => { attivo = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps

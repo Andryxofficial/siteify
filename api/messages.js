@@ -37,6 +37,14 @@ const ONLINE_TTL      = 90; // stato online scade dopo 90 secondi
 const MAX_REACTIONS_PER_MSG = 20;
 const ALLOWED_REACTIONS     = ['❤️','😂','👍','🔥','😮','😢','🎉','💀'];
 
+function parseReactions(raw) {
+  if (!raw) return [];
+  try {
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+
 function sanitize(str, maxLen) {
   if (typeof str !== 'string') return '';
   // eslint-disable-next-line no-control-regex
@@ -316,8 +324,7 @@ export default async function handler(req, res) {
       try {
         const key = `reactions:${convoKey(me, withUser)}:${msgId}`;
         const raw = await redis.get(key);
-        const reactions = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : [];
-        return res.status(200).json({ reactions });
+        return res.status(200).json({ reactions: parseReactions(raw) });
       } catch {
         return res.status(200).json({ reactions: [] });
       }
@@ -590,8 +597,7 @@ export default async function handler(req, res) {
       try {
         const key = `reactions:${convoKey(me, convoWith)}:${msgId}`;
         const raw = await redis.get(key);
-        let reactions = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : [];
-        if (!Array.isArray(reactions)) reactions = [];
+        let reactions = parseReactions(raw);
         const esistente = reactions.findIndex(r => r.user === me && r.emoji === emoji);
         if (esistente >= 0) {
           reactions.splice(esistente, 1);
