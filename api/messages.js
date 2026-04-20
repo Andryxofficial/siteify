@@ -2,45 +2,34 @@ import { Redis } from '@upstash/redis';
 import { randomUUID } from 'crypto';
 
 /**
- * E2E Encrypted Messages API — Private messaging for ANDRYXify
+ * Messaggi Privati E2E — ANDRYXify v3
  *
- * Architecture:
- *   - Client generates ECDH key pair on first login
- *   - Public key stored in Redis (`userkeys:<user>`)
- *   - Messages encrypted client-side with AES-GCM (derived from ECDH shared secret)
- *   - Server stores only encrypted blobs — zero knowledge
- *   - Messages expire after 30 days (TTL)
+ * Architettura:
+ *   - Ogni utente genera una coppia ECDH P-256 al primo accesso
+ *   - La chiave privata è cifrata dalla passkey (WebAuthn PRF) e salvata in IDB
+ *   - I messaggi sono cifrati client-side (ECDH + AES-GCM)
+ *   - Il server non conosce le chiavi private — zero-knowledge
+ *   - Sincronizzazione multi-dispositivo via protocollo ECDH efimero
  *
- * Redis data model:
- *   userkeys:<user>              → String (ECDH public key JWK)
- *   conversations:<user>         → Sorted Set (score = last message timestamp, member = otherUser)
- *   messages:<user1>:<user2>     → List of JSON { id, from, to, encrypted, iv, createdAt,
- *                                    editedAt?, deleted? }
- *                                  (canonical order: sorted usernames)
- *   msg:counter                  → String (auto-increment message ID)
- *   media:<uuid>                 → String (base64-encoded encrypted media blob)
- *   media:<uuid>:meta            → String (JSON: { from, to, mimeType, name, createdAt })
- *
- * Endpoints:
- *   GET    /api/messages?action=key&user=<username>              → public key of a user
- *   POST   /api/messages  { action: "register_key", publicKey }  → register own public key
- *   GET    /api/messages?action=conversations                     → list all conversations
- *   GET    /api/messages?action=history&with=<user>&cursor=<n>   → message history
- *   POST   /api/messages  { action: "send", to, encrypted, iv }  → send message
- *   GET    /api/messages?action=poll&with=<user>&after=<id>&since=<ts> → new + edited msgs
- *   POST   /api/messages  { action: "edit", msgId, convoWith, encrypted, iv }  → edit msg
- *   POST   /api/messages  { action: "delete", msgId, convoWith } → soft-delete msg
- *   POST   /api/messages  { action: "upload_media", data, mimeType, name } → upload media
- *   GET    /api/messages?action=media&id=<uuid>                  → fetch encrypted media
+ * Modello dati Redis:
+ *   userkeys:<user>              → JWK chiave pubblica ECDH
+ *   e2e_passkey:<user>           → JSON { credentialId, encryptedPrivateKey, iv, publicKey }
+ *   conversations:<user>         → Sorted Set (score=timestamp, member=altroUtente)
+ *   messages:<u1>:<u2>           → List JSON { id,from,to,encrypted,iv,createdAt,editedAt?,deleted? }
+ *   msg:counter                  → auto-increment ID messaggi
+ *   media:<uuid>                 → base64 blob cifrato
+ *   media:<uuid>:meta            → JSON { from,to,mimeType,name,createdAt }
+ *   sync:<sessionId>             → JSON sessione sync efimera, TTL 5min
+ *   sync_code:<code6>            → sessionId, TTL 5min
  */
 
-const MAX_MSG_SIZE = 8000;   // encrypted text blob max size (bytes)
-const MAX_MEDIA_SIZE = 1_100_000; // ~1MB base64 — fits in Upstash 1MB value limit
-const MSG_TTL_DAYS = 30;
-const MSG_TTL_SECONDS = MSG_TTL_DAYS * 86400;
-const MAX_HISTORY = 50;
-const RATE_LIMIT_SECONDS = 2;
-const MAX_SCAN = 500; // max messages to scan for edit/delete
+const MAX_MSG_SIZE    = 8000;
+const MAX_MEDIA_SIZE  = 1_100_000;
+const MSG_TTL_SECONDS = 30 * 86400;
+const MAX_HISTORY     = 50;
+const RATE_LIMIT_SEC  = 2;
+const MAX_SCAN        = 500;
+const SYNC_TTL        = 300; // 5 minuti
 
 function sanitize(str, maxLen) {
   if (typeof str !== 'string') return '';
@@ -48,10 +37,10 @@ function sanitize(str, maxLen) {
   return str.trim().slice(0, maxLen).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
 }
 
-/**
- * Scan a Redis list for a message by id. Returns { index, msg } or null.
- * Scans at most MAX_SCAN entries (from the end — most recent edits are recent messages).
- */
+function convoKey(a, b) {
+  return [a, b].sort().join(':');
+}
+
 async function findMsgInList(redis, listKey, msgId) {
   const len = await redis.llen(listKey);
   if (!len) return null;
@@ -61,42 +50,41 @@ async function findMsgInList(redis, listKey, msgId) {
     try {
       const m = typeof raw[i] === 'string' ? JSON.parse(raw[i]) : raw[i];
       if (m.id === msgId) return { index: start + i, msg: m };
-    } catch (e) { console.warn('Malformed message in list:', e); }
+    } catch { /* malformato */ }
   }
   return null;
-}
-
-/** Canonical conversation key — alphabetically sorted usernames */
-function convoKey(a, b) {
-  return [a, b].sort().join(':');
 }
 
 async function validateTwitch(authHeader) {
   if (!authHeader?.startsWith('Bearer ')) return null;
   const token = authHeader.split(' ')[1];
-
   const res = await fetch('https://id.twitch.tv/oauth2/validate', {
     headers: { Authorization: `OAuth ${token}` },
   });
   if (!res.ok) return null;
   const data = await res.json();
   if (!data.login) return null;
-
   return { login: data.login, userId: data.user_id || null };
+}
+
+async function generaCodice(redis) {
+  for (let t = 0; t < 20; t++) {
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const exists = await redis.exists(`sync_code:${code}`);
+    if (!exists) return code;
+  }
+  return randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase();
 }
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const kvUrl = process.env.KV_REST_API_URL;
+  const kvUrl   = process.env.KV_REST_API_URL;
   const kvToken = process.env.KV_REST_API_TOKEN;
-  if (!kvUrl || !kvToken) {
-    return res.status(500).json({ error: 'Database non configurato.' });
-  }
+  if (!kvUrl || !kvToken) return res.status(500).json({ error: 'Database non configurato.' });
 
   let redis;
   try {
@@ -105,39 +93,65 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Errore di connessione al database.' });
   }
 
-  /* ─── GET ─── */
+  /* ═══════════════════ GET ═══════════════════ */
   if (req.method === 'GET') {
     const action = req.query?.action;
 
-    // Public key lookup (no auth required for reading public keys)
     if (action === 'key') {
       const user = sanitize(req.query?.user, 50).toLowerCase();
       if (!user) return res.status(400).json({ error: 'Username richiesto.' });
       const key = await redis.get(`userkeys:${user}`);
-      // @upstash/redis may auto-parse the stored JSON string into an object; normalize to string
       let publicKey = null;
       if (key !== null && key !== undefined) {
-        if (typeof key === 'object') {
-          try { publicKey = JSON.stringify(key); } catch { publicKey = null; }
-        } else {
-          publicKey = String(key);
-        }
+        publicKey = typeof key === 'object' ? JSON.stringify(key) : String(key);
       }
       return res.status(200).json({ user, publicKey });
     }
 
-    // Everything else requires auth
-    const twitchUser = await validateTwitch(req.headers.authorization);
-    if (!twitchUser) {
-      return res.status(401).json({ error: 'Devi effettuare il login con Twitch.' });
+    if (action === 'has_passkey_backup') {
+      const user = sanitize(req.query?.user, 50).toLowerCase();
+      if (!user) return res.status(400).json({ error: 'Username richiesto.' });
+      const exists = await redis.exists(`e2e_passkey:${user}`);
+      return res.status(200).json({ hasBackup: !!exists });
     }
+
+    if (action === 'sync_peek') {
+      const code = sanitize(req.query?.code, 10).toUpperCase();
+      if (!code) return res.status(400).json({ error: 'Codice richiesto.' });
+      const sessionId = await redis.get(`sync_code:${code}`);
+      if (!sessionId) return res.status(404).json({ error: 'Codice scaduto o non valido.' });
+      const raw = await redis.get(`sync:${sessionId}`);
+      if (!raw) return res.status(404).json({ error: 'Sessione scaduta.' });
+      const session = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      return res.status(200).json({
+        sessionId,
+        initiatorEphemeralPubKey: session.initiatorEphemeralPubKey,
+        status: session.status,
+      });
+    }
+
+    if (action === 'sync_status') {
+      const sessionId = sanitize(req.query?.sessionId, 100);
+      if (!sessionId) return res.status(400).json({ error: 'sessionId richiesto.' });
+      const raw = await redis.get(`sync:${sessionId}`);
+      if (!raw) return res.status(200).json({ status: 'expired' });
+      const session = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      return res.status(200).json({
+        status: session.status,
+        joinerEphemeralPubKey: session.joinerEphemeralPubKey || null,
+        encryptedKey: session.encryptedKey || null,
+        iv: session.iv || null,
+        initiatorEphemeralPubKey: session.initiatorEphemeralPubKey,
+      });
+    }
+
+    const twitchUser = await validateTwitch(req.headers.authorization);
+    if (!twitchUser) return res.status(401).json({ error: 'Devi effettuare il login con Twitch.' });
     const me = twitchUser.login;
 
-    // List conversations
     if (action === 'conversations') {
       try {
         const convos = await redis.zrange(`conversations:${me}`, 0, -1, { rev: true, withScores: true });
-        // convos comes as [member, score, member, score, ...]
         const result = [];
         if (Array.isArray(convos)) {
           for (let i = 0; i < convos.length; i += 2) {
@@ -146,174 +160,81 @@ export default async function handler(req, res) {
         }
         return res.status(200).json({ conversations: result });
       } catch (e) {
-        console.error('Messages conversations error:', e);
+        console.error('conversations error:', e);
         return res.status(500).json({ error: 'Errore nel caricamento delle conversazioni.' });
       }
     }
 
-    // Message history
     if (action === 'history') {
       const withUser = sanitize(req.query?.with, 50).toLowerCase();
       if (!withUser) return res.status(400).json({ error: 'Destinatario richiesto.' });
-
-      // Check friendship
       const isFriend = await redis.sismember(`friends:${me}`, withUser);
-      if (!isFriend) {
-        return res.status(403).json({ error: 'Puoi inviare messaggi solo agli amici.' });
-      }
-
+      if (!isFriend) return res.status(403).json({ error: 'Puoi inviare messaggi solo agli amici.' });
       try {
-        const key = `messages:${convoKey(me, withUser)}`;
+        const key    = `messages:${convoKey(me, withUser)}`;
         const cursor = Math.max(0, parseInt(req.query?.cursor) || 0);
-        const raw = await redis.lrange(key, cursor, cursor + MAX_HISTORY - 1);
-
+        const raw    = await redis.lrange(key, cursor, cursor + MAX_HISTORY - 1);
         const messages = (raw || []).map(m => {
-          try { return typeof m === 'string' ? JSON.parse(m) : m; }
-          catch { return null; }
+          try { return typeof m === 'string' ? JSON.parse(m) : m; } catch { return null; }
         }).filter(Boolean);
-
         return res.status(200).json({ messages, cursor: cursor + messages.length, hasMore: messages.length >= MAX_HISTORY });
       } catch (e) {
-        console.error('Messages history error:', e);
+        console.error('history error:', e);
         return res.status(500).json({ error: 'Errore nel caricamento dei messaggi.' });
       }
     }
 
-    // Poll for new messages AND edited/deleted messages since a given timestamp
     if (action === 'poll') {
       const withUser = sanitize(req.query?.with, 50).toLowerCase();
       if (!withUser) return res.status(400).json({ error: 'Destinatario richiesto.' });
-
       try {
-        const key = `messages:${convoKey(me, withUser)}`;
+        const key     = `messages:${convoKey(me, withUser)}`;
         const afterId = req.query?.after;
-        const since = Number(req.query?.since) || 0; // timestamp — return changed msgs since
-        const raw = await redis.lrange(key, -50, -1); // last 50
-
-        const all = (raw || []).map(m => {
-          try { return typeof m === 'string' ? JSON.parse(m) : m; }
-          catch { return null; }
+        const since   = Number(req.query?.since) || 0;
+        const raw     = await redis.lrange(key, -50, -1);
+        const all     = (raw || []).map(m => {
+          try { return typeof m === 'string' ? JSON.parse(m) : m; } catch { return null; }
         }).filter(Boolean);
-
-        // New messages (after lastMsgId)
         let newMessages = all;
         if (afterId) {
           const idx = all.findIndex(m => m.id === afterId);
           if (idx >= 0) newMessages = all.slice(idx + 1);
         }
-
-        // Changed messages (edited or deleted after `since`)
-        const changed = since > 0
-          ? all.filter(m =>
-            (m.editedAt && m.editedAt > since) ||
-            (m.deleted && m.deletedAt && m.deletedAt > since)
-          )
-          : [];
-
+        const changed = since > 0 ? all.filter(m =>
+          (m.editedAt && m.editedAt > since) || (m.deleted && m.deletedAt && m.deletedAt > since)
+        ) : [];
         return res.status(200).json({ messages: newMessages, changed });
       } catch (e) {
-        console.error('Messages poll error:', e);
+        console.error('poll error:', e);
         return res.status(500).json({ error: 'Errore nel polling dei messaggi.' });
       }
     }
 
-    // Check if user has a passphrase-protected key backup (for cross-device sync)
-    if (action === 'has_passphrase') {
+    if (action === 'get_passkey_backup') {
       try {
-        const data = await redis.get(`e2e_backup:${me}`);
-        return res.status(200).json({ hasPassphrase: !!data });
-      } catch (e) {
-        console.error('has_passphrase error:', e);
-        return res.status(500).json({ error: 'Errore nel controllo del backup.' });
-      }
-    }
-
-    // Get encrypted private key backup (for restoring on a new device)
-    if (action === 'get_encrypted_key') {
-      try {
-        const raw = await redis.get(`e2e_backup:${me}`);
+        const raw = await redis.get(`e2e_passkey:${me}`);
         if (!raw) return res.status(404).json({ error: 'Nessun backup trovato.' });
         const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        return res.status(200).json({
-          ...data,
-          hasPasswordFallback: !!(data.passwordBackup?.encryptedPrivateKey),
-        });
+        return res.status(200).json(data);
       } catch (e) {
-        console.error('get_encrypted_key error:', e);
+        console.error('get_passkey_backup error:', e);
         return res.status(500).json({ error: 'Errore nel recupero del backup.' });
       }
     }
 
-    // Auto-sync: return (or create) the per-user server secret used for transparent cross-device restore.
-    // The secret is only returned to the authenticated account owner — the client uses it to derive
-    // an AES key locally (PBKDF2) and decrypt the stored ECDH private key.
-    if (action === 'get_sync_secret') {
-      try {
-        const userId = twitchUser.userId;
-        if (!userId) return res.status(400).json({ error: 'User ID non disponibile.' });
-        const saltKey = `e2e_sync_salt:${userId}`;
-        let salt = await redis.get(saltKey);
-        if (!salt) {
-          // Generate a cryptographically secure random 32-byte salt using Node.js crypto
-          const { randomBytes } = await import('crypto');
-          salt = randomBytes(32).toString('base64');
-          await redis.set(saltKey, salt);
-        }
-        return res.status(200).json({ salt: typeof salt === 'string' ? salt : Buffer.from(salt).toString('base64') });
-      } catch (e) {
-        console.error('get_sync_secret error:', e);
-        return res.status(500).json({ error: 'Errore nel recupero del segreto di sincronizzazione.' });
-      }
-    }
-
-    // Auto-sync: retrieve the automatically-synced encrypted key backup
-    if (action === 'get_auto_backup') {
-      try {
-        const userId = twitchUser.userId;
-        if (!userId) return res.status(400).json({ error: 'User ID non disponibile.' });
-        const raw = await redis.get(`e2e_auto_backup:${userId}`);
-        if (!raw) return res.status(404).json({ error: 'Nessun backup automatico trovato.' });
-        const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        return res.status(200).json(data);
-      } catch (e) {
-        console.error('get_auto_backup error:', e);
-        return res.status(500).json({ error: 'Errore nel recupero del backup automatico.' });
-      }
-    }
-
-    // Get notification preferences
-    if (action === 'notif_prefs') {
-      try {
-        const raw = await redis.get(`notif_prefs:${me}`);
-        const prefs = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : {};
-        return res.status(200).json({ prefs });
-      } catch (e) {
-        console.error('notif_prefs error:', e);
-        return res.status(500).json({ error: 'Errore nel caricamento preferenze.' });
-      }
-    }
-
-    // Fetch encrypted media blob
     if (action === 'media') {
       const mediaId = sanitize(req.query?.id, 100);
       if (!mediaId) return res.status(400).json({ error: 'ID media richiesto.' });
-
       try {
         const metaRaw = await redis.get(`media:${mediaId}:meta`);
         if (!metaRaw) return res.status(404).json({ error: 'Media non trovato.' });
         const meta = typeof metaRaw === 'string' ? JSON.parse(metaRaw) : metaRaw;
-
-        // Only the two parties of the conversation can access the media
-        if (meta.from !== me && meta.to !== me) {
-          return res.status(403).json({ error: 'Non autorizzato.' });
-        }
-
+        if (meta.from !== me && meta.to !== me) return res.status(403).json({ error: 'Non autorizzato.' });
         const data = await redis.get(`media:${mediaId}`);
         if (!data) return res.status(404).json({ error: 'Media non trovato.' });
-
         return res.status(200).json({ data, mimeType: meta.mimeType, name: meta.name });
       } catch (e) {
-        console.error('Messages get_media error:', e);
+        console.error('get_media error:', e);
         return res.status(500).json({ error: 'Errore nel recupero del media.' });
       }
     }
@@ -321,315 +242,218 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Azione GET non valida.' });
   }
 
-  /* ─── POST ─── */
+  /* ═══════════════════ POST ═══════════════════ */
   if (req.method === 'POST') {
     const twitchUser = await validateTwitch(req.headers.authorization);
-    if (!twitchUser) {
-      return res.status(401).json({ error: 'Devi effettuare il login con Twitch.' });
-    }
+    if (!twitchUser) return res.status(401).json({ error: 'Devi effettuare il login con Twitch.' });
     const me = twitchUser.login;
     const { action } = req.body || {};
 
-    // Register public key
     if (action === 'register_key') {
       const publicKey = sanitize(req.body.publicKey, 2000);
-      if (!publicKey) {
-        return res.status(400).json({ error: 'Chiave pubblica richiesta.' });
-      }
+      if (!publicKey) return res.status(400).json({ error: 'Chiave pubblica richiesta.' });
       await redis.set(`userkeys:${me}`, publicKey);
       return res.status(200).json({ ok: true });
     }
 
-    // Send encrypted message
+    if (action === 'save_passkey_backup') {
+      const credentialId        = sanitize(req.body.credentialId, 500);
+      const encryptedPrivateKey = sanitize(req.body.encryptedPrivateKey, 5000);
+      const iv                  = sanitize(req.body.iv, 100);
+      const publicKey           = sanitize(req.body.publicKey, 2000);
+      if (!credentialId || !encryptedPrivateKey || !iv) {
+        return res.status(400).json({ error: 'Dati backup incompleti.' });
+      }
+      const backup = JSON.stringify({ credentialId, encryptedPrivateKey, iv, publicKey: publicKey || null, savedAt: Date.now() });
+      await redis.set(`e2e_passkey:${me}`, backup);
+      if (publicKey) await redis.set(`userkeys:${me}`, publicKey);
+      return res.status(200).json({ ok: true });
+    }
+
     if (action === 'send') {
-      const to = sanitize(req.body.to, 50).toLowerCase();
+      const to        = sanitize(req.body.to, 50).toLowerCase();
       const encrypted = sanitize(req.body.encrypted, MAX_MSG_SIZE);
-      const iv = sanitize(req.body.iv, 100);
-
-      if (!to || to === me) {
-        return res.status(400).json({ error: 'Destinatario non valido.' });
-      }
-      if (!encrypted || !iv) {
-        return res.status(400).json({ error: 'Messaggio crittografato e IV richiesti.' });
-      }
-
-      // Check friendship
+      const iv        = sanitize(req.body.iv, 100);
+      if (!to || to === me) return res.status(400).json({ error: 'Destinatario non valido.' });
+      if (!encrypted || !iv) return res.status(400).json({ error: 'Messaggio cifrato e IV richiesti.' });
       const isFriend = await redis.sismember(`friends:${me}`, to);
-      if (!isFriend) {
-        return res.status(403).json({ error: 'Puoi inviare messaggi solo agli amici.' });
-      }
-
-      // Rate limit
-      const rlKey = `msg:ratelimit:${me}`;
+      if (!isFriend) return res.status(403).json({ error: 'Puoi inviare messaggi solo agli amici.' });
+      const rlKey    = `msg:ratelimit:${me}`;
       const rlExists = await redis.exists(rlKey);
-      if (rlExists) {
-        return res.status(429).json({ error: 'Aspetta prima di inviare un altro messaggio.' });
-      }
-
+      if (rlExists) return res.status(429).json({ error: 'Aspetta prima di inviare un altro messaggio.' });
       try {
-        const msgId = String(await redis.incr('msg:counter'));
-        const now = Date.now();
-
-        const message = {
-          id: msgId,
-          from: me,
-          to,
-          encrypted,
-          iv,
-          createdAt: now,
-        };
-
-        const convo = convoKey(me, to);
-        const msgKey = `messages:${convo}`;
-
+        const msgId   = String(await redis.incr('msg:counter'));
+        const now     = Date.now();
+        const message = { id: msgId, from: me, to, encrypted, iv, createdAt: now };
+        const convo   = convoKey(me, to);
+        const msgKey  = `messages:${convo}`;
         await Promise.all([
           redis.rpush(msgKey, JSON.stringify(message)),
           redis.expire(msgKey, MSG_TTL_SECONDS),
           redis.zadd(`conversations:${me}`, { score: now, member: to }),
-          redis.zadd(`conversations:${to}`, { score: now, member: me }),
-          redis.set(rlKey, '1', { ex: RATE_LIMIT_SECONDS }),
+          redis.zadd(`conversations:${to}`,  { score: now, member: me }),
+          redis.set(rlKey, '1', { ex: RATE_LIMIT_SEC }),
         ]);
-
         return res.status(201).json({ message: { id: msgId, from: me, to, createdAt: now } });
       } catch (e) {
-        console.error('Messages send error:', e);
-        return res.status(500).json({ error: 'Errore nell\'invio del messaggio.' });
+        console.error('send error:', e);
+        return res.status(500).json({ error: "Errore nell'invio del messaggio." });
       }
     }
 
-    // Edit an existing message (only own messages)
     if (action === 'edit') {
       const convoWith = sanitize(req.body.convoWith, 50).toLowerCase();
-      const msgId = sanitize(req.body.msgId, 50);
+      const msgId     = sanitize(req.body.msgId, 50);
       const encrypted = sanitize(req.body.encrypted, MAX_MSG_SIZE);
-      const iv = sanitize(req.body.iv, 100);
-
-      if (!convoWith || !msgId || !encrypted || !iv) {
-        return res.status(400).json({ error: 'Campi richiesti mancanti.' });
-      }
-
+      const iv        = sanitize(req.body.iv, 100);
+      if (!convoWith || !msgId || !encrypted || !iv) return res.status(400).json({ error: 'Campi richiesti mancanti.' });
       const isFriend = await redis.sismember(`friends:${me}`, convoWith);
       if (!isFriend) return res.status(403).json({ error: 'Non autorizzato.' });
-
       try {
         const listKey = `messages:${convoKey(me, convoWith)}`;
-        const found = await findMsgInList(redis, listKey, msgId);
+        const found   = await findMsgInList(redis, listKey, msgId);
         if (!found) return res.status(404).json({ error: 'Messaggio non trovato.' });
         if (found.msg.from !== me) return res.status(403).json({ error: 'Puoi modificare solo i tuoi messaggi.' });
         if (found.msg.deleted) return res.status(400).json({ error: 'Impossibile modificare un messaggio eliminato.' });
-
-        const updated = { ...found.msg, encrypted, iv, editedAt: Date.now() };
-        await redis.lset(listKey, found.index, JSON.stringify(updated));
+        await redis.lset(listKey, found.index, JSON.stringify({ ...found.msg, encrypted, iv, editedAt: Date.now() }));
         return res.status(200).json({ ok: true });
       } catch (e) {
-        console.error('Messages edit error:', e);
+        console.error('edit error:', e);
         return res.status(500).json({ error: 'Errore nella modifica del messaggio.' });
       }
     }
 
-    // Soft-delete a message (only own messages)
     if (action === 'delete') {
       const convoWith = sanitize(req.body.convoWith, 50).toLowerCase();
-      const msgId = sanitize(req.body.msgId, 50);
-
-      if (!convoWith || !msgId) {
-        return res.status(400).json({ error: 'Campi richiesti mancanti.' });
-      }
-
+      const msgId     = sanitize(req.body.msgId, 50);
+      if (!convoWith || !msgId) return res.status(400).json({ error: 'Campi richiesti mancanti.' });
       const isFriend = await redis.sismember(`friends:${me}`, convoWith);
       if (!isFriend) return res.status(403).json({ error: 'Non autorizzato.' });
-
       try {
-        const listKey = `messages:${convoKey(me, convoWith)}`;
-        const found = await findMsgInList(redis, listKey, msgId);
+        const listKey   = `messages:${convoKey(me, convoWith)}`;
+        const found     = await findMsgInList(redis, listKey, msgId);
         if (!found) return res.status(404).json({ error: 'Messaggio non trovato.' });
         if (found.msg.from !== me) return res.status(403).json({ error: 'Puoi eliminare solo i tuoi messaggi.' });
-
-        const tombstone = {
-          id: found.msg.id,
-          from: found.msg.from,
-          to: found.msg.to,
-          createdAt: found.msg.createdAt,
-          deleted: true,
-          deletedAt: Date.now(),
-        };
+        const tombstone = { id: found.msg.id, from: found.msg.from, to: found.msg.to, createdAt: found.msg.createdAt, deleted: true, deletedAt: Date.now() };
         await redis.lset(listKey, found.index, JSON.stringify(tombstone));
         return res.status(200).json({ ok: true });
       } catch (e) {
-        console.error('Messages delete error:', e);
-        return res.status(500).json({ error: 'Errore nell\'eliminazione del messaggio.' });
+        console.error('delete error:', e);
+        return res.status(500).json({ error: "Errore nell'eliminazione del messaggio." });
       }
     }
 
-    // Upload encrypted media blob (image / video)
     if (action === 'upload_media') {
-      const to = sanitize(req.body.to, 50).toLowerCase();
-      const data = req.body.data; // base64-encoded encrypted bytes
+      const to       = sanitize(req.body.to, 50).toLowerCase();
+      const data     = req.body.data;
       const mimeType = sanitize(req.body.mimeType || '', 100);
-      const name = sanitize(req.body.name || 'file', 200);
-
+      const name     = sanitize(req.body.name || 'file', 200);
       if (!to || to === me) return res.status(400).json({ error: 'Destinatario non valido.' });
       if (!data || typeof data !== 'string') return res.status(400).json({ error: 'Data richiesta.' });
       if (data.length > MAX_MEDIA_SIZE) return res.status(413).json({ error: 'File troppo grande (max ~800KB).' });
-
       const isFriend = await redis.sismember(`friends:${me}`, to);
       if (!isFriend) return res.status(403).json({ error: 'Puoi inviare media solo agli amici.' });
-
       try {
         const mediaId = randomUUID();
         const meta = JSON.stringify({ from: me, to, mimeType, name, createdAt: Date.now() });
-
         await Promise.all([
           redis.set(`media:${mediaId}`, data, { ex: MSG_TTL_SECONDS }),
           redis.set(`media:${mediaId}:meta`, meta, { ex: MSG_TTL_SECONDS }),
         ]);
-
         return res.status(201).json({ mediaId });
       } catch (e) {
-        console.error('Messages upload_media error:', e);
+        console.error('upload_media error:', e);
         return res.status(500).json({ error: 'Errore nel caricamento del media.' });
       }
     }
 
-    // Save encrypted private key backup (for cross-device sync)
-    // Supports both password (PBKDF2) and passkey (WebAuthn PRF) methods
-    if (action === 'save_encrypted_key') {
-      const encryptedPrivateKey = sanitize(req.body.encryptedPrivateKey, 5000);
-      const salt = req.body.salt ? sanitize(req.body.salt, 100) : null;
-      const iv = sanitize(req.body.iv, 100);
-      const method = sanitize(req.body.method || 'password', 20);
-      const credentialId = req.body.credentialId ? sanitize(req.body.credentialId, 2000) : null;
-      const publicKey = req.body.publicKey ? sanitize(req.body.publicKey, 2000) : null;
-      // Optional password fallback for passkey backups (enables cross-device recovery)
-      const rawPasswordBackup = req.body.passwordBackup || null;
+    /* ═══ Sincronizzazione multi-dispositivo ═══ */
 
-      if (!encryptedPrivateKey || !iv) {
-        return res.status(400).json({ error: 'Dati di backup mancanti.' });
-      }
-      if (method === 'password' && !salt) {
-        return res.status(400).json({ error: 'Salt richiesto per metodo password.' });
-      }
-      if (rawPasswordBackup) {
-        const pbEnc = sanitize(rawPasswordBackup.encryptedPrivateKey, 5000);
-        const pbSalt = sanitize(rawPasswordBackup.salt, 100);
-        const pbIv = sanitize(rawPasswordBackup.iv, 100);
-        if (!pbEnc || !pbSalt || !pbIv) {
-          return res.status(400).json({ error: 'passwordBackup incompleto.' });
-        }
-        // Store sanitized values to avoid re-processing below
-        rawPasswordBackup._sanitized = { encryptedPrivateKey: pbEnc, salt: pbSalt, iv: pbIv };
-      }
-
+    if (action === 'sync_start') {
+      const initiatorEphemeralPubKey = sanitize(req.body.initiatorEphemeralPubKey, 2000);
+      if (!initiatorEphemeralPubKey) return res.status(400).json({ error: 'Chiave efimera richiesta.' });
       try {
-        const backup = { encryptedPrivateKey, iv, method };
-        if (salt) backup.salt = salt;
-        if (credentialId) backup.credentialId = credentialId;
-        if (rawPasswordBackup) {
-          backup.passwordBackup = rawPasswordBackup._sanitized;
-        }
-        const ops = [redis.set(`e2e_backup:${me}`, JSON.stringify(backup))];
-        if (publicKey) ops.push(redis.set(`userkeys:${me}`, publicKey));
-        await Promise.all(ops);
-        return res.status(200).json({ ok: true });
+        const sessionId = randomUUID();
+        const code      = await generaCodice(redis);
+        const session   = JSON.stringify({
+          owner: me,
+          initiatorEphemeralPubKey,
+          status: 'waiting',
+          createdAt: Date.now(),
+        });
+        await Promise.all([
+          redis.set(`sync:${sessionId}`, session, { ex: SYNC_TTL }),
+          redis.set(`sync_code:${code}`, sessionId, { ex: SYNC_TTL }),
+        ]);
+        return res.status(200).json({ sessionId, code });
       } catch (e) {
-        console.error('save_encrypted_key error:', e);
-        return res.status(500).json({ error: 'Errore nel salvataggio del backup.' });
+        console.error('sync_start error:', e);
+        return res.status(500).json({ error: 'Errore nella creazione della sessione di sync.' });
       }
     }
 
-    // Add or update password fallback on an existing backup (for passkey backups)
-    if (action === 'add_password_fallback') {
-      const encryptedPrivateKey = sanitize(req.body.encryptedPrivateKey, 5000);
-      const salt = sanitize(req.body.salt, 100);
-      const iv = sanitize(req.body.iv, 100);
-      if (!encryptedPrivateKey || !salt || !iv) {
-        return res.status(400).json({ error: 'Dati mancanti per il backup password.' });
-      }
+    if (action === 'sync_join') {
+      const code                  = sanitize(req.body.code, 10).toUpperCase();
+      const joinerEphemeralPubKey = sanitize(req.body.joinerEphemeralPubKey, 2000);
+      if (!code || !joinerEphemeralPubKey) return res.status(400).json({ error: 'Codice e chiave efimera richiesti.' });
       try {
-        const raw = await redis.get(`e2e_backup:${me}`);
-        if (!raw) return res.status(404).json({ error: 'Nessun backup trovato. Configura prima un metodo di backup.' });
-        const backup = typeof raw === 'string' ? JSON.parse(raw) : { ...raw };
-        if (backup.method !== 'passkey') {
-          return res.status(400).json({ error: 'La password di recupero può essere aggiunta solo a un backup passkey.' });
-        }
-        backup.passwordBackup = { encryptedPrivateKey, salt, iv };
-        await redis.set(`e2e_backup:${me}`, JSON.stringify(backup));
-        return res.status(200).json({ ok: true });
+        const sessionId = await redis.get(`sync_code:${code}`);
+        if (!sessionId) return res.status(404).json({ error: 'Codice scaduto o non valido.' });
+        const raw = await redis.get(`sync:${sessionId}`);
+        if (!raw) return res.status(404).json({ error: 'Sessione scaduta.' });
+        const session = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (session.owner === me) return res.status(400).json({ error: 'Non puoi sincronizzare con te stesso.' });
+        if (session.status !== 'waiting') return res.status(409).json({ error: 'Sessione già utilizzata.' });
+        const updated = JSON.stringify({ ...session, joinerEphemeralPubKey, joiner: me, status: 'joined' });
+        const ttlLeft = await redis.ttl(`sync:${sessionId}`);
+        await redis.set(`sync:${sessionId}`, updated, { ex: Math.max(ttlLeft, 30) });
+        return res.status(200).json({ sessionId, initiatorEphemeralPubKey: session.initiatorEphemeralPubKey });
       } catch (e) {
-        console.error('add_password_fallback error:', e);
-        return res.status(500).json({ error: 'Errore nel salvataggio.' });
+        console.error('sync_join error:', e);
+        return res.status(500).json({ error: "Errore nell'unione alla sessione di sync." });
       }
     }
 
-    // Salva il backup automatico (cifrato con chiave derivata dal segreto Twitch lato server).
-    // Questo permette il ripristino trasparente su qualsiasi dispositivo dove l'utente
-    // accede con lo stesso account Twitch, senza richiedere azioni manuali.
-    if (action === 'save_auto_backup') {
-      const encryptedPrivateKey = sanitize(req.body.encryptedPrivateKey, 5000);
-      const iv = sanitize(req.body.iv, 100);
-      const publicKey = req.body.publicKey ? sanitize(req.body.publicKey, 2000) : null;
-      if (!encryptedPrivateKey || !iv) {
-        return res.status(400).json({ error: 'Dati di backup automatico mancanti.' });
-      }
+    if (action === 'sync_deliver') {
+      const sessionId    = sanitize(req.body.sessionId, 100);
+      const encryptedKey = sanitize(req.body.encryptedKey, 5000);
+      const iv           = sanitize(req.body.iv, 100);
+      if (!sessionId || !encryptedKey || !iv) return res.status(400).json({ error: 'Dati richiesti mancanti.' });
       try {
-        const userId = twitchUser.userId;
-        if (!userId) return res.status(400).json({ error: 'User ID non disponibile.' });
-        const autoBackup = { encryptedPrivateKey, iv, createdAt: Date.now() };
-        const ops = [redis.set(`e2e_auto_backup:${userId}`, JSON.stringify(autoBackup))];
-        if (publicKey) ops.push(redis.set(`userkeys:${me}`, publicKey));
-        await Promise.all(ops);
+        const raw = await redis.get(`sync:${sessionId}`);
+        if (!raw) return res.status(404).json({ error: 'Sessione scaduta.' });
+        const session = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (session.owner !== me) return res.status(403).json({ error: 'Non autorizzato.' });
+        if (session.status !== 'joined') return res.status(409).json({ error: 'Nessun dispositivo ha ancora aderito alla sessione.' });
+        const updated = JSON.stringify({ ...session, encryptedKey, iv, status: 'ready' });
+        const ttlLeft = await redis.ttl(`sync:${sessionId}`);
+        await redis.set(`sync:${sessionId}`, updated, { ex: Math.max(ttlLeft, 60) });
         return res.status(200).json({ ok: true });
       } catch (e) {
-        console.error('save_auto_backup error:', e);
-        return res.status(500).json({ error: 'Errore nel salvataggio del backup automatico.' });
+        console.error('sync_deliver error:', e);
+        return res.status(500).json({ error: 'Errore nella consegna della chiave.' });
       }
     }
 
-    // Cancella tutti i backup E2E dell'utente (chiamato dopo un reset delle chiavi,
-    // per evitare che Device 2 ripristini una chiave obsoleta con password/auto-sync).
-    // Nota: i backup usano schemi di chiave diversi per design:
-    //   e2e_backup:<username>     → backup manuale (password/passkey), indicizzato per username
-    //   e2e_auto_backup:<userId>  → backup automatico, indicizzato per user_id Twitch (stabile)
-    if (action === 'clear_e2e_backups') {
+    if (action === 'sync_complete') {
+      const sessionId = sanitize(req.body.sessionId, 100);
+      if (!sessionId) return res.status(400).json({ error: 'sessionId richiesto.' });
       try {
-        const userId = twitchUser.userId;
-        const ops = [redis.del(`e2e_backup:${me}`)];
-        if (userId) ops.push(redis.del(`e2e_auto_backup:${userId}`));
-        await Promise.all(ops);
+        const raw = await redis.get(`sync:${sessionId}`);
+        if (raw) {
+          const session = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          if (session.joiner && session.joiner !== me) return res.status(403).json({ error: 'Non autorizzato.' });
+          await redis.del(`sync:${sessionId}`);
+        }
         return res.status(200).json({ ok: true });
       } catch (e) {
-        console.error('clear_e2e_backups error:', e);
-        return res.status(500).json({ error: 'Errore nella pulizia dei backup.' });
-      }
-    }
-
-    // Save notification preferences
-    if (action === 'save_notif_prefs') {
-      const prefs = req.body.prefs;
-      if (!prefs || typeof prefs !== 'object') {
-        return res.status(400).json({ error: 'Preferenze non valide.' });
-      }
-      try {
-        // Sanitize: only allow known keys with boolean/string values
-        const clean = {};
-        const ALLOWED = ['inApp', 'push', 'sound'];
-        for (const k of ALLOWED) {
-          if (k in prefs) clean[k] = !!prefs[k];
-        }
-        // Per-conversation mutes: array of usernames
-        if (Array.isArray(prefs.muted)) {
-          clean.muted = prefs.muted.slice(0, 200).map(u => sanitize(String(u), 50).toLowerCase()).filter(Boolean);
-        }
-        await redis.set(`notif_prefs:${me}`, JSON.stringify(clean));
-        return res.status(200).json({ ok: true });
-      } catch (e) {
-        console.error('save_notif_prefs error:', e);
-        return res.status(500).json({ error: 'Errore nel salvataggio preferenze.' });
+        console.error('sync_complete error:', e);
+        return res.status(500).json({ error: 'Errore nella finalizzazione del sync.' });
       }
     }
 
     return res.status(400).json({ error: 'Azione POST non valida.' });
   }
 
-  return res.status(405).json({ error: 'Metodo non supportato.' });
+  return res.status(405).json({ error: 'Metodo non consentito.' });
 }
