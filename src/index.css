@@ -1459,7 +1459,6 @@ nav.navbar-container.glass-panel {
 }
 
 /* Nessun bounce di sfondo oltre i bordi dell'app */
-.pwa-standalone html,
 .pwa-standalone body {
   overscroll-behavior: none;
 }
@@ -3960,9 +3959,12 @@ img.msg-avatar {
      *   env(safe-area-inset-bottom) = home indicator / bordo curvo del device
      * Nessun numero magico: se cambiano i design token, questo si aggiorna da solo.
      * dvh si ridimensiona quando la tastiera virtuale si apre (iOS 15.4+, Android).
+     * @supports fallback: vh per browser senza dvh (molto rari nel 2024+).
      */
     height: calc(100vh - var(--chrome-top) - var(--tab-bar-offset) - env(safe-area-inset-bottom, 0px));
-    height: calc(100dvh - var(--chrome-top) - var(--tab-bar-offset) - env(safe-area-inset-bottom, 0px));
+    @supports (height: 1dvh) {
+      height: calc(100dvh - var(--chrome-top) - var(--tab-bar-offset) - env(safe-area-inset-bottom, 0px));
+    }
     min-height: 300px;
     border-radius: 0;
   }
