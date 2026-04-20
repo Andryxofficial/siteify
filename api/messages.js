@@ -30,6 +30,8 @@ const MAX_HISTORY     = 50;
 const RATE_LIMIT_SEC  = 2;
 const MAX_SCAN        = 500;
 const SYNC_TTL        = 300; // 5 minuti
+const MAX_ENRICHED_CONVERSATIONS = 30;
+const MEDIA_SIZE_THRESHOLD       = 10000; // soglia caratteri encrypted per distinguere media da testo
 
 function sanitize(str, maxLen) {
   if (typeof str !== 'string') return '';
@@ -152,12 +154,47 @@ export default async function handler(req, res) {
     if (action === 'conversations') {
       try {
         const convos = await redis.zrange(`conversations:${me}`, 0, -1, { rev: true, withScores: true });
-        const result = [];
+        const entries = [];
         if (Array.isArray(convos)) {
           for (let i = 0; i < convos.length; i += 2) {
-            result.push({ user: convos[i], lastMessageAt: Number(convos[i + 1]) });
+            entries.push({ user: convos[i], lastMessageAt: Number(convos[i + 1]) });
           }
         }
+        const result = await Promise.all(entries.slice(0, MAX_ENRICHED_CONVERSATIONS).map(async (entry) => {
+          const ck = convoKey(me, entry.user);
+          const listKey = `messages:${ck}`;
+          const [lastRaw, lastReadRaw] = await Promise.all([
+            redis.lrange(listKey, -1, -1),
+            redis.get(`lastread:${me}:${entry.user}`),
+          ]);
+          let lastMessage = null;
+          if (lastRaw?.length > 0) {
+            try {
+              const full = typeof lastRaw[0] === 'string' ? JSON.parse(lastRaw[0]) : lastRaw[0];
+              const isMedia = (full.encrypted?.length || 0) > MEDIA_SIZE_THRESHOLD;
+              lastMessage = {
+                id: full.id, from: full.from, to: full.to,
+                createdAt: full.createdAt, deleted: full.deleted || false,
+                encrypted: isMedia ? null : full.encrypted,
+                iv: isMedia ? null : full.iv,
+                isMedia,
+              };
+            } catch { /* skip */ }
+          }
+          let unread = 0;
+          const lastReadTs = lastReadRaw ? Number(lastReadRaw) : 0;
+          if (lastMessage && lastMessage.from !== me && !lastMessage.deleted && lastMessage.createdAt > lastReadTs) {
+            const recent = await redis.lrange(listKey, -30, -1);
+            for (const raw of recent) {
+              try {
+                const m = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                if (m.from !== me && !m.deleted && m.createdAt > lastReadTs) unread++;
+              } catch { /* skip */ }
+            }
+          }
+          return { ...entry, lastMessage, unread };
+        }));
+        if (entries.length > MAX_ENRICHED_CONVERSATIONS) result.push(...entries.slice(MAX_ENRICHED_CONVERSATIONS));
         return res.status(200).json({ conversations: result });
       } catch (e) {
         console.error('conversations error:', e);
@@ -270,6 +307,28 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    if (action === 'delete_passkey_backup') {
+      try {
+        await redis.del(`e2e_passkey:${me}`);
+        return res.status(200).json({ ok: true });
+      } catch (e) {
+        console.error('delete_passkey_backup error:', e);
+        return res.status(500).json({ error: 'Errore nella rimozione del backup.' });
+      }
+    }
+
+    if (action === 'mark_read') {
+      const withUser = sanitize(req.body.withUser, 50).toLowerCase();
+      if (!withUser) return res.status(400).json({ error: 'Destinatario richiesto.' });
+      try {
+        await redis.set(`lastread:${me}:${withUser}`, Date.now());
+        return res.status(200).json({ ok: true });
+      } catch (e) {
+        console.error('mark_read error:', e);
+        return res.status(500).json({ error: 'Errore nel salvataggio della lettura.' });
+      }
+    }
+
     if (action === 'send') {
       const to        = sanitize(req.body.to, 50).toLowerCase();
       const encrypted = sanitize(req.body.encrypted, MAX_MSG_SIZE);
@@ -293,6 +352,7 @@ export default async function handler(req, res) {
           redis.zadd(`conversations:${me}`, { score: now, member: to }),
           redis.zadd(`conversations:${to}`,  { score: now, member: me }),
           redis.set(rlKey, '1', { ex: RATE_LIMIT_SEC }),
+          redis.set(`lastread:${me}:${to}`, now),
         ]);
         return res.status(201).json({ message: { id: msgId, from: me, to, createdAt: now } });
       } catch (e) {
