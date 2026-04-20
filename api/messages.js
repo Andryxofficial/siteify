@@ -30,6 +30,8 @@ const MAX_HISTORY     = 50;
 const RATE_LIMIT_SEC  = 2;
 const MAX_SCAN        = 500;
 const SYNC_TTL        = 300; // 5 minuti
+const MAX_ENRICHED_CONVERSATIONS = 30;
+const MEDIA_SIZE_THRESHOLD       = 10000; // soglia caratteri encrypted per distinguere media da testo
 
 function sanitize(str, maxLen) {
   if (typeof str !== 'string') return '';
@@ -158,8 +160,7 @@ export default async function handler(req, res) {
             entries.push({ user: convos[i], lastMessageAt: Number(convos[i + 1]) });
           }
         }
-        /* Arricchisci con ultimo messaggio e conteggio non letti (max 30) */
-        const result = await Promise.all(entries.slice(0, 30).map(async (entry) => {
+        const result = await Promise.all(entries.slice(0, MAX_ENRICHED_CONVERSATIONS).map(async (entry) => {
           const ck = convoKey(me, entry.user);
           const listKey = `messages:${ck}`;
           const [lastRaw, lastReadRaw] = await Promise.all([
@@ -170,7 +171,7 @@ export default async function handler(req, res) {
           if (lastRaw?.length > 0) {
             try {
               const full = typeof lastRaw[0] === 'string' ? JSON.parse(lastRaw[0]) : lastRaw[0];
-              const isMedia = (full.encrypted?.length || 0) > 10000;
+              const isMedia = (full.encrypted?.length || 0) > MEDIA_SIZE_THRESHOLD;
               lastMessage = {
                 id: full.id, from: full.from, to: full.to,
                 createdAt: full.createdAt, deleted: full.deleted || false,
@@ -193,7 +194,7 @@ export default async function handler(req, res) {
           }
           return { ...entry, lastMessage, unread };
         }));
-        if (entries.length > 30) result.push(...entries.slice(30));
+        if (entries.length > MAX_ENRICHED_CONVERSATIONS) result.push(...entries.slice(MAX_ENRICHED_CONVERSATIONS));
         return res.status(200).json({ conversations: result });
       } catch (e) {
         console.error('conversations error:', e);
