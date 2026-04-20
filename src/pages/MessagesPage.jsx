@@ -3001,7 +3001,7 @@ export default function MessagesPage() {
   }
 
   const convoSet = new Set(conversazioni.map(c => c.user));
-  const convFiltrate = conversazioni.filter(c => c.user.toLowerCase().includes(ricercaAmico.toLowerCase()));
+  const convFiltrate = conversazioni.filter(c => c.user?.toLowerCase()?.includes(ricercaAmico.toLowerCase()));
   /* Amici non ancora in chat che corrispondono alla ricerca (max 5) */
   const amiciSuggeriti = ricercaAmico.trim().length >= 1
     ? amici.filter(a => a.toLowerCase().includes(ricercaAmico.toLowerCase()) && !convoSet.has(a) && a !== twitchUser).slice(0, 5)
@@ -3011,7 +3011,7 @@ export default function MessagesPage() {
   if (fase === 'inizializzazione') {
     return (
       <>
-        <SEO titolo="Messaggi" />
+        <SEO title="Messaggi" />
         <SpinnerCentrale testo="Inizializzazione messaggi sicuri…" />
       </>
     );
@@ -3021,7 +3021,7 @@ export default function MessagesPage() {
   if (fase === 'non-autenticato') {
     return (
       <>
-        <SEO titolo="Messaggi" />
+        <SEO title="Messaggi" />
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="glass-panel"
           style={{ maxWidth: 420, margin: '60px auto', padding: '2.5rem', textAlign: 'center' }}>
@@ -3044,7 +3044,7 @@ export default function MessagesPage() {
   if (fase === 'setup-primo') {
     return (
       <>
-        <SEO titolo="Setup messaggi" />
+        <SEO title="Setup messaggi" />
         <div style={{ padding: '1rem' }}>
           <FaseSetupPrimo username={twitchUser} token={twitchToken} onComplete={onSetupCompleto} />
         </div>
@@ -3056,7 +3056,7 @@ export default function MessagesPage() {
   if (fase === 'setup-joiner') {
     return (
       <>
-        <SEO titolo="Sincronizza dispositivo" />
+        <SEO title="Sincronizza dispositivo" />
         <div style={{ padding: '1rem' }}>
           <FaseSetupJoiner username={twitchUser} token={twitchToken} onComplete={onSetupCompleto} />
         </div>
@@ -3067,7 +3067,7 @@ export default function MessagesPage() {
   /* ─── Fase: messaggi ─── */
   return (
     <>
-      <SEO titolo="Messaggi" />
+      <SEO title="Messaggi" />
       <div className="msg-main-panel">
         {/* Barra laterale conversazioni */}
         <AnimatePresence mode="wait">

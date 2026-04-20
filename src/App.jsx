@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { useEffect, lazy, Suspense } from 'react';
+import { Component, useEffect, lazy, Suspense } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
@@ -30,6 +30,49 @@ const MessagesPage       = lazy(() => import('./pages/MessagesPage'));
 const ChatGeneralePage   = lazy(() => import('./pages/ChatGeneralePage'));
 const SettingsPage       = lazy(() => import('./pages/SettingsPage'));
 const ProfiloPage        = lazy(() => import('./pages/ProfiloPage'));
+
+/* ─── Error Boundary ───
+   Cattura qualsiasi errore JavaScript durante il rendering di un componente figlio
+   e mostra un messaggio di errore invece di lasciare la pagina completamente bianca.
+   Senza questo, un'eccezione non gestita smonta l'intero albero React (navbar, footer, tutto). */
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { errore: null };
+  }
+
+  static getDerivedStateFromError(err) {
+    return { errore: err };
+  }
+
+  componentDidCatch(err, info) {
+    console.error('[ANDRYXify] Errore React non gestito:', err, info.componentStack);
+  }
+
+  render() {
+    if (this.state.errore) {
+      return (
+        <div style={{
+          textAlign: 'center', padding: '3rem 1rem', minHeight: '60vh',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', gap: '1rem',
+        }}>
+          <span style={{ fontSize: '2.5rem' }}>⚠️</span>
+          <h2 style={{ color: '#f87171', margin: 0 }}>Qualcosa è andato storto</h2>
+          <p style={{ color: 'rgba(255,255,255,0.5)', maxWidth: 420, lineHeight: 1.5 }}>
+            {this.state.errore.message || 'Errore inaspettato. Ricarica la pagina per riprovare.'}
+          </p>
+          <button
+            className="btn btn-primary"
+            onClick={() => window.location.reload()}>
+            Ricarica la pagina
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // Skeleton minimo di fallback per Suspense
 function PaginaCaricamento() {
@@ -84,6 +127,7 @@ function AppLayout() {
       <SchermataCampione />
       <AnimatePresence mode="wait">
         <PageTransition key={location.pathname}>
+          <ErrorBoundary>
           <Suspense fallback={<PaginaCaricamento />}>
             <Routes location={location}>
               <Route path="/" element={<Home />} />
@@ -105,6 +149,7 @@ function AppLayout() {
               <Route path="/profilo/:username" element={<ProfiloPage />} />
             </Routes>
           </Suspense>
+          </ErrorBoundary>
         </PageTransition>
       </AnimatePresence>
       <Footer />
