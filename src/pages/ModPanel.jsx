@@ -1,643 +1,269 @@
 /**
- * ModPanel — Private dashboard for streamer & moderators.
+ * ModPanel — Dashboard completa stile StreamElements per moderatori.
  *
- * Hidden route (/mod-panel), not in navbar.
- * Shows CRUD UI for chat commands and timers stored in Redis.
- * Each command has a permission level (everyone/subscriber/vip/mod).
- * Requires Twitch login + username in MOD_USERNAMES whitelist.
+ * Rotta nascosta (/mod-panel), non in navbar.
+ * Shell con sidebar desktop / tab bar mobile.
+ * Ogni sezione è un componente lazy-loaded da src/pages/mod/.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Shield, Terminal, Timer, Plus, Trash2, Save, X, Copy, Check, LogIn,
-  Twitch, ToggleLeft, ToggleRight, Loader, AlertTriangle, Clock, MessageSquare,
-  Users, Star, Crown, Edit2,
+  LayoutDashboard, Activity, Terminal, Shield, Zap,
+  TrendingUp, Monitor, Calendar, Twitch, LogIn, Loader,
+  ChevronRight, Wifi, WifiOff, Radio,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
+import { createTwitchBot } from '../utils/twitchBot';
 import SEO from '../components/SEO';
 
-const API_URL = '/api/mod-commands';
+// Sezioni lazy-loaded
+const SecOverview    = lazy(() => import('./mod/Overview'));
+const SecActivity    = lazy(() => import('./mod/Activity'));
+const SecChat        = lazy(() => import('./mod/Chat'));
+const SecModeration  = lazy(() => import('./mod/Moderation'));
+const SecEngagement  = lazy(() => import('./mod/Engagement'));
+const SecStats       = lazy(() => import('./mod/Stats'));
+const SecOverlays    = lazy(() => import('./mod/Overlays'));
+const SecSchedule    = lazy(() => import('./mod/Schedule'));
 
-const PERMISSION_OPTIONS = [
-  { value: 'everyone',   label: 'Tutti',       icon: Users, color: 'var(--secondary)' },
-  { value: 'subscriber', label: 'Sub',         icon: Star,  color: 'var(--accent-twitch)' },
-  { value: 'vip',        label: 'VIP',         icon: Crown, color: 'var(--accent-warm)' },
-  { value: 'mod',        label: 'Mod',         icon: Shield, color: 'var(--accent)' },
+const SEZIONI = [
+  { id: 'overview',    label: 'Overview',     icon: LayoutDashboard, color: 'var(--primary)' },
+  { id: 'activity',    label: 'Attività',     icon: Activity,        color: 'var(--secondary)' },
+  { id: 'chat',        label: 'Chat',         icon: Terminal,        color: 'var(--accent-warm)' },
+  { id: 'moderation',  label: 'Moderazione',  icon: Shield,          color: 'var(--accent)' },
+  { id: 'engagement',  label: 'Engagement',   icon: Zap,             color: 'var(--accent-twitch)' },
+  { id: 'stats',       label: 'Statistiche',  icon: TrendingUp,      color: 'var(--accent-spotify)' },
+  { id: 'overlays',    label: 'Overlay OBS',  icon: Monitor,         color: 'var(--secondary)' },
+  { id: 'schedule',    label: 'Schedule',     icon: Calendar,        color: 'var(--primary)' },
 ];
 
-function getPermissionInfo(value) {
-  return PERMISSION_OPTIONS.find(p => p.value === value) || PERMISSION_OPTIONS[0];
-}
-
-const entrata = (ritardo = 0) => ({
-  initial:    { opacity: 0, y: 16 },
-  animate:    { opacity: 1, y: 0 },
-  transition: { delay: ritardo, type: 'spring', stiffness: 220, damping: 24 },
-});
-
-/* ─── Helpers ─── */
-
-function formatInterval(seconds) {
-  if (seconds >= 3600) return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
-  return `${Math.floor(seconds / 60)}m`;
-}
-
-/* ═══════════════════════════════════════
-   COMMAND FORM (modal / inline)
-   ═══════════════════════════════════════ */
-function CommandForm({ initial, onSave, onCancel, saving }) {
-  const [trigger, setTrigger] = useState(initial?.trigger || '');
-  const [response, setResponse] = useState(initial?.response || '');
-  const [cooldown, setCooldown] = useState(initial?.cooldown ?? 10);
-  const [permission, setPermission] = useState(initial?.permission || 'everyone');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave({ trigger: trigger.trim(), response: response.trim(), cooldown: Number(cooldown), permission });
-  };
-
+function SkeletonSezione() {
   return (
-    <form onSubmit={handleSubmit} className="mod-form glass-card" style={{ padding: '1.25rem' }}>
-      <div className="mod-form-row">
-        <label>
-          <Terminal size={14} /> Trigger
-          <input
-            type="text"
-            value={trigger}
-            onChange={e => setTrigger(e.target.value)}
-            placeholder="sito"
-            maxLength={50}
-            required
-            className="mod-input"
-            disabled={!!initial?.trigger}
-          />
-        </label>
-        <label>
-          <Clock size={14} /> Cooldown (sec)
-          <input
-            type="number"
-            value={cooldown}
-            onChange={e => setCooldown(e.target.value)}
-            min={0}
-            max={3600}
-            className="mod-input mod-input-small"
-          />
-        </label>
-      </div>
-      <label>
-        <MessageSquare size={14} /> Risposta
-        <textarea
-          value={response}
-          onChange={e => setResponse(e.target.value)}
-          placeholder="🔗 Ecco il sito: https://andryx.it"
-          maxLength={500}
-          required
-          className="mod-input mod-textarea"
-          rows={3}
-        />
-      </label>
-      <div className="mod-permission-row">
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-          <Shield size={13} style={{ verticalAlign: 'middle' }} /> Chi può usarlo:
-        </span>
-        <div className="mod-permission-options">
-          {PERMISSION_OPTIONS.map(opt => {
-            const Icon = opt.icon;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                className={`mod-permission-btn${permission === opt.value ? ' mod-permission-btn-active' : ''}`}
-                onClick={() => setPermission(opt.value)}
-                style={permission === opt.value ? { borderColor: opt.color, color: opt.color } : {}}
-              >
-                <Icon size={13} /> {opt.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      <div className="mod-form-actions">
-        <button type="submit" className="btn-primary" disabled={saving}>
-          <Save size={14} /> {initial?.trigger ? 'Salva' : 'Aggiungi'}
-        </button>
-        <button type="button" className="btn-ghost" onClick={onCancel}>
-          <X size={14} /> Annulla
-        </button>
-      </div>
-    </form>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      {[160, 100, 200].map(h => (
+        <div key={h} className="glass-panel skeleton" style={{ height: h }} />
+      ))}
+    </div>
   );
 }
 
-/* ═══════════════════════════════════════
-   TIMER FORM
-   ═══════════════════════════════════════ */
-function TimerForm({ initial, onSave, onCancel, saving }) {
-  const [name, setName] = useState(initial?.name || '');
-  const [message, setMessage] = useState(initial?.message || '');
-  const [intervalSec, setIntervalSec] = useState(initial?.interval ?? 300);
-  const [enabled, setEnabled] = useState(initial?.enabled ?? true);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave({ name: name.trim(), message: message.trim(), interval: Number(intervalSec), enabled });
-  };
-
+function BotIndicator({ status, onToggle }) {
+  const color = status === 'connected' ? 'var(--accent-spotify)' : status === 'connecting' ? 'var(--accent-warm)' : 'var(--text-faint)';
+  const Icon  = status === 'connected' ? Wifi : WifiOff;
   return (
-    <form onSubmit={handleSubmit} className="mod-form glass-card" style={{ padding: '1.25rem' }}>
-      <div className="mod-form-row">
-        <label>
-          <Timer size={14} /> Nome
-          <input
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="promo-sito"
-            maxLength={50}
-            required
-            className="mod-input"
-            disabled={!!initial?.name}
-          />
-        </label>
-        <label>
-          <Clock size={14} /> Intervallo (sec)
-          <input
-            type="number"
-            value={intervalSec}
-            onChange={e => setIntervalSec(e.target.value)}
-            min={60}
-            max={7200}
-            className="mod-input mod-input-small"
-          />
-        </label>
-      </div>
-      <label>
-        <MessageSquare size={14} /> Messaggio
-        <textarea
-          value={message}
-          onChange={e => setMessage(e.target.value)}
-          placeholder="🔗 Visita il sito!"
-          maxLength={500}
-          required
-          className="mod-input mod-textarea"
-          rows={3}
-        />
-      </label>
-      <div className="mod-form-row" style={{ alignItems: 'center', gap: '0.5rem' }}>
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Attivo:</span>
-        <button
-          type="button"
-          onClick={() => setEnabled(!enabled)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}
-        >
-          {enabled
-            ? <ToggleRight size={28} color="var(--accent-spotify)" />
-            : <ToggleLeft size={28} color="var(--text-faint)" />
-          }
-        </button>
-      </div>
-      <div className="mod-form-actions">
-        <button type="submit" className="btn-primary" disabled={saving}>
-          <Save size={14} /> {initial?.name ? 'Salva' : 'Aggiungi'}
-        </button>
-        <button type="button" className="btn-ghost" onClick={onCancel}>
-          <X size={14} /> Annulla
-        </button>
-      </div>
-    </form>
-  );
-}
-
-/* ═══════════════════════════════════════
-   COPY BUTTON
-   ═══════════════════════════════════════ */
-function CopyButton({ text }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch { /* clipboard unavailable */ }
-  };
-
-  return (
-    <button
+    <button onClick={onToggle}
       className="mod-icon-btn"
-      onClick={handleCopy}
-      title="Copia"
-    >
-      {copied ? <Check size={14} color="var(--accent-spotify)" /> : <Copy size={14} />}
+      title={`Bot ${status === 'connected' ? 'connesso' : 'disconnesso'} — clicca per ${status === 'connected' ? 'disconnettere' : 'connettere'}`}
+      style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color }}>
+      <Icon size={14} />
+      <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>{status === 'connected' ? 'BOT ON' : 'BOT OFF'}</span>
     </button>
   );
 }
 
-/* ═══════════════════════════════════════
-   MAIN PAGE
-   ═══════════════════════════════════════ */
 export default function ModPanel() {
-  const { twitchUser, twitchToken, isLoggedIn, loading: authLoading, getTwitchLoginUrl } = useTwitchAuth();
+  const { twitchToken, twitchUser, twitchDisplay, twitchAvatar, isLoggedIn, loading, getTwitchLoginUrl } = useTwitchAuth();
+  const [sezione,    setSezione]  = useState('overview');
+  const [isMod,      setIsMod]    = useState(null); // null=loading, true/false
+  const [botStatus,  setBotStatus] = useState('disconnected');
+  const [broadcaster, setBroadcaster] = useState('');
+  const botRef = useRef(null);
 
-  const [commands, setCommands] = useState([]);
-  const [timers, setTimers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [isMod, setIsMod] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  // Form state
-  const [showCmdForm, setShowCmdForm] = useState(false);
-  const [editingCmd, setEditingCmd] = useState(null);
-  const [showTimerForm, setShowTimerForm] = useState(false);
-  const [editingTimer, setEditingTimer] = useState(null);
-
-  // Active tab
-  const [tab, setTab] = useState('commands');
-
-  /* ─── Fetch data ─── */
-  const fetchData = useCallback(async () => {
-    if (!twitchToken) return;
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch(API_URL, {
-        headers: { Authorization: `Bearer ${twitchToken}` },
-      });
-      if (res.status === 403) {
-        setIsMod(false);
-        setLoading(false);
-        return;
-      }
-      if (!res.ok) throw new Error('Errore nel caricamento');
-      const data = await res.json();
-      setCommands(data.commands || []);
-      setTimers(data.timers || []);
-      setIsMod(data.isMod);
-    } catch (e) {
-      setError(e.message || 'Errore sconosciuto');
-    } finally {
-      setLoading(false);
+  // Controlla se l'utente è mod facendo una richiesta al backend
+  useEffect(() => {
+    if (!isLoggedIn || !twitchToken) {
+      // useEffect non deve chiamare setState direttamente in linea — usa una fn
+      const reset = () => setIsMod(false);
+      reset();
+      return;
     }
+    fetch('/api/mod-commands', { headers: { Authorization: `Bearer ${twitchToken}` } })
+      .then(r => r.json())
+      .then(d => setIsMod(!!d.isMod))
+      .catch(() => setIsMod(false));
+  }, [isLoggedIn, twitchToken]);
+
+  // Recupera broadcaster per il bot
+  useEffect(() => {
+    if (!twitchToken) return;
+    fetch('/api/mod-channel', { headers: { Authorization: `Bearer ${twitchToken}` } })
+      .then(r => r.json())
+      .then(d => { if (d.broadcaster) setBroadcaster(d.broadcaster); })
+      .catch(() => {});
   }, [twitchToken]);
 
-  useEffect(() => {
-    if (isLoggedIn && twitchToken) {
-      fetchData();
-    } else if (!authLoading) {
-      setLoading(false);
-    }
-  }, [isLoggedIn, twitchToken, authLoading, fetchData]);
+  // Cleanup bot on unmount
+  useEffect(() => () => botRef.current?.disconnect(), []);
 
-  /* ─── Save command ─── */
-  const saveCommand = async (data) => {
-    setSaving(true);
-    try {
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${twitchToken}`,
-        },
-        body: JSON.stringify({ type: 'command', ...data }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Errore');
-      }
-      setShowCmdForm(false);
-      setEditingCmd(null);
-      await fetchData();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setSaving(false);
+  const toggleBot = () => {
+    if (botRef.current && botStatus === 'connected') {
+      botRef.current.disconnect();
+      botRef.current = null;
+      return;
     }
+    if (!twitchToken || !twitchUser || !broadcaster) return;
+    const bot = createTwitchBot({
+      token:    twitchToken,
+      username: twitchUser,
+      channel:  broadcaster,
+      onStatus: setBotStatus,
+    });
+    // Aggiorna dati bot dai comandi/timer correnti
+    fetch('/api/mod-commands', { headers: { Authorization: `Bearer ${twitchToken}` } })
+      .then(r => r.json())
+      .then(d => bot.updateData(d))
+      .catch(() => {});
+    botRef.current = bot;
+    bot.connect();
   };
 
-  /* ─── Delete command ─── */
-  const deleteCommand = async (trigger) => {
-    if (!confirm(`Eliminare il comando !${trigger}?`)) return;
-    try {
-      const res = await fetch(API_URL, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${twitchToken}`,
-        },
-        body: JSON.stringify({ type: 'command', key: trigger }),
-      });
-      if (!res.ok) throw new Error('Errore nella cancellazione');
-      await fetchData();
-    } catch (e) {
-      setError(e.message);
-    }
-  };
-
-  /* ─── Save timer ─── */
-  const saveTimer = async (data) => {
-    setSaving(true);
-    try {
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${twitchToken}`,
-        },
-        body: JSON.stringify({ type: 'timer', ...data }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Errore');
-      }
-      setShowTimerForm(false);
-      setEditingTimer(null);
-      await fetchData();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  /* ─── Delete timer ─── */
-  const deleteTimer = async (name) => {
-    if (!confirm(`Eliminare il timer "${name}"?`)) return;
-    try {
-      const res = await fetch(API_URL, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${twitchToken}`,
-        },
-        body: JSON.stringify({ type: 'timer', key: name }),
-      });
-      if (!res.ok) throw new Error('Errore nella cancellazione');
-      await fetchData();
-    } catch (e) {
-      setError(e.message);
-    }
-  };
-
-  /* ─── Toggle timer enabled ─── */
-  const toggleTimer = async (timer) => {
-    await saveTimer({ ...timer, enabled: !timer.enabled });
-  };
-
-  /* ─── Render states ─── */
-
-  // Still loading auth
-  if (authLoading || (isLoggedIn && loading)) {
+  // ─── Stato di caricamento ───
+  if (loading) {
     return (
-      <div className="main-content" style={{ maxWidth: '860px' }}>
-        <SEO title="Mod Panel" description="Pannello moderatori — Comandi e timer per la chat." path="/mod-panel" />
-        <div className="glass-panel" style={{ textAlign: 'center', padding: '3rem' }}>
-          <Loader size={32} className="spin" style={{ color: 'var(--primary)', margin: '0 auto 1rem' }} />
-          <p style={{ color: 'var(--text-muted)' }}>Caricamento...</p>
+      <main className="main-content" style={{ maxWidth: 900, margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', padding: '4rem' }}>
+          <Loader size={28} className="spin" style={{ color: 'var(--primary)' }} />
         </div>
-      </div>
+      </main>
     );
   }
 
-  // Not logged in
+  // ─── Non loggato ───
   if (!isLoggedIn) {
     return (
-      <div className="main-content" style={{ maxWidth: '860px' }}>
-        <SEO title="Mod Panel" description="Pannello moderatori — Comandi e timer per la chat." path="/mod-panel" />
-        <div className="glass-panel" style={{ textAlign: 'center', padding: '3rem' }}>
-          <Shield size={48} style={{ color: 'var(--accent)', margin: '0 auto 1rem', display: 'block' }} />
-          <h2 style={{ marginBottom: '0.75rem' }}>Accesso Riservato</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-            Devi effettuare il login con Twitch per accedere al pannello moderatori.
+      <main className="main-content" style={{ maxWidth: 520, margin: '0 auto' }}>
+        <SEO title="Mod Panel" noindex />
+        <motion.div className="glass-panel" style={{ padding: '2.5rem', textAlign: 'center' }}
+          initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
+          <Shield size={42} style={{ color: 'var(--primary)', marginBottom: '1rem' }} />
+          <h1 className="text-gradient" style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Mod Panel</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+            Accedi con Twitch per aprire la dashboard.
           </p>
-          <a href={getTwitchLoginUrl('/mod-panel')} className="btn-primary" style={{ display: 'inline-flex', gap: '0.5rem' }}>
-            <Twitch size={16} /> <LogIn size={16} /> Accedi con Twitch
+          <a href={getTwitchLoginUrl('/mod-panel')} className="btn btn-primary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Twitch size={16} /> Accedi con Twitch
           </a>
-        </div>
-      </div>
+        </motion.div>
+      </main>
     );
   }
 
-  // Not a mod
-  if (!isMod) {
+  // ─── Accesso negato ───
+  if (isMod === false) {
     return (
-      <div className="main-content" style={{ maxWidth: '860px' }}>
-        <SEO title="Mod Panel" description="Pannello moderatori — Comandi e timer per la chat." path="/mod-panel" />
-        <div className="glass-panel" style={{ textAlign: 'center', padding: '3rem' }}>
-          <AlertTriangle size={48} style={{ color: 'var(--accent-warm)', margin: '0 auto 1rem', display: 'block' }} />
-          <h2 style={{ marginBottom: '0.75rem' }}>Accesso Negato</h2>
-          <p style={{ color: 'var(--text-muted)' }}>
-            Ciao <strong>{twitchUser}</strong>, questa sezione è riservata allo streamer e ai moderatori.
+      <main className="main-content" style={{ maxWidth: 520, margin: '0 auto' }}>
+        <SEO title="Mod Panel" noindex />
+        <motion.div className="glass-panel" style={{ padding: '2.5rem', textAlign: 'center' }}
+          initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
+          <Shield size={42} style={{ color: 'var(--accent)', marginBottom: '1rem' }} />
+          <h2 style={{ marginBottom: '0.5rem' }}>Accesso non autorizzato</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+            Il tuo account <strong>{twitchDisplay || twitchUser}</strong> non è nella lista dei moderatori.
           </p>
-        </div>
-      </div>
+        </motion.div>
+      </main>
     );
   }
 
-  /* ─── Main panel ─── */
+  // ─── Caricamento verifica mod ───
+  if (isMod === null) {
+    return (
+      <main className="main-content" style={{ maxWidth: 900, margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', padding: '4rem' }}>
+          <Loader size={28} className="spin" style={{ color: 'var(--primary)' }} />
+        </div>
+      </main>
+    );
+  }
+
+  const SezioneAttiva = {
+    overview:   SecOverview,
+    activity:   SecActivity,
+    chat:       SecChat,
+    moderation: SecModeration,
+    engagement: SecEngagement,
+    stats:      SecStats,
+    overlays:   SecOverlays,
+    schedule:   SecSchedule,
+  }[sezione] || SecOverview;
+
+  const sezioneInfo = SEZIONI.find(s => s.id === sezione) || SEZIONI[0];
+  void sezioneInfo; // usato futuramente per il breadcrumb
+
   return (
-    <div className="main-content" style={{ maxWidth: '860px' }}>
-      <SEO title="Mod Panel" description="Pannello moderatori — Comandi e timer per la chat." path="/mod-panel" />
+    <main className="main-content mod-panel-shell" style={{ maxWidth: 1080, margin: '0 auto', padding: '0 0 4rem' }}>
+      <SEO title="Mod Panel" noindex />
 
-      <header style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
-        <h1 className="title">
-          <Shield size={28} style={{ verticalAlign: 'middle', marginRight: '0.5rem', color: 'var(--accent)' }} />
-          <span className="text-gradient">Mod</span> Panel
-        </h1>
-        <p className="subtitle">Gestisci comandi e timer per la chat di Twitch.</p>
-      </header>
-
-      {/* Error banner */}
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            className="glass-card"
-            style={{ padding: '0.75rem 1rem', marginBottom: '1rem', borderColor: 'rgba(255,107,107,0.3)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-          >
-            <AlertTriangle size={16} color="var(--accent)" />
-            <span style={{ flex: 1, color: 'var(--accent)', fontSize: '0.85rem' }}>{error}</span>
-            <button className="mod-icon-btn" onClick={() => setError('')}><X size={14} /></button>
-          </motion.div>
+      {/* ─── Header ─── */}
+      <div className="mod-panel-header glass-card" style={{ padding: '0.9rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        {twitchAvatar && (
+          <img src={twitchAvatar} alt={twitchUser} style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
         )}
-      </AnimatePresence>
-
-      {/* Tab switcher */}
-      <div className="mod-tabs" style={{ marginBottom: '1.25rem' }}>
-        <button
-          className={`mod-tab${tab === 'commands' ? ' mod-tab-active' : ''}`}
-          onClick={() => setTab('commands')}
-        >
-          <Terminal size={16} /> Comandi <span className="mod-badge">{commands.length}</span>
-        </button>
-        <button
-          className={`mod-tab${tab === 'timers' ? ' mod-tab-active' : ''}`}
-          onClick={() => setTab('timers')}
-        >
-          <Timer size={16} /> Timer <span className="mod-badge">{timers.length}</span>
-        </button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: '0.88rem', lineHeight: 1.1 }}>Mod Panel</div>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            {twitchDisplay || twitchUser}
+            {broadcaster && broadcaster !== twitchUser && <span> · canale: <strong>{broadcaster}</strong></span>}
+          </div>
+        </div>
+        <BotIndicator status={botStatus} onToggle={toggleBot} />
+        <span className="chip" style={{ fontSize: '0.68rem', background: 'rgba(145,70,255,.18)', color: 'var(--accent-twitch)' }}>
+          <Shield size={9} style={{ verticalAlign: 'middle', marginRight: 3 }} />MOD
+        </span>
       </div>
 
-      {/* ─── COMMANDS TAB ─── */}
-      {tab === 'commands' && (
-        <motion.div {...entrata(0.05)}>
-          <div className="glass-panel" style={{ padding: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>
-                <Terminal size={18} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />
-                Comandi Chat
-              </h2>
-              {!showCmdForm && (
-                <button className="btn-primary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
-                  onClick={() => { setEditingCmd(null); setShowCmdForm(true); }}>
-                  <Plus size={14} /> Nuovo
+      <div className="mod-panel-layout">
+        {/* ─── Sidebar desktop ─── */}
+        <nav className="mod-sidebar">
+          {SEZIONI.map(s => {
+            const Icon = s.icon;
+            const attiva = sezione === s.id;
+            return (
+              <button key={s.id}
+                className={`mod-nav-item${attiva ? ' mod-nav-item-active' : ''}`}
+                onClick={() => setSezione(s.id)}
+                style={attiva ? { borderColor: `${s.color}40`, color: s.color, background: `${s.color}0f` } : {}}>
+                <Icon size={16} />
+                <span>{s.label}</span>
+                {attiva && <ChevronRight size={13} style={{ marginLeft: 'auto', opacity: 0.6 }} />}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* ─── Contenuto principale ─── */}
+        <div className="mod-main-area">
+          {/* Breadcrumb mobile */}
+          <div className="mod-mobile-tabs">
+            {SEZIONI.map(s => {
+              const Icon = s.icon;
+              const attiva = sezione === s.id;
+              return (
+                <button key={s.id}
+                  className={`mod-mobile-tab${attiva ? ' mod-mobile-tab-active' : ''}`}
+                  onClick={() => setSezione(s.id)}
+                  style={attiva ? { color: s.color, borderColor: `${s.color}50` } : {}}>
+                  <Icon size={15} />
+                  <span>{s.label}</span>
                 </button>
-              )}
-            </div>
-
-            <AnimatePresence>
-              {showCmdForm && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                  style={{ marginBottom: '1rem', overflow: 'hidden' }}>
-                  <CommandForm
-                    initial={editingCmd}
-                    onSave={saveCommand}
-                    onCancel={() => { setShowCmdForm(false); setEditingCmd(null); }}
-                    saving={saving}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {commands.length === 0 && !showCmdForm ? (
-              <p style={{ color: 'var(--text-faint)', textAlign: 'center', padding: '2rem 0', fontSize: '0.9rem' }}>
-                Nessun comando configurato. Clicca &quot;Nuovo&quot; per aggiungerne uno.
-              </p>
-            ) : (
-              <div className="mod-list">
-                {commands.map(cmd => {
-                  const perm = getPermissionInfo(cmd.permission);
-                  const PermIcon = perm.icon;
-                  return (
-                    <motion.div key={cmd.trigger} className="mod-item glass-card" layout {...entrata(0)}>
-                      <div className="mod-item-header">
-                        <code className="mod-trigger">!{cmd.trigger}</code>
-                        <span className="chip mod-chip-permission" style={{
-                          fontSize: '0.7rem',
-                          background: `${perm.color}18`,
-                          color: perm.color,
-                          border: `1px solid ${perm.color}30`,
-                        }}>
-                          <PermIcon size={10} /> {perm.label}
-                        </span>
-                        {cmd.cooldown > 0 && (
-                          <span className="chip" style={{ fontSize: '0.7rem' }}>
-                            <Clock size={10} /> {cmd.cooldown}s
-                          </span>
-                        )}
-                        <div className="mod-item-actions">
-                          <CopyButton text={`!${cmd.trigger}`} />
-                          <button className="mod-icon-btn" title="Modifica"
-                            onClick={() => { setEditingCmd(cmd); setShowCmdForm(true); }}>
-                            <Edit2 size={14} />
-                          </button>
-                          <button className="mod-icon-btn mod-icon-btn-danger" title="Elimina"
-                            onClick={() => deleteCommand(cmd.trigger)}>
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                      <p className="mod-item-body">{cmd.response}</p>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            )}
+              );
+            })}
           </div>
-        </motion.div>
-      )}
 
-      {/* ─── TIMERS TAB ─── */}
-      {tab === 'timers' && (
-        <motion.div {...entrata(0.05)}>
-          <div className="glass-panel" style={{ padding: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>
-                <Timer size={18} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />
-                Timer Automatici
-              </h2>
-              {!showTimerForm && (
-                <button className="btn-primary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
-                  onClick={() => { setEditingTimer(null); setShowTimerForm(true); }}>
-                  <Plus size={14} /> Nuovo
-                </button>
-              )}
-            </div>
-
-            <AnimatePresence>
-              {showTimerForm && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                  style={{ marginBottom: '1rem', overflow: 'hidden' }}>
-                  <TimerForm
-                    initial={editingTimer}
-                    onSave={saveTimer}
-                    onCancel={() => { setShowTimerForm(false); setEditingTimer(null); }}
-                    saving={saving}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {timers.length === 0 && !showTimerForm ? (
-              <p style={{ color: 'var(--text-faint)', textAlign: 'center', padding: '2rem 0', fontSize: '0.9rem' }}>
-                Nessun timer configurato. Clicca &quot;Nuovo&quot; per aggiungerne uno.
-              </p>
-            ) : (
-              <div className="mod-list">
-                {timers.map(t => (
-                  <motion.div key={t.name} className="mod-item glass-card" layout {...entrata(0)}>
-                    <div className="mod-item-header">
-                      <code className="mod-trigger">{t.name}</code>
-                      <span className="chip" style={{ fontSize: '0.7rem' }}>
-                        <Clock size={10} /> {formatInterval(t.interval)}
-                      </span>
-                      <button
-                        className="mod-icon-btn"
-                        onClick={() => toggleTimer(t)}
-                        title={t.enabled ? 'Disattiva' : 'Attiva'}
-                      >
-                        {t.enabled
-                          ? <ToggleRight size={22} color="var(--accent-spotify)" />
-                          : <ToggleLeft size={22} color="var(--text-faint)" />
-                        }
-                      </button>
-                      <div className="mod-item-actions">
-                        <CopyButton text={t.message} />
-                        <button className="mod-icon-btn" title="Modifica"
-                          onClick={() => { setEditingTimer(t); setShowTimerForm(true); }}>
-                          <Edit2 size={14} />
-                        </button>
-                        <button className="mod-icon-btn mod-icon-btn-danger" title="Elimina"
-                          onClick={() => deleteTimer(t.name)}>
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                    <p className="mod-item-body">{t.message}</p>
-                    {!t.enabled && (
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)', fontStyle: 'italic' }}>
-                        Disattivato
-                      </span>
-                    )}
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </div>
-        </motion.div>
-      )}
-    </div>
+          <AnimatePresence mode="wait">
+            <motion.div key={sezione}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ type: 'spring', stiffness: 280, damping: 26 }}>
+              <Suspense fallback={<SkeletonSezione />}>
+                <SezioneAttiva token={twitchToken} clientId={undefined} />
+              </Suspense>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+    </main>
   );
 }
