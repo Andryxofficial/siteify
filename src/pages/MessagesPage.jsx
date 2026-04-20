@@ -1301,18 +1301,21 @@ function PannelloGestioneBackup({ token, username, privateKeyRef, onChiudi }) {
    (se disponibile in cache) + fallback lettera
 ═══════════════════════════════════════════════ */
 const AvatarUtente = memo(function AvatarUtente({ username, avatarCache, dimensione = 36, className = '' }) {
+  /* Salva l'URL che ha generato errore — se l'URL cambia, l'immagine viene riprovata */
+  const [urlErrore, setUrlErrore] = useState(null);
   const url = avatarCache?.[username] || null;
+  const mostraImg = url && url !== urlErrore;
   const iniziale = username?.[0]?.toUpperCase() || '?';
   const stile = { width: dimensione, height: dimensione, fontSize: Math.round(dimensione * 0.36) };
 
-  if (url) {
+  if (mostraImg) {
     return (
       <img
         src={url}
         alt={username}
         className={`msg-avatar${className ? ' ' + className : ''}`}
         style={{ ...stile, objectFit: 'cover' }}
-        onError={e => { e.target.style.display = 'none'; }}
+        onError={() => setUrlErrore(url)}
       />
     );
   }
@@ -2123,8 +2126,10 @@ export default function MessagesPage() {
       ),
     ).then(results => {
       const nuovi = {};
-      results.forEach(r => { if (r.status === 'fulfilled') nuovi[r.value.u] = r.value.url; });
-      setAvatarCache(prev => ({ ...prev, ...nuovi }));
+      /* Salva solo URL validi — utenti senza avatar restano fuori dalla cache
+         e vengono protetti da ri-fetch tramite avatarFetchSet */
+      results.forEach(r => { if (r.status === 'fulfilled' && r.value.url) nuovi[r.value.u] = r.value.url; });
+      if (Object.keys(nuovi).length > 0) setAvatarCache(prev => ({ ...prev, ...nuovi }));
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversazioni, amici, twitchToken, fase]);
