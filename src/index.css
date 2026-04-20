@@ -816,20 +816,29 @@ body::before {
    ═══════════════════════════════════════════════════ */
 
 @media (max-width: 640px) {
-  /* Ridefinisce --chrome-top per mobile browser (navbar fixed top:16px + altezza ~60px) */
+  /* Navbar nascosta su mobile: nessun offset in alto */
   :root {
-    --chrome-top: 76px;
+    --chrome-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* PWA standalone su mobile: stessa safe-area, nessuna navbar */
+  .pwa-standalone {
+    --chrome-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Nasconde la top-navbar su mobile: la tab bar in basso gestisce la navigazione */
+  .navbar-container {
+    display: none;
   }
 
   .app-container {
-    padding-top: 76px;
+    padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: calc(73px + 2 * env(safe-area-inset-bottom, 0px));
   }
 
-  /* PWA standalone: navbar si sposta in basso di env(safe-area-inset-top),
-     quindi il padding-top deve compensare dinamicamente */
+  /* PWA standalone: solo safe area in cima, nessuna navbar */
   .app-container.pwa-standalone {
-    padding-top: calc(60px + env(safe-area-inset-top, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
   }
 
   .nav-links     { display: none; }
