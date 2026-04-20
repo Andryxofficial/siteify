@@ -33,7 +33,6 @@ import {
   deriveKey,
   encryptMessage,
   decryptMessage,
-  encryptBytes,
   isPasskeyPRFAvailable,
   createPasskeyAndEncryptKey,
   authenticatePasskeyAndDecryptKey,
@@ -105,6 +104,99 @@ async function copiaNeglAppunti(testo) {
     document.body.removeChild(ta);
     return true;
   } catch { return false; }
+}
+
+/* ─── Compressore immagini lato client (canvas-based, veloce) ─── */
+const COMPRESS_MAX_DIM = 2048;  // dimensione massima lato lungo
+const COMPRESS_MAX_BYTES = 2_800_000; // ~2.8MB target (lascia margine per encryption overhead)
+
+function isImageComprimibile(file) {
+  return file.type.startsWith('image/') || /\.(jpe?g|png|webp|bmp|gif|tiff?|avif|heic|heif|svg)$/i.test(file.name);
+}
+
+async function comprimeImmagine(file) {
+  /* Se il file è già piccolo e in un formato web-friendly, non comprimerlo */
+  if (file.size <= COMPRESS_MAX_BYTES && (file.type === 'image/jpeg' || file.type === 'image/webp')) {
+    return file;
+  }
+
+  /* SVG: nessuna compressione necessaria, già leggero */
+  if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
+    if (file.size <= COMPRESS_MAX_BYTES) return file;
+    throw new Error('SVG troppo grande');
+  }
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+
+      /* Ridimensiona se supera le dimensioni massime */
+      if (width > COMPRESS_MAX_DIM || height > COMPRESS_MAX_DIM) {
+        const rapporto = Math.min(COMPRESS_MAX_DIM / width, COMPRESS_MAX_DIM / height);
+        width = Math.round(width * rapporto);
+        height = Math.round(height * rapporto);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      /* Prova prima WebP (più leggero), poi JPEG come fallback */
+      let qualita = 0.82;
+      const formati = ['image/webp', 'image/jpeg'];
+
+      function tentaCompressione(idxFormato) {
+        const formato = formati[idxFormato];
+        if (!formato) {
+          reject(new Error('Impossibile comprimere l\'immagine sotto il limite'));
+          return;
+        }
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              /* Formato non supportato dal browser, prova il prossimo */
+              tentaCompressione(idxFormato + 1);
+              return;
+            }
+            if (blob.size <= COMPRESS_MAX_BYTES) {
+              const ext = formato === 'image/webp' ? '.webp' : '.jpg';
+              const nomeBase = file.name.replace(/\.[^.]+$/, '') || 'immagine';
+              resolve(new File([blob], nomeBase + ext, { type: formato }));
+            } else if (qualita > 0.35) {
+              /* Riduci la qualità e riprova */
+              qualita -= 0.12;
+              canvas.toBlob(
+                (blob2) => {
+                  if (blob2 && blob2.size <= COMPRESS_MAX_BYTES) {
+                    const ext = formato === 'image/webp' ? '.webp' : '.jpg';
+                    const nomeBase = file.name.replace(/\.[^.]+$/, '') || 'immagine';
+                    resolve(new File([blob2], nomeBase + ext, { type: formato }));
+                  } else {
+                    tentaCompressione(idxFormato + 1);
+                  }
+                },
+                formato, qualita
+              );
+            } else {
+              tentaCompressione(idxFormato + 1);
+            }
+          },
+          formato, qualita
+        );
+      }
+      tentaCompressione(0);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Impossibile caricare l\'immagine'));
+    };
+    img.src = url;
+  });
 }
 
 /* ─── Normalizza campi messaggio API → formato UI italiano ─── */
@@ -1866,19 +1958,52 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
     return aesKey;
   }, [conUsr, privateKeyRef]);
 
-  /* ─── Decifra un messaggio ─── */
+  /* ─── Decifra un messaggio (testo + eventuale media via mediaId) ─── */
   const decifraMessaggio = useCallback(async (rawMsg) => {
     const msg = normalizzaMessaggio(rawMsg);
     if (msg.eliminato) return { ...msg, testoDecifrato: null, _twitchUser: twitchUser };
-    if (msg.testoDecifrato) return { ...msg, _twitchUser: twitchUser };
+    if (msg.testoDecifrato !== undefined && msg.mediaDecifrato !== undefined) return { ...msg, _twitchUser: twitchUser };
     try {
       const aesKey = await ottieniAesKey();
-      const testoDecifrato = await decryptMessage(aesKey, msg.encrypted, msg.iv);
-      return { ...msg, testoDecifrato, _twitchUser: twitchUser };
+      let testoDecifrato = '';
+      try {
+        testoDecifrato = await decryptMessage(aesKey, msg.encrypted, msg.iv);
+      } catch { testoDecifrato = msg.tipoMedia ? '' : '[Impossibile decifrare]'; }
+
+      /* Decifra nome file se presente */
+      let nomeFile = msg.nomeFile || '';
+      if (msg.nomeFile && msg.ivNome) {
+        try { nomeFile = await decryptMessage(aesKey, msg.nomeFile, msg.ivNome); } catch { /* mantieni cifrato */ }
+      }
+
+      /* Recupera e decifra media se il messaggio ha un mediaId */
+      let mediaDecifrato = msg.mediaDecifrato || null;
+      if (msg.mediaId && !mediaDecifrato) {
+        try {
+          const mediaDati = await apiFetch(twitchToken, `?action=media&id=${msg.mediaId}`, {});
+          if (mediaDati.data) {
+            /* Decodifica base64 a blocchi per evitare stack overflow */
+            const binStr = atob(mediaDati.data);
+            const bytes = new Uint8Array(binStr.length);
+            for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+            /* IV sono i primi 12 bytes, ciphertext il resto */
+            const mediaIv = bytes.slice(0, 12);
+            const mediaCipher = bytes.slice(12);
+            const decBuffer = await crypto.subtle.decrypt(
+              { name: 'AES-GCM', iv: mediaIv }, aesKey, mediaCipher
+            );
+            const tipoFile = mediaDati.mimeType || (msg.tipoMedia === 'image' ? 'image/jpeg' : 'application/octet-stream');
+            const blob = new Blob([decBuffer], { type: tipoFile });
+            mediaDecifrato = URL.createObjectURL(blob);
+          }
+        } catch { /* media non disponibile o errore di decifratura */ }
+      }
+
+      return { ...msg, testoDecifrato, nomeFile, mediaDecifrato, _twitchUser: twitchUser };
     } catch {
       return { ...msg, testoDecifrato: '[Impossibile decifrare]', _twitchUser: twitchUser };
     }
-  }, [ottieniAesKey, twitchUser]);
+  }, [ottieniAesKey, twitchUser, twitchToken]);
 
   /* ─── Carica cronologia ─── */
   const caricaCronologia = useCallback(async (resetta = true) => {
@@ -2063,25 +2188,76 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
     }
   }
 
-  /* ─── Upload media cifrato ─── */
+  /* ─── Upload media cifrato (con compressione immagini) ─── */
   async function caricaMedia(file) {
     if (!file) return;
     setFileInUpload(true);
     setErrore('');
     try {
+      let fileDaCaricare = file;
+
+      /* Comprimi immagini prima dell'upload */
+      if (isImageComprimibile(file)) {
+        try {
+          fileDaCaricare = await comprimeImmagine(file);
+        } catch {
+          /* Se la compressione fallisce, prova con il file originale */
+          fileDaCaricare = file;
+        }
+      }
+
       const aesKey = await ottieniAesKey();
-      const buffer = await file.arrayBuffer();
-      const { data, iv } = await encryptBytes(aesKey, buffer);
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(data)));
-      const ivBase64 = btoa(String.fromCharCode(...new Uint8Array(iv)));
-      const tipoMedia = file.type.startsWith('image/') ? 'image' : file.type.startsWith('audio/') ? 'voice' : 'file';
-      const { encrypted: encNome, iv: ivNome } = await encryptMessage(aesKey, file.name);
+      const buffer = await fileDaCaricare.arrayBuffer();
+
+      /* Cifra il file: IV (12 bytes) concatenato al ciphertext per upload self-contained */
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, buffer);
+      const combinato = new Uint8Array(iv.byteLength + cipher.byteLength);
+      combinato.set(iv, 0);
+      combinato.set(new Uint8Array(cipher), iv.byteLength);
+
+      /* Converti in base64 a blocchi per evitare stack overflow su file grandi */
+      let base64 = '';
+      const CHUNK = 32768;
+      for (let i = 0; i < combinato.length; i += CHUNK) {
+        base64 += String.fromCharCode.apply(null, combinato.subarray(i, i + CHUNK));
+      }
+      base64 = btoa(base64);
+
+      const tipoMedia = fileDaCaricare.type.startsWith('image/') ? 'image'
+        : fileDaCaricare.type.startsWith('audio/') ? 'voice' : 'file';
+      const { encrypted: encNome, iv: ivNome } = await encryptMessage(aesKey, fileDaCaricare.name);
+
+      /* Upload media separato via upload_media, poi invia messaggio con riferimento */
+      const uploadRis = await apiFetch(twitchToken, '', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'upload_media',
+          to: conUsr,
+          data: base64,
+          mimeType: fileDaCaricare.type,
+          name: fileDaCaricare.name,
+        }),
+      });
+      const mediaId = uploadRis.mediaId;
+
+      /* Messaggio con riferimento al media caricato */
+      const { encrypted: encTesto, iv: ivTesto } = await encryptMessage(aesKey, '');
       const risposta = await apiFetch(twitchToken, '', {
         method: 'POST',
-        body: JSON.stringify({ action: 'send', to: conUsr, encrypted: base64, iv: ivBase64, tipoMedia, nomeFile: encNome, ivNome }),
+        body: JSON.stringify({
+          action: 'send', to: conUsr,
+          encrypted: encTesto, iv: ivTesto,
+          tipoMedia, mediaId, nomeFile: encNome, ivNome,
+          ...(tipoMedia === 'voice' && fileDaCaricare.durata ? { durata: fileDaCaricare.durata } : {}),
+        }),
       });
-      const url = URL.createObjectURL(file);
-      const nuovoMsg = normalizzaMessaggio({ ...risposta.message, testoDecifrato: '', tipoMedia, nomeFile: file.name, mediaDecifrato: url, _twitchUser: twitchUser });
+
+      const url = URL.createObjectURL(fileDaCaricare);
+      const nuovoMsg = normalizzaMessaggio({
+        ...risposta.message, testoDecifrato: '', tipoMedia, mediaId,
+        nomeFile: fileDaCaricare.name, mediaDecifrato: url, _twitchUser: twitchUser,
+      });
       setMessaggi(prev => [...prev, nuovoMsg]);
       ultimoIdRef.current = nuovoMsg.id;
       ultimoTsRef.current = nuovoMsg.ts;
@@ -2403,7 +2579,7 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
             {fileInUpload ? <Loader size={16} className="spin" /> : <ImageIcon size={16} />}
           </button>
           <input ref={fileInputRef} type="file"
-            accept="image/*,application/pdf,.doc,.docx,.zip"
+            accept="image/*,.heic,.heif,.avif,.webp,.bmp,.tiff,.svg,video/*,audio/*,application/pdf,.doc,.docx,.zip,.rar,.7z"
             style={{ display: 'none' }}
             onChange={e => { caricaMedia(e.target.files[0]); e.target.value = ''; }} />
           <EmotePicker
