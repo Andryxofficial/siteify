@@ -1,8 +1,11 @@
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, lazy, Suspense } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { TwitchAuthProvider } from './contexts/TwitchAuthContext';
 import Navbar from './components/Navbar';
+import SchermataCampione from './components/SchermataCampione';
 import Footer from './components/Footer';
 import PageTransition from './components/PageTransition';
 import useStandalone from './hooks/useStandalone';
@@ -22,8 +25,11 @@ const CommunityPage = lazy(() => import('./pages/CommunityPage'));
 const ThreadView    = lazy(() => import('./components/ThreadView'));
 const Scoiattoli    = lazy(() => import('./pages/tracker_scoiattoli'));
 const ModPanel      = lazy(() => import('./pages/ModPanel'));
-const FriendsPage   = lazy(() => import('./pages/FriendsPage'));
-const MessagesPage  = lazy(() => import('./pages/MessagesPage'));
+const FriendsPage        = lazy(() => import('./pages/FriendsPage'));
+const MessagesPage       = lazy(() => import('./pages/MessagesPage'));
+const ChatGeneralePage   = lazy(() => import('./pages/ChatGeneralePage'));
+const SettingsPage       = lazy(() => import('./pages/SettingsPage'));
+const ProfiloPage        = lazy(() => import('./pages/ProfiloPage'));
 
 // Skeleton minimo di fallback per Suspense
 function PaginaCaricamento() {
@@ -75,6 +81,7 @@ function AppLayout() {
   return (
     <div className={`app-container${isStandalone ? ' pwa-standalone' : ''}`}>
       <Navbar />
+      <SchermataCampione />
       <AnimatePresence mode="wait">
         <PageTransition key={location.pathname}>
           <Suspense fallback={<PaginaCaricamento />}>
@@ -93,6 +100,9 @@ function AppLayout() {
               <Route path="/mod-panel" element={<ModPanel />} />
               <Route path="/amici" element={<FriendsPage />} />
               <Route path="/messaggi" element={<MessagesPage />} />
+              <Route path="/chat" element={<ChatGeneralePage />} />
+              <Route path="/impostazioni" element={<SettingsPage />} />
+              <Route path="/profilo/:username" element={<ProfiloPage />} />
             </Routes>
           </Suspense>
         </PageTransition>
@@ -110,6 +120,8 @@ function App() {
         <TwitchOAuthRedirect />
         <AppLayout />
       </TwitchAuthProvider>
+      <Analytics />
+      <SpeedInsights />
     </Router>
   );
 }

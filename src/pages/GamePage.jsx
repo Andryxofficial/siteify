@@ -346,6 +346,7 @@ export default function GamePage() {
         title={`${gameMeta.emoji} ${gameMeta.name} — Gioco del mese`}
         description={gameMeta.description}
         path="/gioco"
+        keywords="minigioco browser, gioco online gratuito, classifica twitch, arcade game italiano"
       />
 
       <header style={{ textAlign: 'center', marginBottom: '1rem' }}>

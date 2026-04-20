@@ -31,6 +31,14 @@
     "api/messages.js": {
       "memory": 128,
       "maxDuration": 10
+    },
+    "api/chat.js": {
+      "memory": 128,
+      "maxDuration": 10
+    },
+    "api/profile.js": {
+      "memory": 128,
+      "maxDuration": 10
     }
   },
   "headers": [

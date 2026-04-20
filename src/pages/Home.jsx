@@ -34,6 +34,7 @@ export default function Home() {
         title="Home"
         description="ANDRYXify (Andrea Taliento) — Streamer Twitch, gamer e content creator italiano. Live streaming di videogiochi, podcast su Intelligenza Artificiale, video YouTube, clip TikTok e minigioco esclusivo con classifica."
         path="/"
+        keywords="andryxify, andrea taliento, streamer twitch italiano, content creator gaming, podcast intelligenza artificiale"
       />
       {/* ── Hero ── */}
       <section className="header" style={{ paddingTop: '1.5rem', paddingBottom: '0.5rem' }}>

@@ -9,6 +9,7 @@ export default function InstagramPage() {
         title="Instagram — Dietro le Quinte & Aggiornamenti"
         description="Segui ANDRYXify (Andrea Taliento) su Instagram: dietro le quinte delle live, storie quotidiane e aggiornamenti dal mondo gaming e IA."
         path="/instagram"
+        keywords="instagram andryxify, dietro le quinte streamer, storie gaming, content creator instagram"
       />
       <header style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 className="title">

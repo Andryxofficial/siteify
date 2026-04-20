@@ -60,7 +60,16 @@ export function TwitchAuthProvider({ children }) {
   const [e2eError, setE2eError] = useState(null);
   const [e2eNeedsPassphrase, setE2eNeedsPassphrase] = useState(null); // null | 'setup' | 'unlock'
   const [e2eNeedsSync, setE2eNeedsSync] = useState(false); // local keys exist but no server backup
+  const [e2eSetupToast, setE2eSetupToast] = useState(null);
   const e2ePrivateKeyRef = useRef(null);
+
+  // Auto-clear toast dopo 4 secondi
+  useEffect(() => {
+    if (e2eSetupToast) {
+      const t = setTimeout(() => setE2eSetupToast(null), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [e2eSetupToast]);
 
   /* ── Register E2E keys — handles cross-device passphrase flow ── */
   const registerE2EKeys = useCallback(async (user, token, userId) => {
@@ -244,6 +253,21 @@ export function TwitchAuthProvider({ children }) {
     e2ePrivateKeyRef.current = null;
   }, []);
 
+  // Controllo periodico scadenza token Twitch (ogni 5 minuti)
+  useEffect(() => {
+    if (!twitchToken) return;
+    const checkToken = async () => {
+      try {
+        const res = await fetch('https://id.twitch.tv/oauth2/validate', {
+          headers: { Authorization: `OAuth ${twitchToken}` },
+        });
+        if (!res.ok) logout();
+      } catch { /* errore di rete, non disconnettere */ }
+    };
+    const id = setInterval(checkToken, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [twitchToken, logout]);
+
   /** Allow manual retry of E2E key registration (e.g. after a transient failure) */
   const retryE2E = useCallback(() => {
     if (!twitchUser || !twitchToken) return;
@@ -347,6 +371,7 @@ export function TwitchAuthProvider({ children }) {
 
     e2ePrivateKeyRef.current = privateKey;
     setE2eReady(true);
+    setE2eSetupToast('Chiavi crittografiche configurate ✓');
     setE2eNeedsPassphrase(null);
     setE2eNeedsSync(false);
     setE2eError(null);
@@ -480,6 +505,7 @@ export function TwitchAuthProvider({ children }) {
 
     e2ePrivateKeyRef.current = privateKey;
     setE2eReady(true);
+    setE2eSetupToast('Chiavi crittografiche configurate ✓');
     setE2eNeedsPassphrase(null);
     setE2eNeedsSync(false);
     setE2eError(null);
@@ -588,6 +614,7 @@ export function TwitchAuthProvider({ children }) {
       const privateKey = await ensureE2EKeysRegistered(twitchUser, twitchToken);
       e2ePrivateKeyRef.current = privateKey;
       setE2eReady(true);
+      setE2eSetupToast('Chiavi crittografiche configurate ✓');
       setE2eNeedsPassphrase(null);
       setE2eError(null);
       // Crea solo il backup automatico — trasparente su altri dispositivi.
@@ -598,6 +625,7 @@ export function TwitchAuthProvider({ children }) {
           .catch(e => {
             console.warn('skipE2ESetup: auto-sync backup non riuscito:', e);
             setE2eNeedsSync(true);
+            setE2eSetupToast('Sincronizzazione chiavi non riuscita');
           });
       }
     } catch (e) {
@@ -641,6 +669,8 @@ export function TwitchAuthProvider({ children }) {
       e2ePrivateKeyRef,
       e2eNeedsPassphrase,
       e2eNeedsSync,
+      e2eSetupToast,
+      clearE2eToast: () => setE2eSetupToast(null),
       retryE2E,
       resetE2E,
       setupE2EPassphrase,

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, Heart, Clock, Send, X, ChevronLeft, ChevronRight,
   Twitch, LogIn, Plus, User, Bell, BellOff, Trophy, Film, Music,
-  Users, Lock, Shield,
+  Users, Lock, Shield, Star,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
@@ -47,6 +47,39 @@ const entrata = (ritardo = 0) => ({
    ═══════════════════════════════════════ */
 function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
   const cat = infoCategoria(post.tag);
+  const [favorito, setFavorito] = useState(false);
+
+  // Controlla se il post è nei preferiti
+  useEffect(() => {
+    if (!twitchToken || !post.id) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/community?action=is_favorite&postId=${post.id}`, {
+          headers: { Authorization: `Bearer ${twitchToken}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setFavorito(!!data.favorited);
+        }
+      } catch { /* silenzioso */ }
+    })();
+  }, [twitchToken, post.id]);
+
+  const toggleFavorito = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!twitchToken) return;
+    const nuovoStato = !favorito;
+    setFavorito(nuovoStato);
+    try {
+      await fetch('/api/community', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+        body: JSON.stringify({ postId: post.id, action: nuovoStato ? 'favorite' : 'unfavorite' }),
+      });
+    } catch { setFavorito(!nuovoStato); }
+  };
+
   return (
     <motion.div layout {...entrata(0)}>
       <Link
@@ -126,6 +159,13 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
                 <Heart size={14} fill={post.liked ? 'var(--accent)' : 'none'} color={post.liked ? 'var(--accent)' : 'var(--text-faint)'} />
                 <span>{post.likeCount || 0}</span>
               </button>
+              <button
+                className="social-btn-azione"
+                onClick={toggleFavorito}
+                title={favorito ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
+              >
+                <Star size={14} fill={favorito ? '#facc15' : 'none'} color={favorito ? '#facc15' : 'var(--text-faint)'} />
+              </button>
               <span className="social-btn-azione" style={{ pointerEvents: 'none' }}>
                 <MessageSquare size={14} color="var(--text-faint)" />
                 <span>{post.replyCount || 0}</span>
@@ -143,13 +183,42 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
    ═══════════════════════════════════════ */
 function EditorPost({ onChiudi, onCreato }) {
   const { twitchToken } = useTwitchAuth();
-  const [titolo, setTitolo] = useState('');
-  const [testo, setTesto] = useState('');
-  const [categoria, setCategoria] = useState('generale');
-  const [mediaUrl, setMediaUrl] = useState('');
-  const [mediaType, setMediaType] = useState('');
+
+  // Ripristina bozza da localStorage
+  const bozzaSalvata = (() => {
+    try {
+      const b = localStorage.getItem('andryxify_bozza_post');
+      return b ? JSON.parse(b) : null;
+    } catch { return null; }
+  })();
+
+  const [titolo, setTitolo] = useState(bozzaSalvata?.titolo || '');
+  const [testo, setTesto] = useState(bozzaSalvata?.testo || '');
+  const [categoria, setCategoria] = useState(bozzaSalvata?.categoria || 'generale');
+  const [mediaUrl, setMediaUrl] = useState(bozzaSalvata?.mediaUrl || '');
+  const [mediaType, setMediaType] = useState(bozzaSalvata?.mediaType || '');
   const [invio, setInvio] = useState(false);
   const [errore, setErrore] = useState('');
+  const [mostraAnteprima, setMostraAnteprima] = useState(false);
+
+  // Auto-salva bozza ad ogni modifica
+  useEffect(() => {
+    const bozza = { titolo, testo, categoria, mediaUrl, mediaType };
+    localStorage.setItem('andryxify_bozza_post', JSON.stringify(bozza));
+  }, [titolo, testo, categoria, mediaUrl, mediaType]);
+
+  // Colore contatore caratteri
+  const contatoreColore = testo.length > 1950 ? 'var(--accent)' : testo.length > 1800 ? '#ffb300' : 'var(--text-faint)';
+
+  // Rendering markdown semplice per anteprima
+  const renderMarkdown = (t) => {
+    return t
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/`(.+?)`/g, '<code style="background:rgba(255,255,255,0.08);padding:1px 4px;border-radius:3px;font-size:0.85em">$1</code>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:var(--primary)">$1</a>')
+      .replace(/\n/g, '<br/>');
+  };
 
   const invia = async (e) => {
     e.preventDefault();
@@ -172,6 +241,8 @@ function EditorPost({ onChiudi, onCreato }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Errore');
+      // Pulisci bozza dopo invio riuscito
+      localStorage.removeItem('andryxify_bozza_post');
       onCreato(data.post);
       onChiudi();
     } catch (err) {
@@ -244,6 +315,30 @@ function EditorPost({ onChiudi, onCreato }) {
           required
         />
 
+        {/* Contatore caratteri + toggle anteprima */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.3rem', marginBottom: '0.4rem' }}>
+          <span style={{ fontSize: '0.75rem', color: contatoreColore, fontWeight: testo.length > 1800 ? 600 : 400 }}>
+            {testo.length}/2000 caratteri
+          </span>
+          <button
+            type="button"
+            className="chip"
+            onClick={() => setMostraAnteprima(!mostraAnteprima)}
+            style={{ fontSize: '0.7rem', padding: '2px 8px', cursor: 'pointer', background: mostraAnteprima ? 'rgba(var(--primary-rgb, 99,102,241), 0.15)' : 'transparent', color: mostraAnteprima ? 'var(--primary)' : 'var(--text-faint)', border: `1px solid ${mostraAnteprima ? 'var(--primary)' : 'var(--glass-border)'}` }}
+          >
+            {mostraAnteprima ? '✏️ Editor' : '👁️ Anteprima'}
+          </button>
+        </div>
+
+        {/* Anteprima markdown */}
+        {mostraAnteprima && testo.trim() && (
+          <div
+            className="glass-card"
+            style={{ padding: '0.8rem', fontSize: '0.85rem', lineHeight: 1.6, marginBottom: '0.4rem' }}
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(testo) }}
+          />
+        )}
+
         {/* Media URL (optional) */}
         <div className="social-media-sezione">
           <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.4rem' }}>
@@ -276,7 +371,6 @@ function EditorPost({ onChiudi, onCreato }) {
         </div>
 
         <div className="social-editor-piede">
-          <span className="social-contatore">{testo.length}/2000</span>
           {errore && <span className="social-errore">{errore}</span>}
           <button
             type="submit"
@@ -650,6 +744,7 @@ export default function CommunityPage() {
         title="SOCIALify"
         description="SOCIALify — Il punto di ritrovo della community di ANDRYXify. Crea discussioni, condividi idee e connettiti. Accedi con Twitch!"
         path="/socialify"
+        keywords="community gaming, forum streamer, socialify andryxify, discussioni twitch community"
       />
 
       {/* Intestazione */}
