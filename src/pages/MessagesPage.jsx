@@ -2209,7 +2209,8 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
     const prev = messaggi[i - 1];
     const nuovaData = !prev || formatData(msg.ts) !== formatData(prev.ts);
     const raggruppato = !nuovaData && prev && prev.da === msg.da && !prev.eliminato && !msg.eliminato;
-    return { msg, separatoreData: nuovaData ? formatData(msg.ts) : null, raggruppato };
+    const cambioMittente = !raggruppato && prev && prev.da !== msg.da && !nuovaData;
+    return { msg, separatoreData: nuovaData ? formatData(msg.ts) : null, raggruppato, cambioMittente };
   });
 
   function onKeyDown(e) {
@@ -2325,11 +2326,14 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
                 <p>Nessun messaggio ancora. Di&rsquo; ciao!</p>
               </div>
             )}
-            {messaggiConMeta.map(({ msg, separatoreData, raggruppato }) => (
+            {messaggiConMeta.map(({ msg, separatoreData, raggruppato, cambioMittente }) => (
               <div key={msg.id} data-msg-id={msg.id}
-                className={risultatiCerca.includes(msg.id) && risultatiCerca[indiceCerca] === msg.id ? 'msg-search-highlight' : ''}>
+                className={`${risultatiCerca.includes(msg.id) && risultatiCerca[indiceCerca] === msg.id ? 'msg-search-highlight' : ''}${cambioMittente ? ' msg-sender-change' : ''}`}>
                 {separatoreData && (
                   <div className="msg-date-separator"><span>{separatoreData}</span></div>
+                )}
+                {!raggruppato && msg.da !== twitchUser && (
+                  <div className="msg-sender-label">{msg.da}</div>
                 )}
                 <MessaggioBubble
                   msg={msg}
@@ -2710,7 +2714,7 @@ export default function MessagesPage() {
             <motion.div key="lista"
               initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
               className="glass-panel"
-              style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+              style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
               {/* Header */}
               <div style={{ padding: '1rem 1rem 0.5rem', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -2871,7 +2875,7 @@ export default function MessagesPage() {
           {chatAperta && (
             <motion.div key={chatAperta}
               initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
-              style={{ flex: 1, height: '100%' }}>
+              style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               <ChatView
                 conUsr={chatAperta}
                 twitchUser={twitchUser}
