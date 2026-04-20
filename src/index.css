@@ -4043,6 +4043,27 @@ img.msg-avatar {
   }
 }
 
+/* ─── CHAT SITO PANEL HEIGHT ────────────────────────────
+ * Su desktop usa altezza fissa; su mobile si adatta sottraendo
+ * la tab bar inferiore e i ~175px occupati da titolo + tab switcher.
+ * Stesso pattern di .msg-main-panel per uniformità.
+ * ──────────────────────────────────────────────────────── */
+.chat-sito-panel {
+  display: flex;
+  flex-direction: column;
+  height: min(600px, 75vh);
+}
+
+@media (max-width: 640px) {
+  .chat-sito-panel {
+    height: calc(100vh - var(--chrome-top) - var(--tab-bar-offset) - env(safe-area-inset-bottom, 0px) - 175px);
+    @supports (height: 1dvh) {
+      height: calc(100dvh - var(--chrome-top) - var(--tab-bar-offset) - env(safe-area-inset-bottom, 0px) - 175px);
+    }
+    min-height: 320px;
+  }
+}
+
 /* ─── UPDATE TOAST ────────────────────────────────────── */
 .update-toast {
   position: fixed;
