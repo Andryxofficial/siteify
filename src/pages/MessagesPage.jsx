@@ -130,7 +130,6 @@ async function comprimeImmagine(file) {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
-      URL.revokeObjectURL(url);
       let { width, height } = img;
 
       /* Ridimensiona se supera le dimensioni massime */
@@ -145,6 +144,7 @@ async function comprimeImmagine(file) {
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
 
       /* Prova prima WebP (più leggero), poi JPEG come fallback */
       let qualita = 0.82;
@@ -193,7 +193,7 @@ async function comprimeImmagine(file) {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error('Impossibile caricare l\'immagine'));
+      reject(new Error(`Impossibile caricare l'immagine: ${file.name} (${file.type || 'tipo sconosciuto'})`));
     };
     img.src = url;
   });
@@ -2217,12 +2217,15 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
       combinato.set(new Uint8Array(cipher), iv.byteLength);
 
       /* Converti in base64 a blocchi per evitare stack overflow su file grandi */
-      let base64 = '';
-      const CHUNK = 32768;
+      const parti = [];
+      const CHUNK = 8192;
       for (let i = 0; i < combinato.length; i += CHUNK) {
-        base64 += String.fromCharCode.apply(null, combinato.subarray(i, i + CHUNK));
+        const fetta = combinato.subarray(i, Math.min(i + CHUNK, combinato.length));
+        let s = '';
+        for (let j = 0; j < fetta.length; j++) s += String.fromCharCode(fetta[j]);
+        parti.push(s);
       }
-      base64 = btoa(base64);
+      const base64 = btoa(parti.join(''));
 
       const tipoMedia = fileDaCaricare.type.startsWith('image/') ? 'image'
         : fileDaCaricare.type.startsWith('audio/') ? 'voice' : 'file';

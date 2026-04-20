@@ -24,7 +24,7 @@ import { randomUUID } from 'crypto';
  */
 
 const MAX_MSG_SIZE    = 8000;
-const MAX_MEDIA_SIZE  = 4_200_000;  // ~3MB raw dopo base64
+const MAX_MEDIA_SIZE  = 4_200_000;  // ~3MB raw (4.2MB base64-encoded)
 const MSG_TTL_SECONDS = 30 * 86400;
 const MAX_HISTORY     = 50;
 const RATE_LIMIT_SEC  = 2;
