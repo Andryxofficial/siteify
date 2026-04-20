@@ -32,6 +32,18 @@ const MOBILE_LINKS = [
   { path: '/messaggi',  label: 'Messaggi',  Icon: MessaggiIcon  },
 ];
 
+/* Elasticità ai bordi della bolla trascinabile (0 = rigido, 1 = libero) */
+const ELASTICITA_BORDO = 0.2;
+
+/* Calcola l'indice del tab più vicino al centro della pill */
+function calcolaIndiceTarget(offset, tabWidth, activeIdx, count) {
+  const baseX   = activeIdx * tabWidth;
+  const clampedX = Math.max(0, Math.min((count - 1) * tabWidth, baseX + offset));
+  const center   = clampedX + tabWidth / 2;
+  let idx = Math.floor(center / tabWidth);
+  return Math.max(0, Math.min(count - 1, idx));
+}
+
 /* Legge lo stato non-letti dal localStorage e si aggiorna via eventi */
 function useNonLetti() {
   const [haNonLetti, setHaNonLetti] = useState(() => !!localStorage.getItem(CHIAVE_NON_LETTI));
@@ -80,7 +92,8 @@ function MobileTabBar({ activePath, haNonLetti }) {
     return el ? el.offsetWidth / count : 0;
   }, [count]);
 
-  /* Posizione iniziale (sincrono, prima del paint) */
+  /* Posizione iniziale (sincrono, prima del paint — solo al mount
+     per evitare flash; le dipendenze sono stabili al mount) */
   useLayoutEffect(() => {
     const tw = getTabWidth();
     if (tw > 0) pillX.jump(activeIdx * tw);
@@ -129,17 +142,14 @@ function MobileTabBar({ activePath, haNonLetti }) {
     const maxX  = (count - 1) * tw;
     let targetX = baseX + info.offset.x;
 
-    /* Elasticità ai bordi (20%) — sensazione Apple */
-    if (targetX < minX) targetX = minX + (targetX - minX) * 0.2;
-    else if (targetX > maxX) targetX = maxX + (targetX - maxX) * 0.2;
+    /* Elasticità ai bordi — sensazione Apple */
+    if (targetX < minX) targetX = minX + (targetX - minX) * ELASTICITA_BORDO;
+    else if (targetX > maxX) targetX = maxX + (targetX - maxX) * ELASTICITA_BORDO;
 
     pillX.set(targetX);
 
     /* Feedback aptico al passaggio di confine tab */
-    const clampedX = Math.max(minX, Math.min(maxX, baseX + info.offset.x));
-    const center   = clampedX + tw / 2;
-    let idx = Math.floor(center / tw);
-    idx = Math.max(0, Math.min(count - 1, idx));
+    const idx = calcolaIndiceTarget(info.offset.x, tw, ai, count);
     if (idx !== prevSnapRef.current) {
       hapticLight();
       prevSnapRef.current = idx;
@@ -153,12 +163,8 @@ function MobileTabBar({ activePath, haNonLetti }) {
     const tw = getTabWidth();
     if (!tw) return;
 
-    const ai      = activeIdxRef.current;
-    const baseX   = ai * tw;
-    const clampedX = Math.max(0, Math.min((count - 1) * tw, baseX + info.offset.x));
-    const center   = clampedX + tw / 2;
-    let targetIdx  = Math.floor(center / tw);
-    targetIdx = Math.max(0, Math.min(count - 1, targetIdx));
+    const ai       = activeIdxRef.current;
+    const targetIdx = calcolaIndiceTarget(info.offset.x, tw, ai, count);
 
     /* Snap magnetico al tab più vicino */
     fmAnimate(pillX, targetIdx * tw, {
