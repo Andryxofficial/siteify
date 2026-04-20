@@ -207,7 +207,7 @@ export default function ChatGeneralePage() {
               </a>
             </div>
           ) : (
-            <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', height: 'min(600px, 75vh)' }}>
+            <div className="glass-panel chat-sito-panel">
               {/* Lista messaggi */}
                 <div ref={chatContainerRef}
                   style={{
