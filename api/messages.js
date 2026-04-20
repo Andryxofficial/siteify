@@ -24,7 +24,7 @@ import { randomUUID } from 'crypto';
  */
 
 const MAX_MSG_SIZE    = 8000;
-const MAX_MEDIA_SIZE  = 1_100_000;
+const MAX_MEDIA_SIZE  = 4_200_000;  // ~3MB raw (4.2MB base64-encoded)
 const MSG_TTL_SECONDS = 30 * 86400;
 const MAX_HISTORY     = 50;
 const RATE_LIMIT_SEC  = 2;
@@ -387,6 +387,12 @@ export default async function handler(req, res) {
       const to        = sanitize(req.body.to, 50).toLowerCase();
       const encrypted = sanitize(req.body.encrypted, MAX_MSG_SIZE);
       const iv        = sanitize(req.body.iv, 100);
+      /* Campi opzionali per messaggi con media allegato */
+      const tipoMedia = sanitize(req.body.tipoMedia || '', 20);
+      const mediaId   = sanitize(req.body.mediaId || '', 100);
+      const nomeFile  = sanitize(req.body.nomeFile || '', 500);
+      const ivNome    = sanitize(req.body.ivNome || '', 100);
+      const durata    = typeof req.body.durata === 'number' ? Math.min(req.body.durata, 600) : undefined;
       if (!to || to === me) return res.status(400).json({ error: 'Destinatario non valido.' });
       if (!encrypted || !iv) return res.status(400).json({ error: 'Messaggio cifrato e IV richiesti.' });
       const isFriend = await redis.sismember(`friends:${me}`, to);
@@ -398,6 +404,12 @@ export default async function handler(req, res) {
         const msgId   = String(await redis.incr('msg:counter'));
         const now     = Date.now();
         const message = { id: msgId, from: me, to, encrypted, iv, createdAt: now };
+        /* Aggiungi campi media solo se presenti */
+        if (tipoMedia) message.tipoMedia = tipoMedia;
+        if (mediaId) message.mediaId = mediaId;
+        if (nomeFile) message.nomeFile = nomeFile;
+        if (ivNome) message.ivNome = ivNome;
+        if (durata !== undefined) message.durata = durata;
         const convo   = convoKey(me, to);
         const msgKey  = `messages:${convo}`;
         await Promise.all([
@@ -408,7 +420,7 @@ export default async function handler(req, res) {
           redis.set(rlKey, '1', { ex: RATE_LIMIT_SEC }),
           redis.set(`lastread:${me}:${to}`, now),
         ]);
-        return res.status(201).json({ message: { id: msgId, from: me, to, createdAt: now } });
+        return res.status(201).json({ message: { id: msgId, from: me, to, createdAt: now, tipoMedia: tipoMedia || undefined, mediaId: mediaId || undefined } });
       } catch (e) {
         console.error('send error:', e);
         return res.status(500).json({ error: "Errore nell'invio del messaggio." });
@@ -464,7 +476,7 @@ export default async function handler(req, res) {
       const name     = sanitize(req.body.name || 'file', 200);
       if (!to || to === me) return res.status(400).json({ error: 'Destinatario non valido.' });
       if (!data || typeof data !== 'string') return res.status(400).json({ error: 'Data richiesta.' });
-      if (data.length > MAX_MEDIA_SIZE) return res.status(413).json({ error: 'File troppo grande (max ~800KB).' });
+      if (data.length > MAX_MEDIA_SIZE) return res.status(413).json({ error: 'File troppo grande (max ~3MB).' });
       const isFriend = await redis.sismember(`friends:${me}`, to);
       if (!isFriend) return res.status(403).json({ error: 'Puoi inviare media solo agli amici.' });
       try {
