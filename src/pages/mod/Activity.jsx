@@ -46,7 +46,7 @@ export default function Activity({ token }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       {/* Contatori */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+      <div className="mod-grid-2">
         <div className="glass-card" style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <Users size={20} style={{ color: 'var(--primary)' }} />
           <div>

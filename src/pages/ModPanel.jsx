@@ -75,6 +75,7 @@ export default function ModPanel() {
   const [botStatus,  setBotStatus]  = useState('disconnected');
   const [broadcaster, setBroadcaster] = useState('');
   const botRef = useRef(null);
+  const mobileTabsRef = useRef(null);
 
   // Controlla se l'utente è mod facendo una richiesta al backend.
   // Non chiama setIsMod sincronamente dentro l'effect per evitare cascade renders.
@@ -99,6 +100,16 @@ export default function ModPanel() {
 
   // Cleanup bot on unmount
   useEffect(() => () => botRef.current?.disconnect(), []);
+
+  // Auto-scroll della tab mobile attiva al centro quando cambia sezione
+  useEffect(() => {
+    const cont = mobileTabsRef.current;
+    if (!cont) return;
+    const attiva = cont.querySelector('.mod-mobile-tab-active');
+    if (!attiva) return;
+    const offset = attiva.offsetLeft - (cont.clientWidth / 2) + (attiva.clientWidth / 2);
+    cont.scrollTo({ left: Math.max(0, offset), behavior: 'smooth' });
+  }, [sezione]);
 
   const toggleBot = () => {
     if (botRef.current && botStatus === 'connected') {
@@ -239,7 +250,7 @@ export default function ModPanel() {
         {/* ─── Contenuto principale ─── */}
         <div className="mod-main-area">
           {/* Breadcrumb mobile */}
-          <div className="mod-mobile-tabs">
+          <div className="mod-mobile-tabs" ref={mobileTabsRef}>
             {SEZIONI.map(s => {
               const Icon = s.icon;
               const attiva = sezione === s.id;

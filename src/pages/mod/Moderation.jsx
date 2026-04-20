@@ -197,7 +197,7 @@ export default function Moderation({ token }) {
       </div>
 
       {/* Clear chat + Shoutout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+      <div className="mod-grid-2">
         {/* Clear chat */}
         <div className="glass-card" style={{ padding: '1.25rem' }}>
           <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem' }}>
