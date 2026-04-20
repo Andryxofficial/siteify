@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, animate as fmAnimate } from 'framer-motion';
-import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon, MessageSquare as MessaggiIcon, MessageCircle as MessageCircleIcon, Settings as SettingsIcon } from 'lucide-react';
+import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon, MessageCircle as MessageCircleIcon, Settings as SettingsIcon } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 import useScrollHeader from '../hooks/useScrollHeader';
 import { hapticLight } from '../utils/haptics';
@@ -21,7 +21,6 @@ const NAV_LINKS = [
   { path: '/tiktok',    label: 'TikTok',    Icon: ({ size }) => <TikTokIcon size={size} /> },
   { path: '/gioco',     label: 'Gioco',     Icon: GameIcon      },
   { path: '/chat',      label: 'Chat',      Icon: MessageCircleIcon },
-  { path: '/messaggi',  label: 'Messaggi',  Icon: MessaggiIcon  },
 ];
 
 const MOBILE_LINKS = [
@@ -29,7 +28,6 @@ const MOBILE_LINKS = [
   { path: '/socialify', label: 'SOCIALify', Icon: UsersIcon     },
   { path: '/gioco',     label: 'Gioco',     Icon: GameIcon      },
   { path: '/chat',      label: 'Chat',      Icon: MessageCircleIcon },
-  { path: '/messaggi',  label: 'Messaggi',  Icon: MessaggiIcon  },
 ];
 
 /* Elasticità ai bordi della bolla trascinabile (0 = rigido, 1 = libero) */
@@ -226,7 +224,7 @@ function MobileTabBar({ activePath, haNonLetti }) {
                 {/* Pallino non-letti sovrapposto all'icona */}
                 <span style={{ position: 'relative', display: 'flex' }}>
                   <Icon size={22} />
-                  {path === '/messaggi' && haNonLetti && <span className="tab-pallino" aria-hidden="true" />}
+                  {path === '/chat' && haNonLetti && <span className="tab-pallino" aria-hidden="true" />}
                 </span>
               </motion.span>
               <motion.span
@@ -354,8 +352,8 @@ export default function Navbar() {
                           style={{ display: 'flex', pointerEvents: 'none', position: 'relative' }}
                         >
                           <Icon size={16} />
-                          {/* Pallino non-letti sul link Messaggi */}
-                          {path === '/messaggi' && haNonLetti && <span className="nav-pallino" aria-hidden="true" />}
+                          {/* Pallino non-letti sul link Chat (Messaggi Privati ora vivono qui) */}
+                          {path === '/chat' && haNonLetti && <span className="nav-pallino" aria-hidden="true" />}
                         </motion.span>
                         <span className="nav-label" style={{ pointerEvents: 'none' }}>{label}</span>
                       </Link>

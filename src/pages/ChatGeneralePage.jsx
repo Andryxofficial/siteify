@@ -6,11 +6,12 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { MessageCircle, Send, Twitch, Users, LogIn } from 'lucide-react';
+import { MessageCircle, Send, Twitch, Users, LogIn, Lock } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useEmoteTwitch } from '../hooks/useEmoteTwitch';
 import EmotePicker from '../components/EmotePicker';
 import SEO from '../components/SEO';
+import MessagesPage from './MessagesPage';
 
 const CHAT_API = '/api/chat';
 const POLL_MS = 2000;
@@ -130,6 +131,7 @@ export default function ChatGeneralePage() {
   const tabs = [
     { id: 'twitch', label: 'Chat Twitch', icon: Twitch },
     { id: 'sito', label: 'Chat Sito', icon: Users },
+    { id: 'privati', label: 'Messaggi Privati', icon: Lock },
   ];
 
   return (
@@ -315,6 +317,12 @@ export default function ChatGeneralePage() {
               )}
             </div>
           )}
+        </motion.div>
+      )}
+      {/* Tab: Messaggi Privati (cifrati end-to-end) */}
+      {tab === 'privati' && (
+        <motion.div {...entrata(0.1)}>
+          <MessagesPage />
         </motion.div>
       )}
     </div>
