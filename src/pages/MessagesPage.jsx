@@ -2062,7 +2062,7 @@ function PannelloInoltra({ msg, twitchToken, twitchUser, privateKeyRef, onChiudi
 /* ═══════════════════════════════════════════════
    Vista chat
 ═══════════════════════════════════════════════ */
-function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emoteCanale, emoteGlobali, avatarCache }) {
+function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emoteCanale, emoteGlobali, seventvCanale, seventvGlobali, avatarCache }) {
   const { renderTestoConEmote } = useEmoteTwitch(twitchToken);
   const [messaggi, setMessaggi] = useState([]);
   const [testo, setTesto] = useState('');
@@ -2750,6 +2750,8 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
           <EmotePicker
             emoteCanale={emoteCanale}
             emoteGlobali={emoteGlobali}
+            seventvCanale={seventvCanale}
+            seventvGlobali={seventvGlobali}
             disabled={false}
             onSelect={nome => setTesto(prev => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + nome + ' ')}
           />
@@ -2828,7 +2830,7 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
 export default function MessagesPage() {
   const { twitchUser, twitchToken, isLoggedIn, getTwitchLoginUrl } = useTwitchAuth();
   const { supportato: notifSupportato, attivo: notifAttivo, attiva: attivaNot, disattiva: disattivaNot } = useNotifiche();
-  const { emoteCanale, emoteGlobali } = useEmoteTwitch(twitchToken);
+  const { emoteCanale, emoteGlobali, seventvCanale, seventvGlobali } = useEmoteTwitch(twitchToken);
 
   const [fase, setFase] = useState('inizializzazione');
   const [conversazioni, setConversazioni] = useState([]);
@@ -3251,6 +3253,8 @@ export default function MessagesPage() {
                 onTorna={() => { segnaLetta(chatAperta); setChatAperta(null); caricaConversazioni(); }}
                 emoteCanale={emoteCanale}
                 emoteGlobali={emoteGlobali}
+                seventvCanale={seventvCanale}
+                seventvGlobali={seventvGlobali}
                 avatarCache={avatarCache}
               />
             </motion.div>

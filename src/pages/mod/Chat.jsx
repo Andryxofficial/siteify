@@ -1,14 +1,20 @@
 /**
  * Chat.jsx — Gestione comandi, timer, citazioni, contatori e parole chiave.
  * Migrazione completa dalla vecchia ModPanel con tab interne.
+ *
+ * Supporta inserimento di emote Twitch + 7TV (incluse animate) nelle risposte
+ * dei comandi/keyword e nei messaggi dei timer, tramite EmotePicker.
+ * L'anteprima delle emote viene renderizzata nelle card dei comandi.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Terminal, Timer, Quote, Hash, Plus, Trash2, Save, X, Copy, Check,
   Edit2, Clock, ToggleLeft, ToggleRight, Loader, Shield, Users, Star, Crown,
   MessageSquare, RefreshCw, Sparkles,
 } from 'lucide-react';
+import EmotePicker from '../../components/EmotePicker';
+import { useEmoteTwitch } from '../../hooks/useEmoteTwitch';
 
 const API = '/api/mod-commands';
 
@@ -34,12 +40,39 @@ function CopyBtn({ text }) {
   );
 }
 
+/* ── Helper: inserisce un nome emote alla posizione del cursore in un textarea ── */
+function inserisciAlCursore(textareaRef, valore, setValore, nome) {
+  const ta = textareaRef.current;
+  if (!ta) {
+    // Fallback: append alla fine
+    setValore(prev => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + nome + ' ');
+    return;
+  }
+  const start = ta.selectionStart ?? valore.length;
+  const end   = ta.selectionEnd   ?? valore.length;
+  const prima = valore.slice(0, start);
+  const dopo  = valore.slice(end);
+  // Aggiungi spazi ai bordi se non già presenti
+  const sepPrima = prima && !prima.endsWith(' ') ? ' ' : '';
+  const sepDopo  = dopo && !dopo.startsWith(' ') ? ' ' : ' ';
+  const nuovo = prima + sepPrima + nome + sepDopo + dopo;
+  setValore(nuovo);
+  // Riposiziona il cursore subito dopo l'emote inserita: somma di lunghezze,
+  // evitando di ricostruire la stringa concatenata.
+  const nuovoCursore = start + sepPrima.length + nome.length + sepDopo.length;
+  requestAnimationFrame(() => {
+    ta.focus();
+    try { ta.setSelectionRange(nuovoCursore, nuovoCursore); } catch { /* noop */ }
+  });
+}
+
 /* ── COMMAND FORM (riusato sia per !comandi che per keyword) ── */
-function CommandForm({ initial, tipo: tipoFisso, onSave, onCancel, saving }) {
+function CommandForm({ initial, tipo: tipoFisso, onSave, onCancel, saving, emoteCanale, emoteGlobali, seventvCanale, seventvGlobali }) {
   const [trigger,    setTrigger]    = useState(initial?.trigger    || '');
   const [response,   setResponse]   = useState(initial?.response   || '');
   const [cooldown,   setCooldown]   = useState(initial?.cooldown   ?? 10);
   const [permission, setPermission] = useState(initial?.permission || 'everyone');
+  const responseRef = useRef(null);
   const isKeyword = tipoFisso === 'keyword';
   return (
     <form onSubmit={e => { e.preventDefault(); onSave({ trigger: trigger.trim(), response: response.trim(), cooldown: Number(cooldown), permission, tipo: tipoFisso || 'comando' }); }} className="mod-form glass-card" style={{ padding: '1.25rem' }}>
@@ -58,8 +91,18 @@ function CommandForm({ initial, tipo: tipoFisso, onSave, onCancel, saving }) {
           Il bot risponderà ogni volta che la parola chiave appare nel messaggio (anche senza !, case insensitive).
         </p>
       )}
-      <label><MessageSquare size={13} /> Risposta
-        <textarea className="mod-input mod-textarea" value={response} onChange={e => setResponse(e.target.value)} placeholder="🔗 Ecco il sito…" maxLength={500} required rows={2} />
+      <label>
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+          <span><MessageSquare size={13} /> Risposta</span>
+          <EmotePicker
+            emoteCanale={emoteCanale}
+            emoteGlobali={emoteGlobali}
+            seventvCanale={seventvCanale}
+            seventvGlobali={seventvGlobali}
+            onSelect={nome => inserisciAlCursore(responseRef, response, setResponse, nome)}
+          />
+        </span>
+        <textarea ref={responseRef} className="mod-input mod-textarea" value={response} onChange={e => setResponse(e.target.value)} placeholder="🔗 Ecco il sito…" maxLength={500} required rows={2} />
       </label>
       <div className="mod-permission-row">
         <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}><Shield size={12} style={{ verticalAlign: 'middle' }} /> Chi può usarlo:</span>
@@ -86,11 +129,12 @@ function CommandForm({ initial, tipo: tipoFisso, onSave, onCancel, saving }) {
 }
 
 /* ── TIMER FORM ── */
-function TimerForm({ initial, onSave, onCancel, saving }) {
+function TimerForm({ initial, onSave, onCancel, saving, emoteCanale, emoteGlobali, seventvCanale, seventvGlobali }) {
   const [name,    setName]    = useState(initial?.name    || '');
   const [message, setMessage] = useState(initial?.message || '');
   const [interval_, setInterval_] = useState(initial?.interval ?? 300);
   const [enabled, setEnabled] = useState(initial?.enabled ?? true);
+  const messageRef = useRef(null);
   return (
     <form onSubmit={e => { e.preventDefault(); onSave({ name: name.trim(), message: message.trim(), interval: Number(interval_), enabled }); }} className="mod-form glass-card" style={{ padding: '1.25rem' }}>
       <div className="mod-form-row">
@@ -101,8 +145,18 @@ function TimerForm({ initial, onSave, onCancel, saving }) {
           <input type="number" className="mod-input mod-input-small" value={interval_} onChange={e => setInterval_(e.target.value)} min={60} max={7200} />
         </label>
       </div>
-      <label><MessageSquare size={13} /> Messaggio
-        <textarea className="mod-input mod-textarea" value={message} onChange={e => setMessage(e.target.value)} placeholder="🔗 Visita il sito!" maxLength={500} required rows={2} />
+      <label>
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+          <span><MessageSquare size={13} /> Messaggio</span>
+          <EmotePicker
+            emoteCanale={emoteCanale}
+            emoteGlobali={emoteGlobali}
+            seventvCanale={seventvCanale}
+            seventvGlobali={seventvGlobali}
+            onSelect={nome => inserisciAlCursore(messageRef, message, setMessage, nome)}
+          />
+        </span>
+        <textarea ref={messageRef} className="mod-input mod-textarea" value={message} onChange={e => setMessage(e.target.value)} placeholder="🔗 Visita il sito!" maxLength={500} required rows={2} />
       </label>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Attivo:</span>
@@ -124,6 +178,14 @@ export default function Chat({ token }) {
   const [loading,   setLoading]  = useState(true);
   const [saving,    setSaving]   = useState(false);
   const [error,     setError]    = useState('');
+
+  // Carica le emote (Twitch + 7TV) per inserimento e anteprima
+  const {
+    emoteCanale, emoteGlobali, seventvCanale, seventvGlobali, renderTestoConEmote,
+  } = useEmoteTwitch(token);
+
+  // Props comuni passati alle form per il picker emote
+  const propEmote = { emoteCanale, emoteGlobali, seventvCanale, seventvGlobali };
 
   const [showCmdForm,    setShowCmdForm]    = useState(false);
   const [editingCmd,     setEditingCmd]     = useState(null);
@@ -233,7 +295,7 @@ export default function Chat({ token }) {
             <AnimatePresence>
               {showCmdForm && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ marginBottom: '1rem', overflow: 'hidden' }}>
-                  <CommandForm tipo="comando" initial={editingCmd} onSave={async d => { await post({ type: 'command', ...d }); setShowCmdForm(false); setEditingCmd(null); }} onCancel={() => { setShowCmdForm(false); setEditingCmd(null); }} saving={saving} />
+                  <CommandForm tipo="comando" initial={editingCmd} onSave={async d => { await post({ type: 'command', ...d }); setShowCmdForm(false); setEditingCmd(null); }} onCancel={() => { setShowCmdForm(false); setEditingCmd(null); }} saving={saving} {...propEmote} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -258,7 +320,7 @@ export default function Chat({ token }) {
                         <button className="mod-icon-btn mod-icon-btn-danger" onClick={() => { if (confirm(`Eliminare !${cmd.trigger}?`)) del({ type: 'command', key: cmd.trigger }); }}><Trash2 size={13} /></button>
                       </div>
                     </div>
-                    <p className="mod-item-body">{cmd.response}</p>
+                    <p className="mod-item-body">{renderTestoConEmote(cmd.response)}</p>
                   </div>
                 );
               })}
@@ -284,7 +346,7 @@ export default function Chat({ token }) {
             <AnimatePresence>
               {showKwForm && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ marginBottom: '1rem', overflow: 'hidden' }}>
-                  <CommandForm tipo="keyword" initial={editingKw} onSave={async d => { await post({ type: 'command', ...d }); setShowKwForm(false); setEditingKw(null); }} onCancel={() => { setShowKwForm(false); setEditingKw(null); }} saving={saving} />
+                  <CommandForm tipo="keyword" initial={editingKw} onSave={async d => { await post({ type: 'command', ...d }); setShowKwForm(false); setEditingKw(null); }} onCancel={() => { setShowKwForm(false); setEditingKw(null); }} saving={saving} {...propEmote} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -311,7 +373,7 @@ export default function Chat({ token }) {
                         <button className="mod-icon-btn mod-icon-btn-danger" onClick={() => { if (confirm(`Eliminare keyword "${kw.trigger}"?`)) del({ type: 'command', key: kw.trigger }); }}><Trash2 size={13} /></button>
                       </div>
                     </div>
-                    <p className="mod-item-body">{kw.response}</p>
+                    <p className="mod-item-body">{renderTestoConEmote(kw.response)}</p>
                   </div>
                 );
               })}
@@ -332,7 +394,7 @@ export default function Chat({ token }) {
             <AnimatePresence>
               {showTimerForm && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ marginBottom: '1rem', overflow: 'hidden' }}>
-                  <TimerForm initial={editingTimer} onSave={async d => { await post({ type: 'timer', ...d }); setShowTimerForm(false); setEditingTimer(null); }} onCancel={() => { setShowTimerForm(false); setEditingTimer(null); }} saving={saving} />
+                  <TimerForm initial={editingTimer} onSave={async d => { await post({ type: 'timer', ...d }); setShowTimerForm(false); setEditingTimer(null); }} onCancel={() => { setShowTimerForm(false); setEditingTimer(null); }} saving={saving} {...propEmote} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -354,7 +416,7 @@ export default function Chat({ token }) {
                       <button className="mod-icon-btn mod-icon-btn-danger" onClick={() => { if (confirm(`Eliminare timer "${t.name}"?`)) del({ type: 'timer', key: t.name }); }}><Trash2 size={13} /></button>
                     </div>
                   </div>
-                  <p className="mod-item-body">{t.message}</p>
+                  <p className="mod-item-body">{renderTestoConEmote(t.message)}</p>
                   {!t.enabled && <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', fontStyle: 'italic' }}>Disattivato</span>}
                 </div>
               ))}

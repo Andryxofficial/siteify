@@ -1,9 +1,10 @@
 /**
- * EmotePicker — Pannello per selezionare e inserire emote Twitch
+ * EmotePicker — Pannello per selezionare e inserire emote Twitch + 7TV
  *
- * Mostra le emote del canale (prima) e le globali (dopo) in un pannello
- * scrollabile con 7 colonne. Cliccando un'emote, viene invocato `onSelect(nome)`.
+ * Mostra le emote in 4 sezioni: Twitch canale, 7TV canale, Twitch globali, 7TV globali.
+ * Cliccando un'emote, viene invocato `onSelect(nome)`.
  * Supporta navigazione da tastiera (frecce, Invio, Escape) e ricerca.
+ * Le emote 7TV animate (WebP animati) vengono renderizzate nativamente dal browser.
  */
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,7 +13,24 @@ import { Smile, Search, X, Twitch } from 'lucide-react';
 /** Numero fisso di colonne nella griglia emote */
 const EMOTE_GRID_COLONNE = 7;
 
-export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disabled }) {
+/** Icona 7TV stilizzata (lucide non la include) */
+function SevenTVIcon({ size = 11 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"
+      xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M5.5 4.5h7.2L8.3 19.5h3.4L16 4.5h2.5l-4.3 15h-7l4.4-15z" />
+    </svg>
+  );
+}
+
+export default function EmotePicker({
+  emoteCanale,
+  emoteGlobali,
+  seventvCanale,
+  seventvGlobali,
+  onSelect,
+  disabled,
+}) {
   const [aperto, setAperto]   = useState(false);
   const [ricerca, setRicerca] = useState('');
   const [indFocus, setIndFocus] = useState(-1);
@@ -67,17 +85,24 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
   const filtraEmote = (lista) =>
     filtro ? lista.filter(e => e.nome.toLowerCase().includes(filtro)) : lista;
 
-  const canaleFiltered  = filtraEmote(emoteCanale  || []);
-  const globaliFiltered = filtraEmote(emoteGlobali || []);
+  const canaleFiltered     = filtraEmote(emoteCanale     || []);
+  const seventvCanaleF     = filtraEmote(seventvCanale   || []);
+  const globaliFiltered    = filtraEmote(emoteGlobali    || []);
+  const seventvGlobaliF    = filtraEmote(seventvGlobali  || []);
 
-  // Lista piatta di tutte le emote visibili, per navigazione a tastiera
+  // Lista piatta nell'ordine in cui le sezioni vengono renderizzate,
+  // per la navigazione a tastiera coerente.
   const tuttiItems = useMemo(
-    () => [...canaleFiltered, ...globaliFiltered],
-    [canaleFiltered, globaliFiltered],
+    () => [...canaleFiltered, ...seventvCanaleF, ...globaliFiltered, ...seventvGlobaliF],
+    [canaleFiltered, seventvCanaleF, globaliFiltered, seventvGlobaliF],
   );
 
   const nessunaEmote = tuttiItems.length === 0;
-  const tutteVuote   = (!emoteCanale || emoteCanale.length === 0) && (!emoteGlobali || emoteGlobali.length === 0);
+  const tutteVuote   =
+    (!emoteCanale     || emoteCanale.length     === 0) &&
+    (!emoteGlobali    || emoteGlobali.length    === 0) &&
+    (!seventvCanale   || seventvCanale.length   === 0) &&
+    (!seventvGlobali  || seventvGlobali.length  === 0);
 
   // Scorri automaticamente l'emote selezionata in vista (deve stare prima del return condizionale)
   useEffect(() => {
@@ -129,6 +154,53 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
     }
   };
 
+  /** Helper per renderizzare un'intestazione sezione con icona */
+  const Intestazione = ({ icon, label, primaSezione }) => (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '0.3rem',
+      padding: primaSezione ? '0.2rem 0.3rem 0.4rem' : '0.6rem 0.3rem 0.4rem',
+      fontSize: '0.72rem', fontWeight: 600, opacity: 0.6,
+      textTransform: 'uppercase', letterSpacing: '0.04em',
+    }}>
+      {icon} {label}
+    </div>
+  );
+
+  /** Renderizza una sezione di emote (skip se vuota) */
+  const renderSezione = (lista, intestazione, offsetIndice, primaSezione) => {
+    if (lista.length === 0) return null;
+    return (
+      <>
+        <Intestazione {...intestazione} primaSezione={primaSezione} />
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${EMOTE_GRID_COLONNE}, 1fr)`, gap: '2px', width: '100%' }}>
+          {lista.map((e, i) => (
+            <BotoneEmote
+              key={e.id}
+              emote={e}
+              indiceGlobale={offsetIndice + i}
+              indFocus={indFocus}
+              onSelect={handleSelect}
+              onHover={setIndFocus}
+            />
+          ))}
+        </div>
+      </>
+    );
+  };
+
+  // Calcolo offset per la navigazione tastiera coerente con la lista piatta
+  const offCanale     = 0;
+  const offSevenCan   = canaleFiltered.length;
+  const offGlobali    = offSevenCan + seventvCanaleF.length;
+  const offSevenGlob  = offGlobali + globaliFiltered.length;
+
+  // Determina quale sezione è la "prima" mostrata, per il padding-top
+  const primaSezioneEsiste =
+    canaleFiltered.length > 0 ? 'canale'
+      : seventvCanaleF.length > 0 ? '7tv-canale'
+        : globaliFiltered.length > 0 ? 'globali'
+          : '7tv-globali';
+
   return (
     <div style={{ position: 'relative' }}>
       {/* Bottone toggle */}
@@ -137,7 +209,7 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
         type="button"
         onClick={togglePannello}
         disabled={disabled}
-        title="Emote Twitch"
+        title="Emote Twitch + 7TV"
         style={{
           background: 'transparent',
           border: 'none',
@@ -227,7 +299,7 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
               style={{
                 overflowY: 'auto',
                 overflowX: 'hidden',
-                maxHeight: '260px',
+                maxHeight: '280px',
                 padding: '0.4rem',
                 width: '100%',
                 boxSizing: 'border-box',
@@ -240,56 +312,36 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
                 </p>
               )}
 
-              {/* Emote del canale */}
-              {canaleFiltered.length > 0 && (
-                <>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: '0.3rem',
-                    padding: '0.2rem 0.3rem 0.4rem',
-                    fontSize: '0.72rem', fontWeight: 600, opacity: 0.6,
-                    textTransform: 'uppercase', letterSpacing: '0.04em',
-                  }}>
-                    <Twitch size={11} /> Canale
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${EMOTE_GRID_COLONNE}, 1fr)`, gap: '2px', width: '100%' }}>
-                    {canaleFiltered.map((e, i) => (
-                      <BotoneEmote
-                        key={e.id}
-                        emote={e}
-                        indiceGlobale={i}
-                        indFocus={indFocus}
-                        onSelect={handleSelect}
-                        onHover={setIndFocus}
-                      />
-                    ))}
-                  </div>
-                </>
+              {/* Twitch canale */}
+              {renderSezione(
+                canaleFiltered,
+                { icon: <Twitch size={11} />, label: 'Twitch · Canale' },
+                offCanale,
+                primaSezioneEsiste === 'canale',
               )}
 
-              {/* Emote globali */}
-              {globaliFiltered.length > 0 && (
-                <>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: '0.3rem',
-                    padding: '0.6rem 0.3rem 0.4rem',
-                    fontSize: '0.72rem', fontWeight: 600, opacity: 0.6,
-                    textTransform: 'uppercase', letterSpacing: '0.04em',
-                  }}>
-                    <Twitch size={11} /> Globali
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${EMOTE_GRID_COLONNE}, 1fr)`, gap: '2px', width: '100%' }}>
-                    {globaliFiltered.map((e, i) => (
-                      <BotoneEmote
-                        key={e.id}
-                        emote={e}
-                        indiceGlobale={canaleFiltered.length + i}
-                        indFocus={indFocus}
-                        onSelect={handleSelect}
-                        onHover={setIndFocus}
-                      />
-                    ))}
-                  </div>
-                </>
+              {/* 7TV canale */}
+              {renderSezione(
+                seventvCanaleF,
+                { icon: <SevenTVIcon size={11} />, label: '7TV · Canale' },
+                offSevenCan,
+                primaSezioneEsiste === '7tv-canale',
+              )}
+
+              {/* Twitch globali */}
+              {renderSezione(
+                globaliFiltered,
+                { icon: <Twitch size={11} />, label: 'Twitch · Globali' },
+                offGlobali,
+                primaSezioneEsiste === 'globali',
+              )}
+
+              {/* 7TV globali */}
+              {renderSezione(
+                seventvGlobaliF,
+                { icon: <SevenTVIcon size={11} />, label: '7TV · Globali' },
+                offSevenGlob,
+                primaSezioneEsiste === '7tv-globali',
               )}
             </div>
           </motion.div>
@@ -299,17 +351,19 @@ export default function EmotePicker({ emoteCanale, emoteGlobali, onSelect, disab
   );
 }
 
-/** Singolo bottone emote con highlight focus da tastiera */
+/** Singolo bottone emote con highlight focus da tastiera + indicatore animata */
 function BotoneEmote({ emote, indiceGlobale, indFocus, onSelect, onHover }) {
   const focusato = indFocus === indiceGlobale;
   return (
     <button
       data-emote={emote.nome}
+      data-provider={emote.provider || 'twitch'}
       type="button"
       onClick={() => onSelect(emote.nome)}
       onMouseEnter={() => onHover(indiceGlobale)}
-      title={emote.nome}
+      title={emote.animata ? `${emote.nome} (animata)` : emote.nome}
       style={{
+        position: 'relative',
         background: focusato ? 'rgba(130,170,240,0.18)' : 'transparent',
         border: `1px solid ${focusato ? 'rgba(130,170,240,0.35)' : 'transparent'}`,
         borderRadius: 8,
@@ -327,10 +381,28 @@ function BotoneEmote({ emote, indiceGlobale, indFocus, onSelect, onHover }) {
         srcSet={`${emote.url} 1x, ${emote.url2x} 2x`}
         alt={emote.nome}
         loading="lazy"
+        decoding="async"
         width={28}
         height={28}
         style={{ display: 'block', objectFit: 'contain' }}
       />
+      {emote.animata && (
+        <span
+          aria-hidden="true"
+          title="Animata"
+          style={{
+            position: 'absolute',
+            bottom: 2,
+            right: 2,
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: 'var(--accent-warm, #f5a623)',
+            boxShadow: '0 0 0 1px rgba(0,0,0,0.4)',
+            pointerEvents: 'none',
+          }}
+        />
+      )}
     </button>
   );
 }

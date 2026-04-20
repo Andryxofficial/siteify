@@ -4495,6 +4495,20 @@ img.msg-avatar {
   object-fit: contain;
 }
 
+/* Emote animate (7TV WebP animati): leggera enfasi e supporto reduced motion */
+.emote-inline.emote-animata {
+  /* Il browser anima nativamente i WebP animati. Quando l'utente ha richiesto
+     riduzione del movimento, abbassiamo opacità per indicarne lo stato senza
+     poter pausare l'animazione lato CSS (gli animated webp non lo supportano). */
+}
+@media (prefers-reduced-motion: reduce) {
+  .emote-inline.emote-animata {
+    /* Fallback: bordo discreto per indicare l'animazione, senza distrarre */
+    outline: 1px dashed rgba(245, 166, 35, 0.4);
+    outline-offset: -1px;
+  }
+}
+
 /* ═══════════════════════════════════════════════════
    MOD PANEL — Dashboard completa stile StreamElements
    ═══════════════════════════════════════════════════ */

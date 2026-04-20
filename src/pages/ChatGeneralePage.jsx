@@ -36,7 +36,7 @@ function tempoFa(ts) {
 
 export default function ChatGeneralePage() {
   const { isLoggedIn, twitchToken, getTwitchLoginUrl } = useTwitchAuth();
-  const { emoteCanale, emoteGlobali, renderTestoConEmote } = useEmoteTwitch(twitchToken);
+  const { emoteCanale, emoteGlobali, seventvCanale, seventvGlobali, renderTestoConEmote } = useEmoteTwitch(twitchToken);
 
   const [tab, setTab] = useState('twitch'); // twitch | sito
   const tabBarRef = useRef(null);
@@ -277,6 +277,8 @@ export default function ChatGeneralePage() {
                 <EmotePicker
                   emoteCanale={emoteCanale}
                   emoteGlobali={emoteGlobali}
+                  seventvCanale={seventvCanale}
+                  seventvGlobali={seventvGlobali}
                   onSelect={(nome) => setText(prev => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + nome + ' ')}
                   disabled={sending}
                 />
