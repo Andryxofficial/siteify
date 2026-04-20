@@ -1633,11 +1633,13 @@ function VoiceMessagePlayer({ src, durata }) {
 /* ═══════════════════════════════════════════════
    Singolo messaggio
 ═══════════════════════════════════════════════ */
-const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, onModifica, onElimina, onInoltra, onRispondi, reazioni, onReazione }) {
+const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, onModifica, onElimina, onInoltra, onRispondi, reazioni, onReazione, renderTestoConEmote, onApriMedia }) {
   const [menuAperto, setMenuAperto] = useState(false);
   const [mostraReazioni, setMostraReazioni] = useState(false);
   const menuRef = useRef(null);
   const reazioniRef = useRef(null);
+  const longPressTimer = useRef(null);
+  const touchMoved = useRef(false);
 
   useEffect(() => {
     if (!menuAperto && !mostraReazioni) return;
@@ -1649,7 +1651,27 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
     return () => document.removeEventListener('pointerdown', chiudi);
   }, [menuAperto, mostraReazioni]);
 
+  /* Long-press su mobile per aprire menu contestuale */
+  useEffect(() => () => clearTimeout(longPressTimer.current), []);
+  const onTouchStart = useCallback(() => {
+    touchMoved.current = false;
+    longPressTimer.current = setTimeout(() => {
+      if (!touchMoved.current) {
+        try { navigator.vibrate?.(12); } catch { /* vibrazione non supportata */ }
+        setMenuAperto(true);
+      }
+    }, 500);
+  }, []);
+  const onTouchMove = useCallback(() => { touchMoved.current = true; clearTimeout(longPressTimer.current); }, []);
+  const onTouchEnd = useCallback(() => { clearTimeout(longPressTimer.current); }, []);
+
   const testoVisibile = msg.eliminato ? null : (msg.testoDecifrato || null);
+  /* Renderizza testo con emote Twitch se disponibile */
+  const testoRenderizzato = useMemo(() => {
+    if (!testoVisibile) return null;
+    if (renderTestoConEmote) return renderTestoConEmote(testoVisibile);
+    return [testoVisibile];
+  }, [testoVisibile, renderTestoConEmote]);
 
   /* Raggruppa reazioni per emoji */
   const reazioniRaggruppate = useMemo(() => {
@@ -1685,7 +1707,11 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
         <div
           className={`msg-bubble${mio ? ' msg-mine' : ' msg-theirs'}${raggruppato ? ' msg-bubble-grouped' : ''}`}
           onContextMenu={e => { e.preventDefault(); setMenuAperto(true); }}
-          onDoubleClick={() => { if (!msg.eliminato) setMostraReazioni(true); }}>
+          onDoubleClick={() => { if (!msg.eliminato) setMostraReazioni(true); }}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchEnd}>
           {msg.eliminato ? (
             <span className="msg-deleted-text">
               <Trash2 size={12} style={{ marginRight: 4 }} /> Messaggio eliminato
@@ -1693,25 +1719,26 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
           ) : msg.tipoMedia === 'voice' ? (
             <div className="msg-voice-container">
               <VoiceMessagePlayer src={msg.mediaDecifrato} durata={msg.durata} />
-              {testoVisibile && <p className="msg-text" style={{ marginTop: 4 }}>{testoVisibile}</p>}
+              {testoRenderizzato && <p className="msg-text" style={{ marginTop: 4 }}>{testoRenderizzato}</p>}
             </div>
           ) : msg.tipoMedia === 'image' ? (
             <div className="msg-media-content">
               {msg.mediaDecifrato ? (
                 <img src={msg.mediaDecifrato} alt="Immagine"
-                  className="msg-media-preview" style={{ borderRadius: 8, maxWidth: '100%' }} />
+                  className="msg-media-img"
+                  onClick={(e) => { e.stopPropagation(); onApriMedia?.(msg.mediaDecifrato); }} />
               ) : (
                 <div className="msg-media-loading"><Loader size={18} className="spin" /> Caricamento…</div>
               )}
-              {testoVisibile && <p className="msg-text" style={{ marginTop: 6 }}>{testoVisibile}</p>}
+              {testoRenderizzato && <p className="msg-text" style={{ marginTop: 6 }}>{testoRenderizzato}</p>}
             </div>
           ) : msg.tipoMedia === 'file' ? (
             <div className="msg-media-content">
-              <div className="msg-media-thumb">
+              <div className="msg-media-file-row">
                 {msg.mediaDecifrato ? (
                   <a href={msg.mediaDecifrato} download={msg.nomeFile}
-                    style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <ImageIcon size={16} /> <span className="msg-media-name">{msg.nomeFile}</span>
+                    className="msg-media-file-link">
+                    <Download size={16} /> <span className="msg-media-name">{msg.nomeFile}</span>
                   </a>
                 ) : (
                   <div className="msg-media-loading">
@@ -1721,7 +1748,7 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
               </div>
             </div>
           ) : (
-            <p className="msg-text">{testoVisibile}</p>
+            <p className="msg-text">{testoRenderizzato}</p>
           )}
           <div className="msg-time">
             {msg.modificato && <span className="msg-edited">mod.</span>}
@@ -1789,45 +1816,54 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
           </div>
         )}
 
-        {/* Menu contestuale */}
+        {/* Menu contestuale — desktop: dropdown, mobile: bottom sheet overlay */}
         <AnimatePresence>
           {menuAperto && (
-            <motion.div ref={menuRef} className="msg-context-menu"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              style={{ [mio ? 'right' : 'left']: 0, top: '100%', zIndex: 50 }}>
-              {!msg.eliminato && (
-                <button className="msg-context-item"
-                  onClick={() => { onRispondi && onRispondi(msg); setMenuAperto(false); }}>
-                  <Reply size={13} /> Rispondi
-                </button>
-              )}
-              {!msg.eliminato && testoVisibile && (
-                <button className="msg-context-item"
-                  onClick={() => { copiaNeglAppunti(testoVisibile); setMenuAperto(false); }}>
-                  <Copy size={13} /> Copia
-                </button>
-              )}
-              {!msg.eliminato && (
-                <button className="msg-context-item"
-                  onClick={() => { onInoltra(msg); setMenuAperto(false); }}>
-                  <CornerUpRight size={13} /> Inoltra
-                </button>
-              )}
-              {mio && !msg.eliminato && (
-                <button className="msg-context-item"
-                  onClick={() => { onModifica(msg); setMenuAperto(false); }}>
-                  <Pencil size={13} /> Modifica
-                </button>
-              )}
-              {mio && (
-                <button className="msg-context-item msg-context-danger"
-                  onClick={() => { onElimina(msg); setMenuAperto(false); }}>
-                  <Trash2 size={13} /> Elimina
-                </button>
-              )}
-            </motion.div>
+            <>
+              {/* Overlay mobile per chiudere toccando fuori */}
+              <motion.div
+                className="msg-context-overlay"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                onClick={() => setMenuAperto(false)} />
+              <motion.div ref={menuRef} className="msg-context-menu"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                transition={{ type: 'spring', damping: 28, stiffness: 320 }}>
+                {/* Maniglia visiva su mobile */}
+                <div className="msg-context-handle" />
+                {!msg.eliminato && (
+                  <button className="msg-context-item"
+                    onClick={() => { onRispondi && onRispondi(msg); setMenuAperto(false); }}>
+                    <Reply size={16} /> Rispondi
+                  </button>
+                )}
+                {!msg.eliminato && testoVisibile && (
+                  <button className="msg-context-item"
+                    onClick={() => { copiaNeglAppunti(testoVisibile); setMenuAperto(false); }}>
+                    <Copy size={16} /> Copia
+                  </button>
+                )}
+                {!msg.eliminato && (
+                  <button className="msg-context-item"
+                    onClick={() => { onInoltra(msg); setMenuAperto(false); }}>
+                    <CornerUpRight size={16} /> Inoltra
+                  </button>
+                )}
+                {mio && !msg.eliminato && (
+                  <button className="msg-context-item"
+                    onClick={() => { onModifica(msg); setMenuAperto(false); }}>
+                    <Pencil size={16} /> Modifica
+                  </button>
+                )}
+                {mio && (
+                  <button className="msg-context-item msg-context-danger"
+                    onClick={() => { onElimina(msg); setMenuAperto(false); }}>
+                    <Trash2 size={16} /> Elimina
+                  </button>
+                )}
+              </motion.div>
+            </>
           )}
         </AnimatePresence>
       </div>
@@ -1911,6 +1947,7 @@ function PannelloInoltra({ msg, twitchToken, twitchUser, privateKeyRef, onChiudi
    Vista chat
 ═══════════════════════════════════════════════ */
 function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emoteCanale, emoteGlobali, avatarCache }) {
+  const { renderTestoConEmote } = useEmoteTwitch(twitchToken);
   const [messaggi, setMessaggi] = useState([]);
   const [testo, setTesto] = useState('');
   const [caricamento, setCaricamento] = useState(true);
@@ -1921,6 +1958,7 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
   const [fileInUpload, setFileInUpload] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [cursorePag, setCursorePag] = useState(0);
+  const [lightboxSrc, setLightboxSrc] = useState(null); // immagine aperta a schermo intero
   /* Nuove feature */
   const [rispondiA, setRispondiA] = useState(null); // messaggio a cui rispondere
   const [staDigitando, setStaDigitando] = useState(false); // l'altro sta scrivendo
@@ -2526,6 +2564,8 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
                   onRispondi={m => { setRispondiA(m); setModificandoId(null); textareaRef.current?.focus(); }}
                   reazioni={reazioni[msg.id] || []}
                   onReazione={reagisci}
+                  renderTestoConEmote={renderTestoConEmote}
+                  onApriMedia={setLightboxSrc}
                 />
               </div>
             ))}
@@ -2630,6 +2670,30 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
             privateKeyRef={privateKeyRef}
             onChiudi={() => setInoltraMsg(null)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Lightbox — visualizzazione immagine a schermo intero */}
+      <AnimatePresence>
+        {lightboxSrc && (
+          <motion.div className="msg-lightbox-overlay"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setLightboxSrc(null)}>
+            <button className="msg-lightbox-close" onClick={() => setLightboxSrc(null)}>
+              <X size={22} />
+            </button>
+            <motion.img src={lightboxSrc} alt="Schermo intero"
+              className="msg-lightbox-img"
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onClick={e => e.stopPropagation()} />
+            <a href={lightboxSrc} download className="msg-lightbox-download"
+              onClick={e => e.stopPropagation()}>
+              <Download size={16} /> Salva
+            </a>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
