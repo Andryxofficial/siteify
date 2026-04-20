@@ -9,8 +9,8 @@ import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Activity, Terminal, Shield, Zap,
-  TrendingUp, Monitor, Calendar, Twitch, LogIn, Loader,
-  ChevronRight, Wifi, WifiOff, Radio,
+  TrendingUp, Monitor, Calendar, Twitch, Loader,
+  ChevronRight, Wifi, WifiOff,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { createTwitchBot } from '../utils/twitchBot';
@@ -63,24 +63,22 @@ function BotIndicator({ status, onToggle }) {
 
 export default function ModPanel() {
   const { twitchToken, twitchUser, twitchDisplay, twitchAvatar, isLoggedIn, loading, getTwitchLoginUrl } = useTwitchAuth();
-  const [sezione,    setSezione]  = useState('overview');
-  const [isMod,      setIsMod]    = useState(null); // null=loading, true/false
-  const [botStatus,  setBotStatus] = useState('disconnected');
+  const [sezione,    setSezione]    = useState('overview');
+  const [isMod,      setIsMod]      = useState(null); // null=loading, true/false
+  const [botStatus,  setBotStatus]  = useState('disconnected');
   const [broadcaster, setBroadcaster] = useState('');
   const botRef = useRef(null);
 
-  // Controlla se l'utente è mod facendo una richiesta al backend
+  // Controlla se l'utente è mod facendo una richiesta al backend.
+  // Non chiama setIsMod sincronamente dentro l'effect per evitare cascade renders.
   useEffect(() => {
-    if (!isLoggedIn || !twitchToken) {
-      // useEffect non deve chiamare setState direttamente in linea — usa una fn
-      const reset = () => setIsMod(false);
-      reset();
-      return;
-    }
+    if (!isLoggedIn || !twitchToken) return; // isMod resta null → letto come "non verificato"
+    let attivo = true;
     fetch('/api/mod-commands', { headers: { Authorization: `Bearer ${twitchToken}` } })
       .then(r => r.json())
-      .then(d => setIsMod(!!d.isMod))
-      .catch(() => setIsMod(false));
+      .then(d => { if (attivo) setIsMod(!!d.isMod); })
+      .catch(() => { if (attivo) setIsMod(false); });
+    return () => { attivo = false; };
   }, [isLoggedIn, twitchToken]);
 
   // Recupera broadcaster per il bot
@@ -128,29 +126,27 @@ export default function ModPanel() {
     );
   }
 
-  // ─── Non loggato ───
-  if (!isLoggedIn) {
-    return (
-      <main className="main-content" style={{ maxWidth: 520, margin: '0 auto' }}>
-        <SEO title="Mod Panel" noindex />
-        <motion.div className="glass-panel" style={{ padding: '2.5rem', textAlign: 'center' }}
-          initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
-          <Shield size={42} style={{ color: 'var(--primary)', marginBottom: '1rem' }} />
-          <h1 className="text-gradient" style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Mod Panel</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-            Accedi con Twitch per aprire la dashboard.
-          </p>
-          <a href={getTwitchLoginUrl('/mod-panel')} className="btn btn-primary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Twitch size={16} /> Accedi con Twitch
-          </a>
-        </motion.div>
-      </main>
-    );
-  }
-
   // ─── Accesso negato ───
-  if (isMod === false) {
+  if (isMod === false || (!isLoggedIn && !loading)) {
+    if (!isLoggedIn) {
+      return (
+        <main className="main-content" style={{ maxWidth: 520, margin: '0 auto' }}>
+          <SEO title="Mod Panel" noindex />
+          <motion.div className="glass-panel" style={{ padding: '2.5rem', textAlign: 'center' }}
+            initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
+            <Shield size={42} style={{ color: 'var(--primary)', marginBottom: '1rem' }} />
+            <h1 className="text-gradient" style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Mod Panel</h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+              Accedi con Twitch per aprire la dashboard.
+            </p>
+            <a href={getTwitchLoginUrl('/mod-panel')} className="btn btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Twitch size={16} /> Accedi con Twitch
+            </a>
+          </motion.div>
+        </main>
+      );
+    }
     return (
       <main className="main-content" style={{ maxWidth: 520, margin: '0 auto' }}>
         <SEO title="Mod Panel" noindex />
@@ -258,7 +254,7 @@ export default function ModPanel() {
               exit={{ opacity: 0, y: -6 }}
               transition={{ type: 'spring', stiffness: 280, damping: 26 }}>
               <Suspense fallback={<SkeletonSezione />}>
-                <SezioneAttiva token={twitchToken} clientId={undefined} />
+                <SezioneAttiva token={twitchToken} />
               </Suspense>
             </motion.div>
           </AnimatePresence>

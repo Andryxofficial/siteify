@@ -44,7 +44,10 @@ export default function Schedule({ token }) {
     if (!startDate) { setError('Data e ora obbligatori.'); return; }
     setSaving(true); setError('');
     try {
-      const startISO = new Date(`${startDate}T${startTime_}:00`).toISOString();
+      // Costruisce la stringa ISO nel formato richiesto da Helix senza
+      // ambiguità di timezone del browser: inviamo la stringa letterale
+      // con il timezone Europe/Rome gestito lato server.
+      const startISO = `${startDate}T${startTime_}:00+01:00`;
       const r = await fetch(API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

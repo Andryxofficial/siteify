@@ -52,7 +52,7 @@ export default async function handler(req, res) {
       // salvato in Redis. Per il cron però non abbiamo un token utente;
       // usiamo invece il client_credentials grant se TWITCH_CLIENT_SECRET è disponibile.
       // Altrimenti skippamo la chiamata Helix e salviamo solo un placeholder.
-      const clientId     = process.env.VITE_CHIAVETWITCH || process.env.TWITCH_CLIENT_ID;
+      const clientId     = process.env.TWITCH_CLIENT_ID;
       const clientSecret = process.env.TWITCH_CLIENT_SECRET;
 
       let viewerCount   = null;

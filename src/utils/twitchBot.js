@@ -179,11 +179,6 @@ export function createTwitchBot({ token, username, channel, onMessage, onStatus,
       }, PING_INTERVAL);
     };
 
-    ws.onmessage = (e) => {
-      const lines = e.data.split('\r\n').filter(Boolean);
-      lines.forEach(processLine);
-    };
-
     ws.onclose = () => {
       clearInterval(pingTimer);
       setStatus('disconnected');
