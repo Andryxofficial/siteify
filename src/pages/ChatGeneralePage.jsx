@@ -35,11 +35,11 @@ export default function ChatGeneralePage() {
   const { isLoggedIn, twitchToken, getTwitchLoginUrl } = useTwitchAuth();
 
   const [tab, setTab] = useState('twitch'); // twitch | sito
+  const tabBarRef = useRef(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
-  const messagesEndRef = useRef(null);
   const pollRef = useRef(null);
 
   // Recupera messaggi dal server
@@ -68,6 +68,8 @@ export default function ChatGeneralePage() {
   }, [tab, fetchMessages]);
 
   // Auto-scroll solo se l'utente è già vicino al fondo
+  // Usa scrollTop diretto sul container (column-reverse: 0 = fondo) per evitare
+  // che scrollIntoView faccia scorrere l'intera pagina su mobile
   const chatContainerRef = useRef(null);
   useEffect(() => {
     const container = chatContainerRef.current;
@@ -75,9 +77,15 @@ export default function ChatGeneralePage() {
     // column-reverse: scrollTop 0 = fondo; valori negativi = scrollato verso l'alto
     const isNearBottom = Math.abs(container.scrollTop) < 80;
     if (isNearBottom) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      container.scrollTop = 0;
     }
   }, [messages]);
+
+  // Quando si cambia tab, riporta la pagina sul tab switcher
+  // così l'utente può continuare a scegliere la tab senza essere "spinto" in basso
+  useEffect(() => {
+    tabBarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [tab]);
 
   // Invio messaggio
   const handleSend = async (e) => {
@@ -140,6 +148,7 @@ export default function ChatGeneralePage() {
       {/* Tab switcher */}
       <motion.div
         {...entrata(0.05)}
+        ref={tabBarRef}
         className="glass-panel"
         style={{
           display: 'flex',
@@ -197,9 +206,8 @@ export default function ChatGeneralePage() {
           ) : (
             <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', height: 'min(600px, 75vh)' }}>
               {/* Lista messaggi */}
-              <div
-                ref={chatContainerRef}
-                style={{
+                <div ref={chatContainerRef}
+                  style={{
                   flex: 1,
                   overflowY: 'auto',
                   padding: '1rem',
@@ -208,7 +216,6 @@ export default function ChatGeneralePage() {
                   gap: '0.6rem',
                 }}
               >
-                <div ref={messagesEndRef} />
                 {messages.length === 0 && (
                   <p style={{ textAlign: 'center', opacity: 0.5, margin: 'auto' }}>
                     Nessun messaggio ancora. Scrivi il primo!
