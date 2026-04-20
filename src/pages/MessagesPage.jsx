@@ -2116,13 +2116,19 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
   const decifraMessaggio = useCallback(async (rawMsg) => {
     const msg = normalizzaMessaggio(rawMsg);
     if (msg.eliminato) return { ...msg, testoDecifrato: null, _twitchUser: twitchUser };
-    if (msg.testoDecifrato !== undefined && msg.mediaDecifrato !== undefined) return { ...msg, _twitchUser: twitchUser };
+    /* Se non c'è nulla da decifrare (testo già pronto e nessun media pendente) → ritorna subito */
+    const testoGiaPronto = msg.testoDecifrato !== undefined;
+    const mediaGiaPronto = !msg.mediaId || (msg.mediaDecifrato != null);
+    if (testoGiaPronto && mediaGiaPronto) return { ...msg, _twitchUser: twitchUser };
     try {
       const aesKey = await ottieniAesKey();
-      let testoDecifrato = '';
-      try {
-        testoDecifrato = await decryptMessage(aesKey, msg.encrypted, msg.iv);
-      } catch { testoDecifrato = msg.tipoMedia ? '' : '[Impossibile decifrare]'; }
+      let testoDecifrato = msg.testoDecifrato;
+      /* Decifra il testo solo se non è già stato fornito dal chiamante (es. invio ottimistico) */
+      if (!testoGiaPronto) {
+        try {
+          testoDecifrato = await decryptMessage(aesKey, msg.encrypted, msg.iv);
+        } catch { testoDecifrato = msg.tipoMedia ? '' : '[Impossibile decifrare]'; }
+      }
 
       /* Decifra nome file se presente */
       let nomeFile = msg.nomeFile || '';
