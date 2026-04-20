@@ -374,3 +374,68 @@ export async function deleteLocalKeys(username) {
     deleteFromIDB(`publicKeyString:${username}`).catch(() => {}),
   ]);
 }
+
+/* ─── Backup file cifrato con password (PBKDF2 + AES-GCM) ─── */
+
+/**
+ * Esporta la chiave privata identity cifrandola con una password via PBKDF2.
+ * Ritorna una stringa JSON pronta per il download come file .json.
+ * Compatibile con qualsiasi cloud (iCloud Drive, Google Drive, ecc.).
+ */
+export async function exportKeyToEncryptedFile(privateKey, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv   = crypto.getRandomValues(new Uint8Array(12));
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']
+  );
+  const aesKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 200000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt']
+  );
+  const jwk    = await crypto.subtle.exportKey('jwk', privateKey);
+  const plain  = new TextEncoder().encode(JSON.stringify(jwk));
+  const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, plain);
+  return JSON.stringify({
+    v:         1,
+    salt:      btoa(String.fromCharCode(...salt)),
+    iv:        btoa(String.fromCharCode(...iv)),
+    encrypted: btoa(String.fromCharCode(...new Uint8Array(cipher))),
+  });
+}
+
+/**
+ * Importa e decifra una chiave privata da un file di backup.
+ * Lancia un errore leggibile se la password è errata o il file è corrotto.
+ */
+export async function importKeyFromEncryptedFile(fileContent, password) {
+  let parsed;
+  try { parsed = JSON.parse(fileContent); } catch { throw new Error('File backup non valido.'); }
+  const { v, salt, iv, encrypted } = parsed;
+  if (v !== 1 || !salt || !iv || !encrypted) throw new Error('Formato backup non riconosciuto.');
+  const saltBytes   = Uint8Array.from(atob(salt),      c => c.charCodeAt(0));
+  const ivBytes     = Uint8Array.from(atob(iv),        c => c.charCodeAt(0));
+  const cipherBytes = Uint8Array.from(atob(encrypted), c => c.charCodeAt(0));
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']
+  );
+  const aesKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: saltBytes, iterations: 200000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['decrypt']
+  );
+  let plain;
+  try {
+    plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: ivBytes }, aesKey, cipherBytes);
+  } catch {
+    throw new Error('Password errata o file corrotto.');
+  }
+  const jwk = JSON.parse(new TextDecoder().decode(plain));
+  return crypto.subtle.importKey(
+    'jwk', jwk, { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey']
+  );
+}
