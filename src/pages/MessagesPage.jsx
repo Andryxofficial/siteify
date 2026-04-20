@@ -1635,6 +1635,8 @@ function VoiceMessagePlayer({ src, durata }) {
 ═══════════════════════════════════════════════ */
 const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, onModifica, onElimina, onInoltra, onRispondi, reazioni, onReazione, renderTestoConEmote, onApriMedia }) {
   const [menuAperto, setMenuAperto] = useState(false);
+  /* Coordinate click destro (solo desktop) per posizionare il menu vicino al cursore */
+  const [posMenu, setPosMenu] = useState(null);
   const [mostraReazioni, setMostraReazioni] = useState(false);
   const menuRef = useRef(null);
   const reazioniRef = useRef(null);
@@ -1644,12 +1646,31 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
   useEffect(() => {
     if (!menuAperto && !mostraReazioni) return;
     const chiudi = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuAperto(false);
+      if (menuRef.current && !menuRef.current.contains(e.target)) { setMenuAperto(false); setPosMenu(null); }
       if (reazioniRef.current && !reazioniRef.current.contains(e.target)) setMostraReazioni(false);
     };
     document.addEventListener('pointerdown', chiudi);
     return () => document.removeEventListener('pointerdown', chiudi);
   }, [menuAperto, mostraReazioni]);
+
+  /* Calcola posizione finale del menu evitando di uscire dal viewport (solo desktop) */
+  const stileMenu = useMemo(() => {
+    if (!posMenu) return undefined;
+    const W_STIMATA = 180;
+    const H_STIMATA = 220;
+    const margine = 8;
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
+    const x = Math.min(posMenu.x, vw - W_STIMATA - margine);
+    const y = Math.min(posMenu.y, vh - H_STIMATA - margine);
+    return {
+      position: 'fixed',
+      top: Math.max(margine, y),
+      left: Math.max(margine, x),
+      right: 'auto',
+      bottom: 'auto',
+    };
+  }, [posMenu]);
 
   /* Long-press su mobile per aprire menu contestuale */
   useEffect(() => () => clearTimeout(longPressTimer.current), []);
@@ -1706,7 +1727,7 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
 
         <div
           className={`msg-bubble${mio ? ' msg-mine' : ' msg-theirs'}${raggruppato ? ' msg-bubble-grouped' : ''}`}
-          onContextMenu={e => { e.preventDefault(); setMenuAperto(true); }}
+          onContextMenu={e => { e.preventDefault(); setPosMenu({ x: e.clientX, y: e.clientY }); setMenuAperto(true); }}
           onDoubleClick={() => { if (!msg.eliminato) setMostraReazioni(true); }}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
@@ -1829,7 +1850,8 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                transition={{ type: 'spring', damping: 28, stiffness: 320 }}>
+                transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+                style={stileMenu}>
                 {/* Maniglia visiva su mobile */}
                 <div className="msg-context-handle" />
                 {!msg.eliminato && (
@@ -1874,9 +1896,24 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
 /* ═══════════════════════════════════════════════
    Pannello inoltra messaggio
 ═══════════════════════════════════════════════ */
+/* Converte un Uint8Array in base64 a blocchi (evita stack overflow su file grandi) */
+function bytesABase64(combinato) {
+  const parti = [];
+  const CHUNK = 8192;
+  for (let i = 0; i < combinato.length; i += CHUNK) {
+    const fetta = combinato.subarray(i, Math.min(i + CHUNK, combinato.length));
+    let s = '';
+    for (let j = 0; j < fetta.length; j++) s += String.fromCharCode(fetta[j]);
+    parti.push(s);
+  }
+  return btoa(parti.join(''));
+}
+
 function PannelloInoltra({ msg, twitchToken, twitchUser, privateKeyRef, onChiudi }) {
   const [conversazioni, setConversazioni] = useState([]);
   const [inviati, setInviati] = useState({});
+  const [inInvio, setInInvio] = useState({}); // { username: true } durante l'invio
+  const [errore, setErrore] = useState('');
   const [caricamento, setCaricamento] = useState(true);
 
   useEffect(() => {
@@ -1887,21 +1924,81 @@ function PannelloInoltra({ msg, twitchToken, twitchUser, privateKeyRef, onChiudi
   }, [twitchToken]);
 
   async function inoltraA(dest) {
-    if (inviati[dest]) return;
+    if (inviati[dest] || inInvio[dest]) return;
+    setErrore('');
+    setInInvio(prev => ({ ...prev, [dest]: true }));
     try {
+      /* Recupera la chiave pubblica del destinatario e deriva la chiave AES condivisa */
       const risposta = await fetch(`${API}?action=key&user=${dest}`);
       const dati = await risposta.json();
-      if (!dati.publicKey) return;
+      if (!dati.publicKey) throw new Error('Chiave del destinatario non disponibile');
       const pubKey = await importPublicKey(dati.publicKey);
       const aesKey = await deriveKey(privateKeyRef.current, pubKey);
-      const testo = msg.testoDecifrato || '';
-      const { encrypted, iv } = await encryptMessage(aesKey, `\u21aa ${testo}`);
-      await apiFetch(twitchToken, '', {
-        method: 'POST',
-        body: JSON.stringify({ action: 'send', to: dest, encrypted, iv }),
-      });
+
+      const testoOriginale = msg.testoDecifrato || '';
+      const haMedia = !!(msg.tipoMedia && msg.mediaDecifrato);
+
+      if (haMedia) {
+        /* Inoltro media: scarica blob → ri-cifra con nuova aesKey → ri-uploada → invia */
+        let blob;
+        try {
+          blob = await (await fetch(msg.mediaDecifrato)).blob();
+        } catch {
+          throw new Error('Impossibile leggere il media da inoltrare');
+        }
+        const buffer = await blob.arrayBuffer();
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, buffer);
+        const combinato = new Uint8Array(iv.byteLength + cipher.byteLength);
+        combinato.set(iv);
+        combinato.set(new Uint8Array(cipher), iv.byteLength);
+        const base64 = bytesABase64(combinato);
+
+        const nome = msg.nomeFile || 'file';
+        const uploadRis = await apiFetch(twitchToken, '', {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'upload_media',
+            to: dest,
+            data: base64,
+            mimeType: blob.type || 'application/octet-stream',
+            name: nome,
+          }),
+        });
+        if (!uploadRis?.mediaId) throw new Error('Upload del media non riuscito');
+
+        const { encrypted: encNome, iv: ivNome } = await encryptMessage(aesKey, nome);
+        const { encrypted: encTesto, iv: ivTesto } = await encryptMessage(aesKey, testoOriginale);
+        await apiFetch(twitchToken, '', {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'send', to: dest,
+            encrypted: encTesto, iv: ivTesto,
+            tipoMedia: msg.tipoMedia, mediaId: uploadRis.mediaId,
+            nomeFile: encNome, ivNome,
+            ...(msg.tipoMedia === 'voice' && typeof msg.durata === 'number' ? { durata: msg.durata } : {}),
+          }),
+        });
+      } else {
+        /* Inoltro testo semplice */
+        if (!testoOriginale.trim()) throw new Error('Nessun contenuto da inoltrare');
+        const { encrypted, iv } = await encryptMessage(aesKey, `\u21aa ${testoOriginale}`);
+        await apiFetch(twitchToken, '', {
+          method: 'POST',
+          body: JSON.stringify({ action: 'send', to: dest, encrypted, iv }),
+        });
+      }
+
       setInviati(prev => ({ ...prev, [dest]: true }));
-    } catch { /* ignora */ }
+    } catch (e) {
+      setErrore(`Inoltro a ${dest} fallito: ${e.message || 'errore sconosciuto'}`);
+    } finally {
+      setInInvio(prev => {
+        const nuovo = { ...prev };
+        delete nuovo[dest];
+        return nuovo;
+      });
+    }
   }
 
   return (
@@ -1923,19 +2020,38 @@ function PannelloInoltra({ msg, twitchToken, twitchUser, privateKeyRef, onChiudi
             {msg.testoDecifrato || '[media]'}
           </p>
         </div>
+        {errore && (
+          <div style={{
+            background: 'rgba(239,68,68,0.12)',
+            border: '1px solid rgba(239,68,68,0.3)',
+            color: '#fca5a5',
+            padding: '0.5rem 0.7rem',
+            borderRadius: 8,
+            fontSize: '0.78rem',
+            marginBottom: 8,
+          }}>
+            {errore}
+          </div>
+        )}
         {caricamento ? (
           <div style={{ textAlign: 'center', padding: '1rem' }}><Loader size={18} className="spin" /></div>
         ) : (
           <div className="msg-forward-list">
-            {conversazioni.filter(c => c.user !== twitchUser).map(c => (
-              <button key={c.user}
-                className={`msg-forward-friend${inviati[c.user] ? ' msg-forward-sent' : ''}`}
-                onClick={() => inoltraA(c.user)}>
-                <div className="msg-avatar msg-avatar-sm">{c.user[0]?.toUpperCase()}</div>
-                <span>{c.user}</span>
-                {inviati[c.user] && <Check size={14} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
-              </button>
-            ))}
+            {conversazioni.filter(c => c.user !== twitchUser).map(c => {
+              const inCorso = !!inInvio[c.user];
+              const fatto = !!inviati[c.user];
+              return (
+                <button key={c.user}
+                  className={`msg-forward-friend${fatto ? ' msg-forward-sent' : ''}`}
+                  disabled={inCorso || fatto}
+                  onClick={() => inoltraA(c.user)}>
+                  <div className="msg-avatar msg-avatar-sm">{c.user[0]?.toUpperCase()}</div>
+                  <span>{c.user}</span>
+                  {inCorso && <Loader size={14} className="spin" style={{ marginLeft: 'auto', color: 'var(--text-faint)' }} />}
+                  {fatto && <Check size={14} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
+                </button>
+              );
+            })}
           </div>
         )}
       </motion.div>
