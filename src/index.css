@@ -55,6 +55,7 @@
   /* Layout */
   --tab-bar-offset: 72px; /* mobile tab bar total height + breathing room */
   --tab-bar-offset-pwa: 80px; /* PWA standalone: extra room for taller safe area */
+  --chrome-top: 90px; /* spazio in alto occupato dalla navbar (desktop) */
 
   /* Transitions */
   --ease-spring:  cubic-bezier(0.22, 0.68, 0.35, 1);
@@ -764,6 +765,11 @@ body::before {
    ═══════════════════════════════════════════════════ */
 
 @media (max-width: 640px) {
+  /* Ridefinisce --chrome-top per mobile browser (navbar fixed top:16px + altezza ~60px) */
+  :root {
+    --chrome-top: 76px;
+  }
+
   .app-container {
     padding-top: 76px;
     padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
@@ -1437,10 +1443,37 @@ nav.navbar-container.glass-panel {
 /* ── Standalone PWA: remove extra top spacing (no browser chrome) ── */
 .pwa-standalone {
   padding-top: calc(60px + env(safe-area-inset-top, 0px));
+  /* Sovrascrive --chrome-top con valore adattivo alla safe area del device */
+  --chrome-top: calc(60px + env(safe-area-inset-top, 0px));
 }
 
 .pwa-standalone .navbar-container {
   top: calc(env(safe-area-inset-top, 8px) + 4px);
+}
+
+/* ── PWA: esperienza da app nativa ── */
+
+/* Footer: non esiste nelle app, solo nel sito web */
+.pwa-standalone .footer {
+  display: none;
+}
+
+/* Nessun bounce di sfondo oltre i bordi dell'app */
+.pwa-standalone html,
+.pwa-standalone body {
+  overscroll-behavior: none;
+}
+
+/* Background esteso a tutta la safe-area (nessuna striscia bianca attorno al notch) */
+.pwa-standalone body {
+  background-attachment: local; /* su PWA fixed causa jank su iOS */
+}
+
+/* Scroll fluido con momentum su tutti i contenitori scrollabili */
+.pwa-standalone .msg-scroll-area,
+.pwa-standalone [style*="overflow-y: auto"],
+.pwa-standalone [style*="overflowY: auto"] {
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── Touch behavior: prevent accidental text selection and callouts ── */
@@ -3918,10 +3951,18 @@ img.msg-avatar {
   .msg-media-content { max-width: 220px; max-height: 220px; }
   .msg-main-panel {
     padding: 0 !important;
-    margin: 0 -0.75rem;  /* compensa il padding dell'app-container */
+    margin: 0 -0.75rem;
     width: calc(100% + 1.5rem);
-    /* 66px = altezza tab bar mobile + safe-area */
-    height: calc(100dvh - 66px);
+    /*
+     * Altezza adattiva — usa CSS variables definite una volta sola:
+     *   --chrome-top     = spazio navbar (76px browser / calc(60px + safe-area) PWA)
+     *   --tab-bar-offset = altezza tab bar (72px)
+     *   env(safe-area-inset-bottom) = home indicator / bordo curvo del device
+     * Nessun numero magico: se cambiano i design token, questo si aggiorna da solo.
+     * dvh si ridimensiona quando la tastiera virtuale si apre (iOS 15.4+, Android).
+     */
+    height: calc(100vh - var(--chrome-top) - var(--tab-bar-offset) - env(safe-area-inset-bottom, 0px));
+    height: calc(100dvh - var(--chrome-top) - var(--tab-bar-offset) - env(safe-area-inset-bottom, 0px));
     min-height: 300px;
     border-radius: 0;
   }
@@ -3944,6 +3985,7 @@ img.msg-avatar {
   .msg-scroll-area {
     contain: layout style;
     padding: 0.5rem 0.6rem;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Bolle: maxWidth più generoso su mobile (meno margine laterale) */
@@ -3992,10 +4034,10 @@ img.msg-avatar {
     gap: 0.5rem;
   }
 
-  /* Input form: padding ridotto su mobile */
+  /* Input form: padding ridotto su mobile.
+   * NON aggiunge safe-area-inset-bottom qui — è già sottratta nell'altezza del panel. */
   .msg-input-form {
     padding: 0.4rem 0.6rem 0.5rem;
-    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
   }
 }
 

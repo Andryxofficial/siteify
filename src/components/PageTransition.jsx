@@ -1,16 +1,16 @@
 import { motion } from 'framer-motion';
 
 const variants = {
-  initial:  { opacity: 0, y: 16, scale: 0.99 },
-  animate:  { opacity: 1, y: 0,  scale: 1 },
-  exit:     { opacity: 0, y: -10, scale: 0.99 },
+  initial:  { opacity: 0, y: 8, scale: 0.995 },
+  animate:  { opacity: 1, y: 0, scale: 1 },
+  exit:     { opacity: 0, y: -4, scale: 1.002 },
 };
 
 const transition = {
   type: 'spring',
-  stiffness: 260,
-  damping: 28,
-  mass: 0.8,
+  stiffness: 420,
+  damping: 36,
+  mass: 0.6,
 };
 
 /**
