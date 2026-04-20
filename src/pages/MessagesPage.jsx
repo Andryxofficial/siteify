@@ -2328,7 +2328,10 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
             )}
             {messaggiConMeta.map(({ msg, separatoreData, raggruppato, cambioMittente }) => (
               <div key={msg.id} data-msg-id={msg.id}
-                className={`${risultatiCerca.includes(msg.id) && risultatiCerca[indiceCerca] === msg.id ? 'msg-search-highlight' : ''}${cambioMittente ? ' msg-sender-change' : ''}`}>
+                className={[
+                  risultatiCerca.includes(msg.id) && risultatiCerca[indiceCerca] === msg.id && 'msg-search-highlight',
+                  cambioMittente && 'msg-sender-change',
+                ].filter(Boolean).join(' ') || undefined}>
                 {separatoreData && (
                   <div className="msg-date-separator"><span>{separatoreData}</span></div>
                 )}

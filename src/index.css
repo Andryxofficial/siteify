@@ -2924,6 +2924,7 @@ body {
   padding: 0 !important;
   width: 100%;
   max-width: 900px;
+  /* 100px = ~60px navbar + ~40px padding top dell'app-container */
   height: calc(100dvh - 100px);
   min-height: 420px;
   display: flex;
@@ -3914,6 +3915,7 @@ img.msg-avatar {
   .msg-media-content { max-width: 220px; max-height: 220px; }
   .msg-main-panel {
     padding: 0 !important;
+    /* 66px = altezza tab bar mobile + safe-area */
     height: calc(100dvh - 66px);
     min-height: 300px;
     border-radius: 0;
