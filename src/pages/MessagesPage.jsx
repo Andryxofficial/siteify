@@ -14,7 +14,7 @@ import {
   Lock, Send, ArrowLeft, ArrowDown, MessageSquare, Users, LogIn, Loader, Shield,
   Clock, AlertTriangle, Pencil, Trash2, X, Plus, Image as ImageIcon, Check, RefreshCw,
   Bell, KeyRound, ChevronDown, Search, Fingerprint, Key, Copy, CornerUpRight,
-  Smartphone, QrCode, RotateCcw,
+  Smartphone, QrCode, RotateCcw, Download, Upload, ShieldAlert,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
@@ -40,6 +40,8 @@ import {
   deleteSyncEphemeralPair,
   encryptIdentityKeyForSync,
   decryptIdentityKeyFromSync,
+  exportKeyToEncryptedFile,
+  importKeyFromEncryptedFile,
 } from '../utils/e2eKeys';
 
 
@@ -106,8 +108,15 @@ function SpinnerCentrale({ testo = 'Caricamento…' }) {
 function FaseSetupPrimo({ username, token, onComplete }) {
   const [stato, setStato] = useState('generazione');
   const [errore, setErrore] = useState('');
-  const passkeyDisponibile = isPasskeyPRFAvailable();
+  const [passkeyDispo, setPasskeyDispo] = useState(false);
+  const [pwdBackup, setPwdBackup] = useState('');
+  const [fileScaricat, setFileScaricat] = useState(false);
+  const [scaricandoFile, setScaricandoFile] = useState(false);
   const privKeyTmpRef = useRef(null);
+
+  useEffect(() => {
+    isPasskeyPRFAvailable().then(setPasskeyDispo).catch(() => {});
+  }, []);
 
   useEffect(() => {
     let annullato = false;
@@ -116,12 +125,7 @@ function FaseSetupPrimo({ username, token, onComplete }) {
         const { privateKey } = await generateAndRegisterNewKeys(username, token);
         if (annullato) return;
         privKeyTmpRef.current = privateKey;
-        if (passkeyDisponibile) {
-          setStato('passkey');
-        } else {
-          setStato('fine');
-          onComplete(privateKey);
-        }
+        setStato('backup');
       } catch (e) {
         if (!annullato) setErrore(`Errore nella generazione chiavi: ${e.message}`);
       }
@@ -131,7 +135,7 @@ function FaseSetupPrimo({ username, token, onComplete }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function creaBackupPasskey() {
+  async function salvaInPortachiavi() {
     const privKey = privKeyTmpRef.current;
     if (!privKey) return;
     try {
@@ -142,22 +146,40 @@ function FaseSetupPrimo({ username, token, onComplete }) {
         method: 'POST',
         body: JSON.stringify({ action: 'save_passkey_backup', credentialId, encryptedPrivateKey, iv, publicKey: pubKeyStr }),
       });
-      privKeyTmpRef.current = null;
-      setStato('fine');
-      onComplete(privKey);
-    } catch (e) {
-      if (e.message !== 'PRF_NOT_SUPPORTED') setErrore(`Errore backup passkey: ${e.message}`);
       const pk = privKeyTmpRef.current;
       privKeyTmpRef.current = null;
-      setStato('fine');
       onComplete(pk);
+    } catch (e) {
+      if (e.message !== 'PRF_NOT_SUPPORTED') setErrore(`Errore salvataggio portachiavi: ${e.message}`);
+      setStato('backup');
     }
   }
 
-  function saltaPasskey() {
+  async function scaricaBackupFile() {
+    const privKey = privKeyTmpRef.current;
+    if (!privKey || !pwdBackup) return;
+    setScaricandoFile(true);
+    setErrore('');
+    try {
+      const contenuto = await exportKeyToEncryptedFile(privKey, pwdBackup);
+      const blob = new Blob([contenuto], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `andryx-backup-${username}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setFileScaricat(true);
+    } catch (e) {
+      setErrore(`Errore download: ${e.message}`);
+    } finally {
+      setScaricandoFile(false);
+    }
+  }
+
+  function completa() {
     const privKey = privKeyTmpRef.current;
     privKeyTmpRef.current = null;
-    setStato('fine');
     onComplete(privKey);
   }
 
@@ -169,37 +191,67 @@ function FaseSetupPrimo({ username, token, onComplete }) {
       style={{ maxWidth: 480, margin: '40px auto', padding: '2rem', textAlign: 'center' }}
     >
       <Shield size={40} style={{ color: 'var(--primary)', marginBottom: 16 }} />
-      <h2 style={{ marginBottom: 8 }}>Primo dispositivo</h2>
+      <h2 style={{ marginBottom: 8 }}>Proteggi la tua chiave</h2>
       <p style={{ color: 'var(--text-faint)', marginBottom: 24, fontSize: '0.9rem' }}>
-        Stiamo generando le tue chiavi di crittografia E2E. Questo avviene solo sul tuo dispositivo.
+        Le tue chiavi E2E sono pronte. Scegli come salvarle in modo sicuro prima di continuare.
       </p>
       {errore && (
         <div className="msg-error-banner" style={{ marginBottom: 16 }}>
           <AlertTriangle size={16} /> {errore}
         </div>
       )}
-      {(stato === 'generazione' || stato === 'fine') && (
+      {stato === 'generazione' && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--text-faint)' }}>
           <Loader size={18} className="spin" />
-          <span>{stato === 'fine' ? 'Fatto!' : 'Generazione chiavi in corso…'}</span>
+          <span>Generazione chiavi in corso…</span>
         </div>
       )}
-      {stato === 'passkey' && (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16, color: 'var(--accent)' }}>
-            <Fingerprint size={22} />
-            <span style={{ fontWeight: 600 }}>Backup con Passkey</span>
-          </div>
-          <p style={{ color: 'var(--text-faint)', fontSize: '0.85rem', marginBottom: 20 }}>
-            Vuoi proteggere la tua chiave privata con una Passkey (Face ID / impronta)?
-            Potrai ripristinarla su altri dispositivi senza codice di sincronizzazione.
+      {stato === 'backup' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left' }}>
+          {passkeyDispo && (
+            <>
+              <button
+                className="msg-method-btn"
+                style={{ border: '1px solid rgba(var(--primary-rgb, 99,102,241),0.6)', color: 'var(--primary)' }}
+                onClick={salvaInPortachiavi}>
+                <Fingerprint size={18} /> Salva nel Portachiavi — iCloud / Google
+              </button>
+              <p style={{ color: 'var(--text-faint)', fontSize: '0.78rem', margin: '-4px 0 4px 2px' }}>
+                La chiave viene cifrata e sincronizzata automaticamente su tutti i tuoi dispositivi tramite iCloud Keychain o Google Password Manager. Opzione consigliata.
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-faint)', fontSize: '0.78rem', margin: '4px 0' }}>
+                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.1)' }} />
+                oppure salva un backup file
+                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.1)' }} />
+              </div>
+            </>
+          )}
+          <p style={{ color: 'var(--text-faint)', fontSize: '0.82rem', margin: 0 }}>
+            Scarica un file JSON cifrato da password e conservalo su iCloud Drive, Google Drive o in un posto sicuro. Utile come copia extra o se non hai il Portachiavi.
           </p>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-            <button className="btn btn-primary" onClick={creaBackupPasskey}>
-              <Fingerprint size={16} /> Crea backup passkey
+          <input
+            className="mod-input"
+            type="password"
+            placeholder="Imposta password per il backup file…"
+            value={pwdBackup}
+            onChange={e => { setPwdBackup(e.target.value); setFileScaricat(false); }}
+            onKeyDown={e => e.key === 'Enter' && pwdBackup && scaricaBackupFile()}
+          />
+          <button className="btn btn-ghost" disabled={!pwdBackup || scaricandoFile} onClick={scaricaBackupFile}>
+            {scaricandoFile ? <Loader size={16} className="spin" /> : <Download size={16} />}
+            {fileScaricat ? '✓ Scaricato — scarica di nuovo' : 'Scarica backup file'}
+          </button>
+          {fileScaricat && (
+            <button className="btn btn-primary" onClick={completa}>
+              <Check size={16} /> Continua
             </button>
-            <button className="btn btn-ghost" onClick={saltaPasskey}>Salta</button>
-          </div>
+          )}
+          <button
+            className="btn btn-ghost"
+            style={{ fontSize: '0.78rem', color: 'var(--text-faint)', marginTop: 4 }}
+            onClick={completa}>
+            Salta (non consigliato)
+          </button>
         </div>
       )}
     </motion.div>
@@ -215,7 +267,9 @@ function FaseSetupJoiner({ username, token, onComplete }) {
   const [stato, setStato] = useState('attesa');
   const [errore, setErrore] = useState('');
   const [haBackup, setHaBackup] = useState(false);
-  const passkeyDisponibile = isPasskeyPRFAvailable();
+  const [passkeyDispo, setPasskeyDispo] = useState(false);
+  const [fileBackupContent, setFileBackupContent] = useState(null);
+  const [pwdImport, setPwdImport] = useState('');
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const pollTimerRef = useRef(null);
@@ -225,6 +279,7 @@ function FaseSetupJoiner({ username, token, onComplete }) {
       .then(r => r.json())
       .then(d => setHaBackup(!!d.hasBackup))
       .catch(() => {});
+    isPasskeyPRFAvailable().then(setPasskeyDispo).catch(() => {});
   }, [username]);
 
   useEffect(() => {
@@ -329,7 +384,7 @@ function FaseSetupJoiner({ username, token, onComplete }) {
     scansiona();
   }
 
-  async function ripristinaDaPasskey() {
+  async function ripristinaDaPortachiavi() {
     setMetodo('passkey');
     setStato('caricamento');
     try {
@@ -339,7 +394,36 @@ function FaseSetupJoiner({ username, token, onComplete }) {
       setStato('ok');
       setTimeout(() => onComplete(privKey), 600);
     } catch (e) {
-      setErrore(`Errore ripristino passkey: ${e.message}`);
+      setErrore(`Errore ripristino portachiavi: ${e.message}`);
+      setStato('errore');
+    }
+  }
+
+  async function ripristinaDaFile() {
+    if (!fileBackupContent || !pwdImport) return;
+    setStato('caricamento');
+    setErrore('');
+    try {
+      const privKey   = await importKeyFromEncryptedFile(fileBackupContent, pwdImport);
+      const pubKeyStr = await estraiChiavePubblica(privKey);
+      await saveAndRegisterKeyPair(username, token, privKey, pubKeyStr);
+      setStato('ok');
+      setTimeout(() => onComplete(privKey), 600);
+    } catch (e) {
+      setErrore(e.message);
+      setStato('errore');
+    }
+  }
+
+  async function creaNuovaChiave() {
+    setStato('caricamento');
+    setErrore('');
+    try {
+      const { privateKey } = await generateAndRegisterNewKeys(username, token);
+      setStato('ok');
+      setTimeout(() => onComplete(privateKey), 600);
+    } catch (e) {
+      setErrore(`Errore nella generazione chiavi: ${e.message}`);
       setStato('errore');
     }
   }
@@ -350,6 +434,8 @@ function FaseSetupJoiner({ username, token, onComplete }) {
     setMetodo(null);
     setErrore('');
     setStato('attesa');
+    setFileBackupContent(null);
+    setPwdImport('');
   }
 
   /* ─── Selezione metodo ─── */
@@ -360,21 +446,118 @@ function FaseSetupJoiner({ username, token, onComplete }) {
         <Key size={40} style={{ color: 'var(--accent)', marginBottom: 16 }} />
         <h2 style={{ marginBottom: 8 }}>Aggiungi questo dispositivo</h2>
         <p style={{ color: 'var(--text-faint)', marginBottom: 28, fontSize: '0.9rem' }}>
-          Le tue chiavi esistono già. Scegli come sincronizzarle su questo dispositivo.
+          Le tue chiavi esistono già. Scegli come ripristinarle su questo dispositivo.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {haBackup && passkeyDispo && (
+            <button
+              className="msg-method-btn"
+              style={{ border: '1px solid rgba(var(--primary-rgb, 99,102,241),0.6)', color: 'var(--primary)' }}
+              onClick={ripristinaDaPortachiavi}>
+              <Fingerprint size={18} /> Portachiavi — iCloud / Google
+            </button>
+          )}
+          <button className="msg-method-btn" onClick={() => setMetodo('file')}>
+            <Upload size={18} /> Importa da backup file
+          </button>
           <button className="msg-method-btn" onClick={() => setMetodo('codice')}>
             <KeyRound size={18} /> Inserisci codice di sincronizzazione
           </button>
           <button className="msg-method-btn" onClick={avviaScansione}>
             <QrCode size={18} /> Scansiona QR code
           </button>
-          {haBackup && passkeyDisponibile && (
-            <button className="msg-method-btn" onClick={ripristinaDaPasskey}>
-              <Fingerprint size={18} /> Ripristina con Passkey
-            </button>
-          )}
+          <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
+          <button
+            className="msg-method-btn"
+            style={{ color: '#f87171', borderColor: 'rgba(248,113,113,0.2)' }}
+            onClick={() => setMetodo('nuova-chiave')}>
+            <ShieldAlert size={18} /> Crea nuova chiave (perdita totale)
+          </button>
         </div>
+      </motion.div>
+    );
+  }
+
+  /* ─── Metodo portachiavi ─── */
+  if (metodo === 'passkey') {
+    return (
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        className="glass-panel" style={{ maxWidth: 420, margin: '40px auto', padding: '2rem', textAlign: 'center' }}>
+        {stato === 'caricamento' && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+            <Loader size={32} className="spin" style={{ color: 'var(--primary)' }} />
+            <p style={{ color: 'var(--text-faint)' }}>Verifica portachiavi in corso…</p>
+          </div>
+        )}
+        {stato === 'ok' && (
+          <div style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+            <Check size={24} /> Ripristino completato!
+          </div>
+        )}
+        {stato === 'errore' && (
+          <>
+            <div className="msg-error-banner" style={{ marginBottom: 16 }}><AlertTriangle size={14} /> {errore}</div>
+            <button className="btn btn-ghost" onClick={tornaIndietro}><ArrowLeft size={16} /> Indietro</button>
+          </>
+        )}
+      </motion.div>
+    );
+  }
+
+  /* ─── Metodo file backup ─── */
+  if (metodo === 'file') {
+    return (
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        className="glass-panel" style={{ maxWidth: 420, margin: '40px auto', padding: '2rem' }}>
+        <button className="btn btn-ghost" style={{ marginBottom: 16 }} onClick={tornaIndietro}>
+          <ArrowLeft size={16} /> Indietro
+        </button>
+        <h3 style={{ marginBottom: 8 }}>
+          <Upload size={18} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+          Importa backup file
+        </h3>
+        <p style={{ color: 'var(--text-faint)', fontSize: '0.85rem', marginBottom: 16 }}>
+          Seleziona il file <code>.json</code> salvato in precedenza (iCloud Drive, Google Drive, ecc.) e inserisci la password con cui è stato protetto.
+        </p>
+        {errore && <div className="msg-error-banner" style={{ marginBottom: 12 }}><AlertTriangle size={14} /> {errore}</div>}
+        {stato === 'ok' ? (
+          <div style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+            <Check size={20} /> Chiave ripristinata!
+          </div>
+        ) : (
+          <>
+            <label
+              className="btn btn-ghost"
+              style={{ width: '100%', justifyContent: 'center', marginBottom: 10, cursor: 'pointer' }}>
+              <Upload size={16} />
+              {fileBackupContent ? '✓ File caricato — cambia file' : 'Seleziona file backup (.json)'}
+              <input type="file" accept=".json,application/json" style={{ display: 'none' }}
+                onChange={e => {
+                  const f = e.target.files[0];
+                  if (!f) return;
+                  const reader = new FileReader();
+                  reader.onload = ev => { setFileBackupContent(ev.target.result); setErrore(''); };
+                  reader.readAsText(f);
+                  e.target.value = '';
+                }} />
+            </label>
+            <input
+              className="mod-input"
+              type="password"
+              placeholder="Password del backup…"
+              value={pwdImport}
+              onChange={e => setPwdImport(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && fileBackupContent && pwdImport && ripristinaDaFile()}
+              style={{ marginBottom: 12 }}
+            />
+            <button className="btn btn-primary" style={{ width: '100%' }}
+              disabled={!fileBackupContent || !pwdImport || stato === 'caricamento'}
+              onClick={ripristinaDaFile}>
+              {stato === 'caricamento' ? <Loader size={16} className="spin" /> : <Lock size={16} />}
+              Ripristina chiave
+            </button>
+          </>
+        )}
       </motion.div>
     );
   }
@@ -450,29 +633,42 @@ function FaseSetupJoiner({ username, token, onComplete }) {
     );
   }
 
-  /* ─── Metodo passkey ─── */
-  return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-      className="glass-panel" style={{ maxWidth: 420, margin: '40px auto', padding: '2rem', textAlign: 'center' }}>
-      {stato === 'caricamento' && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-          <Loader size={32} className="spin" style={{ color: 'var(--primary)' }} />
-          <p style={{ color: 'var(--text-faint)' }}>Verifica passkey in corso…</p>
-        </div>
-      )}
-      {stato === 'ok' && (
-        <div style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-          <Check size={24} /> Ripristino completato!
-        </div>
-      )}
-      {stato === 'errore' && (
-        <>
-          <div className="msg-error-banner" style={{ marginBottom: 16 }}><AlertTriangle size={14} /> {errore}</div>
-          <button className="btn btn-ghost" onClick={tornaIndietro}><ArrowLeft size={16} /> Indietro</button>
-        </>
-      )}
-    </motion.div>
-  );
+  /* ─── Metodo nuova chiave (perdita totale) ─── */
+  if (metodo === 'nuova-chiave') {
+    return (
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        className="glass-panel" style={{ maxWidth: 420, margin: '40px auto', padding: '2rem', textAlign: 'center' }}>
+        <button className="btn btn-ghost" style={{ marginBottom: 16 }} onClick={tornaIndietro}>
+          <ArrowLeft size={16} /> Indietro
+        </button>
+        <ShieldAlert size={40} style={{ color: '#f87171', marginBottom: 12 }} />
+        <h3 style={{ marginBottom: 8 }}>Crea nuova chiave</h3>
+        <p style={{ color: 'var(--text-faint)', fontSize: '0.85rem', marginBottom: 8 }}>
+          Usa questa opzione <strong>solo se hai perso sia il dispositivo che il backup</strong>.
+        </p>
+        <p style={{ color: '#f87171', fontSize: '0.82rem', marginBottom: 20 }}>
+          ⚠️ I messaggi precedenti non saranno più leggibili. Questa azione è irreversibile.
+        </p>
+        {errore && <div className="msg-error-banner" style={{ marginBottom: 12 }}><AlertTriangle size={14} /> {errore}</div>}
+        {stato === 'ok' ? (
+          <div style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+            <Check size={20} /> Nuova chiave creata!
+          </div>
+        ) : (
+          <button
+            className="btn btn-primary"
+            style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+            disabled={stato === 'caricamento'}
+            onClick={creaNuovaChiave}>
+            {stato === 'caricamento' ? <Loader size={16} className="spin" /> : <ShieldAlert size={16} />}
+            Confermo, crea nuova chiave
+          </button>
+        )}
+      </motion.div>
+    );
+  }
+
+  return null;
 }
 
 /* ═══════════════════════════════════════════════
