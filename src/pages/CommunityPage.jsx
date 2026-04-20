@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
+import useIsMod from '../hooks/useIsMod';
 import BottoneAggiungiAmico from '../components/BottoneAggiungiAmico';
 import SEO from '../components/SEO';
 
@@ -658,6 +659,7 @@ function Classifica() {
 export default function CommunityPage() {
   const { isLoggedIn, twitchUser, twitchToken, clientId, getTwitchLoginUrl } = useTwitchAuth();
   const { supportato: notificheSupportate, attivo: notificheAttive, attiva: attivaNotifiche, disattiva: disattivaNotifiche } = useNotifiche();
+  const isMod = useIsMod();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [posts, setPosts] = useState([]);
@@ -812,10 +814,15 @@ export default function CommunityPage() {
             <Lock size={18} />
             <span>Messaggi</span>
           </Link>
-          <Link to="/mod-panel" className="social-quick-link glass-card">
-            <Shield size={18} />
-            <span>Mod Panel</span>
-          </Link>
+          {/* Mod Panel — visibile solo a chi è effettivamente moderatore del canale.
+              Stile "premium" con bordo viola Twitch e iconcina scintilla. */}
+          {isMod === true && (
+            <Link to="/mod-panel" className="social-quick-link glass-card social-quick-link-mod">
+              <Shield size={18} />
+              <span>Mod Panel</span>
+              <span className="mod-link-sparkle" aria-hidden="true">✦</span>
+            </Link>
+          )}
         </motion.div>
       )}
 

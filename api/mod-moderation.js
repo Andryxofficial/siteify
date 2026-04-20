@@ -55,6 +55,12 @@ export default async function handler(req, res) {
           twitchUser.token, twitchUser.clientId);
         return res.status(200).json({ users: data.data || [] });
       }
+      if (action === 'chat_settings') {
+        const data = await helixGet('chat/settings',
+          { broadcaster_id: broadcasterId, moderator_id: modId },
+          twitchUser.token, twitchUser.clientId);
+        return res.status(200).json({ settings: data.data?.[0] || null });
+      }
       return res.status(400).json({ error: 'Azione GET non riconosciuta.' });
     } catch (e) {
       return res.status(500).json({ error: e.message });
@@ -133,6 +139,32 @@ export default async function handler(req, res) {
         const data = await helixGet('users', { login: login.toLowerCase() }, twitchUser.token, twitchUser.clientId);
         const user = data.data?.[0] || null;
         return res.status(200).json({ user });
+      }
+
+      /* ─── CHAT SETTINGS ─── */
+      // Body: { settings: { slow_mode, slow_mode_wait_time, follower_mode,
+      //                     follower_mode_duration, subscriber_mode,
+      //                     emote_mode, unique_chat_mode, non_moderator_chat_delay,
+      //                     non_moderator_chat_delay_duration } }
+      if (action === 'chat_settings') {
+        const allowed = [
+          'slow_mode', 'slow_mode_wait_time',
+          'follower_mode', 'follower_mode_duration',
+          'subscriber_mode', 'emote_mode', 'unique_chat_mode',
+          'non_moderator_chat_delay', 'non_moderator_chat_delay_duration',
+        ];
+        const settings = body.settings || {};
+        const patch = {};
+        for (const k of allowed) {
+          if (k in settings && settings[k] !== undefined && settings[k] !== null) {
+            patch[k] = settings[k];
+          }
+        }
+        if (!Object.keys(patch).length) return res.status(400).json({ error: 'Nessuna impostazione da aggiornare.' });
+        const data = await helixRequest('PATCH',
+          `chat/settings?broadcaster_id=${broadcasterId}&moderator_id=${modId}`,
+          patch, twitchUser.token, twitchUser.clientId);
+        return res.status(200).json({ ok: true, settings: data?.data?.[0] || null });
       }
 
       return res.status(400).json({ error: `Azione non riconosciuta: ${action}` });

@@ -30,7 +30,7 @@ function buildTwitchLoginUrl(returnPath) {
   return (
     `https://id.twitch.tv/oauth2/authorize?client_id=${CHIAVETWITCH}` +
     `&redirect_uri=${encodeURIComponent(redirect)}` +
-    `&response_type=token&scope=user:read:email+moderation:read+channel:manage:broadcast+channel:read:subscriptions+channel:read:vips+channel:manage:polls+channel:manage:predictions+channel:manage:schedule+moderator:manage:banned_users+moderator:manage:chat_messages+moderator:manage:automod+moderator:manage:shoutouts+moderator:read:followers`
+    `&response_type=token&scope=user:read:email+moderation:read+channel:manage:broadcast+channel:read:subscriptions+channel:read:vips+channel:manage:vips+channel:manage:moderators+channel:manage:polls+channel:manage:predictions+channel:manage:schedule+channel:manage:raids+channel:edit:commercial+channel:read:redemptions+channel:manage:redemptions+moderator:manage:banned_users+moderator:manage:chat_messages+moderator:manage:chat_settings+moderator:manage:automod+moderator:manage:shoutouts+moderator:read:followers`
   );
 }
 
