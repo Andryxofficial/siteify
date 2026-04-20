@@ -156,7 +156,9 @@ export default function GamePage() {
     if (!canvasRef.current) return;
 
     /* Pre-carica il modulo gioco del mese corrente */
-    loadGameModule(currentMonth).then(mod => { gameModuleRef.current = mod; });
+    loadGameModule(currentMonth)
+      .then(mod => { gameModuleRef.current = mod; })
+      .catch(() => { /* pre-caricamento fallito, verrà riprovato in startGame */ });
 
     startGameRef.current = async () => {
       setScore(0);
@@ -165,8 +167,13 @@ export default function GamePage() {
       setSubmitMsg('');
 
       /* Se non ancora caricato, carica ora */
-      if (!gameModuleRef.current) {
-        gameModuleRef.current = await loadGameModule(currentMonth);
+      try {
+        if (!gameModuleRef.current) {
+          gameModuleRef.current = await loadGameModule(currentMonth);
+        }
+      } catch {
+        setSubmitMsg('Errore nel caricamento del gioco. Controlla la connessione e riprova.');
+        return;
       }
 
       const cleanup = gameModuleRef.current.createGame(canvasRef.current, {
