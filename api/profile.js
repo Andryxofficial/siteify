@@ -66,6 +66,8 @@ async function validateTwitch(authHeader) {
     }
   } catch { /* best effort */ }
 
+  // Restituisce login, avatar e displayName del richiedente + clientId e token
+  // per permettere il lookup del profilo Twitch dell'utente target (GET handler).
   return { login: data.login, avatar, displayName, clientId, token };
 }
 

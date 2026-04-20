@@ -36,8 +36,8 @@ import {
 
 const API_URL = '/api/messages';
 const FRIENDS_API = '/api/friends';
-const POLL_MS_ATTIVO    = 1500;   // polling ogni 1.5s quando la tab è visibile
-const POLL_MS_NASCOSTO  = 6000;   // polling ogni 6s quando la tab è nascosta
+const POLLING_ATTIVO_MS    = 1500;   // polling ogni 1.5s quando la tab è visibile
+const POLLING_NASCOSTO_MS  = 6000;   // polling ogni 6s quando la tab è nascosta
 const MAX_FILE_BYTES    = 8_000_000;
 const LONG_PRESS_MS     = 450;
 const DERIVE_RETRY_MS   = 600;
@@ -1063,19 +1063,19 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
 
       /* Schedula il prossimo poll */
       if (mountedRef.current) {
-        const delay = document.hidden ? POLL_MS_NASCOSTO : POLL_MS_ATTIVO;
+        const delay = document.hidden ? POLLING_NASCOSTO_MS : POLLING_ATTIVO_MS;
         pollTimerRef.current = setTimeout(eseguiPoll, delay);
       }
     };
 
     /* Primo poll dopo un breve delay */
-    pollTimerRef.current = setTimeout(eseguiPoll, POLL_MS_ATTIVO);
+    pollTimerRef.current = setTimeout(eseguiPoll, POLLING_ATTIVO_MS);
 
     /* Al cambio visibilità rischedula subito */
     const onVisibilityChange = () => {
       clearTimeout(pollTimerRef.current);
       if (mountedRef.current) {
-        pollTimerRef.current = setTimeout(eseguiPoll, document.hidden ? POLL_MS_NASCOSTO : 200);
+        pollTimerRef.current = setTimeout(eseguiPoll, document.hidden ? POLLING_NASCOSTO_MS : 200);
       }
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
@@ -1218,7 +1218,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
 
   /* ── Touch: long press + context menu ── */
   const onMsgPointerDown = (msgId) => { longPressRef.current = setTimeout(() => setMenuMsgId(msgId), LONG_PRESS_MS); };
-  const onMsgPointerUp = () => { if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; } };
+  const onMsgPointerUp = () => { clearTimeout(longPressRef.current); longPressRef.current = null; };
   const openMsgMenu = (msgId) => { clearTimeout(longPressRef.current); longPressRef.current = null; setMenuMsgId(msgId); };
 
   /* ── Copia negli appunti ── */
