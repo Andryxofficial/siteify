@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence, useMotionValue, animate as fmAnimate } from 'framer-motion';
 import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon, MessageSquare as MessaggiIcon, MessageCircle as MessageCircleIcon, Settings as SettingsIcon } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 import useScrollHeader from '../hooks/useScrollHeader';
@@ -49,33 +49,154 @@ function useNonLetti() {
 }
 
 /* ─────────────────────────────────────────────────────────
-   MOBILE BOTTOM TAB BAR  (iOS-style, liquid glass)
+   MOBILE BOTTOM TAB BAR  (iOS 26-style, liquid glass)
    ─────────────────────────────────────────────────────────
-   Pill uses declarative `animate` prop with % positioning —
-   no DOM measurements, no imperative animate(), works on
-   framer-motion v10/11/12.
+   Bolla vetro trascinabile — l'utente può fare swipe
+   orizzontale per spostarsi fra le sezioni.
+
+   Prestazioni: useMotionValue → 0 re-render React durante
+   il drag. Tutto gira sul compositor GPU (translateX/scale).
+   Pan rilevato sul container (tap normali passano ai Link).
    ───────────────────────────────────────────────────────── */
 function MobileTabBar({ activePath, haNonLetti }) {
+  const navigate    = useNavigate();
   const activeIdx   = MOBILE_LINKS.findIndex(l => l.path === activePath);
-  const tabWidthPct = 100 / MOBILE_LINKS.length;
+  const count       = MOBILE_LINKS.length;
+  const tabWidthPct = 100 / count;
+  const itemsRef    = useRef(null);
+
+  /* Ref stabili per evitare chiusure stantie nei gestori pan */
+  const isDraggingRef = useRef(false);
+  const prevSnapRef   = useRef(activeIdx);
+  const activeIdxRef  = useRef(activeIdx);
+  activeIdxRef.current = activeIdx;
+
+  /* ── Motion values — nessun re-render, 60fps ── */
+  const pillX     = useMotionValue(0);
+  const pillScale = useMotionValue(1);
+
+  const getTabWidth = useCallback(() => {
+    const el = itemsRef.current;
+    return el ? el.offsetWidth / count : 0;
+  }, [count]);
+
+  /* Posizione iniziale (sincrono, prima del paint) */
+  useLayoutEffect(() => {
+    const tw = getTabWidth();
+    if (tw > 0) pillX.jump(activeIdx * tw);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* Anima al tab attivo quando cambia (tap o navigazione) */
+  useEffect(() => {
+    if (isDraggingRef.current) return;
+    const tw = getTabWidth();
+    if (tw > 0) {
+      fmAnimate(pillX, activeIdx * tw, {
+        type: 'spring', stiffness: 420, damping: 34, mass: 0.9,
+      });
+    }
+  }, [activeIdx, getTabWidth, pillX]);
+
+  /* Ricalcola posizione su resize / orientamento */
+  useEffect(() => {
+    const handler = () => {
+      if (isDraggingRef.current) return;
+      const el = itemsRef.current;
+      if (!el) return;
+      const tw = el.offsetWidth / count;
+      if (tw > 0) pillX.jump(activeIdxRef.current * tw);
+    };
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, [count, pillX]);
+
+  /* ── Gestori pan — trascinamento bolla vetro ── */
+  const handlePanStart = useCallback(() => {
+    isDraggingRef.current = true;
+    prevSnapRef.current = activeIdxRef.current;
+    fmAnimate(pillScale, 1.04, { type: 'spring', stiffness: 400, damping: 22 });
+  }, [pillScale]);
+
+  const handlePan = useCallback((_, info) => {
+    if (!isDraggingRef.current) return;
+    const tw = getTabWidth();
+    if (!tw) return;
+
+    const ai   = activeIdxRef.current;
+    const baseX = ai * tw;
+    const minX  = 0;
+    const maxX  = (count - 1) * tw;
+    let targetX = baseX + info.offset.x;
+
+    /* Elasticità ai bordi (20%) — sensazione Apple */
+    if (targetX < minX) targetX = minX + (targetX - minX) * 0.2;
+    else if (targetX > maxX) targetX = maxX + (targetX - maxX) * 0.2;
+
+    pillX.set(targetX);
+
+    /* Feedback aptico al passaggio di confine tab */
+    const clampedX = Math.max(minX, Math.min(maxX, baseX + info.offset.x));
+    const center   = clampedX + tw / 2;
+    let idx = Math.floor(center / tw);
+    idx = Math.max(0, Math.min(count - 1, idx));
+    if (idx !== prevSnapRef.current) {
+      hapticLight();
+      prevSnapRef.current = idx;
+    }
+  }, [count, getTabWidth, pillX]);
+
+  const handlePanEnd = useCallback((_, info) => {
+    isDraggingRef.current = false;
+    fmAnimate(pillScale, 1, { type: 'spring', stiffness: 400, damping: 22 });
+
+    const tw = getTabWidth();
+    if (!tw) return;
+
+    const ai      = activeIdxRef.current;
+    const baseX   = ai * tw;
+    const clampedX = Math.max(0, Math.min((count - 1) * tw, baseX + info.offset.x));
+    const center   = clampedX + tw / 2;
+    let targetIdx  = Math.floor(center / tw);
+    targetIdx = Math.max(0, Math.min(count - 1, targetIdx));
+
+    /* Snap magnetico al tab più vicino */
+    fmAnimate(pillX, targetIdx * tw, {
+      type: 'spring', stiffness: 420, damping: 34, mass: 0.9,
+    });
+
+    if (targetIdx !== ai) {
+      hapticLight();
+      navigate(MOBILE_LINKS[targetIdx].path);
+    }
+  }, [count, getTabWidth, navigate, pillX, pillScale]);
 
   const handleTabClick = useCallback(() => {
     hapticLight();
   }, []);
 
   return (
-    <nav
-      className="mobile-tab-bar"
-      aria-label="Navigazione principale"
-    >
-      <div className="mobile-tab-items">
+    <nav className="mobile-tab-bar" aria-label="Navigazione principale">
+      {/* motion.div per rilevare il pan orizzontale; touch-action:pan-y
+          lascia lo scroll verticale al browser, cattura solo l'asse X */}
+      <motion.div
+        ref={itemsRef}
+        className="mobile-tab-items"
+        onPanStart={handlePanStart}
+        onPan={handlePan}
+        onPanEnd={handlePanEnd}
+        style={{ touchAction: 'pan-y' }}
+      >
 
-        {/* ── Sliding liquid glass pill ── */}
+        {/* ── Bolla liquid glass trascinabile ── */}
         {activeIdx >= 0 && (
           <motion.div
             className="mobile-tab-pill"
-            animate={{ left: `${activeIdx * tabWidthPct}%`, width: `${tabWidthPct}%` }}
-            transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
+            style={{
+              x: pillX,
+              scale: pillScale,
+              width: `${tabWidthPct}%`,
+            }}
           />
         )}
 
@@ -112,7 +233,7 @@ function MobileTabBar({ activePath, haNonLetti }) {
             </Link>
           );
         })}
-      </div>
+      </motion.div>
     </nav>
   );
 }
