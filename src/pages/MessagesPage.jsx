@@ -1572,16 +1572,15 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
   }, [reazioni, msg._twitchUser]);
 
   return (
-    <div className={`msg-wrapper${raggruppato ? ' msg-grouped' : ''}`}
-      style={{ justifyContent: mio ? 'flex-end' : 'flex-start' }}>
+    <div className={`msg-wrapper${mio ? ' msg-wrapper-mine' : ''}${raggruppato ? ' msg-grouped' : ''}`}>
       {!mio && !raggruppato && (
         <div className="msg-avatar msg-avatar-sm"
-          style={{ backgroundImage: msg.avatarMittente ? `url(${msg.avatarMittente})` : undefined }}>
+          style={{ backgroundImage: msg.avatarMittente ? `url(${msg.avatarMittente})` : undefined, flexShrink: 0 }}>
           {!msg.avatarMittente && (msg.da?.[0]?.toUpperCase() || '?')}
         </div>
       )}
-      {!mio && raggruppato && <div style={{ width: 28 }} />}
-      <div style={{ position: 'relative', maxWidth: '72%' }}>
+      {!mio && raggruppato && <div style={{ width: 28, flexShrink: 0 }} />}
+      <div style={{ position: 'relative', maxWidth: '72%', minWidth: 0 }}>
 
         {/* Citazione messaggio originale (reply) */}
         {msg.replyToId && msg.replyPreview && (
