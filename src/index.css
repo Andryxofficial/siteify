@@ -3607,6 +3607,262 @@ img.msg-avatar {
 .msg-toggle-on .msg-toggle-knob { transform: translateX(18px); }
 .msg-toggle:disabled { opacity: 0.4; cursor: default; }
 
+/* ── Indicatore di digitazione ── */
+.msg-typing-label {
+  font-size: 0.72rem;
+  color: var(--primary);
+  display: block;
+  line-height: 1.2;
+}
+.msg-typing-dots::after {
+  content: '';
+  animation: typingDots 1.2s steps(4, end) infinite;
+}
+@keyframes typingDots {
+  0%   { content: ''; }
+  25%  { content: '.'; }
+  50%  { content: '..'; }
+  75%  { content: '...'; }
+  100% { content: ''; }
+}
+
+/* ── Stato online ── */
+.msg-status-online {
+  font-size: 0.72rem;
+  color: #22c55e;
+  display: block;
+  line-height: 1.2;
+}
+.msg-online-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 2px solid var(--bg-dark, #08090E);
+  z-index: 2;
+}
+
+/* ── Online dot nella lista conversazioni ── */
+.msg-convo-online-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 2px solid var(--bg-dark, #08090E);
+  position: absolute;
+  bottom: 0;
+  right: 0;
+}
+
+/* ── Risposte (quote reply) ── */
+.msg-reply-quote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  margin-bottom: 2px;
+  border-radius: 10px;
+  background: rgba(120,87,255,0.08);
+  border-left: 3px solid var(--primary);
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  max-width: fit-content;
+  overflow: hidden;
+}
+.msg-reply-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+.msg-reply-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  background: rgba(120,87,255,0.08);
+  border-left: 3px solid var(--primary);
+  overflow: hidden;
+}
+
+/* ── Reazioni ── */
+.msg-reactions-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+  padding: 0 4px;
+}
+.msg-reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  color: var(--text-main);
+}
+.msg-reaction-pill:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.14);
+}
+.msg-reaction-mine {
+  background: rgba(120,87,255,0.15);
+  border-color: rgba(120,87,255,0.3);
+}
+.msg-reaction-mine:hover {
+  background: rgba(120,87,255,0.22);
+}
+.msg-reaction-count {
+  font-size: 0.68rem;
+  color: var(--text-faint);
+}
+.msg-reactions-picker {
+  position: absolute;
+  display: flex;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 20px;
+  background: var(--glass-bg-flat, rgba(16, 18, 32, 0.92));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--el-3);
+  backdrop-filter: blur(20px);
+  z-index: 45;
+}
+.msg-reaction-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 8px;
+  font-size: 1.15rem;
+  transition: background 0.15s, transform 0.1s;
+}
+.msg-reaction-btn:hover {
+  background: rgba(255,255,255,0.1);
+  transform: scale(1.2);
+}
+
+/* ── Messaggio vocale ── */
+.msg-voice-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 180px;
+  padding: 2px 0;
+}
+.msg-voice-play-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.15s, background 0.15s;
+}
+.msg-voice-play-btn:hover { transform: scale(1.08); }
+.msg-voice-track {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.12);
+  overflow: hidden;
+}
+.msg-voice-progress {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--primary);
+  transition: width 0.3s linear;
+}
+.msg-voice-duration {
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  min-width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.msg-voice-placeholder {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--text-faint);
+}
+.msg-voice-container {
+  min-width: 180px;
+}
+
+/* ── Pulsante microfono / registrazione ── */
+.msg-mic-btn {
+  background: rgba(255,255,255,0.08) !important;
+  color: var(--text-main) !important;
+}
+.msg-mic-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.14) !important;
+}
+.msg-recording-btn {
+  background: rgba(239,68,68,0.2) !important;
+  color: #ef4444 !important;
+  animation: recordPulse 1.5s ease-in-out infinite;
+}
+.msg-rec-timer {
+  font-size: 0.7rem;
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  background: rgba(239,68,68,0.9);
+  color: #fff;
+  padding: 0 4px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+@keyframes recordPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.3); }
+  50%      { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+}
+
+/* ── Ricerca nella chat ── */
+.msg-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--glass-border);
+  overflow: hidden;
+}
+.msg-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-main);
+  font-size: 0.85rem;
+  font-family: inherit;
+  min-width: 0;
+}
+.msg-search-input::placeholder { color: var(--text-faint); }
+.msg-search-highlight {
+  animation: searchFlash 1.2s ease-out;
+}
+@keyframes searchFlash {
+  0%   { background: rgba(120,87,255,0.2); }
+  100% { background: transparent; }
+}
+
 /* ── Mobile overrides ── */
 @media (max-width: 640px) {
   .msg-bubble { padding: 0.5rem 0.75rem; }
@@ -3640,6 +3896,16 @@ img.msg-avatar {
   .msg-send-btn {
     min-width: 40px;
     height: 40px;
+  }
+
+  /* Vocale: ridimensiona su mobile */
+  .msg-voice-player { min-width: 150px; }
+
+  /* Reazioni picker: centrato su mobile */
+  .msg-reactions-picker {
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%);
   }
 }
 
