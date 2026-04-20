@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
+import { useEmoteTwitch } from '../hooks/useEmoteTwitch';
+import EmotePicker from '../components/EmotePicker';
 import SEO from '../components/SEO';
 import {
   importPublicKey, deriveKey,
@@ -888,7 +890,7 @@ function ForwardFriendList({ twitchToken, onSelect, busy }) {
 /* ═══════════════════════════════════════
    CHAT VIEW
    ═══════════════════════════════════════ */
-function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, onBack, onResetE2E }) {
+function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, onBack, onResetE2E, emoteCanale, emoteGlobali, renderTestoConEmote }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -1249,7 +1251,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
                   style={{ cursor: msg.deleted ? 'default' : 'pointer' }}>
                   {msg.deleted ? <p className="msg-deleted-text">{'\u{1F5D1}'} Messaggio eliminato</p>
                     : msg.media ? <MediaBubble mediaId={msg.media.mediaId} mediaIv={msg.media.iv} mimeType={msg.media.mimeType} name={msg.media.name} aesKey={aesKey} twitchToken={twitchToken} />
-                    : <p className="msg-text">{msg.text}</p>}
+                    : <p className="msg-text">{renderTestoConEmote(msg.text)}</p>}
                   <span className="msg-time">{tempoMsg(msg.createdAt)}{msg.editedAt && <span className="msg-edited"> · mod.</span>}{isMine && !msg.deleted && <span className="msg-check"> ✓</span>}</span>
                 </div>
               </div>
@@ -1305,6 +1307,21 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
         <input ref={fileInputRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={handleFileSelect} />
         <button type="button" className="mod-icon-btn" title="Foto o video" style={{ flexShrink: 0, alignSelf: 'flex-end', marginBottom: '0.3rem' }}
           onClick={() => fileInputRef.current?.click()} disabled={!aesKey || mediaUploading || !!editingId}><ImageIcon size={18} /></button>
+        <div style={{ flexShrink: 0, alignSelf: 'flex-end', marginBottom: '0.3rem' }}>
+          <EmotePicker
+            emoteCanale={emoteCanale}
+            emoteGlobali={emoteGlobali}
+            onSelect={(nome) => {
+              if (editingId) {
+                setEditText(prev => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + nome + ' ');
+              } else {
+                setInput(prev => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + nome + ' ');
+              }
+              inputRef.current?.focus();
+            }}
+            disabled={!aesKey || mediaUploading}
+          />
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           {editingId && (
             <div className="msg-edit-label"><Pencil size={10} /> Modifica<button type="button" onClick={cancelEdit} className="msg-edit-cancel"><X size={11} /></button></div>
@@ -1336,6 +1353,7 @@ export default function MessagesPage() {
     skipE2ESetup,
     getE2EBackupInfo,
   } = useTwitchAuth();
+  const { emoteCanale, emoteGlobali, renderTestoConEmote } = useEmoteTwitch(twitchToken);
   const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1505,7 +1523,7 @@ export default function MessagesPage() {
           <AnimatePresence mode="wait">
             {activeChat ? (
               <motion.div key="chat" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} style={{ height: '100%' }}>
-                <ChatView withUser={activeChat} twitchUser={twitchUser} twitchToken={twitchToken} privateKeyRef={privateKeyRef} e2eReady={ready} onBack={goBack} onResetE2E={resetE2E} />
+                <ChatView withUser={activeChat} twitchUser={twitchUser} twitchToken={twitchToken} privateKeyRef={privateKeyRef} e2eReady={ready} onBack={goBack} onResetE2E={resetE2E} emoteCanale={emoteCanale} emoteGlobali={emoteGlobali} renderTestoConEmote={renderTestoConEmote} />
               </motion.div>
             ) : showFriendPicker ? (
               <motion.div key="picker" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>

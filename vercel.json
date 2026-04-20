@@ -39,6 +39,10 @@
     "api/profile.js": {
       "memory": 128,
       "maxDuration": 10
+    },
+    "api/emotes.js": {
+      "memory": 128,
+      "maxDuration": 10
     }
   },
   "headers": [

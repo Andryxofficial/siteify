@@ -3716,3 +3716,16 @@ body {
 .game-layout > .glass-panel {
   contain: style;
 }
+
+/* ═══════════════════════════════════════════
+   Emote Twitch — stili inline e animazioni
+   ═══════════════════════════════════════════ */
+
+.emote-inline {
+  display: inline-block;
+  vertical-align: middle;
+  width: 24px;
+  height: 24px;
+  margin: -2px 1px;
+  object-fit: contain;
+}
