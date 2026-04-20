@@ -828,7 +828,7 @@ body::before {
 
   /* Nasconde la top-navbar su mobile: la tab bar in basso gestisce la navigazione */
   .navbar-container {
-    display: none !important;
+    display: none;
   }
 
   .app-container {
