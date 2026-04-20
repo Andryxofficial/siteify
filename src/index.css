@@ -53,7 +53,7 @@
   --r-full: 9999px;
 
   /* Layout */
-  --tab-bar-offset: 72px; /* mobile tab bar total height + breathing room */
+  --tab-bar-offset: 73px; /* mobile tab bar total height + breathing room */
   --tab-bar-offset-pwa: 80px; /* PWA standalone: extra room for taller safe area */
   --chrome-top: 90px; /* spazio in alto occupato dalla navbar (desktop) */
 
@@ -772,7 +772,7 @@ body::before {
 
   .app-container {
     padding-top: 76px;
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(73px + 2 * env(safe-area-inset-bottom, 0px));
   }
 
   /* PWA standalone: navbar si sposta in basso di env(safe-area-inset-top),
@@ -3955,15 +3955,15 @@ img.msg-avatar {
     /*
      * Altezza adattiva — usa CSS variables definite una volta sola:
      *   --chrome-top     = spazio navbar (76px browser / calc(60px + safe-area) PWA)
-     *   --tab-bar-offset = altezza tab bar (72px)
-     *   env(safe-area-inset-bottom) = home indicator / bordo curvo del device
-     * Nessun numero magico: se cambiano i design token, questo si aggiorna da solo.
+     *   --tab-bar-offset = altezza tab bar (73px)
+     *   env(safe-area-inset-bottom) sottratto 2×: una volta per il padding-bottom
+     *   della tab bar e una volta per il margin-bottom (che include safe-area).
      * dvh si ridimensiona quando la tastiera virtuale si apre (iOS 15.4+, Android).
      * @supports fallback: vh per browser senza dvh (molto rari nel 2024+).
      */
-    height: calc(100vh - var(--chrome-top) - var(--tab-bar-offset) - env(safe-area-inset-bottom, 0px));
+    height: calc(100vh - var(--chrome-top) - var(--tab-bar-offset) - 2 * env(safe-area-inset-bottom, 0px));
     @supports (height: 1dvh) {
-      height: calc(100dvh - var(--chrome-top) - var(--tab-bar-offset) - env(safe-area-inset-bottom, 0px));
+      height: calc(100dvh - var(--chrome-top) - var(--tab-bar-offset) - 2 * env(safe-area-inset-bottom, 0px));
     }
     min-height: 300px;
     border-radius: 0;
@@ -4056,9 +4056,9 @@ img.msg-avatar {
 
 @media (max-width: 640px) {
   .chat-sito-panel {
-    height: calc(100vh - var(--chrome-top) - var(--tab-bar-offset) - env(safe-area-inset-bottom, 0px) - 175px);
+    height: calc(100vh - var(--chrome-top) - var(--tab-bar-offset) - 2 * env(safe-area-inset-bottom, 0px) - 175px);
     @supports (height: 1dvh) {
-      height: calc(100dvh - var(--chrome-top) - var(--tab-bar-offset) - env(safe-area-inset-bottom, 0px) - 175px);
+      height: calc(100dvh - var(--chrome-top) - var(--tab-bar-offset) - 2 * env(safe-area-inset-bottom, 0px) - 175px);
     }
     min-height: 320px;
   }
