@@ -2919,29 +2919,45 @@ body {
    E2E MESSAGES — FULL MESSAGING APP STYLES
    ═══════════════════════════════════════ */
 
-/* ── Main panel ── */
+/* ── Main panel — riempie lo schermo ── */
 .msg-main-panel {
-  padding: 0.75rem !important;
+  padding: 0 !important;
+  width: 100%;
+  max-width: 900px;
+  /* 100px = ~60px navbar + ~40px padding top dell'app-container */
+  height: calc(100dvh - 100px);
   min-height: 420px;
   display: flex;
   flex-direction: column;
+  background: none;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* ── Chat container (fills panel) ── */
 .msg-chat-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 400px;
+  flex: 1;
+  min-height: 0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-panel, 24px);
+  overflow: hidden;
 }
 
 .msg-chat-header {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.5rem 0;
+  padding: 0.65rem 1rem;
   border-bottom: 1px solid var(--glass-border);
   flex-shrink: 0;
+  background: rgba(255,255,255,0.02);
 }
 
 /* ── Scroll area ── */
@@ -2950,11 +2966,12 @@ body {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.75rem 0;
+  gap: 0.15rem;
+  padding: 0.75rem 0.85rem;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.1) transparent;
   position: relative;
+  min-height: 0;
 }
 .msg-scroll-area::-webkit-scrollbar { width: 4px; }
 .msg-scroll-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
@@ -2964,9 +2981,23 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
+  padding: 0.1rem 0;
 }
 .msg-wrapper.msg-grouped {
-  margin-top: -0.15rem;
+  margin-top: -0.1rem;
+}
+/* Extra spacing quando cambia il mittente */
+.msg-sender-change {
+  margin-top: 0.6rem;
+}
+/* Etichetta nome mittente sopra il primo messaggio del gruppo */
+.msg-sender-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 2px;
+  padding-left: 2px;
+  opacity: 0.85;
 }
 
 /* ── Bubbles — adapt to content, never truncate ── */
@@ -2980,24 +3011,30 @@ body {
   max-width: 100%;
   -webkit-user-select: none;
   user-select: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  transition: box-shadow 0.15s;
+}
+.msg-bubble:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
 .msg-mine {
   align-self: flex-end;
-  background: linear-gradient(135deg, rgba(120,87,255,0.35), rgba(168,85,247,0.20));
-  border: 1px solid rgba(120,87,255,0.28);
-  border-bottom-right-radius: 4px;
+  background: linear-gradient(135deg, rgba(99,102,241,0.38), rgba(139,92,246,0.22));
+  border: 1px solid rgba(99,102,241,0.22);
+  border-bottom-right-radius: 6px;
+  color: var(--text-main);
 }
 
 .msg-theirs {
   align-self: flex-start;
-  background: var(--surface-1, rgba(255,255,255,0.07));
-  border: 1px solid var(--glass-border);
-  border-bottom-left-radius: 4px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.09), rgba(255,255,255,0.04));
+  border: 1px solid rgba(255,255,255,0.10);
+  border-bottom-left-radius: 6px;
 }
 
-.msg-bubble-grouped.msg-mine { border-top-right-radius: 8px; }
-.msg-bubble-grouped.msg-theirs { border-top-left-radius: 8px; }
+.msg-bubble-grouped.msg-mine { border-top-right-radius: 6px; }
+.msg-bubble-grouped.msg-theirs { border-top-left-radius: 6px; }
 
 /* ── Text — readable, never truncated ── */
 .msg-text {
@@ -3033,15 +3070,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.75rem 0 0.25rem;
+  padding: 1rem 0 0.4rem;
 }
 .msg-date-separator span {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   color: var(--text-faint);
-  background: var(--surface-1, rgba(255,255,255,0.06));
-  padding: 0.15rem 0.75rem;
+  background: rgba(255,255,255,0.06);
+  padding: 0.2rem 0.85rem;
   border-radius: var(--r-full);
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(8px);
 }
 
 /* ── Scroll-to-bottom button ── */
@@ -3067,11 +3107,12 @@ body {
 /* ── Input form ── */
 .msg-input-form {
   display: flex;
-  align-items: flex-end;
-  gap: 0.4rem;
-  padding: 0.5rem 0 0;
+  flex-direction: column;
+  gap: 0;
+  padding: 0.5rem 0.85rem 0.65rem;
   border-top: 1px solid var(--glass-border);
   flex-shrink: 0;
+  background: rgba(255,255,255,0.02);
 }
 
 .msg-textarea {
@@ -3872,9 +3913,20 @@ img.msg-avatar {
   .msg-text { font-size: 0.9rem; }
   .msg-wrapper .msg-hover-actions { display: none; }
   .msg-media-content { max-width: 220px; max-height: 220px; }
-  .msg-main-panel { padding: 0.5rem !important; min-height: 360px; }
+  .msg-main-panel {
+    padding: 0 !important;
+    /* 66px = altezza tab bar mobile + safe-area */
+    height: calc(100dvh - 66px);
+    min-height: 300px;
+    border-radius: 0;
+  }
+  .msg-chat-container {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    min-height: 0;
+  }
   .msg-scroll-btn { bottom: 70px; right: 10px; }
-  .msg-chat-container { min-height: 350px; }
   .social-media-video { max-height: 220px; }
 
   /* Riduci padding conversazioni su mobile per massimizzare spazio chat */
@@ -3886,6 +3938,7 @@ img.msg-avatar {
   /* Chat scroll area: usa contain per migliorare il perf di scroll */
   .msg-scroll-area {
     contain: layout style;
+    padding: 0.5rem 0.6rem;
   }
 
   /* Ingrandisci input su mobile per touch più comodo */
@@ -3909,6 +3962,13 @@ img.msg-avatar {
     left: 50% !important;
     right: auto !important;
     transform: translateX(-50%);
+  }
+
+  /* Lista conversazioni full-height su mobile */
+  .msg-main-panel > .glass-panel {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
   }
 }
 
@@ -4113,7 +4173,9 @@ img.msg-avatar {
 }
 
 /* ── Glass panel: no contain:layout per i pannelli che usano position:sticky figli ── */
-.msg-main-panel,
+.msg-main-panel {
+  contain: none;
+}
 .game-layout > .glass-panel {
   contain: style;
 }
