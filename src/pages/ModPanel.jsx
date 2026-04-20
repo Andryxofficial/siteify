@@ -25,6 +25,7 @@ const SecEngagement  = lazy(() => import('./mod/Engagement'));
 const SecStats       = lazy(() => import('./mod/Stats'));
 const SecOverlays    = lazy(() => import('./mod/Overlays'));
 const SecSchedule    = lazy(() => import('./mod/Schedule'));
+const SecBot24h      = lazy(() => import('./mod/Bot24h'));
 
 const SEZIONI = [
   { id: 'overview',    label: 'Overview',     icon: LayoutDashboard, color: 'var(--primary)' },
@@ -35,6 +36,7 @@ const SEZIONI = [
   { id: 'stats',       label: 'Statistiche',  icon: TrendingUp,      color: 'var(--accent-spotify)' },
   { id: 'overlays',    label: 'Overlay OBS',  icon: Monitor,         color: 'var(--secondary)' },
   { id: 'schedule',    label: 'Schedule',     icon: Calendar,        color: 'var(--primary)' },
+  { id: 'bot24h',      label: 'Bot 24/7',     icon: Wifi,            color: 'var(--accent-spotify)' },
 ];
 
 function SkeletonSezione() {
@@ -63,7 +65,12 @@ function BotIndicator({ status, onToggle }) {
 
 export default function ModPanel() {
   const { twitchToken, twitchUser, twitchDisplay, twitchAvatar, isLoggedIn, loading, getTwitchLoginUrl } = useTwitchAuth();
-  const [sezione,    setSezione]    = useState('overview');
+  const [sezione,    setSezione]    = useState(() => {
+    // Leggi ?sezione= dalla callback OAuth del bot
+    const params = new URLSearchParams(window.location.search);
+    const s = params.get('sezione');
+    return (s && SEZIONI.find(x => x.id === s)) ? s : 'overview';
+  });
   const [isMod,      setIsMod]      = useState(null); // null=loading, true/false
   const [botStatus,  setBotStatus]  = useState('disconnected');
   const [broadcaster, setBroadcaster] = useState('');
@@ -182,6 +189,7 @@ export default function ModPanel() {
     stats:      SecStats,
     overlays:   SecOverlays,
     schedule:   SecSchedule,
+    bot24h:     SecBot24h,
   }[sezione] || SecOverview;
 
   const sezioneInfo = SEZIONI.find(s => s.id === sezione) || SEZIONI[0];

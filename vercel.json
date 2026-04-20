@@ -3,6 +3,14 @@
     {
       "path": "/api/mod-stats?action=snapshot",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/bot-timers",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/bot-refresh-token",
+      "schedule": "0 */3 * * *"
     }
   ],
   "functions": {
@@ -24,7 +32,13 @@
     "api/messages.js":       { "memory": 256, "maxDuration": 15 },
     "api/chat.js":           { "memory": 128, "maxDuration": 10 },
     "api/profile.js":        { "memory": 128, "maxDuration": 10 },
-    "api/emotes.js":         { "memory": 128, "maxDuration": 10 }
+    "api/emotes.js":         { "memory": 128, "maxDuration": 10 },
+    "api/bot-eventsub.js":       { "memory": 128, "maxDuration": 15 },
+    "api/bot-subscribe.js":      { "memory": 128, "maxDuration": 15 },
+    "api/bot-auth-callback.js":  { "memory": 128, "maxDuration": 10 },
+    "api/bot-status.js":         { "memory": 128, "maxDuration": 10 },
+    "api/bot-timers.js":         { "memory": 128, "maxDuration": 10 },
+    "api/bot-refresh-token.js":  { "memory": 128, "maxDuration": 10 }
   },
   "headers": [
     {

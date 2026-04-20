@@ -47,6 +47,7 @@ const MAX_RESPONSE = 500;
 const MAX_TIMER_NAME = 50;
 const MAX_TIMER_MSG = 500;
 const VALID_PERMISSIONS = ['everyone', 'subscriber', 'vip', 'mod'];
+const VALID_TIPI = ['comando', 'keyword'];
 
 function sanitize(str, maxLen) {
   if (typeof str !== 'string') return '';
@@ -316,6 +317,7 @@ export default async function handler(req, res) {
         const response = sanitize(req.body.response, MAX_RESPONSE);
         const cooldown = Math.max(0, Math.min(3600, parseInt(req.body.cooldown) || 0));
         const permission = VALID_PERMISSIONS.includes(req.body.permission) ? req.body.permission : 'everyone';
+        const tipo = VALID_TIPI.includes(req.body.tipo) ? req.body.tipo : 'comando';
 
         if (!trigger || trigger.length < 1) {
           return res.status(400).json({ error: 'Il trigger del comando è obbligatorio.' });
@@ -324,8 +326,8 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: 'La risposta del comando è obbligatoria.' });
         }
 
-        await redis.hset(COMMANDS_KEY, { [trigger]: JSON.stringify({ response, cooldown, permission }) });
-        return res.status(200).json({ ok: true, trigger, response, cooldown, permission });
+        await redis.hset(COMMANDS_KEY, { [trigger]: JSON.stringify({ response, cooldown, permission, tipo }) });
+        return res.status(200).json({ ok: true, trigger, response, cooldown, permission, tipo });
       }
 
       if (type === 'timer') {
