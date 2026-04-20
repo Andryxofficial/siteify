@@ -193,7 +193,7 @@ async function gestisciMessaggioChat(redis, event, broadcasterId) {
     },
   };
 
-  // 1. Comandi con !
+  // 1. Comandi con !  (solo se il messaggio inizia per !)
   if (testo.startsWith('!')) {
     const parti   = testo.slice(1).split(' ');
     const trigger = parti[0].toLowerCase();
@@ -201,7 +201,7 @@ async function gestisciMessaggioChat(redis, event, broadcasterId) {
     await eseguiComando({ trigger, args, ...argomentiInvio });
   }
 
-  // 2. Parole chiave naturali (sempre, indipendentemente da !)
+  // 2. Parole chiave naturali (per ogni messaggio, indipendentemente dal punto 1)
   await eseguiKeywords({ testo, ...argomentiInvio });
 }
 

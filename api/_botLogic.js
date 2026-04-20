@@ -85,8 +85,7 @@ async function caricaComandi(redis) {
  * @param {function} opts.invia      - async (testo: string) => void
  * @returns {Promise<boolean>} true se il comando è stato eseguito
  */
-export async function eseguiComando({ trigger, args, userPerms, userLogin, canale, redis, invia }) {
-  void userLogin; // non usato direttamente ma mantenuto per compatibilità futura
+export async function eseguiComando({ trigger, args, userPerms, canale, redis, invia }) {
   const { comandi, quotes, counters } = await caricaComandi(redis);
 
   // Comando built-in: !quote
@@ -151,8 +150,7 @@ export async function eseguiComando({ trigger, args, userPerms, userLogin, canal
  * @param {function} opts.invia      - async (testo: string) => void
  * @returns {Promise<boolean>} true se almeno una keyword ha risposto
  */
-export async function eseguiKeywords({ testo, userPerms, userLogin, canale, redis, invia }) {
-  void userLogin;
+export async function eseguiKeywords({ testo, userPerms, canale, redis, invia }) {
   const { keywords } = await caricaComandi(redis);
   if (!keywords.length) return false;
 

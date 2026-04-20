@@ -46,7 +46,7 @@ async function creaSubscription({ tipo, versione, condition, token }) {
   if (!res.ok) {
     const err = await res.text();
     // 409 = già esiste: non è un errore bloccante
-    if (res.status === 409) return {gia_esistente: true, tipo };
+    if (res.status === 409) return { giaEsistente: true, tipo };
     throw new Error(`Sottoscrizione ${tipo} fallita: ${res.status} — ${err}`);
   }
 

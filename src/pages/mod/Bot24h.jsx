@@ -19,13 +19,12 @@ import {
 import { useTwitchAuth } from '../../contexts/TwitchAuthContext';
 
 const CHIAVETWITCH = import.meta.env.VITE_CHIAVETWITCH;
-const APP_URL      = window.location.origin;
 
 /** Costruisce l'URL OAuth Twitch (authorization_code flow) per il bot. */
 function buildBotOAuthUrl(tipo) {
   const stateObj = { type: tipo, nonce: Math.random().toString(36).slice(2) };
   const state    = btoa(JSON.stringify(stateObj));
-  const redirect = `${APP_URL}/api/bot-auth-callback`;
+  const redirect = `${window.location.origin}/api/bot-auth-callback`;
   const scopes   = tipo === 'broadcaster'
     ? 'channel:bot'
     : 'user:bot user:write:chat user:read:chat';
@@ -72,8 +71,7 @@ function LogEntry({ entry }) {
 }
 
 export default function Bot24h({ token }) {
-  const { clientId } = useTwitchAuth();
-  void clientId; // usato tramite CHIAVETWITCH
+  useTwitchAuth(); // verifica che il provider sia montato
 
   const [stato,          setStato]          = useState(null);
   const [loading,        setLoading]        = useState(true);

@@ -278,7 +278,8 @@ export default function Chat({ token }) {
             </div>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '1rem', lineHeight: 1.5 }}>
               Il bot risponde quando la parola chiave viene menzionata in chat, <strong>senza bisogno del !</strong>.
-              Ad esempio se registri <code className="mod-trigger">sito</code>, risponderà ogni volta che qualcuno scrive "sito" nel messaggio.
+              La corrispondenza è case-insensitive e segue il confine di parola: <code className="mod-trigger">sito</code> risponde a
+              "visita il sito!" ma <em>non</em> a "visitositoweb". Cooldown e permessi funzionano come i comandi normali.
             </p>
             <AnimatePresence>
               {showKwForm && (
