@@ -105,6 +105,47 @@ async function copiaNeglAppunti(testo) {
   } catch { return false; }
 }
 
+/* ─── Normalizza campi messaggio API → formato UI italiano ─── */
+function normalizzaMessaggio(raw) {
+  return {
+    ...raw,
+    id: raw.id,
+    da: raw.from || raw.da || null,
+    a: raw.to || raw.a || null,
+    ts: raw.createdAt || raw.ts || 0,
+    eliminato: raw.deleted || raw.eliminato || false,
+    modificato: !!raw.editedAt || raw.modificato || false,
+  };
+}
+
+/* ─── Formatta timestamp relativo per lista conversazioni ─── */
+function formatOraRelativa(ts) {
+  if (!ts) return '';
+  const diff = Date.now() - ts;
+  if (diff < 60000) return 'adesso';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} min fa`;
+  const d = new Date(ts);
+  const oggi = new Date();
+  if (d.toDateString() === oggi.toDateString()) return formatOra(ts);
+  const ieri = new Date(oggi);
+  ieri.setDate(oggi.getDate() - 1);
+  if (d.toDateString() === ieri.toDateString()) return 'ieri';
+  return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+}
+
+/* ─── Cache globale chiavi AES per anteprime conversazioni ─── */
+const _aesKeyCache = new Map();
+async function ottieniAesKeyGlobale(privateKey, username) {
+  if (_aesKeyCache.has(username)) return _aesKeyCache.get(username);
+  const risposta = await fetch(`${API}?action=key&user=${username}`);
+  const dati = await risposta.json();
+  if (!dati.publicKey) return null;
+  const pubKey = await importPublicKey(dati.publicKey);
+  const aesKey = await deriveKey(privateKey, pubKey);
+  _aesKeyCache.set(username, aesKey);
+  return aesKey;
+}
+
 /* ═══════════════════════════════════════════════
    Spinner di caricamento
 ═══════════════════════════════════════════════ */
@@ -311,6 +352,10 @@ function FaseSetupJoiner({ username, token, onComplete }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const pollTimerRef = useRef(null);
+  const nuovaChiaveRef = useRef(null);
+  const [pwdBackupNuova, setPwdBackupNuova] = useState('');
+  const [fileScariNuova, setFileScariNuova] = useState(false);
+  const [scariNuovaFile, setScariNuovaFile] = useState(false);
 
   useEffect(() => {
     let annullato = false;
@@ -493,12 +538,78 @@ function FaseSetupJoiner({ username, token, onComplete }) {
     setErrore('');
     try {
       const { privateKey } = await generateAndRegisterNewKeys(username, token);
-      setStato('ok');
-      setTimeout(() => onComplete(privateKey), 600);
+      nuovaChiaveRef.current = privateKey;
+      /* ── Tenta salvataggio automatico nel portachiavi ── */
+      if (passkeyDispo) {
+        try {
+          const { credentialId, encryptedPrivateKey, iv } = await createPasskeyAndEncryptKey(username, privateKey);
+          const pubKeyStr = await estraiChiavePubblica(privateKey);
+          await apiFetch(token, '', {
+            method: 'POST',
+            body: JSON.stringify({ action: 'save_passkey_backup', credentialId, encryptedPrivateKey, iv, publicKey: pubKeyStr }),
+          });
+          nuovaChiaveRef.current = null;
+          setStato('ok');
+          setTimeout(() => onComplete(privateKey), 600);
+          return;
+        } catch (e) {
+          if (e?.message !== 'PRF_NOT_SUPPORTED') console.warn('Auto-passkey salvataggio fallito:', e);
+        }
+      }
+      setMetodo('nuova-chiave-backup');
+      setStato('backup');
     } catch (e) {
       setErrore(`Errore nella generazione chiavi: ${e.message}`);
       setStato('errore');
     }
+  }
+
+  async function salvaPortachiaviNuova() {
+    const privKey = nuovaChiaveRef.current;
+    if (!privKey) return;
+    try {
+      setStato('caricamento');
+      const { credentialId, encryptedPrivateKey, iv } = await createPasskeyAndEncryptKey(username, privKey);
+      const pubKeyStr = await estraiChiavePubblica(privKey);
+      await apiFetch(token, '', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'save_passkey_backup', credentialId, encryptedPrivateKey, iv, publicKey: pubKeyStr }),
+      });
+      const pk = nuovaChiaveRef.current;
+      nuovaChiaveRef.current = null;
+      onComplete(pk);
+    } catch (e) {
+      if (e.message !== 'PRF_NOT_SUPPORTED') setErrore(`Errore salvataggio portachiavi: ${e.message}`);
+      setStato('backup');
+    }
+  }
+
+  async function scaricaFileNuova() {
+    const privKey = nuovaChiaveRef.current;
+    if (!privKey || !pwdBackupNuova) return;
+    setScariNuovaFile(true);
+    setErrore('');
+    try {
+      const contenuto = await exportKeyToEncryptedFile(privKey, pwdBackupNuova);
+      const blob = new Blob([contenuto], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `andryx-backup-${username}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setFileScariNuova(true);
+    } catch (e) {
+      setErrore(`Errore download: ${e.message}`);
+    } finally {
+      setScariNuovaFile(false);
+    }
+  }
+
+  function completaNuovaChiave() {
+    const pk = nuovaChiaveRef.current;
+    nuovaChiaveRef.current = null;
+    onComplete(pk);
   }
 
   function tornaIndietro() {
@@ -741,12 +852,80 @@ function FaseSetupJoiner({ username, token, onComplete }) {
     );
   }
 
+  /* ─── Backup dopo creazione nuova chiave ─── */
+  if (metodo === 'nuova-chiave-backup') {
+    return (
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        className="glass-panel" style={{ maxWidth: 480, margin: '40px auto', padding: '2rem', textAlign: 'center' }}>
+        <Shield size={40} style={{ color: 'var(--primary)', marginBottom: 16 }} />
+        <h2 style={{ marginBottom: 8 }}>Proteggi la tua nuova chiave</h2>
+        <p style={{ color: 'var(--text-faint)', marginBottom: 24, fontSize: '0.9rem' }}>
+          Nuova chiave creata. Salva un backup prima di continuare per non perderla.
+        </p>
+        {errore && (
+          <div className="msg-error-banner" style={{ marginBottom: 16 }}>
+            <AlertTriangle size={16} /> {errore}
+          </div>
+        )}
+        {stato === 'caricamento' ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--text-faint)' }}>
+            <Loader size={18} className="spin" />
+            <span>Salvataggio in corso…</span>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left' }}>
+            {passkeyDispo && (
+              <>
+                <button
+                  className="msg-method-btn"
+                  style={{ border: '1px solid rgba(var(--primary-rgb, 99,102,241),0.6)', color: 'var(--primary)' }}
+                  onClick={salvaPortachiaviNuova}>
+                  <Fingerprint size={18} /> Salva nel Portachiavi — iCloud / Google
+                </button>
+                <p style={{ color: 'var(--text-faint)', fontSize: '0.78rem', margin: '-4px 0 4px 2px' }}>
+                  La chiave viene cifrata e sincronizzata automaticamente su tutti i tuoi dispositivi.
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-faint)', fontSize: '0.78rem', margin: '4px 0' }}>
+                  <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.1)' }} />
+                  oppure salva un backup file
+                  <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.1)' }} />
+                </div>
+              </>
+            )}
+            <p style={{ color: 'var(--text-faint)', fontSize: '0.82rem', margin: 0 }}>
+              Scarica un file JSON cifrato da conservare su iCloud Drive, Google Drive o in un posto sicuro.
+            </p>
+            <input
+              className="mod-input"
+              type="password"
+              placeholder="Imposta password per il backup file…"
+              value={pwdBackupNuova}
+              onChange={e => { setPwdBackupNuova(e.target.value); setFileScariNuova(false); }}
+              onKeyDown={e => e.key === 'Enter' && pwdBackupNuova && scaricaFileNuova()}
+            />
+            <button className="btn btn-ghost" disabled={!pwdBackupNuova || scariNuovaFile} onClick={scaricaFileNuova}>
+              {scariNuovaFile ? <Loader size={16} className="spin" /> : <Download size={16} />}
+              {fileScariNuova ? '✓ Scaricato — scarica di nuovo' : 'Scarica backup file'}
+            </button>
+            {fileScariNuova && (
+              <button className="btn btn-primary" onClick={completaNuovaChiave}>
+                <Check size={16} /> Continua
+              </button>
+            )}
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: '0.78rem', color: 'var(--text-faint)', marginTop: 4 }}
+              onClick={completaNuovaChiave}>
+              Salta (non consigliato)
+            </button>
+          </div>
+        )}
+      </motion.div>
+    );
+  }
+
   return null;
 }
-
-/* ═══════════════════════════════════════════════
-   Initiator di sincronizzazione (ha già le chiavi)
-═══════════════════════════════════════════════ */
 function PannelloSyncInitiator({ token, privateKeyRef, onChiudi }) {
   const [stato, setStato] = useState('avvio');
   const [codice, setCodice] = useState('');
@@ -825,7 +1004,7 @@ function PannelloSyncInitiator({ token, privateKeyRef, onChiudi }) {
     pollTimerRef.current = setTimeout(async () => {
       try {
         const dati = await apiFetch(token, `?action=sync_status&sessionId=${sessId}`, {});
-        if (dati.status === 'complete' || dati.status === 'ready') { setStato('ok'); return; }
+        if (dati.status === 'complete' || dati.status === 'ready' || dati.status === 'expired') { setStato('ok'); return; }
       } catch { /* continua */ }
       attendiCompletamento(sessId, tentativo + 1);
     }, 2000);
@@ -895,6 +1074,222 @@ function PannelloSyncInitiator({ token, privateKeyRef, onChiudi }) {
             <button className="btn btn-primary" onClick={avviaSync}><RefreshCw size={14} /> Riprova</button>
             <button className="btn btn-ghost" onClick={onChiudi}>Chiudi</button>
           </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   Gestione backup chiavi
+═══════════════════════════════════════════════ */
+function PannelloGestioneBackup({ token, username, privateKeyRef, onChiudi }) {
+  const [stato, setStato] = useState('caricamento');
+  const [haBackup, setHaBackup] = useState(false);
+  const [dataBackup, setDataBackup] = useState(null);
+  const [errore, setErrore] = useState('');
+  const [passkeyDispo, setPasskeyDispo] = useState(false);
+  const [pwdFile, setPwdFile] = useState('');
+  const [fileScaricat, setFileScaricat] = useState(false);
+  const [scaricandoFile, setScaricandoFile] = useState(false);
+  const [confermaElimina, setConfermaElimina] = useState(false);
+
+  useEffect(() => {
+    let annullato = false;
+    async function caricaStato() {
+      try {
+        const [backupRes, prfOk] = await Promise.all([
+          fetch(`${API}?action=has_passkey_backup&user=${username}`).then(r => r.json()),
+          isPasskeyPRFAvailable().catch(() => false),
+        ]);
+        if (annullato) return;
+        setHaBackup(!!backupRes.hasBackup);
+        setPasskeyDispo(prfOk);
+        if (backupRes.hasBackup) {
+          try {
+            const dati = await apiFetch(token, '?action=get_passkey_backup', {});
+            if (!annullato) setDataBackup(dati);
+          } catch { /* best effort */ }
+        }
+      } catch { /* ignora */ }
+      if (!annullato) setStato('pronto');
+    }
+    caricaStato();
+    return () => { annullato = true; };
+  }, [token, username]);
+
+  async function salvaInPortachiavi() {
+    const privKey = privateKeyRef.current;
+    if (!privKey) return;
+    setStato('salvataggio');
+    setErrore('');
+    try {
+      const { credentialId, encryptedPrivateKey, iv } = await createPasskeyAndEncryptKey(username, privKey);
+      const pubKeyStr = await estraiChiavePubblica(privKey);
+      await apiFetch(token, '', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'save_passkey_backup', credentialId, encryptedPrivateKey, iv, publicKey: pubKeyStr }),
+      });
+      setHaBackup(true);
+      setDataBackup({ savedAt: Date.now() });
+      setStato('pronto');
+    } catch (e) {
+      if (e.message === 'PRF_NOT_SUPPORTED') setErrore('Il tuo browser non supporta il Portachiavi con PRF.');
+      else setErrore(`Errore: ${e.message}`);
+      setStato('pronto');
+    }
+  }
+
+  async function scaricaBackupFile() {
+    const privKey = privateKeyRef.current;
+    if (!privKey || !pwdFile) return;
+    setScaricandoFile(true);
+    setErrore('');
+    try {
+      const contenuto = await exportKeyToEncryptedFile(privKey, pwdFile);
+      const blob = new Blob([contenuto], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `andryx-backup-${username}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setFileScaricat(true);
+    } catch (e) {
+      setErrore(`Errore download: ${e.message}`);
+    } finally {
+      setScaricandoFile(false);
+    }
+  }
+
+  async function eliminaBackup() {
+    setStato('salvataggio');
+    setErrore('');
+    try {
+      await apiFetch(token, '', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete_passkey_backup' }),
+      });
+      setHaBackup(false);
+      setDataBackup(null);
+      setConfermaElimina(false);
+      setStato('pronto');
+    } catch (e) {
+      setErrore(`Errore eliminazione: ${e.message}`);
+      setStato('pronto');
+    }
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="glass-panel"
+      style={{ maxWidth: 440, margin: '0 auto', padding: '1.5rem', textAlign: 'center', position: 'relative' }}>
+      <button onClick={onChiudi}
+        style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)' }}>
+        <X size={18} />
+      </button>
+      <Shield size={28} style={{ color: 'var(--primary)', marginBottom: 12 }} />
+      <h3 style={{ marginBottom: 4 }}>Gestione backup</h3>
+      <p style={{ color: 'var(--text-faint)', fontSize: '0.82rem', marginBottom: 20 }}>
+        Gestisci il backup della tua chiave di cifratura E2E.
+      </p>
+      {errore && (
+        <div className="msg-error-banner" style={{ marginBottom: 16 }}>
+          <AlertTriangle size={14} /> {errore}
+        </div>
+      )}
+      {(stato === 'caricamento' || stato === 'salvataggio') && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--text-faint)', marginBottom: 16 }}>
+          <Loader size={18} className="spin" />
+          <span>{stato === 'salvataggio' ? 'Salvataggio in corso…' : 'Caricamento…'}</span>
+        </div>
+      )}
+      {stato === 'pronto' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left' }}>
+          {/* Stato backup portachiavi */}
+          <div className="glass-card" style={{ padding: '0.75rem 1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Fingerprint size={16} style={{ color: haBackup ? 'var(--accent)' : 'var(--text-faint)' }} />
+              <span style={{ fontWeight: 600, fontSize: '0.88rem' }}>Portachiavi</span>
+              <span style={{
+                marginLeft: 'auto', fontSize: '0.75rem', padding: '2px 8px', borderRadius: 10,
+                background: haBackup ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.12)',
+                color: haBackup ? '#22c55e' : '#ef4444',
+              }}>
+                {haBackup ? '✓ Attivo' : '✗ Non configurato'}
+              </span>
+            </div>
+            {haBackup && dataBackup?.savedAt && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-faint)', margin: 0 }}>
+                Ultimo salvataggio: {new Date(dataBackup.savedAt).toLocaleString('it-IT')}
+              </p>
+            )}
+          </div>
+
+          {/* Azioni portachiavi */}
+          {passkeyDispo && (
+            <button
+              className="msg-method-btn"
+              style={{ border: '1px solid rgba(var(--primary-rgb, 99,102,241),0.6)', color: 'var(--primary)' }}
+              onClick={salvaInPortachiavi}>
+              <Fingerprint size={18} />
+              {haBackup ? 'Aggiorna backup nel Portachiavi' : 'Salva nel Portachiavi — iCloud / Google'}
+            </button>
+          )}
+
+          {/* Backup file */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-faint)', fontSize: '0.78rem', margin: '4px 0' }}>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.1)' }} />
+            backup file
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.1)' }} />
+          </div>
+          <p style={{ color: 'var(--text-faint)', fontSize: '0.82rem', margin: 0 }}>
+            Scarica un file JSON cifrato da conservare come copia di sicurezza.
+          </p>
+          <input
+            className="mod-input"
+            type="password"
+            placeholder="Password per il backup file…"
+            value={pwdFile}
+            onChange={e => { setPwdFile(e.target.value); setFileScaricat(false); }}
+            onKeyDown={e => e.key === 'Enter' && pwdFile && scaricaBackupFile()}
+          />
+          <button className="btn btn-ghost" disabled={!pwdFile || scaricandoFile} onClick={scaricaBackupFile}>
+            {scaricandoFile ? <Loader size={16} className="spin" /> : <Download size={16} />}
+            {fileScaricat ? '✓ Scaricato — scarica di nuovo' : 'Scarica backup file'}
+          </button>
+
+          {/* Elimina backup */}
+          {haBackup && (
+            <>
+              <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
+              {!confermaElimina ? (
+                <button
+                  className="btn btn-ghost"
+                  style={{ color: '#f87171', fontSize: '0.82rem' }}
+                  onClick={() => setConfermaElimina(true)}>
+                  <Trash2 size={14} /> Elimina backup dal server
+                </button>
+              ) : (
+                <div className="glass-card" style={{ padding: '0.6rem 0.75rem', border: '1px solid rgba(248,113,113,0.3)' }}>
+                  <p style={{ fontSize: '0.78rem', color: '#f87171', margin: '0 0 0.5rem', lineHeight: 1.4 }}>
+                    Eliminare il backup dal server? Non potrai ripristinare la chiave da un nuovo dispositivo senza un altro backup.
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.4rem' }}>
+                    <button className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '2px 8px' }}
+                      onClick={() => setConfermaElimina(false)}>
+                      Annulla
+                    </button>
+                    <button className="btn btn-primary"
+                      style={{ fontSize: '0.75rem', padding: '2px 8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+                      onClick={eliminaBackup}>
+                      Sì, elimina
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </motion.div>
@@ -1136,11 +1531,13 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
   }, [conUsr, privateKeyRef]);
 
   /* ─── Decifra un messaggio ─── */
-  const decifraMessaggio = useCallback(async (msg) => {
+  const decifraMessaggio = useCallback(async (rawMsg) => {
+    const msg = normalizzaMessaggio(rawMsg);
     if (msg.eliminato) return { ...msg, testoDecifrato: null };
+    if (msg.testoDecifrato) return msg;
     try {
       const aesKey = await ottieniAesKey();
-      const testoDecifrato = await decryptMessage(aesKey, msg.encrypted || msg.testo, msg.iv);
+      const testoDecifrato = await decryptMessage(aesKey, msg.encrypted, msg.iv);
       return { ...msg, testoDecifrato };
     } catch {
       return { ...msg, testoDecifrato: '[Impossibile decifrare]' };
@@ -1199,15 +1596,21 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
     function poll() {
       apiFetch(twitchToken, `?action=poll&with=${conUsr}&after=${ultimoIdRef.current || ''}&since=${ultimoTsRef.current || 0}`, {})
         .then(async dati => {
-          if (dati.changed && dati.messages?.length > 0) {
-            const decifrati = await Promise.all(dati.messages.map(decifraMessaggio));
+          const nuovi = dati.messages || [];
+          const modificati = dati.changed || [];
+          if (nuovi.length > 0 || modificati.length > 0) {
+            const tuttiNuovi = await Promise.all(nuovi.map(decifraMessaggio));
+            const tuttiMod = await Promise.all(modificati.map(decifraMessaggio));
             setMessaggi(prev => {
               const mappa = new Map(prev.map(m => [m.id, m]));
-              decifrati.forEach(m => mappa.set(m.id, m));
-              return Array.from(mappa.values()).sort((a, b) => a.ts - b.ts);
+              tuttiNuovi.forEach(m => mappa.set(m.id, m));
+              tuttiMod.forEach(m => mappa.set(m.id, m));
+              return Array.from(mappa.values()).sort((a, b) => (a.ts || 0) - (b.ts || 0));
             });
-            const ultimo = decifrati[decifrati.length - 1];
-            if (ultimo) { ultimoIdRef.current = ultimo.id; ultimoTsRef.current = ultimo.ts; }
+            if (tuttiNuovi.length > 0) {
+              const ultimo = tuttiNuovi[tuttiNuovi.length - 1];
+              if (ultimo) { ultimoIdRef.current = ultimo.id; ultimoTsRef.current = ultimo.ts; }
+            }
           }
           pollTimerRef.current = setTimeout(poll, 3000);
         })
@@ -1269,7 +1672,7 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
         body: JSON.stringify({ action: 'send', to: conUsr, encrypted: base64, iv: ivBase64, tipoMedia, nomeFile: encNome, ivNome }),
       });
       const url = URL.createObjectURL(file);
-      const nuovoMsg = { ...risposta.message, testoDecifrato: '', tipoMedia, nomeFile: file.name, mediaDecifrato: url };
+      const nuovoMsg = normalizzaMessaggio({ ...risposta.message, testoDecifrato: '', tipoMedia, nomeFile: file.name, mediaDecifrato: url });
       setMessaggi(prev => [...prev, nuovoMsg]);
       ultimoIdRef.current = nuovoMsg.id;
       ultimoTsRef.current = nuovoMsg.ts;
@@ -1459,6 +1862,8 @@ export default function MessagesPage() {
   const [mostraSyncInit, setMostraSyncInit] = useState(false);
   const [caricandoConvo, setCaricandoConvo] = useState(false);
   const [confermaRimuoviChiavi, setConfermaRimuoviChiavi] = useState(false);
+  const [mostraGestioneBackup, setMostraGestioneBackup] = useState(false);
+  const [anteprime, setAnteprime] = useState({});
   const privateKeyRef = useRef(null);
   const pollConvoRef = useRef(null);
 
@@ -1504,6 +1909,51 @@ export default function MessagesPage() {
     privateKeyRef.current = privKey;
     setFase('messaggi');
   }
+
+  /* ─── Segna conversazione come letta ─── */
+  async function segnaLetta(user) {
+    try {
+      await apiFetch(twitchToken, '', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'mark_read', withUser: user }),
+      });
+      setConversazioni(prev => prev.map(c => c.user === user ? { ...c, unread: 0 } : c));
+    } catch { /* best effort */ }
+  }
+
+  function selezionaChat(user) {
+    setChatAperta(user);
+    segnaLetta(user);
+  }
+
+  /* ─── Decifra anteprime conversazioni ─── */
+  useEffect(() => {
+    if (fase !== 'messaggi' || !privateKeyRef.current || conversazioni.length === 0) return;
+    let annullato = false;
+    async function decifra() {
+      const nuove = {};
+      await Promise.all(conversazioni.map(async (c) => {
+        if (!c.lastMessage) return;
+        if (c.lastMessage.deleted) { nuove[c.user] = '🚫 Messaggio eliminato'; return; }
+        if (c.lastMessage.isMedia || !c.lastMessage.encrypted) { nuove[c.user] = (c.lastMessage.from === twitchUser ? 'Tu: ' : '') + '📎 Allegato'; return; }
+        try {
+          const aesKey = await ottieniAesKeyGlobale(privateKeyRef.current, c.user);
+          if (!aesKey || annullato) return;
+          const testo = await decryptMessage(aesKey, c.lastMessage.encrypted, c.lastMessage.iv);
+          if (annullato) return;
+          // eslint-disable-next-line no-control-regex
+          const isText = testo.length < 2000 && !/[\x00-\x08\x0E-\x1F]/.test(testo.slice(0, 100));
+          const prefix = c.lastMessage.from === twitchUser ? 'Tu: ' : '';
+          nuove[c.user] = isText ? prefix + (testo.length > 60 ? testo.slice(0, 60) + '…' : testo) : prefix + '📎 Allegato';
+        } catch {
+          nuove[c.user] = '🔒 Messaggio cifrato';
+        }
+      }));
+      if (!annullato) setAnteprime(prev => ({ ...prev, ...nuove }));
+    }
+    decifra();
+    return () => { annullato = true; };
+  }, [conversazioni, twitchUser, fase]);
 
   async function avviaNuovaConvo() {
     const dest = cercaUtente.trim().toLowerCase();
@@ -1606,6 +2056,10 @@ export default function MessagesPage() {
                       onClick={() => setMostraSyncInit(true)}>
                       <Smartphone size={16} />
                     </button>
+                    <button className="mod-icon-btn" title="Gestione backup chiavi"
+                      onClick={() => setMostraGestioneBackup(true)}>
+                      <Shield size={16} />
+                    </button>
                     <button className="btn btn-primary" style={{ padding: '4px 10px', fontSize: '0.85rem' }}
                       onClick={() => setNuovaConvo(v => !v)}>
                       <Plus size={15} /> Nuovo
@@ -1694,12 +2148,35 @@ export default function MessagesPage() {
                   </div>
                 ) : (
                   convFiltrate.map(c => (
-                    <button key={c.user} className="msg-convo-item" onClick={() => setChatAperta(c.user)}>
-                      <div className="msg-avatar msg-avatar-sm">{c.user[0]?.toUpperCase()}</div>
-                      <div style={{ flex: 1, overflow: 'hidden' }}>
-                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.user}</div>
+                    <button key={c.user} className="msg-convo-item" onClick={() => selezionaChat(c.user)}>
+                      <div className="msg-avatar msg-avatar-sm" style={{ position: 'relative' }}>
+                        {c.user[0]?.toUpperCase()}
                       </div>
-                      <div className="msg-convo-time">{c.lastMessageAt ? formatOra(c.lastMessageAt) : ''}</div>
+                      <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <span style={{ fontWeight: c.unread > 0 ? 700 : 600, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.user}</span>
+                          <span className="msg-convo-time" style={{ flexShrink: 0 }}>{c.lastMessageAt ? formatOraRelativa(c.lastMessageAt) : ''}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                          <span style={{
+                            flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            fontSize: '0.8rem', color: c.unread > 0 ? 'var(--text-secondary)' : 'var(--text-faint)',
+                            fontWeight: c.unread > 0 ? 500 : 400,
+                          }}>
+                            {anteprime[c.user] || ''}
+                          </span>
+                          {c.unread > 0 && (
+                            <span style={{
+                              background: 'var(--primary)', color: '#fff', borderRadius: 10,
+                              minWidth: 20, height: 20, display: 'flex', alignItems: 'center',
+                              justifyContent: 'center', fontSize: '0.72rem', fontWeight: 700,
+                              padding: '0 5px', flexShrink: 0,
+                            }}>
+                              {c.unread > 99 ? '99+' : c.unread}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </button>
                   ))
                 )}
@@ -1719,7 +2196,7 @@ export default function MessagesPage() {
                 twitchUser={twitchUser}
                 twitchToken={twitchToken}
                 privateKeyRef={privateKeyRef}
-                onTorna={() => { setChatAperta(null); caricaConversazioni(); }}
+                onTorna={() => { segnaLetta(chatAperta); setChatAperta(null); caricaConversazioni(); }}
                 emoteCanale={emoteCanale}
                 emoteGlobali={emoteGlobali}
               />
@@ -1741,6 +2218,26 @@ export default function MessagesPage() {
                 token={twitchToken}
                 privateKeyRef={privateKeyRef}
                 onChiudi={() => setMostraSyncInit(false)}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Overlay gestione backup */}
+      <AnimatePresence>
+        {mostraGestioneBackup && (
+          <motion.div className="msg-forward-overlay"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setMostraGestioneBackup(false)}>
+            <motion.div initial={{ y: 30 }} animate={{ y: 0 }}
+              onClick={e => e.stopPropagation()}
+              style={{ width: '92%', maxWidth: 440 }}>
+              <PannelloGestioneBackup
+                token={twitchToken}
+                username={twitchUser}
+                privateKeyRef={privateKeyRef}
+                onChiudi={() => setMostraGestioneBackup(false)}
               />
             </motion.div>
           </motion.div>
