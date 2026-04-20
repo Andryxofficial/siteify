@@ -1,10 +1,12 @@
 /**
- * MessagesPage — E2E encrypted messaging, full app.
+ * MessagesPage v2 — Messaggi privati E2E.
+ *
+ * Riscrittura completa: notifiche non-letti corrette,
+ * polling con setTimeout (più affidabile), scroll fluido,
+ * touch cross-platform.
  *
  * Route: /messaggi
  * Crypto: ECDH P-256 + AES-GCM-256
- * Cross-device: passphrase (PBKDF2) or passkey (WebAuthn PRF)
- * Once unlocked, keys are cached in IndexedDB — no repeated prompts.
  */
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
@@ -28,19 +30,27 @@ import {
   isPasskeyPRFAvailable,
 } from '../utils/e2eKeys';
 
+/* ═══════════════════════════════════════
+   COSTANTI
+   ═══════════════════════════════════════ */
+
 const API_URL = '/api/messages';
 const FRIENDS_API = '/api/friends';
-const POLL_ACTIVE = 1500;
-const POLL_HIDDEN = 6000;
-const MAX_FILE_BYTES = 8_000_000;
-const LONG_PRESS_DURATION = 450;
-const DERIVE_RETRY_DELAY_MS = 600;
-const MAX_MEDIA_B64 = 1_100_000;
-const NOTIF_PREFS_KEY = 'andryxify_msg_notif_prefs';
+const POLLING_ATTIVO_MS    = 1500;   // polling ogni 1.5s quando la tab è visibile
+const POLLING_NASCOSTO_MS  = 6000;   // polling ogni 6s quando la tab è nascosta
+const MAX_FILE_BYTES    = 8_000_000;
+const LONG_PRESS_MS     = 450;
+const DERIVE_RETRY_MS   = 600;
+const MAX_MEDIA_B64     = 1_100_000;
+const NOTIF_PREFS_KEY   = 'andryxify_msg_notif_prefs';
 
 /* Chiavi localStorage per il tracciamento dei messaggi non letti */
 const CHIAVE_ULTIMA_LETTURA = 'andryxify_msg_ultima_lettura';
 const CHIAVE_HA_NON_LETTI   = 'andryxify_ha_non_letti';
+
+/* ═══════════════════════════════════════
+   UTILITÀ GENERALI
+   ═══════════════════════════════════════ */
 
 function safeBlobUrl(url) {
   return typeof url === 'string' && url.startsWith('blob:') ? url : '';
@@ -71,7 +81,6 @@ async function compressImage(file, maxDim = 1280, quality = 0.82) {
   });
 }
 
-/* ── Helpers ── */
 const entrata = (d = 0) => ({
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0 },
@@ -117,32 +126,45 @@ function getNotifPrefs() {
 }
 function saveNotifPrefs(p) { localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(p)); }
 
-/* ── Helpers per i messaggi non letti ── */
+/* ═══════════════════════════════════════
+   SISTEMA NON-LETTI (v2 — corretto)
 
-/* Legge la mappa "ultima lettura" dal localStorage: { "utente:amico": timestamp } */
+   Problema nella v1: salvaUltimaLettura veniva chiamato
+   solo all'INGRESSO nella chat (selectChat), ma NON
+   all'USCITA (goBack). Qualsiasi messaggio inviato o
+   ricevuto durante la sessione di chat aveva un timestamp
+   superiore → la conversazione risultava "non letta" al
+   ritorno nella lista, facendo apparire il pallino.
+
+   Fix v2:
+   - salvaUltimaLettura viene chiamato sia all'ingresso
+     che all'uscita dalla chat (goBack)
+   - Un ref aggiorna continuamente il timestamp mentre la
+     chat è aperta, così anche un reload è safe
+   ═══════════════════════════════════════ */
+
 function leggiUltimaLettura() {
   try { return JSON.parse(localStorage.getItem(CHIAVE_ULTIMA_LETTURA)) || {}; }
   catch { return {}; }
 }
 
-/* Salva il timestamp di ultima lettura per una conversazione */
 function salvaUltimaLettura(me, amico, ts) {
   const dati = leggiUltimaLettura();
   dati[`${me}:${amico}`] = ts;
   localStorage.setItem(CHIAVE_ULTIMA_LETTURA, JSON.stringify(dati));
 }
 
-/* Notifica la Navbar (e le altre schede) del cambiamento dello stato non-letti */
+/** Notifica la Navbar e le altre schede del cambiamento dello stato non-letti */
 function notificaNonLetti(haNonLetti) {
-  if (haNonLetti) {
-    localStorage.setItem(CHIAVE_HA_NON_LETTI, '1');
-  } else {
-    localStorage.removeItem(CHIAVE_HA_NON_LETTI);
-  }
+  if (haNonLetti) localStorage.setItem(CHIAVE_HA_NON_LETTI, '1');
+  else             localStorage.removeItem(CHIAVE_HA_NON_LETTI);
   window.dispatchEvent(new CustomEvent('andryxify:non-letti', { detail: { haNonLetti } }));
 }
 
-/* Calcola quali conversazioni hanno messaggi non ancora letti */
+/**
+ * Calcola quali conversazioni hanno messaggi non ancora letti.
+ * Confronta cv.lastMessageAt con la mappa ultimaLettura in localStorage.
+ */
 function calcolaNonLetti(conversazioni, me) {
   const ultimaLettura = leggiUltimaLettura();
   return new Set(
@@ -888,38 +910,49 @@ function ForwardFriendList({ twitchToken, onSelect, busy }) {
 }
 
 /* ═══════════════════════════════════════
-   CHAT VIEW
+   CHAT VIEW (v2 — riscritta)
+
+   Cambiamenti rispetto a v1:
+   - Polling con setTimeout ricorsivo (più affidabile di setInterval)
+   - Segna automaticamente la conversazione come letta via callback
+   - Auto-scroll solo se l'utente è vicino al fondo
+   - Touch: long-press con pointerdown/up + fallback contextmenu
    ═══════════════════════════════════════ */
-function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, onBack, onResetE2E, emoteCanale, emoteGlobali, renderTestoConEmote }) {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [isKeyError, setIsKeyError] = useState(false);
-  const [aesKey, setAesKey] = useState(null);
-  const [editingId, setEditingId] = useState(null);
-  const [editText, setEditText] = useState('');
-  const [menuMsgId, setMenuMsgId] = useState(null);
+function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, onBack, onResetE2E, onSegnaLetta, emoteCanale, emoteGlobali, renderTestoConEmote }) {
+  const [messages, setMessages]         = useState([]);
+  const [input, setInput]               = useState('');
+  const [sending, setSending]           = useState(false);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState('');
+  const [isKeyError, setIsKeyError]     = useState(false);
+  const [aesKey, setAesKey]             = useState(null);
+  const [editingId, setEditingId]       = useState(null);
+  const [editText, setEditText]         = useState('');
+  const [menuMsgId, setMenuMsgId]       = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [mediaUploading, setMediaUploading] = useState(false);
   const [mediaPreview, setMediaPreview] = useState(null);
   const [forwardingMsg, setForwardingMsg] = useState(null);
-  const [forwardBusy, setForwardBusy] = useState(false);
+  const [forwardBusy, setForwardBusy]   = useState(false);
   const [forwardSentTo, setForwardSentTo] = useState(null);
-  const [copiedMsgId, setCopiedMsgId] = useState(null);
-  const fileInputRef = useRef(null);
-  const messagesEndRef = useRef(null);
-  const scrollContainerRef = useRef(null);
+  const [copiedMsgId, setCopiedMsgId]   = useState(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
-  const lastMsgIdRef = useRef(null);
-  const lastPollTimeRef = useRef(Date.now());
-  const pollRef = useRef(null);
-  const inputRef = useRef(null);
-  const longPressRef = useRef(null);
+
+  const fileInputRef        = useRef(null);
+  const messagesEndRef      = useRef(null);
+  const scrollContainerRef  = useRef(null);
+  const lastMsgIdRef        = useRef(null);
+  const lastPollTimeRef     = useRef(Date.now());
+  const pollTimerRef        = useRef(null);
+  const inputRef            = useRef(null);
+  const longPressRef        = useRef(null);
+  const mountedRef          = useRef(true);
   const { invia: inviaNotifica } = useNotifiche();
 
-  // Derive AES key
+  /* Cleanup ref al dismount */
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+
+  /* ── Deriva chiave AES da ECDH ── */
   useEffect(() => {
     if (!e2eReady || !privateKeyRef.current) return;
     let cancelled = false;
@@ -936,8 +969,8 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
           if (!cancelled) { setAesKey(key); setError(''); setIsKeyError(false); }
           return;
         } catch (e) {
-          console.error(`Key derive attempt ${attempt + 1}:`, e);
-          if (attempt < 2) await new Promise(r => setTimeout(r, DERIVE_RETRY_DELAY_MS * (attempt + 1)));
+          console.error(`Tentativo derivazione chiave ${attempt + 1}:`, e);
+          if (attempt < 2) await new Promise(r => setTimeout(r, DERIVE_RETRY_MS * (attempt + 1)));
           else if (!cancelled) { setError('Impossibile derivare la chiave.'); setIsKeyError(true); setLoading(false); }
         }
       }
@@ -945,16 +978,17 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
     return () => { cancelled = true; };
   }, [withUser, e2eReady, privateKeyRef]);
 
+  /* ── Decripta un singolo messaggio ── */
   const decryptMsg = useCallback(async (msg, key) => {
     if (msg.deleted) return { ...msg, text: null, media: undefined };
     try {
       const text = await decryptMessage(key, msg.encrypted, msg.iv);
-      try { const p = JSON.parse(text); if (p?.type === 'media') return { ...msg, text: null, media: p }; } catch { /* plain text */ }
+      try { const p = JSON.parse(text); if (p?.type === 'media') return { ...msg, text: null, media: p }; } catch { /* testo puro */ }
       return { ...msg, text };
     } catch { return { ...msg, text: '\u{1F512} [Impossibile decifrare]' }; }
   }, []);
 
-  // Load history
+  /* ── Carica lo storico dei messaggi ── */
   useEffect(() => {
     if (!aesKey) return;
     let cancelled = false;
@@ -968,57 +1002,98 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
         setMessages(dec);
         if (dec.length) lastMsgIdRef.current = dec[dec.length - 1].id;
         lastPollTimeRef.current = Date.now();
+        /* Segna come letta dopo il caricamento iniziale */
+        onSegnaLetta?.();
       } catch { if (!cancelled) setError('Errore nel caricamento.'); }
       finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [aesKey, withUser, twitchToken, decryptMsg]);
+  }, [aesKey, withUser, twitchToken, decryptMsg, onSegnaLetta]);
 
-  // Polling
+  /* ── Polling con setTimeout ricorsivo (più affidabile di setInterval) ── */
   useEffect(() => {
     if (!aesKey || !twitchToken) return;
-    const poll = async () => {
+
+    const eseguiPoll = async () => {
+      if (!mountedRef.current) return;
       try {
         const afterP = lastMsgIdRef.current ? `&after=${lastMsgIdRef.current}` : '';
-        const res = await fetch(`${API_URL}?action=poll&with=${encodeURIComponent(withUser)}${afterP}&since=${lastPollTimeRef.current}`, { headers: { Authorization: `Bearer ${twitchToken}` } });
+        const res = await fetch(
+          `${API_URL}?action=poll&with=${encodeURIComponent(withUser)}${afterP}&since=${lastPollTimeRef.current}`,
+          { headers: { Authorization: `Bearer ${twitchToken}` } },
+        );
         const data = await res.json();
+        if (!mountedRef.current) return;
         lastPollTimeRef.current = Date.now();
+
+        /* Nuovi messaggi */
         if (data.messages?.length) {
           const dec = await Promise.all(data.messages.map(m => decryptMsg(m, aesKey)));
+          if (!mountedRef.current) return;
           setMessages(prev => {
             const ids = new Set(prev.map(m => m.id));
-            const nw = dec.filter(m => !ids.has(m.id));
-            return nw.length ? [...prev, ...nw] : prev;
+            const nuovi = dec.filter(m => !ids.has(m.id));
+            return nuovi.length ? [...prev, ...nuovi] : prev;
           });
           lastMsgIdRef.current = dec[dec.length - 1].id;
-          // Notify
+
+          /* Notifica solo messaggi IN ARRIVO (non i propri) */
           const prefs = getNotifPrefs();
-          const incoming = dec.filter(m => m.from !== twitchUser);
-          if (incoming.length && !prefs.muted?.includes(withUser)) {
+          const inArrivo = dec.filter(m => m.from !== twitchUser);
+          if (inArrivo.length && !prefs.muted?.includes(withUser)) {
             if (prefs.inApp && document.hidden) {
-              inviaNotifica(`\u{1F4AC} ${withUser}`, { body: incoming[0].text?.slice(0, 80) || '\u{1F4CE} Media', tag: `msg-${withUser}`, data: { url: `/messaggi?con=${withUser}` } });
+              inviaNotifica(`\u{1F4AC} ${withUser}`, {
+                body: inArrivo[0].text?.slice(0, 80) || '\u{1F4CE} Media',
+                tag: `msg-${withUser}`,
+                data: { url: `/messaggi?con=${withUser}` },
+              });
             }
           }
+          /* Segna come letta anche dopo i nuovi messaggi (siamo nella chat) */
+          onSegnaLetta?.();
         }
+
+        /* Messaggi modificati/eliminati */
         if (data.changed?.length) {
           const cm = new Map();
           for (const m of data.changed) cm.set(m.id, await decryptMsg(m, aesKey));
-          setMessages(prev => prev.map(m => cm.has(m.id) ? cm.get(m.id) : m));
+          if (mountedRef.current) setMessages(prev => prev.map(m => cm.has(m.id) ? cm.get(m.id) : m));
         }
-      } catch { /* silent */ }
-    };
-    const gi = () => document.hidden ? POLL_HIDDEN : POLL_ACTIVE;
-    pollRef.current = setInterval(poll, gi());
-    const onVis = () => { clearInterval(pollRef.current); pollRef.current = setInterval(poll, gi()); };
-    document.addEventListener('visibilitychange', onVis);
-    return () => { clearInterval(pollRef.current); document.removeEventListener('visibilitychange', onVis); };
-  }, [aesKey, withUser, twitchToken, twitchUser, decryptMsg, inviaNotifica]);
+      } catch { /* silenzioso */ }
 
-  // Auto-scroll
+      /* Schedula il prossimo poll */
+      if (mountedRef.current) {
+        const delay = document.hidden ? POLLING_NASCOSTO_MS : POLLING_ATTIVO_MS;
+        pollTimerRef.current = setTimeout(eseguiPoll, delay);
+      }
+    };
+
+    /* Primo poll dopo un breve delay */
+    pollTimerRef.current = setTimeout(eseguiPoll, POLLING_ATTIVO_MS);
+
+    /* Al cambio visibilità rischedula subito */
+    const onVisibilityChange = () => {
+      clearTimeout(pollTimerRef.current);
+      if (mountedRef.current) {
+        pollTimerRef.current = setTimeout(eseguiPoll, document.hidden ? POLLING_NASCOSTO_MS : 200);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      clearTimeout(pollTimerRef.current);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [aesKey, withUser, twitchToken, twitchUser, decryptMsg, inviaNotifica, onSegnaLetta]);
+
+  /* ── Auto-scroll: solo se l'utente è vicino al fondo ── */
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
-    if (el.scrollHeight - el.scrollTop - el.clientHeight < 150) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const distanzaDalFondo = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distanzaDalFondo < 150) {
+      requestAnimationFrame(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }));
+    }
   }, [messages]);
 
   const handleScroll = useCallback(() => {
@@ -1028,7 +1103,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
 
-  // Close context menu on outside click
+  /* ── Chiudi menu contestuale al clic esterno ── */
   useEffect(() => {
     if (!menuMsgId) return;
     const close = (e) => { if (!e.target.closest('[data-msg-menu]')) { setMenuMsgId(null); setConfirmDelete(null); } };
@@ -1036,6 +1111,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
     return () => document.removeEventListener('pointerdown', close);
   }, [menuMsgId]);
 
+  /* ── Invio messaggio ── */
   const sendMessage = async (e) => {
     e?.preventDefault();
     const text = input.trim();
@@ -1043,7 +1119,11 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
     setSending(true);
     try {
       const { encrypted, iv } = await encryptMessage(aesKey, text);
-      const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` }, body: JSON.stringify({ action: 'send', to: withUser, encrypted, iv }) });
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+        body: JSON.stringify({ action: 'send', to: withUser, encrypted, iv }),
+      });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || 'Errore');
       setMessages(prev => [...prev, { id: d.message.id, from: twitchUser, to: withUser, text, createdAt: d.message.createdAt }]);
@@ -1051,10 +1131,13 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
       setInput('');
       if (inputRef.current) inputRef.current.style.height = 'auto';
       inputRef.current?.focus();
+      /* Segna come letta dopo l'invio — evita falso non-letto al ritorno */
+      onSegnaLetta?.();
     } catch (err) { setError(err.message); setTimeout(() => setError(''), 4000); }
     finally { setSending(false); }
   };
 
+  /* ── Modifica messaggio ── */
   const startEdit = (msg) => { setMenuMsgId(null); setEditingId(msg.id); setEditText(msg.text || ''); setTimeout(() => inputRef.current?.focus(), 50); };
   const cancelEdit = () => { setEditingId(null); setEditText(''); };
   const submitEdit = async (e) => {
@@ -1064,7 +1147,11 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
     setSending(true);
     try {
       const { encrypted, iv } = await encryptMessage(aesKey, text);
-      const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` }, body: JSON.stringify({ action: 'edit', msgId: editingId, convoWith: withUser, encrypted, iv }) });
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+        body: JSON.stringify({ action: 'edit', msgId: editingId, convoWith: withUser, encrypted, iv }),
+      });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Errore'); }
       setMessages(prev => prev.map(m => m.id === editingId ? { ...m, text, editedAt: Date.now() } : m));
       cancelEdit();
@@ -1072,15 +1159,21 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
     finally { setSending(false); }
   };
 
+  /* ── Elimina messaggio ── */
   const deleteMessage = async (msgId) => {
     setMenuMsgId(null); setConfirmDelete(null);
     try {
-      const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` }, body: JSON.stringify({ action: 'delete', msgId, convoWith: withUser }) });
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+        body: JSON.stringify({ action: 'delete', msgId, convoWith: withUser }),
+      });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Errore'); }
       setMessages(prev => prev.map(m => m.id === msgId ? { ...m, deleted: true, text: null, media: undefined } : m));
     } catch (err) { setError(err.message); setTimeout(() => setError(''), 4000); }
   };
 
+  /* ── Upload media ── */
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0]; e.target.value = '';
     if (!file) return;
@@ -1095,29 +1188,40 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
     setMediaUploading(true);
     try {
       let { file } = mediaPreview;
-      if (!mediaPreview.isVideo) { try { const c = await compressImage(file); if (c) file = c; } catch { /* use original */ } }
+      if (!mediaPreview.isVideo) { try { const c = await compressImage(file); if (c) file = c; } catch { /* usa originale */ } }
       const buffer = await file.arrayBuffer();
       const { data: encData, iv: mediaIv } = await encryptBytes(aesKey, buffer);
       if (encData.length > MAX_MEDIA_B64) throw new Error('File troppo grande (max ~800KB).');
-      const uploadRes = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` }, body: JSON.stringify({ action: 'upload_media', to: withUser, data: encData, mimeType: file.type, name: mediaPreview.file.name }) });
+      const uploadRes = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+        body: JSON.stringify({ action: 'upload_media', to: withUser, data: encData, mimeType: file.type, name: mediaPreview.file.name }),
+      });
       const uploadData = await uploadRes.json();
       if (!uploadRes.ok) throw new Error(uploadData.error || 'Errore upload');
       const payload = { type: 'media', mediaId: uploadData.mediaId, mimeType: file.type, name: mediaPreview.file.name, iv: mediaIv };
       const { encrypted, iv } = await encryptMessage(aesKey, JSON.stringify(payload));
-      const sendRes = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` }, body: JSON.stringify({ action: 'send', to: withUser, encrypted, iv }) });
+      const sendRes = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+        body: JSON.stringify({ action: 'send', to: withUser, encrypted, iv }),
+      });
       const sendData = await sendRes.json();
       if (!sendRes.ok) throw new Error(sendData.error || 'Errore invio');
       setMessages(prev => [...prev, { id: sendData.message.id, from: twitchUser, to: withUser, text: null, media: payload, createdAt: sendData.message.createdAt }]);
       lastMsgIdRef.current = sendData.message.id;
       cancelMedia();
+      onSegnaLetta?.();
     } catch (err) { setError(err.message); setTimeout(() => setError(''), 5000); }
     finally { setMediaUploading(false); }
   };
 
-  const onMsgPointerDown = (msgId) => { longPressRef.current = setTimeout(() => setMenuMsgId(msgId), LONG_PRESS_DURATION); };
-  const onMsgPointerUp = () => { if (longPressRef.current) clearTimeout(longPressRef.current); };
-  const openMsgMenu = (msgId) => { clearTimeout(longPressRef.current); setMenuMsgId(msgId); };
+  /* ── Touch: long press + context menu ── */
+  const onMsgPointerDown = (msgId) => { longPressRef.current = setTimeout(() => setMenuMsgId(msgId), LONG_PRESS_MS); };
+  const onMsgPointerUp = () => { clearTimeout(longPressRef.current); longPressRef.current = null; };
+  const openMsgMenu = (msgId) => { clearTimeout(longPressRef.current); longPressRef.current = null; setMenuMsgId(msgId); };
 
+  /* ── Copia negli appunti ── */
   const copyMessage = async (text, msgId) => {
     setMenuMsgId(null);
     try {
@@ -1130,11 +1234,8 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
     }
   };
 
-  const openForward = (msg) => {
-    setMenuMsgId(null);
-    setForwardSentTo(null);
-    setForwardingMsg(msg);
-  };
+  /* ── Inoltra messaggio ── */
+  const openForward = (msg) => { setMenuMsgId(null); setForwardSentTo(null); setForwardingMsg(msg); };
 
   const sendForward = async (toUser) => {
     if (!forwardingMsg?.text || !privateKeyRef.current || forwardBusy) return;
@@ -1158,6 +1259,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
     finally { setForwardBusy(false); }
   };
 
+  /* ── Input ── */
   const handleInputChange = (e) => {
     const val = e.target.value;
     if (editingId) setEditText(val); else setInput(val);
@@ -1165,6 +1267,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
   };
   const handleKeyDown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); editingId ? submitEdit() : sendMessage(); } };
 
+  /* ── Messaggi con separatori di data ── */
   const messagesWithDates = useMemo(() => {
     const result = [];
     let lastDateStr = '';
@@ -1176,20 +1279,21 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
     return result;
   }, [messages]);
 
+  /* ── Render ── */
   return (
     <div className="msg-chat-container">
+      {/* Header */}
       <div className="msg-chat-header">
         <button className="mod-icon-btn" onClick={onBack}><ArrowLeft size={16} /></button>
         <div className="msg-avatar msg-avatar-sm">{withUser[0]?.toUpperCase()}</div>
         <span style={{ fontWeight: 600, flex: 1, fontSize: '0.95rem' }}>{withUser}</span>
-        {aesKey ? (
-          <Lock size={14} style={{ color: '#4ade80', marginLeft: 4 }} title="Cifratura attiva" />
-        ) : (
-          <AlertTriangle size={14} style={{ color: '#fbbf24', marginLeft: 4 }} title="Cifratura non verificata" />
-        )}
+        {aesKey
+          ? <Lock size={14} style={{ color: '#4ade80', marginLeft: 4 }} title="Cifratura attiva" />
+          : <AlertTriangle size={14} style={{ color: '#fbbf24', marginLeft: 4 }} title="Cifratura non verificata" />}
         <span className="chip" style={{ fontSize: '0.65rem', background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)', padding: '0.15rem 0.5rem' }}><Lock size={9} /> E2E</span>
       </div>
 
+      {/* Errore */}
       <AnimatePresence>
         {error && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="msg-error-banner">
@@ -1199,6 +1303,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
         )}
       </AnimatePresence>
 
+      {/* Area messaggi */}
       <div className="msg-scroll-area" ref={scrollContainerRef} onScroll={handleScroll}>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}><Loader size={20} className="spin" /> Caricamento…</div>
@@ -1261,6 +1366,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Bottone scroll al fondo */}
       <AnimatePresence>
         {showScrollBtn && (
           <motion.button className="msg-scroll-btn" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={scrollToBottom}>
@@ -1269,7 +1375,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
         )}
       </AnimatePresence>
 
-      {/* Forward overlay */}
+      {/* Overlay inoltro */}
       <AnimatePresence>
         {forwardingMsg && (
           <motion.div className="msg-forward-overlay" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>
@@ -1278,7 +1384,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
               <span style={{ flex: 1 }}>Inoltra messaggio</span>
               <button className="mod-icon-btn" onClick={() => setForwardingMsg(null)} disabled={forwardBusy}><X size={14} /></button>
             </div>
-            <div className="msg-forward-preview">"{forwardingMsg.text?.slice(0, 80)}{(forwardingMsg.text?.length ?? 0) > 80 ? '…' : ''}"</div>
+            <div className="msg-forward-preview">&quot;{forwardingMsg.text?.slice(0, 80)}{(forwardingMsg.text?.length ?? 0) > 80 ? '…' : ''}&quot;</div>
             {forwardSentTo ? (
               <div className="msg-forward-sent"><Check size={14} /> Inoltrato a <strong>{forwardSentTo}</strong></div>
             ) : (
@@ -1288,10 +1394,11 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
         )}
       </AnimatePresence>
 
+      {/* Anteprima media */}
       <AnimatePresence>
         {mediaPreview && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="msg-media-preview">
-            {mediaPreview.isVideo ? <video src={safeBlobUrl(mediaPreview.objectUrl)} className="msg-media-thumb" /> : <img src={safeBlobUrl(mediaPreview.objectUrl)} alt="preview" className="msg-media-thumb" />}
+            {mediaPreview.isVideo ? <video src={safeBlobUrl(mediaPreview.objectUrl)} className="msg-media-thumb" /> : <img src={safeBlobUrl(mediaPreview.objectUrl)} alt="anteprima" className="msg-media-thumb" />}
             <span className="msg-media-name">{mediaPreview.file.name}</span>
             {mediaUploading ? <Loader size={16} className="spin" style={{ flexShrink: 0 }} /> : (
               <>
@@ -1303,6 +1410,7 @@ function ChatView({ withUser, twitchUser, twitchToken, privateKeyRef, e2eReady, 
         )}
       </AnimatePresence>
 
+      {/* Form input */}
       <form onSubmit={editingId ? submitEdit : sendMessage} className="msg-input-form">
         <input ref={fileInputRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={handleFileSelect} />
         <button type="button" className="mod-icon-btn" title="Foto o video" style={{ flexShrink: 0, alignSelf: 'flex-end', marginBottom: '0.3rem' }}
@@ -1403,13 +1511,32 @@ export default function MessagesPage() {
   /* Notifica la Navbar ogni volta che lo stato non-letti cambia */
   useEffect(() => { notificaNonLetti(nonLettiUtenti.size > 0); }, [nonLettiUtenti]);
 
+  /**
+   * Segna una conversazione come "letta" ora.
+   * Usata sia all'ingresso che durante/uscita dalla chat per evitare
+   * falsi pallini di non-letto (il bug principale della v1).
+   */
+  const segnaLetta = useCallback((utente) => {
+    if (!twitchUser || !utente) return;
+    salvaUltimaLettura(twitchUser, utente, Date.now());
+    setNonLettiUtenti(prev => {
+      if (!prev.has(utente)) return prev;
+      const next = new Set(prev);
+      next.delete(utente);
+      return next;
+    });
+  }, [twitchUser]);
+
   const selectChat = (user) => {
-    /* Segna la conversazione come letta prima di aprirla */
-    if (twitchUser) salvaUltimaLettura(twitchUser, user, Date.now());
-    setNonLettiUtenti(prev => { const next = new Set(prev); next.delete(user); return next; });
+    segnaLetta(user);
     setActiveChat(user); setShowFriendPicker(false); setSearchParams({ con: user }, { replace: true });
   };
+
   const goBack = () => {
+    /* ── FIX v2: segna la conversazione come letta PRIMA di ricaricare ──
+       Nella v1 questo mancava, causando il pallino di non-letto
+       sui propri messaggi inviati durante la sessione di chat. */
+    if (activeChat) segnaLetta(activeChat);
     setActiveChat(null); setShowFriendPicker(false); setShowSettings(false);
     setShowSecuritySettings(false); setSearchParams({}, { replace: true }); loadConversations();
   };
@@ -1520,7 +1647,7 @@ export default function MessagesPage() {
           <AnimatePresence mode="wait">
             {activeChat ? (
               <motion.div key="chat" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} style={{ height: '100%' }}>
-                <ChatView withUser={activeChat} twitchUser={twitchUser} twitchToken={twitchToken} privateKeyRef={privateKeyRef} e2eReady={ready} onBack={goBack} onResetE2E={resetE2E} emoteCanale={emoteCanale} emoteGlobali={emoteGlobali} renderTestoConEmote={renderTestoConEmote} />
+                <ChatView withUser={activeChat} twitchUser={twitchUser} twitchToken={twitchToken} privateKeyRef={privateKeyRef} e2eReady={ready} onBack={goBack} onResetE2E={resetE2E} onSegnaLetta={() => segnaLetta(activeChat)} emoteCanale={emoteCanale} emoteGlobali={emoteGlobali} renderTestoConEmote={renderTestoConEmote} />
               </motion.div>
             ) : showFriendPicker ? (
               <motion.div key="picker" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
