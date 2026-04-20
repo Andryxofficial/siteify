@@ -8,13 +8,14 @@
  *   4. setup-joiner      — altro dispositivo: inserimento codice / QR / passkey
  *   5. messaggi          — chat con lista conversazioni
  */
-import { useState, useEffect, useRef, useCallback, memo } from 'react';
+import { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Lock, Send, ArrowLeft, ArrowDown, MessageSquare, Users, LogIn, Loader, Shield,
   Clock, AlertTriangle, Pencil, Trash2, X, Plus, Image as ImageIcon, Check, RefreshCw,
   Bell, KeyRound, ChevronDown, Search, Fingerprint, Key, Copy, CornerUpRight,
-  Smartphone, QrCode, RotateCcw, Download, Upload, ShieldAlert,
+  Smartphone, QrCode, RotateCcw, Download, Upload, ShieldAlert, UserPlus,
+  Mic, Square, Reply, Smile, Circle,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
@@ -47,6 +48,7 @@ import {
 
 
 const API = '/api/messages';
+const REAZIONI_RAPIDE = ['❤️','😂','👍','🔥','😮','😢','🎉','💀'];
 
 /* ─── Helper fetch autenticato ─── */
 async function apiFetch(token, path, opts = {}) {
@@ -1297,20 +1299,277 @@ function PannelloGestioneBackup({ token, username, privateKeyRef, onChiudi }) {
 }
 
 /* ═══════════════════════════════════════════════
+   Avatar utente con immagine Twitch reale
+   (se disponibile in cache) + fallback lettera
+═══════════════════════════════════════════════ */
+const AvatarUtente = memo(function AvatarUtente({ username, avatarCache, dimensione = 36, className = '' }) {
+  /* Salva l'URL che ha generato errore — se l'URL cambia, l'immagine viene riprovata */
+  const [urlErrore, setUrlErrore] = useState(null);
+  const url = avatarCache?.[username] || null;
+  const mostraImg = url && url !== urlErrore;
+  const iniziale = username?.[0]?.toUpperCase() || '?';
+  const stile = { width: dimensione, height: dimensione, fontSize: Math.round(dimensione * 0.36) };
+
+  if (mostraImg) {
+    return (
+      <img
+        src={url}
+        alt={username}
+        className={`msg-avatar${className ? ' ' + className : ''}`}
+        style={{ ...stile, objectFit: 'cover' }}
+        onError={() => setUrlErrore(url)}
+      />
+    );
+  }
+  return (
+    <div className={`msg-avatar${className ? ' ' + className : ''}`} style={stile}>
+      {iniziale}
+    </div>
+  );
+});
+
+/* ═══════════════════════════════════════════════
+   Pannello nuova conversazione con lista amici
+═══════════════════════════════════════════════ */
+function PannelloNuovaConvo({ twitchUser, amici, conversazioni, avatarCache, onAvvia, onChiudi }) {
+  const [cerca, setCerca] = useState('');
+  const [errore, setErrore] = useState('');
+  const [ricercando, setRicercando] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => { setTimeout(() => inputRef.current?.focus(), 80); }, []);
+
+  const convoSet = new Set(conversazioni.map(c => c.user));
+  const q = cerca.toLowerCase().trim();
+
+  const amiciFiltrati = amici.filter(a => !q || a.toLowerCase().includes(q));
+  const amiciInChat = amiciFiltrati.filter(a => convoSet.has(a));
+  const amiciNuovi = amiciFiltrati.filter(a => !convoSet.has(a));
+  const utenteManuale = q.length >= 2 && !amici.find(a => a === q) ? q : null;
+
+  async function avvia(dest) {
+    const d = dest.trim().toLowerCase();
+    if (!d || d === twitchUser) { setErrore('Inserisci un utente valido.'); return; }
+    setRicercando(true);
+    setErrore('');
+    try {
+      const dati = await fetch(`${API}?action=key&user=${encodeURIComponent(d)}`).then(r => r.json()).catch(() => ({}));
+      if (!dati.publicKey) {
+        setErrore(`${d} non ha ancora attivato i messaggi sicuri.`);
+        setRicercando(false);
+        return;
+      }
+      onAvvia(d);
+    } catch {
+      setErrore('Errore di rete. Riprova.');
+      setRicercando(false);
+    }
+  }
+
+  return (
+    <motion.div className="msg-forward-overlay"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={onChiudi}>
+      <motion.div
+        className="glass-panel msg-nuova-convo-panel"
+        initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }}
+        onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="msg-nuova-convo-header">
+          <MessageSquare size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+          <span>Nuova conversazione</span>
+          <button className="mod-icon-btn" style={{ marginLeft: 'auto' }} onClick={onChiudi}><X size={16} /></button>
+        </div>
+
+        {/* Campo ricerca */}
+        <div className="msg-nuova-convo-search">
+          <Search size={14} style={{
+            position: 'absolute', left: 22, top: '50%', transform: 'translateY(-50%)',
+            color: 'var(--text-faint)', pointerEvents: 'none',
+          }} />
+          <input
+            ref={inputRef}
+            className="mod-input"
+            style={{ paddingLeft: 34 }}
+            placeholder="Cerca amico o username Twitch…"
+            value={cerca}
+            onChange={e => { setCerca(e.target.value); setErrore(''); }}
+            onKeyDown={e => e.key === 'Enter' && cerca.trim().length >= 2 && avvia(cerca)}
+          />
+        </div>
+
+        {errore && (
+          <div className="msg-error-banner" style={{ margin: '0 0.6rem 4px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <AlertTriangle size={12} /> {errore}
+          </div>
+        )}
+
+        {/* Lista amici */}
+        <div className="msg-nuova-convo-lista">
+
+          {/* Amici già con chat aperta */}
+          {amiciInChat.length > 0 && (
+            <>
+              <div className="msg-sezione-label">Chat esistenti</div>
+              {amiciInChat.map(a => (
+                <button key={a} className="msg-amico-item" onClick={() => avvia(a)}>
+                  <AvatarUtente username={a} avatarCache={avatarCache} dimensione={36} />
+                  <div className="msg-amico-info">
+                    <span className="msg-amico-nome">{a}</span>
+                    <span className="msg-amico-sub">Amico · Continua chat</span>
+                  </div>
+                  <MessageSquare size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                </button>
+              ))}
+            </>
+          )}
+
+          {/* Amici senza chat */}
+          {amiciNuovi.length > 0 && (
+            <>
+              <div className="msg-sezione-label" style={{ marginTop: amiciInChat.length ? 8 : 0 }}>Amici</div>
+              {amiciNuovi.map(a => (
+                <button key={a} className="msg-amico-item" onClick={() => avvia(a)}>
+                  <AvatarUtente username={a} avatarCache={avatarCache} dimensione={36} />
+                  <div className="msg-amico-info">
+                    <span className="msg-amico-nome">{a}</span>
+                    <span className="msg-amico-sub" style={{ color: 'var(--primary)' }}>Inizia chat</span>
+                  </div>
+                  <Plus size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                </button>
+              ))}
+            </>
+          )}
+
+          {/* Utente non in lista amici (digitato manualmente) */}
+          {utenteManuale && (
+            <>
+              {(amiciInChat.length > 0 || amiciNuovi.length > 0) && (
+                <div className="msg-sezione-label" style={{ marginTop: 8 }}>Altro</div>
+              )}
+              <button className="msg-amico-item msg-amico-item-manual"
+                disabled={ricercando} onClick={() => avvia(cerca)}>
+                {ricercando
+                  ? <Loader size={22} className="spin" style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                  : <UserPlus size={22} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                }
+                <div className="msg-amico-info">
+                  <span className="msg-amico-nome">Avvia chat con &ldquo;{cerca}&rdquo;</span>
+                  <span className="msg-amico-sub">Utente non in lista amici</span>
+                </div>
+              </button>
+            </>
+          )}
+
+          {/* Stato vuoto */}
+          {amiciFiltrati.length === 0 && !utenteManuale && (
+            <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-faint)' }}>
+              <Users size={32} style={{ marginBottom: 10, opacity: 0.35, display: 'block', margin: '0 auto 10px' }} />
+              {amici.length === 0 ? (
+                <>
+                  <p style={{ fontSize: '0.88rem', marginBottom: 4 }}>Nessun amico ancora.</p>
+                  <p style={{ fontSize: '0.78rem' }}>Digita un username Twitch sopra per iniziare.</p>
+                </>
+              ) : (
+                <p style={{ fontSize: '0.88rem' }}>Nessun amico trovato per &ldquo;{cerca}&rdquo;.</p>
+              )}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   Player messaggio vocale
+═══════════════════════════════════════════════ */
+function VoiceMessagePlayer({ src, durata }) {
+  const audioRef = useRef(null);
+  const [inRiproduzione, setInRiproduzione] = useState(false);
+  const [progresso, setProgresso] = useState(0);
+  const [durataReale, setDurataReale] = useState(durata || 0);
+
+  function toggle() {
+    if (!audioRef.current || !src) return;
+    if (inRiproduzione) { audioRef.current.pause(); setInRiproduzione(false); }
+    else { audioRef.current.play().then(() => setInRiproduzione(true)).catch(() => {}); }
+  }
+
+  function onTimeUpdate() {
+    if (!audioRef.current) return;
+    const pct = audioRef.current.duration > 0 ? audioRef.current.currentTime / audioRef.current.duration : 0;
+    setProgresso(pct);
+  }
+
+  function onLoaded() {
+    if (audioRef.current?.duration && isFinite(audioRef.current.duration)) {
+      setDurataReale(Math.round(audioRef.current.duration));
+    }
+  }
+
+  function formattaDurata(sec) {
+    if (!sec || sec <= 0) return '0:00';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  }
+
+  if (!src) return <div className="msg-voice-placeholder"><Loader size={14} className="spin" /> Caricamento audio…</div>;
+
+  return (
+    <div className="msg-voice-player">
+      <audio ref={audioRef} src={src}
+        onTimeUpdate={onTimeUpdate}
+        onLoadedMetadata={onLoaded}
+        onEnded={() => { setInRiproduzione(false); setProgresso(0); }}
+        preload="metadata" />
+      <button className="msg-voice-play-btn" onClick={toggle}>
+        {inRiproduzione
+          ? <Square size={14} fill="currentColor" />
+          : <Mic size={14} />}
+      </button>
+      <div className="msg-voice-track">
+        <div className="msg-voice-progress" style={{ width: `${progresso * 100}%` }} />
+      </div>
+      <span className="msg-voice-duration">{formattaDurata(durataReale)}</span>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════
    Singolo messaggio
 ═══════════════════════════════════════════════ */
-const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, onModifica, onElimina, onInoltra }) {
+const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, onModifica, onElimina, onInoltra, onRispondi, reazioni, onReazione }) {
   const [menuAperto, setMenuAperto] = useState(false);
+  const [mostraReazioni, setMostraReazioni] = useState(false);
   const menuRef = useRef(null);
+  const reazioniRef = useRef(null);
 
   useEffect(() => {
-    if (!menuAperto) return;
-    const chiudi = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuAperto(false); };
+    if (!menuAperto && !mostraReazioni) return;
+    const chiudi = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuAperto(false);
+      if (reazioniRef.current && !reazioniRef.current.contains(e.target)) setMostraReazioni(false);
+    };
     document.addEventListener('pointerdown', chiudi);
     return () => document.removeEventListener('pointerdown', chiudi);
-  }, [menuAperto]);
+  }, [menuAperto, mostraReazioni]);
 
   const testoVisibile = msg.eliminato ? null : (msg.testoDecifrato || null);
+
+  /* Raggruppa reazioni per emoji */
+  const reazioniRaggruppate = useMemo(() => {
+    if (!reazioni || reazioni.length === 0) return [];
+    const mappa = {};
+    reazioni.forEach(r => {
+      if (!mappa[r.emoji]) mappa[r.emoji] = { emoji: r.emoji, utenti: [], mioVoto: false };
+      mappa[r.emoji].utenti.push(r.user);
+      if (r.user === msg._twitchUser) mappa[r.emoji].mioVoto = true;
+    });
+    return Object.values(mappa);
+  }, [reazioni, msg._twitchUser]);
 
   return (
     <div className={`msg-wrapper${raggruppato ? ' msg-grouped' : ''}`}
@@ -1323,13 +1582,28 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
       )}
       {!mio && raggruppato && <div style={{ width: 28 }} />}
       <div style={{ position: 'relative', maxWidth: '72%' }}>
+
+        {/* Citazione messaggio originale (reply) */}
+        {msg.replyToId && msg.replyPreview && (
+          <div className="msg-reply-quote" style={{ marginLeft: mio ? 'auto' : 0, marginRight: mio ? 0 : 'auto' }}>
+            <Reply size={11} style={{ flexShrink: 0 }} />
+            <span className="msg-reply-text">{msg.replyPreview}</span>
+          </div>
+        )}
+
         <div
           className={`msg-bubble${mio ? ' msg-mine' : ' msg-theirs'}${raggruppato ? ' msg-bubble-grouped' : ''}`}
-          onContextMenu={e => { e.preventDefault(); setMenuAperto(true); }}>
+          onContextMenu={e => { e.preventDefault(); setMenuAperto(true); }}
+          onDoubleClick={() => { if (!msg.eliminato) setMostraReazioni(true); }}>
           {msg.eliminato ? (
             <span className="msg-deleted-text">
               <Trash2 size={12} style={{ marginRight: 4 }} /> Messaggio eliminato
             </span>
+          ) : msg.tipoMedia === 'voice' ? (
+            <div className="msg-voice-container">
+              <VoiceMessagePlayer src={msg.mediaDecifrato} durata={msg.durata} />
+              {testoVisibile && <p className="msg-text" style={{ marginTop: 4 }}>{testoVisibile}</p>}
+            </div>
           ) : msg.tipoMedia === 'image' ? (
             <div className="msg-media-content">
               {msg.mediaDecifrato ? (
@@ -1365,9 +1639,49 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
           </div>
         </div>
 
+        {/* Reazioni sotto la bolla */}
+        {reazioniRaggruppate.length > 0 && (
+          <div className="msg-reactions-bar" style={{ justifyContent: mio ? 'flex-end' : 'flex-start' }}>
+            {reazioniRaggruppate.map(r => (
+              <button key={r.emoji}
+                className={`msg-reaction-pill${r.mioVoto ? ' msg-reaction-mine' : ''}`}
+                onClick={() => onReazione && onReazione(msg.id, r.emoji)}
+                title={r.utenti.join(', ')}>
+                <span>{r.emoji}</span>
+                {r.utenti.length > 1 && <span className="msg-reaction-count">{r.utenti.length}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Picker reazioni rapide (doppio tap / pulsante) */}
+        <AnimatePresence>
+          {mostraReazioni && !msg.eliminato && (
+            <motion.div ref={reazioniRef}
+              className="msg-reactions-picker"
+              initial={{ opacity: 0, scale: 0.85, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.85 }}
+              style={{ [mio ? 'right' : 'left']: 0, bottom: '100%' }}>
+              {REAZIONI_RAPIDE.map(e => (
+                <button key={e} className="msg-reaction-btn"
+                  onClick={() => { onReazione && onReazione(msg.id, e); setMostraReazioni(false); }}>
+                  {e}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Azioni hover */}
         {!msg.eliminato && (
           <div className="msg-hover-actions" style={{ [mio ? 'right' : 'left']: '100%' }}>
+            <button className="mod-icon-btn" title="Rispondi" onClick={() => onRispondi && onRispondi(msg)}>
+              <Reply size={13} />
+            </button>
+            <button className="mod-icon-btn" title="Reagisci" onClick={() => setMostraReazioni(true)}>
+              <Smile size={13} />
+            </button>
             {mio && (
               <button className="mod-icon-btn" title="Modifica" onClick={() => onModifica(msg)}>
                 <Pencil size={13} />
@@ -1392,6 +1706,12 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               style={{ [mio ? 'right' : 'left']: 0, top: '100%', zIndex: 50 }}>
+              {!msg.eliminato && (
+                <button className="msg-context-item"
+                  onClick={() => { onRispondi && onRispondi(msg); setMenuAperto(false); }}>
+                  <Reply size={13} /> Rispondi
+                </button>
+              )}
               {!msg.eliminato && testoVisibile && (
                 <button className="msg-context-item"
                   onClick={() => { copiaNeglAppunti(testoVisibile); setMenuAperto(false); }}>
@@ -1499,7 +1819,7 @@ function PannelloInoltra({ msg, twitchToken, twitchUser, privateKeyRef, onChiudi
 /* ═══════════════════════════════════════════════
    Vista chat
 ═══════════════════════════════════════════════ */
-function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emoteCanale, emoteGlobali }) {
+function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emoteCanale, emoteGlobali, avatarCache }) {
   const [messaggi, setMessaggi] = useState([]);
   const [testo, setTesto] = useState('');
   const [caricamento, setCaricamento] = useState(true);
@@ -1510,6 +1830,18 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
   const [fileInUpload, setFileInUpload] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [cursorePag, setCursorePag] = useState(0);
+  /* Nuove feature */
+  const [rispondiA, setRispondiA] = useState(null); // messaggio a cui rispondere
+  const [staDigitando, setStaDigitando] = useState(false); // l'altro sta scrivendo
+  const [online, setOnline] = useState(false); // stato online dell'altro
+  const [registrando, setRegistrando] = useState(false); // registrazione vocale attiva
+  const [durataReg, setDurataReg] = useState(0); // secondi registrazione
+  const [reazioni, setReazioni] = useState({}); // { msgId: [{user,emoji,ts}] }
+  const [cercaInChat, setCercaInChat] = useState('');
+  const [mostraCerca, setMostraCerca] = useState(false);
+  const [risultatiCerca, setRisultatiCerca] = useState([]);
+  const [indiceCerca, setIndiceCerca] = useState(-1);
+
   const scrollRef = useRef(null);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -1517,6 +1849,11 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
   const aesKeyCache = useRef(null);
   const ultimoIdRef = useRef(null);
   const ultimoTsRef = useRef(null);
+  const typingTimerRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const chunksRef = useRef([]);
+  const regIntervalRef = useRef(null);
+  const reazioniCaricateRef = useRef(new Set());
 
   /* ─── Ottieni chiave AES condivisa ─── */
   const ottieniAesKey = useCallback(async () => {
@@ -1533,16 +1870,16 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
   /* ─── Decifra un messaggio ─── */
   const decifraMessaggio = useCallback(async (rawMsg) => {
     const msg = normalizzaMessaggio(rawMsg);
-    if (msg.eliminato) return { ...msg, testoDecifrato: null };
-    if (msg.testoDecifrato) return msg;
+    if (msg.eliminato) return { ...msg, testoDecifrato: null, _twitchUser: twitchUser };
+    if (msg.testoDecifrato) return { ...msg, _twitchUser: twitchUser };
     try {
       const aesKey = await ottieniAesKey();
       const testoDecifrato = await decryptMessage(aesKey, msg.encrypted, msg.iv);
-      return { ...msg, testoDecifrato };
+      return { ...msg, testoDecifrato, _twitchUser: twitchUser };
     } catch {
-      return { ...msg, testoDecifrato: '[Impossibile decifrare]' };
+      return { ...msg, testoDecifrato: '[Impossibile decifrare]', _twitchUser: twitchUser };
     }
-  }, [ottieniAesKey]);
+  }, [ottieniAesKey, twitchUser]);
 
   /* ─── Carica cronologia ─── */
   const caricaCronologia = useCallback(async (resetta = true) => {
@@ -1569,7 +1906,11 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
 
   useEffect(() => {
     caricaCronologia(true);
-    return () => clearTimeout(pollTimerRef.current);
+    return () => {
+      clearTimeout(pollTimerRef.current);
+      clearTimeout(typingTimerRef.current);
+      clearInterval(regIntervalRef.current);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conUsr]);
 
@@ -1620,6 +1961,61 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
     return () => clearTimeout(pollTimerRef.current);
   }, [caricamento, conUsr, twitchToken, decifraMessaggio]);
 
+  /* ─── Polling indicatore di digitazione ─── */
+  useEffect(() => {
+    if (caricamento) return;
+    let attivo = true;
+    function pollTyping() {
+      if (!attivo) return;
+      fetch(`${API}?action=typing_status&with=${conUsr}`, {
+        headers: { Authorization: `Bearer ${twitchToken}` },
+      })
+        .then(r => r.ok ? r.json() : { typing: false })
+        .then(d => { if (attivo) setStaDigitando(!!d.typing); })
+        .catch(() => {});
+      if (attivo) setTimeout(pollTyping, 4000);
+    }
+    setTimeout(pollTyping, 2000);
+    return () => { attivo = false; };
+  }, [caricamento, conUsr, twitchToken]);
+
+  /* ─── Polling stato online ─── */
+  useEffect(() => {
+    let attivo = true;
+    function pollOnline() {
+      if (!attivo) return;
+      fetch(`${API}?action=online_status&users=${conUsr}`, {
+        headers: { Authorization: `Bearer ${twitchToken}` },
+      })
+        .then(r => r.ok ? r.json() : { online: {} })
+        .then(d => { if (attivo) setOnline(!!d.online?.[conUsr]); })
+        .catch(() => {});
+      if (attivo) setTimeout(pollOnline, 30000);
+    }
+    pollOnline();
+    return () => { attivo = false; };
+  }, [conUsr, twitchToken]);
+
+  /* ─── Heartbeat: aggiorna il proprio stato online ─── */
+  useEffect(() => {
+    let attivo = true;
+    function heartbeat() {
+      if (!attivo) return;
+      apiFetch(twitchToken, '', { method: 'POST', body: JSON.stringify({ action: 'heartbeat' }) }).catch(() => {});
+      if (attivo) setTimeout(heartbeat, 60000);
+    }
+    heartbeat();
+    return () => { attivo = false; };
+  }, [twitchToken]);
+
+  /* ─── Segnala che sto digitando ─── */
+  function segnalaDigitazione() {
+    clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      apiFetch(twitchToken, '', { method: 'POST', body: JSON.stringify({ action: 'typing', to: conUsr }) }).catch(() => {});
+    }, 300);
+  }
+
   /* ─── Invia messaggio ─── */
   async function invia(e) {
     e.preventDefault();
@@ -1637,6 +2033,20 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
         });
         setMessaggi(prev => prev.map(m => m.id === modificandoId ? { ...m, testoDecifrato: t, modificato: true } : m));
         setModificandoId(null);
+      } else if (rispondiA) {
+        /* Risposta a un messaggio */
+        const { encrypted, iv } = await encryptMessage(aesKey, t);
+        const anteprima = (rispondiA.testoDecifrato || '').slice(0, 80) || '[media]';
+        const risposta = await apiFetch(twitchToken, '', {
+          method: 'POST',
+          body: JSON.stringify({ action: 'send_reply', to: conUsr, encrypted, iv, replyToId: rispondiA.id, replyPreview: anteprima }),
+        });
+        const nuovoMsg = await decifraMessaggio({ ...risposta.message, testoDecifrato: t });
+        setMessaggi(prev => [...prev, nuovoMsg]);
+        ultimoIdRef.current = nuovoMsg.id;
+        ultimoTsRef.current = nuovoMsg.ts;
+        setRispondiA(null);
+        setTimeout(scorriInBasso, 50);
       } else {
         const { encrypted, iv } = await encryptMessage(aesKey, t);
         const risposta = await apiFetch(twitchToken, '', {
@@ -1665,14 +2075,14 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
       const { data, iv } = await encryptBytes(aesKey, buffer);
       const base64 = btoa(String.fromCharCode(...new Uint8Array(data)));
       const ivBase64 = btoa(String.fromCharCode(...new Uint8Array(iv)));
-      const tipoMedia = file.type.startsWith('image/') ? 'image' : 'file';
+      const tipoMedia = file.type.startsWith('image/') ? 'image' : file.type.startsWith('audio/') ? 'voice' : 'file';
       const { encrypted: encNome, iv: ivNome } = await encryptMessage(aesKey, file.name);
       const risposta = await apiFetch(twitchToken, '', {
         method: 'POST',
         body: JSON.stringify({ action: 'send', to: conUsr, encrypted: base64, iv: ivBase64, tipoMedia, nomeFile: encNome, ivNome }),
       });
       const url = URL.createObjectURL(file);
-      const nuovoMsg = normalizzaMessaggio({ ...risposta.message, testoDecifrato: '', tipoMedia, nomeFile: file.name, mediaDecifrato: url });
+      const nuovoMsg = normalizzaMessaggio({ ...risposta.message, testoDecifrato: '', tipoMedia, nomeFile: file.name, mediaDecifrato: url, _twitchUser: twitchUser });
       setMessaggi(prev => [...prev, nuovoMsg]);
       ultimoIdRef.current = nuovoMsg.id;
       ultimoTsRef.current = nuovoMsg.ts;
@@ -1681,6 +2091,45 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
       setErrore(`Errore upload: ${err.message}`);
     } finally {
       setFileInUpload(false);
+    }
+  }
+
+  /* ─── Registrazione vocale ─── */
+  async function avviaRegistrazione() {
+    try {
+      const supportaWebm = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm');
+      const supportaMp4 = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/mp4');
+      if (!supportaWebm && !supportaMp4) { setErrore('Il tuo browser non supporta la registrazione audio.'); return; }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = supportaWebm ? 'audio/webm' : 'audio/mp4';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = recorder;
+      chunksRef.current = [];
+      setDurataReg(0);
+      const startT = Date.now();
+      regIntervalRef.current = setInterval(() => setDurataReg(Math.floor((Date.now() - startT) / 1000)), 500);
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      recorder.onstop = () => {
+        clearInterval(regIntervalRef.current);
+        stream.getTracks().forEach(t => t.stop());
+        if (chunksRef.current.length > 0) {
+          const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
+          const ext = recorder.mimeType.includes('webm') ? 'webm' : 'm4a';
+          const file = new File([blob], `vocale_${Date.now()}.${ext}`, { type: recorder.mimeType });
+          caricaMedia(file);
+        }
+        setRegistrando(false);
+      };
+      recorder.start();
+      setRegistrando(true);
+    } catch {
+      setErrore('Impossibile accedere al microfono.');
+    }
+  }
+
+  function fermaRegistrazione() {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
     }
   }
 
@@ -1697,6 +2146,64 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
     }
   }
 
+  /* ─── Reazione a un messaggio ─── */
+  async function reagisci(msgId, emoji) {
+    try {
+      const resp = await apiFetch(twitchToken, '', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'react', convoWith: conUsr, msgId, emoji }),
+      });
+      setReazioni(prev => ({ ...prev, [msgId]: resp.reactions || [] }));
+    } catch { /* best effort */ }
+  }
+
+  /* ─── Carica reazioni per i messaggi visibili ─── */
+  useEffect(() => {
+    if (messaggi.length === 0) return;
+    /* Carica reazioni solo per messaggi non ancora controllati */
+    const idsDaCaricare = messaggi
+      .filter(m => !m.eliminato && !reazioniCaricateRef.current.has(m.id))
+      .slice(-30)
+      .map(m => m.id);
+    if (idsDaCaricare.length === 0) return;
+    idsDaCaricare.forEach(id => reazioniCaricateRef.current.add(id));
+    let attivo = true;
+    Promise.all(
+      idsDaCaricare.map(id =>
+        fetch(`${API}?action=reactions&with=${conUsr}&msgId=${id}`, { headers: { Authorization: `Bearer ${twitchToken}` } })
+          .then(r => r.ok ? r.json() : { reactions: [] })
+          .then(d => ({ id, reactions: d.reactions || [] }))
+          .catch(() => ({ id, reactions: [] }))
+      )
+    ).then(results => {
+      if (!attivo) return;
+      const nuove = {};
+      results.forEach(r => { if (r.reactions.length > 0) nuove[r.id] = r.reactions; });
+      if (Object.keys(nuove).length > 0) setReazioni(prev => ({ ...prev, ...nuove }));
+    });
+    return () => { attivo = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messaggi.length, conUsr, twitchToken]);
+
+  /* ─── Ricerca messaggi nella chat ─── */
+  useEffect(() => {
+    if (!cercaInChat.trim()) { setRisultatiCerca([]); setIndiceCerca(-1); return; }
+    const q = cercaInChat.toLowerCase();
+    const risultati = messaggi
+      .filter(m => m.testoDecifrato && m.testoDecifrato.toLowerCase().includes(q))
+      .map(m => m.id);
+    setRisultatiCerca(risultati);
+    setIndiceCerca(risultati.length > 0 ? risultati.length - 1 : -1);
+  }, [cercaInChat, messaggi]);
+
+  /* Scorri al risultato di ricerca attivo */
+  useEffect(() => {
+    if (indiceCerca < 0 || risultatiCerca.length === 0) return;
+    const targetId = risultatiCerca[indiceCerca];
+    const el = scrollRef.current?.querySelector(`[data-msg-id="${targetId}"]`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [indiceCerca, risultatiCerca]);
+
   /* ─── Raggruppa messaggi per data/mittente ─── */
   const messaggiConMeta = messaggi.map((msg, i) => {
     const prev = messaggi[i - 1];
@@ -1707,7 +2214,15 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
 
   function onKeyDown(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); invia(e); }
-    if (e.key === 'Escape' && modificandoId) { setModificandoId(null); setTesto(''); }
+    if (e.key === 'Escape') {
+      if (modificandoId) { setModificandoId(null); setTesto(''); }
+      else if (rispondiA) { setRispondiA(null); }
+    }
+  }
+
+  function onInputChange(e) {
+    setTesto(e.target.value);
+    segnalaDigitazione();
   }
 
   return (
@@ -1715,12 +2230,67 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
       {/* Header */}
       <div className="msg-chat-header">
         <button className="btn btn-ghost" onClick={onTorna}><ArrowLeft size={18} /></button>
-        <div className="msg-avatar msg-avatar-sm">{conUsr[0]?.toUpperCase()}</div>
-        <span style={{ fontWeight: 600 }}>{conUsr}</span>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-faint)', fontSize: '0.75rem' }}>
-          <Lock size={12} /> E2E
+        <div style={{ position: 'relative' }}>
+          <AvatarUtente username={conUsr} avatarCache={avatarCache || {}} dimensione={32} className="msg-avatar-sm" />
+          {online && <span className="msg-online-dot" />}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ fontWeight: 600, display: 'block' }}>{conUsr}</span>
+          <AnimatePresence mode="wait">
+            {staDigitando ? (
+              <motion.span key="typing" className="msg-typing-label"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                sta scrivendo<span className="msg-typing-dots" />
+              </motion.span>
+            ) : online ? (
+              <motion.span key="online" className="msg-status-online"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                Online
+              </motion.span>
+            ) : null}
+          </AnimatePresence>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button className="mod-icon-btn" title="Cerca nella chat" onClick={() => setMostraCerca(v => !v)}>
+            <Search size={16} />
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-faint)', fontSize: '0.72rem' }}>
+            <Lock size={11} /> E2E
+          </div>
         </div>
       </div>
+
+      {/* Barra ricerca nella chat */}
+      <AnimatePresence>
+        {mostraCerca && (
+          <motion.div className="msg-search-bar"
+            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+            <Search size={14} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
+            <input className="msg-search-input" placeholder="Cerca nei messaggi…"
+              value={cercaInChat}
+              onChange={e => setCercaInChat(e.target.value)}
+              autoFocus />
+            {risultatiCerca.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+                  {indiceCerca + 1}/{risultatiCerca.length}
+                </span>
+                <button className="mod-icon-btn" style={{ padding: 2 }}
+                  onClick={() => setIndiceCerca(i => i > 0 ? i - 1 : risultatiCerca.length - 1)}>
+                  <ChevronDown size={13} style={{ transform: 'rotate(180deg)' }} />
+                </button>
+                <button className="mod-icon-btn" style={{ padding: 2 }}
+                  onClick={() => setIndiceCerca(i => i < risultatiCerca.length - 1 ? i + 1 : 0)}>
+                  <ChevronDown size={13} />
+                </button>
+              </div>
+            )}
+            <button className="mod-icon-btn" onClick={() => { setMostraCerca(false); setCercaInChat(''); }}>
+              <X size={14} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Banner errore */}
       <AnimatePresence>
@@ -1756,7 +2326,8 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
               </div>
             )}
             {messaggiConMeta.map(({ msg, separatoreData, raggruppato }) => (
-              <div key={msg.id}>
+              <div key={msg.id} data-msg-id={msg.id}
+                className={risultatiCerca.includes(msg.id) && risultatiCerca[indiceCerca] === msg.id ? 'msg-search-highlight' : ''}>
                 {separatoreData && (
                   <div className="msg-date-separator"><span>{separatoreData}</span></div>
                 )}
@@ -1764,9 +2335,12 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
                   msg={msg}
                   mio={msg.da === twitchUser}
                   raggruppato={raggruppato}
-                  onModifica={m => { setModificandoId(m.id); setTesto(m.testoDecifrato || ''); textareaRef.current?.focus(); }}
+                  onModifica={m => { setModificandoId(m.id); setTesto(m.testoDecifrato || ''); setRispondiA(null); textareaRef.current?.focus(); }}
                   onElimina={eliminaMessaggio}
                   onInoltra={m => setInoltraMsg(m)}
+                  onRispondi={m => { setRispondiA(m); setModificandoId(null); textareaRef.current?.focus(); }}
+                  reazioni={reazioni[msg.id] || []}
+                  onReazione={reagisci}
                 />
               </div>
             ))}
@@ -1787,6 +2361,27 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
 
       {/* Form invio */}
       <form className="msg-input-form" onSubmit={invia}>
+        {/* Barra risposta */}
+        <AnimatePresence>
+          {rispondiA && (
+            <motion.div className="msg-reply-bar"
+              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+              <Reply size={13} style={{ flexShrink: 0, color: 'var(--primary)' }} />
+              <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--primary)' }}>
+                  {rispondiA.da === twitchUser ? 'Te stesso' : rispondiA.da}
+                </span>
+                <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {rispondiA.testoDecifrato || '[media]'}
+                </p>
+              </div>
+              <button type="button" className="mod-icon-btn" onClick={() => setRispondiA(null)}>
+                <X size={13} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {modificandoId && (
           <div className="msg-edit-label">
             <Pencil size={13} /> Modifica messaggio
@@ -1797,7 +2392,7 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
           </div>
         )}
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
-          <button type="button" className="mod-icon-btn" disabled={fileInUpload}
+          <button type="button" className="mod-icon-btn" disabled={fileInUpload || registrando}
             onClick={() => fileInputRef.current?.click()}>
             {fileInUpload ? <Loader size={16} className="spin" /> : <ImageIcon size={16} />}
           </button>
@@ -1817,14 +2412,26 @@ function ChatView({ conUsr, twitchUser, twitchToken, privateKeyRef, onTorna, emo
             rows={1}
             placeholder="Scrivi un messaggio…"
             value={testo}
-            onChange={e => setTesto(e.target.value)}
+            onChange={onInputChange}
             onKeyDown={onKeyDown}
-            disabled={fileInUpload}
+            disabled={fileInUpload || registrando}
             style={{ resize: 'none', flex: 1, minHeight: 36, maxHeight: 120, overflow: 'auto' }}
           />
-          <button type="submit" className="msg-send-btn" disabled={!testo.trim() || fileInUpload}>
-            {modificandoId ? <Check size={18} /> : <Send size={18} />}
-          </button>
+          {/* Mostra microfono se non c'è testo, altrimenti invia */}
+          {testo.trim() || modificandoId ? (
+            <button type="submit" className="msg-send-btn" disabled={!testo.trim() || fileInUpload}>
+              {modificandoId ? <Check size={18} /> : <Send size={18} />}
+            </button>
+          ) : registrando ? (
+            <button type="button" className="msg-send-btn msg-recording-btn" onClick={fermaRegistrazione}>
+              <Square size={16} fill="currentColor" />
+              <span className="msg-rec-timer">{durataReg}s</span>
+            </button>
+          ) : (
+            <button type="button" className="msg-send-btn msg-mic-btn" onClick={avviaRegistrazione} disabled={fileInUpload}>
+              <Mic size={18} />
+            </button>
+          )}
         </div>
       </form>
 
@@ -1857,15 +2464,17 @@ export default function MessagesPage() {
   const [chatAperta, setChatAperta] = useState(null);
   const [ricercaAmico, setRicercaAmico] = useState('');
   const [nuovaConvo, setNuovaConvo] = useState(false);
-  const [cercaUtente, setCercaUtente] = useState('');
-  const [erroreRicerca, setErroreRicerca] = useState('');
   const [mostraSyncInit, setMostraSyncInit] = useState(false);
   const [caricandoConvo, setCaricandoConvo] = useState(false);
   const [confermaRimuoviChiavi, setConfermaRimuoviChiavi] = useState(false);
   const [mostraGestioneBackup, setMostraGestioneBackup] = useState(false);
   const [anteprime, setAnteprime] = useState({});
+  const [amici, setAmici] = useState([]);
+  const [avatarCache, setAvatarCache] = useState({});
+  const [onlineMap, setOnlineMap] = useState({}); // { username: boolean }
   const privateKeyRef = useRef(null);
   const pollConvoRef = useRef(null);
+  const avatarFetchSet = useRef(new Set());
 
   /* ─── Inizializzazione: controlla chiavi locali poi server ─── */
   useEffect(() => {
@@ -1904,6 +2513,70 @@ export default function MessagesPage() {
     pollConvoRef.current = setTimeout(poll, 15000);
     return () => clearTimeout(pollConvoRef.current);
   }, [fase, caricaConversazioni]);
+
+  /* ─── Carica lista amici per il picker ─── */
+  const caricaAmici = useCallback(async () => {
+    if (!twitchToken) return;
+    try {
+      const res = await fetch('/api/friends', {
+        headers: { Authorization: `Bearer ${twitchToken}` },
+      });
+      if (res.ok) {
+        const dati = await res.json();
+        setAmici((dati.friends || []).sort());
+      }
+    } catch { /* best effort */ }
+  }, [twitchToken]);
+
+  useEffect(() => {
+    if (fase === 'messaggi') caricaAmici();
+  }, [fase, caricaAmici]);
+
+  /* ─── Precarica avatar per conversazioni e amici ─── */
+  useEffect(() => {
+    if (!twitchToken || fase !== 'messaggi') return;
+    const tuttiUtenti = [...new Set([...conversazioni.map(c => c.user), ...amici])];
+    const daFetchare = tuttiUtenti.filter(u => u && !(u in avatarCache) && !avatarFetchSet.current.has(u));
+    if (daFetchare.length === 0) return;
+    daFetchare.forEach(u => avatarFetchSet.current.add(u));
+    Promise.allSettled(
+      daFetchare.map(u =>
+        fetch(`/api/profile?user=${encodeURIComponent(u)}`, {
+          headers: { Authorization: `Bearer ${twitchToken}` },
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => ({ u, url: d?.avatar || null }))
+          .catch(() => ({ u, url: null })),
+      ),
+    ).then(results => {
+      const nuovi = {};
+      /* Salva solo URL validi — utenti senza avatar restano fuori dalla cache
+         e vengono protetti da ri-fetch tramite avatarFetchSet */
+      results.forEach(r => { if (r.status === 'fulfilled' && r.value.url) nuovi[r.value.u] = r.value.url; });
+      if (Object.keys(nuovi).length > 0) setAvatarCache(prev => ({ ...prev, ...nuovi }));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversazioni, amici, twitchToken, fase]);
+
+  /* ─── Polling stato online utenti nelle conversazioni ─── */
+  useEffect(() => {
+    if (fase !== 'messaggi' || !twitchToken || conversazioni.length === 0) return;
+    let attivo = true;
+    function pollOnline() {
+      if (!attivo) return;
+      const utenti = conversazioni.map(c => c.user).filter(Boolean).join(',');
+      if (!utenti) return;
+      fetch(`${API}?action=online_status&users=${utenti}`, {
+        headers: { Authorization: `Bearer ${twitchToken}` },
+      })
+        .then(r => r.ok ? r.json() : { online: {} })
+        .then(d => { if (attivo) setOnlineMap(d.online || {}); })
+        .catch(() => {});
+      if (attivo) setTimeout(pollOnline, 45000);
+    }
+    pollOnline();
+    return () => { attivo = false; };
+  }, [conversazioni, twitchToken, fase]);
 
   function onSetupCompleto(privKey) {
     privateKeyRef.current = privKey;
@@ -1955,19 +2628,19 @@ export default function MessagesPage() {
     return () => { annullato = true; };
   }, [conversazioni, twitchUser, fase]);
 
-  async function avviaNuovaConvo() {
-    const dest = cercaUtente.trim().toLowerCase();
-    if (!dest || dest === twitchUser) { setErroreRicerca('Inserisci un utente valido.'); return; }
-    setErroreRicerca('');
-    const dati = await fetch(`${API}?action=key&user=${dest}`).then(r => r.json()).catch(() => ({}));
-    if (!dati.publicKey) { setErroreRicerca(`${dest} non ha ancora abilitato i messaggi.`); return; }
+  /* ─── Apre la chat con un utente (usata da PannelloNuovaConvo e suggerimenti) ─── */
+  function apriChat(dest) {
     setChatAperta(dest);
     setNuovaConvo(false);
-    setCercaUtente('');
     setConversazioni(prev => prev.find(c => c.user === dest) ? prev : [{ user: dest, lastMessageAt: Date.now() }, ...prev]);
   }
 
+  const convoSet = new Set(conversazioni.map(c => c.user));
   const convFiltrate = conversazioni.filter(c => c.user.toLowerCase().includes(ricercaAmico.toLowerCase()));
+  /* Amici non ancora in chat che corrispondono alla ricerca (max 5) */
+  const amiciSuggeriti = ricercaAmico.trim().length >= 1
+    ? amici.filter(a => a.toLowerCase().includes(ricercaAmico.toLowerCase()) && !convoSet.has(a) && a !== twitchUser).slice(0, 5)
+    : [];
 
   /* ─── Fase: inizializzazione ─── */
   if (fase === 'inizializzazione') {
@@ -2061,7 +2734,7 @@ export default function MessagesPage() {
                       <Shield size={16} />
                     </button>
                     <button className="btn btn-primary" style={{ padding: '4px 10px', fontSize: '0.85rem' }}
-                      onClick={() => setNuovaConvo(v => !v)}>
+                      onClick={() => setNuovaConvo(true)}>
                       <Plus size={15} /> Nuovo
                     </button>
                   </div>
@@ -2108,77 +2781,85 @@ export default function MessagesPage() {
                 <div style={{ position: 'relative', marginTop: 8 }}>
                   <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
                   <input className="mod-input" style={{ paddingLeft: 30, fontSize: '0.85rem' }}
-                    placeholder="Cerca conversazione…"
+                    placeholder="Cerca conversazione o amico…"
                     value={ricercaAmico}
                     onChange={e => setRicercaAmico(e.target.value)} />
                 </div>
-
-                {/* Form nuova conversazione */}
-                <AnimatePresence>
-                  {nuovaConvo && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                      style={{ overflow: 'hidden', marginTop: 8 }}>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <input className="mod-input" style={{ flex: 1, fontSize: '0.85rem' }}
-                          placeholder="Username Twitch…"
-                          value={cercaUtente}
-                          onChange={e => { setCercaUtente(e.target.value); setErroreRicerca(''); }}
-                          onKeyDown={e => e.key === 'Enter' && avviaNuovaConvo()} />
-                        <button className="btn btn-primary" style={{ padding: '4px 10px' }} onClick={avviaNuovaConvo}>
-                          <Send size={14} />
-                        </button>
-                      </div>
-                      {erroreRicerca && <p style={{ fontSize: '0.8rem', color: '#ef4444', marginTop: 4 }}>{erroreRicerca}</p>}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
 
               {/* Lista conversazioni */}
-              <div style={{ flex: 1, overflowY: 'auto' }}>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '0.25rem 0.25rem 0.5rem' }}>
                 {caricandoConvo && conversazioni.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-faint)' }}>
                     <Loader size={20} className="spin" />
                   </div>
-                ) : convFiltrate.length === 0 ? (
+                ) : convFiltrate.length === 0 && amiciSuggeriti.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-faint)', fontSize: '0.85rem' }}>
                     <Users size={28} style={{ marginBottom: 8, opacity: 0.4 }} />
-                    <p>Nessuna conversazione ancora.</p>
-                    <p>Premi &ldquo;Nuovo&rdquo; per iniziare.</p>
+                    {ricercaAmico ? (
+                      <>
+                        <p>Nessun risultato per &ldquo;{ricercaAmico}&rdquo;.</p>
+                        <p style={{ marginTop: 4 }}>Premi <strong>+</strong> per iniziare una nuova chat.</p>
+                      </>
+                    ) : (
+                      <>
+                        <p>Nessuna conversazione ancora.</p>
+                        <p>Premi <strong>+</strong> per iniziare.</p>
+                      </>
+                    )}
                   </div>
                 ) : (
-                  convFiltrate.map(c => (
-                    <button key={c.user} className="msg-convo-item" onClick={() => selezionaChat(c.user)}>
-                      <div className="msg-avatar msg-avatar-sm" style={{ position: 'relative' }}>
-                        {c.user[0]?.toUpperCase()}
-                      </div>
-                      <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                          <span style={{ fontWeight: c.unread > 0 ? 700 : 600, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.user}</span>
-                          <span className="msg-convo-time" style={{ flexShrink: 0 }}>{c.lastMessageAt ? formatOraRelativa(c.lastMessageAt) : ''}</span>
+                  <>
+                    {convFiltrate.map(c => (
+                      <button key={c.user}
+                        className={`msg-convo-item${c.unread > 0 ? ' msg-convo-item-unread' : ''}`}
+                        onClick={() => selezionaChat(c.user)}>
+                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                          <AvatarUtente username={c.user} avatarCache={avatarCache} dimensione={36} />
+                          {c.unread > 0 && <span className="msg-pallino" />}
+                          {onlineMap[c.user] && !c.unread && <span className="msg-convo-online-dot" />}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                          <span style={{
-                            flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                            fontSize: '0.8rem', color: c.unread > 0 ? 'var(--text-secondary)' : 'var(--text-faint)',
-                            fontWeight: c.unread > 0 ? 500 : 400,
-                          }}>
-                            {anteprime[c.user] || ''}
-                          </span>
-                          {c.unread > 0 && (
+                        <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                            <span style={{ fontWeight: c.unread > 0 ? 700 : 600, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.user}</span>
+                            <span className="msg-convo-time" style={{ flexShrink: 0 }}>{c.lastMessageAt ? formatOraRelativa(c.lastMessageAt) : ''}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                             <span style={{
-                              background: 'var(--primary)', color: '#fff', borderRadius: 10,
-                              minWidth: 20, height: 20, display: 'flex', alignItems: 'center',
-                              justifyContent: 'center', fontSize: '0.72rem', fontWeight: 700,
-                              padding: '0 5px', flexShrink: 0,
+                              flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                              fontSize: '0.8rem', color: c.unread > 0 ? 'var(--text-main)' : 'var(--text-faint)',
+                              fontWeight: c.unread > 0 ? 500 : 400,
                             }}>
-                              {c.unread > 99 ? '99+' : c.unread}
+                              {anteprime[c.user] || ''}
                             </span>
-                          )}
+                            {c.unread > 0 && (
+                              <span className="msg-unread-badge">
+                                {c.unread > 99 ? '99+' : c.unread}
+                              </span>
+                            )}
+                          </div>
                         </div>
+                      </button>
+                    ))}
+
+                    {/* Amici suggeriti non ancora in chat */}
+                    {amiciSuggeriti.length > 0 && (
+                      <div style={{ marginTop: convFiltrate.length > 0 ? 4 : 0 }}>
+                        <div className="msg-sezione-label" style={{ padding: '6px 6px 4px' }}>Amici</div>
+                        {amiciSuggeriti.map(a => (
+                          <button key={`sug-${a}`} className="msg-amico-item" style={{ padding: '0.55rem 0.5rem' }}
+                            onClick={() => apriChat(a)}>
+                            <AvatarUtente username={a} avatarCache={avatarCache} dimensione={36} />
+                            <div className="msg-amico-info">
+                              <span className="msg-amico-nome">{a}</span>
+                              <span className="msg-amico-sub" style={{ color: 'var(--primary)' }}>Inizia chat</span>
+                            </div>
+                            <Plus size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                          </button>
+                        ))}
                       </div>
-                    </button>
-                  ))
+                    )}
+                  </>
                 )}
               </div>
             </motion.div>
@@ -2199,11 +2880,26 @@ export default function MessagesPage() {
                 onTorna={() => { segnaLetta(chatAperta); setChatAperta(null); caricaConversazioni(); }}
                 emoteCanale={emoteCanale}
                 emoteGlobali={emoteGlobali}
+                avatarCache={avatarCache}
               />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
+
+      {/* Overlay nuova conversazione */}
+      <AnimatePresence>
+        {nuovaConvo && (
+          <PannelloNuovaConvo
+            twitchUser={twitchUser}
+            amici={amici}
+            conversazioni={conversazioni}
+            avatarCache={avatarCache}
+            onAvvia={dest => apriChat(dest)}
+            onChiudi={() => setNuovaConvo(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Overlay sync initiator */}
       <AnimatePresence>

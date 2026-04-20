@@ -32,6 +32,18 @@ const MAX_SCAN        = 500;
 const SYNC_TTL        = 300; // 5 minuti
 const MAX_ENRICHED_CONVERSATIONS = 30;
 const MEDIA_SIZE_THRESHOLD       = 10000; // soglia caratteri encrypted per distinguere media da testo
+const TYPING_TTL      = 8;  // indicatore digitazione scade dopo 8 secondi
+const ONLINE_TTL      = 90; // stato online scade dopo 90 secondi
+const MAX_REACTIONS_PER_MSG = 20;
+const ALLOWED_REACTIONS     = ['❤️','😂','👍','🔥','😮','😢','🎉','💀'];
+
+function parseReactions(raw) {
+  if (!raw) return [];
+  try {
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
 
 function sanitize(str, maxLen) {
   if (typeof str !== 'string') return '';
@@ -276,6 +288,48 @@ export default async function handler(req, res) {
       }
     }
 
+    /* ── Controlla se l'altro utente sta digitando ── */
+    if (action === 'typing_status') {
+      const withUser = sanitize(req.query?.with, 50).toLowerCase();
+      if (!withUser) return res.status(400).json({ error: 'Destinatario richiesto.' });
+      try {
+        const typing = await redis.get(`typing:${withUser}:${me}`);
+        return res.status(200).json({ typing: !!typing });
+      } catch {
+        return res.status(200).json({ typing: false });
+      }
+    }
+
+    /* ── Stato online utente ── */
+    if (action === 'online_status') {
+      const users = sanitize(req.query?.users || '', 1000).toLowerCase();
+      if (!users) return res.status(400).json({ error: 'Lista utenti richiesta.' });
+      try {
+        const userList = users.split(',').filter(u => u && u.length <= 50).slice(0, 30);
+        const pipeline = userList.map(u => redis.get(`online:${u}`));
+        const results = await Promise.all(pipeline);
+        const online = {};
+        userList.forEach((u, i) => { online[u] = !!results[i]; });
+        return res.status(200).json({ online });
+      } catch {
+        return res.status(200).json({ online: {} });
+      }
+    }
+
+    /* ── Reazioni a un messaggio ── */
+    if (action === 'reactions') {
+      const withUser = sanitize(req.query?.with, 50).toLowerCase();
+      const msgId    = sanitize(req.query?.msgId, 50);
+      if (!withUser || !msgId) return res.status(400).json({ error: 'Parametri mancanti.' });
+      try {
+        const key = `reactions:${convoKey(me, withUser)}:${msgId}`;
+        const raw = await redis.get(key);
+        return res.status(200).json({ reactions: parseReactions(raw) });
+      } catch {
+        return res.status(200).json({ reactions: [] });
+      }
+    }
+
     return res.status(400).json({ error: 'Azione GET non valida.' });
   }
 
@@ -508,6 +562,89 @@ export default async function handler(req, res) {
       } catch (e) {
         console.error('sync_complete error:', e);
         return res.status(500).json({ error: 'Errore nella finalizzazione del sync.' });
+      }
+    }
+
+    /* ── Segnala che sto digitando ── */
+    if (action === 'typing') {
+      const to = sanitize(req.body.to, 50).toLowerCase();
+      if (!to || to === me) return res.status(400).json({ error: 'Destinatario non valido.' });
+      try {
+        await redis.set(`typing:${me}:${to}`, '1', { ex: TYPING_TTL });
+        return res.status(200).json({ ok: true });
+      } catch {
+        return res.status(200).json({ ok: true });
+      }
+    }
+
+    /* ── Heartbeat: aggiorna stato online ── */
+    if (action === 'heartbeat') {
+      try {
+        await redis.set(`online:${me}`, Date.now(), { ex: ONLINE_TTL });
+        return res.status(200).json({ ok: true });
+      } catch {
+        return res.status(200).json({ ok: true });
+      }
+    }
+
+    /* ── Aggiungi/rimuovi reazione a un messaggio ── */
+    if (action === 'react') {
+      const convoWith = sanitize(req.body.convoWith, 50).toLowerCase();
+      const msgId     = sanitize(req.body.msgId, 50);
+      const emoji     = (req.body.emoji || '').trim();
+      if (!convoWith || !msgId || !emoji) return res.status(400).json({ error: 'Parametri mancanti.' });
+      if (!ALLOWED_REACTIONS.includes(emoji)) return res.status(400).json({ error: 'Reazione non supportata.' });
+      try {
+        const key = `reactions:${convoKey(me, convoWith)}:${msgId}`;
+        const raw = await redis.get(key);
+        let reactions = parseReactions(raw);
+        const esistente = reactions.findIndex(r => r.user === me && r.emoji === emoji);
+        if (esistente >= 0) {
+          reactions.splice(esistente, 1);
+        } else {
+          if (reactions.length >= MAX_REACTIONS_PER_MSG) return res.status(400).json({ error: 'Troppe reazioni.' });
+          reactions.push({ user: me, emoji, ts: Date.now() });
+        }
+        await redis.set(key, JSON.stringify(reactions), { ex: MSG_TTL_SECONDS });
+        return res.status(200).json({ reactions });
+      } catch (e) {
+        console.error('react error:', e);
+        return res.status(500).json({ error: 'Errore nella reazione.' });
+      }
+    }
+
+    /* ── Rispondi a un messaggio (reply_to) ── */
+    if (action === 'send_reply') {
+      const to        = sanitize(req.body.to, 50).toLowerCase();
+      const encrypted = sanitize(req.body.encrypted, MAX_MSG_SIZE);
+      const iv        = sanitize(req.body.iv, 100);
+      const replyToId = sanitize(req.body.replyToId, 50);
+      const replyPreview = sanitize(req.body.replyPreview, 200);
+      if (!to || to === me) return res.status(400).json({ error: 'Destinatario non valido.' });
+      if (!encrypted || !iv) return res.status(400).json({ error: 'Messaggio cifrato e IV richiesti.' });
+      const isFriend = await redis.sismember(`friends:${me}`, to);
+      if (!isFriend) return res.status(403).json({ error: 'Puoi inviare messaggi solo agli amici.' });
+      const rlKey    = `msg:ratelimit:${me}`;
+      const rlExists = await redis.exists(rlKey);
+      if (rlExists) return res.status(429).json({ error: 'Aspetta prima di inviare un altro messaggio.' });
+      try {
+        const msgId   = String(await redis.incr('msg:counter'));
+        const now     = Date.now();
+        const message = { id: msgId, from: me, to, encrypted, iv, createdAt: now, replyToId: replyToId || null, replyPreview: replyPreview || null };
+        const convo   = convoKey(me, to);
+        const msgKey  = `messages:${convo}`;
+        await Promise.all([
+          redis.rpush(msgKey, JSON.stringify(message)),
+          redis.expire(msgKey, MSG_TTL_SECONDS),
+          redis.zadd(`conversations:${me}`, { score: now, member: to }),
+          redis.zadd(`conversations:${to}`,  { score: now, member: me }),
+          redis.set(rlKey, '1', { ex: RATE_LIMIT_SEC }),
+          redis.set(`lastread:${me}:${to}`, now),
+        ]);
+        return res.status(201).json({ message: { id: msgId, from: me, to, createdAt: now, replyToId: replyToId || null, replyPreview: replyPreview || null } });
+      } catch (e) {
+        console.error('send_reply error:', e);
+        return res.status(500).json({ error: "Errore nell'invio del messaggio." });
       }
     }
 
