@@ -11,7 +11,7 @@ import {
   Twitch, LogIn, RotateCcw, Trophy, Calendar, Crown, Award, Zap, Keyboard,
 } from 'lucide-react';
 import SEO from '../components/SEO';
-import { getGameForMonth, getAllGameMetas } from '../games/registry';
+import { getGameForMonth, loadGameModule, getAllGameMetas } from '../games/registry';
 
 const CHIAVETWITCH = import.meta.env.VITE_CHIAVETWITCH;
 
@@ -42,8 +42,8 @@ export default function GamePage() {
   /* ─── Current month & game module ─── */
   const now = new Date();
   const currentMonth = now.getUTCMonth() + 1; // 1-12
-  const gameModule = getGameForMonth(currentMonth);
-  const gameMeta = gameModule.meta;
+  const gameEntry = getGameForMonth(currentMonth);
+  const gameMeta = gameEntry.meta;
 
   /* ─── Refs for game engine communication ─── */
   const canvasRef = useRef(null);
@@ -149,17 +149,27 @@ export default function GamePage() {
     }
   }, [twitchToken, twitchUser, fetchBoard]);
 
-  /* ─── Create game engine ─── */
+  /* ─── Create game engine (caricamento dinamico) ─── */
+  const gameModuleRef = useRef(null);
+
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    startGameRef.current = () => {
+    /* Pre-carica il modulo gioco del mese corrente */
+    loadGameModule(currentMonth).then(mod => { gameModuleRef.current = mod; });
+
+    startGameRef.current = async () => {
       setScore(0);
       setHp(0);
       setMaxHp(0);
       setSubmitMsg('');
 
-      const cleanup = gameModule.createGame(canvasRef.current, {
+      /* Se non ancora caricato, carica ora */
+      if (!gameModuleRef.current) {
+        gameModuleRef.current = await loadGameModule(currentMonth);
+      }
+
+      const cleanup = gameModuleRef.current.createGame(canvasRef.current, {
         keysRef,
         joystickRef,
         actionBtnRef,
@@ -175,12 +185,15 @@ export default function GamePage() {
       });
       return cleanup;
     };
-  }, [gameModule, highScore, submitScore]);
+  }, [currentMonth, highScore, submitScore]);
 
   /* ─── Start/stop game on status change ─── */
   useEffect(() => {
     if (gameStatus === 'playing') {
-      cleanupRef.current = startGameRef.current();
+      const avvia = async () => {
+        cleanupRef.current = await startGameRef.current();
+      };
+      avvia();
     }
     return () => { if (cleanupRef.current) cleanupRef.current(); };
   }, [gameStatus]);
