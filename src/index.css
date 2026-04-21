@@ -776,16 +776,37 @@ button.nav-tema-toggle {
   color: white;
   box-shadow:
     0 4px 20px rgba(224,64,251,.30),
-    0 0 0 1px rgba(224,64,251,.22),
-    inset 0 1px 0 rgba(255,255,255,.18);
+    0 0 0 1px rgba(224,64,251,.22);
+}
+
+/* Speculare morbido sul bottone primario — gradiente che sfuma dal top
+   per evitare la "linea tagliata" data dall'inset 1px su una capsula. */
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.08) 32%,
+    rgba(255, 255, 255, 0) 60%,
+    rgba(0, 0, 0, 0.06) 100%
+  );
+  pointer-events: none;
+  opacity: 0.95;
+  transition: opacity .25s var(--ease-spring);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px) scale(1.03);
   box-shadow:
     0 6px 28px rgba(224,64,251,.35),
-    0 0 0 1px rgba(224,64,251,.30),
-    inset 0 1px 0 rgba(255,255,255,.22);
+    0 0 0 1px rgba(224,64,251,.30);
+}
+
+.btn-primary:hover::before {
+  opacity: 1;
 }
 
 .btn-ghost {
@@ -799,24 +820,118 @@ button.nav-tema-toggle {
   overflow: hidden;
 }
 
-/* Speculare sul bottone ghost */
+/* Speculare morbido sul bottone ghost — gradiente top→centro
+   con sottile ombra interna in basso per dare profondità. */
 .btn-ghost::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 15%;
-  right: 15%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent);
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.10) 0%,
+    rgba(255, 255, 255, 0.04) 35%,
+    rgba(255, 255, 255, 0) 60%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
   pointer-events: none;
+  opacity: 0.9;
+  transition: opacity .25s var(--ease-spring);
 }
 
 .btn-ghost:hover {
   border-color: var(--vetro-bordo-hover);
   transform: translateY(-1px);
   box-shadow:
-    0 6px 24px rgba(8, 12, 48, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    0 6px 24px rgba(8, 12, 48, 0.35);
+}
+
+.btn-ghost:hover::before {
+  opacity: 1;
+}
+
+/* ═══════════════════════════════════════════════════
+   TRIAL BANNER — Modalità Prova nei giochi del calendario
+   ═══════════════════════════════════════════════════ */
+.trial-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1.1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(255, 184, 108, 0.14) 0%, transparent 60%),
+    linear-gradient(160deg, rgba(40, 30, 20, 0.62) 0%, rgba(48, 38, 28, 0.32) 100%);
+  border: 1.5px solid rgba(255, 184, 108, 0.28);
+  box-shadow:
+    0 5px 18px rgba(8, 12, 48, 0.28),
+    0 0 18px rgba(255, 184, 108, 0.10);
+  position: relative;
+  overflow: hidden;
+}
+
+.trial-banner-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255, 184, 108, 0.18);
+  color: var(--accent-warm);
+  border: 1px solid rgba(255, 184, 108, 0.32);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  flex-shrink: 0;
+}
+
+.trial-banner-text {
+  flex: 1;
+  min-width: 200px;
+  font-size: 0.84rem;
+  color: var(--text-main);
+  line-height: 1.5;
+}
+
+.trial-banner-text strong {
+  color: var(--accent-warm);
+  font-weight: 700;
+}
+
+.trial-banner-btn {
+  flex-shrink: 0;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(255, 184, 108, 0.10);
+  color: var(--accent-warm);
+  border: 1px solid rgba(255, 184, 108, 0.32);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s var(--ease-spring), transform .2s var(--ease-spring);
+}
+
+.trial-banner-btn:hover {
+  background: rgba(255, 184, 108, 0.18);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 640px) {
+  .trial-banner {
+    padding: 0.7rem 0.9rem;
+    gap: 0.6rem;
+  }
+  .trial-banner-text {
+    font-size: 0.78rem;
+    min-width: 100%;
+    order: 3;
+  }
+  .trial-banner-btn {
+    margin-left: auto;
+  }
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1022,15 +1137,13 @@ button.nav-tema-toggle {
     transform: translateY(-2px) scale(1.03);
     box-shadow:
       0 6px 28px rgba(224, 64, 251, 0.32),
-      0 0 0 1px rgba(224,64,251,0.25),
-      inset 0 1px 0 rgba(255,255,255,.22);
+      0 0 0 1px rgba(224,64,251,0.25);
   }
 
   .btn-ghost:hover {
     transform: translateY(-2px);
     box-shadow:
-      0 8px 28px rgba(8, 12, 48, 0.35),
-      inset 0 1px 0 rgba(255, 255, 255, 0.10);
+      0 8px 28px rgba(8, 12, 48, 0.35);
   }
 
   .leaderboard-tab:hover {
@@ -1629,15 +1742,27 @@ nav.navbar-container.glass-panel {
   box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
 }
 
-/* Game calendar row — glass hover */
+/* Game calendar row — glass hover (ora è un <button> cliccabile per
+   selezionare il mese da provare). */
 .game-calendar-row {
-  transition: background .22s var(--ease-glass), box-shadow .22s var(--ease-glass);
+  transition: background .22s var(--ease-glass), box-shadow .22s var(--ease-glass), transform .15s var(--ease-spring);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Override inline background from GamePage.jsx (inline styles have higher specificity) */
 .game-calendar-row:hover {
   background: rgba(255,255,255,0.04) !important;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+
+.game-calendar-row:focus-visible {
+  outline: 2px solid rgba(0, 229, 255, 0.55);
+  outline-offset: 2px;
+}
+
+.game-calendar-row:active {
+  transform: scale(0.985);
 }
 
 .leaderboard-rank {
