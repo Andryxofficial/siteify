@@ -294,7 +294,7 @@ export default function Chat({ token }) {
             </div>
             <AnimatePresence>
               {showCmdForm && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ marginBottom: '1rem', overflow: 'hidden' }}>
+                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} style={{ marginBottom: '1rem' }}>
                   <CommandForm tipo="comando" initial={editingCmd} onSave={async d => { await post({ type: 'command', ...d }); setShowCmdForm(false); setEditingCmd(null); }} onCancel={() => { setShowCmdForm(false); setEditingCmd(null); }} saving={saving} {...propEmote} />
                 </motion.div>
               )}
@@ -345,7 +345,7 @@ export default function Chat({ token }) {
             </p>
             <AnimatePresence>
               {showKwForm && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ marginBottom: '1rem', overflow: 'hidden' }}>
+                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} style={{ marginBottom: '1rem' }}>
                   <CommandForm tipo="keyword" initial={editingKw} onSave={async d => { await post({ type: 'command', ...d }); setShowKwForm(false); setEditingKw(null); }} onCancel={() => { setShowKwForm(false); setEditingKw(null); }} saving={saving} {...propEmote} />
                 </motion.div>
               )}
@@ -393,7 +393,7 @@ export default function Chat({ token }) {
             </div>
             <AnimatePresence>
               {showTimerForm && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ marginBottom: '1rem', overflow: 'hidden' }}>
+                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} style={{ marginBottom: '1rem' }}>
                   <TimerForm initial={editingTimer} onSave={async d => { await post({ type: 'timer', ...d }); setShowTimerForm(false); setEditingTimer(null); }} onCancel={() => { setShowTimerForm(false); setEditingTimer(null); }} saving={saving} {...propEmote} />
                 </motion.div>
               )}
