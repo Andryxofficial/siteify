@@ -601,7 +601,6 @@ button.nav-tema-toggle {
 /* ── Hero section ── */
 .hero-section {
   position: relative;
-  overflow: hidden;
 }
 
 /* Orb decorativo ambientale — nessun contenuto, solo atmospheric glow */
@@ -6311,6 +6310,49 @@ html[data-tema="chiaro"] .glass-panel:hover {
     0 10px 40px rgba(60, 80, 160, 0.14),
     0 2px 8px rgba(60, 80, 160, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+/* ── Premio card e msg-feature chiaro — sfondi adattati ── */
+html[data-tema="chiaro"] .premio-card {
+  background:
+    radial-gradient(120% 80% at 50% -10%, color-mix(in srgb, var(--accent-card) 10%, transparent) 0%, transparent 55%),
+    linear-gradient(160deg, rgba(255,255,255,0.82) 0%, rgba(228,235,255,0.62) 55%, rgba(240,244,255,0.70) 100%);
+  box-shadow:
+    0 6px 20px rgba(60, 80, 160, 0.10),
+    0 1px 3px rgba(60, 80, 160, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+html[data-tema="chiaro"] .premio-card:hover {
+  box-shadow:
+    0 16px 44px rgba(60, 80, 160, 0.16),
+    0 4px 12px rgba(60, 80, 160, 0.08),
+    0 0 28px color-mix(in srgb, var(--accent-card) 12%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.98);
+}
+
+html[data-tema="chiaro"] .premio-desc {
+  color: var(--text-muted);
+}
+
+html[data-tema="chiaro"] .msg-feature {
+  background:
+    radial-gradient(120% 80% at 50% -10%, color-mix(in srgb, var(--accent-card) 8%, transparent) 0%, transparent 55%),
+    linear-gradient(160deg, rgba(255,255,255,0.78) 0%, rgba(228,235,255,0.56) 55%, rgba(238,242,255,0.68) 100%);
+  box-shadow:
+    0 5px 18px rgba(60, 80, 160, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+html[data-tema="chiaro"] .msg-feature:hover {
+  box-shadow:
+    0 14px 36px rgba(60, 80, 160, 0.14),
+    0 0 22px color-mix(in srgb, var(--accent-card) 10%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.98);
+}
+
+html[data-tema="chiaro"] .msg-feature-desc {
+  color: var(--text-muted);
 }
 
 /* ── Cookie banner: linea speculare scurita per il tema chiaro ── */

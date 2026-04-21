@@ -37,14 +37,14 @@ const PREMI = [
     colore: 'var(--accent-warm)',
     titolo: 'Campione Mensile',
     desc: 'Il punteggio più alto del mese riceve un premio speciale rivelato in live da Andryx.',
-    cta: { label: 'Classifica', to: '/gioco', ext: null },
+    cta: { label: 'Classifica', to: '/gioco#classifica', ext: null },
   },
   {
     emoji: '⭐',
     colore: 'var(--primary)',
     titolo: 'Social Star',
     desc: 'Il membro più attivo e costruttivo della community ogni mese ottiene un riconoscimento speciale.',
-    cta: { label: 'Community', to: null, ext: 'https://discord.gg/BuckKZ4' },
+    cta: { label: 'Community', to: '/socialify', ext: null },
   },
 ];
 

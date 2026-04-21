@@ -92,6 +92,11 @@ export default function GamePage() {
       if (token) {
         localStorage.setItem('twitchGameToken', token);
         window.history.replaceState(null, '', window.location.pathname);
+      } else if (hash === '#classifica') {
+        // Scroll alla sezione classifica dopo che la pagina è pronta
+        setTimeout(() => {
+          document.getElementById('classifica')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 600);
       }
     }
     const saved = localStorage.getItem('twitchGameToken');
@@ -599,7 +604,7 @@ export default function GamePage() {
           />
 
           {/* Leaderboard */}
-          <div className="glass-panel" style={{ padding: '1.2rem' }}>
+          <div id="classifica" className="glass-panel" style={{ padding: '1.2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
               <Trophy size={18} color="#FFD700" />
               <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Classifica</h3>
