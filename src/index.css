@@ -2937,6 +2937,59 @@ body {
   color: var(--accent);
 }
 
+/* ── Interruttore Bot nel Pannello Mod ── */
+.mod-bot-switch-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.55rem 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--vetro-bordo-colore);
+  backdrop-filter: var(--vetro-blur);
+  -webkit-backdrop-filter: var(--vetro-blur);
+}
+.mod-bot-switch-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+.mod-bot-switch {
+  --on: 0;
+  width: 32px;
+  height: 18px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-spotify) calc(var(--on) * 70%), var(--surface-3));
+  border: 1px solid color-mix(in srgb, var(--accent-spotify) calc(var(--on) * 50%), var(--vetro-bordo-colore));
+  position: relative;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+  flex-shrink: 0;
+  padding: 0;
+}
+.mod-bot-switch:disabled,
+.mod-bot-switch.is-loading {
+  opacity: 0.6;
+  cursor: wait;
+}
+.mod-bot-switch-knob {
+  position: absolute;
+  top: 50%;
+  left: calc(2px + var(--on) * 14px);
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  transform: translateY(-50%);
+  transition: left .25s cubic-bezier(0.4, 0.0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.mod-bot-switch.is-loading .mod-bot-switch-knob {
+  animation: spin 0.9s linear infinite;
+  background: linear-gradient(90deg, #fff 50%, transparent 50%);
+}
+
 /* Spin animation for loader */
 @keyframes spin {
   from { transform: rotate(0deg); }
