@@ -193,8 +193,21 @@
       var h=document.documentElement;
       var t=localStorage.getItem('andryxify_tema_modalita');
       var f=localStorage.getItem('andryxify_font_dimensione');
-      // null o 'auto' → rispetta preferenza sistema
-      if(t==='chiaro'||((t===null||t==='auto')&&window.matchMedia('(prefers-color-scheme: light)').matches)){h.setAttribute('data-tema','chiaro');}
+      // Determina se applicare tema chiaro
+      var chiaro=false;
+      if(t==='chiaro'){chiaro=true;}
+      else if(t==='scuro'){chiaro=false;}
+      else if(t==='alba-tramonto'){
+        // Approssimazione veloce per anti-FOUC: chiaro tra le 7:00 e le 19:00 ora locale
+        // (sufficiente prima che React carichi e ricalcoli alba/tramonto precisi).
+        var ora=new Date().getHours();
+        chiaro=(ora>=7&&ora<19);
+      }
+      else{
+        // null o 'auto' → preferenza sistema
+        chiaro=window.matchMedia('(prefers-color-scheme: light)').matches;
+      }
+      if(chiaro){h.setAttribute('data-tema','chiaro');}
       // Font: se impostato manualmente → applica; se null (primo accesso) → rileva default browser
       if(f&&f!=='normale'){
         h.setAttribute('data-font',f);

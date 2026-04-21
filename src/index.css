@@ -6518,3 +6518,140 @@ html[data-tema="chiaro"] .mod-cmdk-hint kbd {
 /* ── Lightbox immagini: l'overlay resta scuro (fullscreen viewer)
    quindi i bottoni bianchi vanno bene anche in tema chiaro. ── */
 
+/* ═══════════════════════════════════════════════════
+   BANNER OFFLINE
+   Stile coerente con .update-toast ma posizionato
+   sopra la tab bar mobile per non sovrapporsi.
+   ═══════════════════════════════════════════════════ */
+.banner-offline {
+  position: fixed;
+  bottom: calc(2rem + var(--tab-bar-offset, 0px) + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--vetro-bordo-colore);
+  background: linear-gradient(145deg, rgba(48,18,18,0.92) 0%, rgba(80,30,30,0.78) 100%);
+  backdrop-filter: var(--vetro-blur);
+  -webkit-backdrop-filter: var(--vetro-blur);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 500;
+  box-shadow: var(--vetro-ombra);
+  white-space: nowrap;
+  max-width: calc(100vw - 2rem);
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: auto;
+}
+
+.banner-offline-icon {
+  flex-shrink: 0;
+  color: #ffb3b3;
+}
+.banner-offline-icon-ok {
+  color: #7eea9f;
+}
+
+.banner-offline-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  transition: background 0.18s var(--ease-glass);
+}
+.banner-offline-cta:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+/* In tema chiaro mantengo il banner scuro/rosso: rimane riconoscibile e
+   il messaggio (offline = problema) richiede contrasto forte. */
+
+/* ═══════════════════════════════════════════════════
+   PREFERENZE DI ACCESSIBILITÀ DEL SISTEMA
+   Rispettiamo le user-agent media queries:
+     prefers-reduced-motion       → niente animazioni ambient/looping
+     prefers-reduced-transparency → vetro opaco (no blur, sfondi solidi)
+     prefers-contrast: more       → bordi e testo più contrastati
+   ═══════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Disabilita transizioni e animazioni globalmente, ma mantiene quelle
+     funzionali (hover/active feedback) usando una durata minima invece di 0
+     per non spezzare i listener `transitionend`. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Rimuove animazioni decorative ambientali */
+  .liquid-nav-pill,
+  .active-pill,
+  .hero-glow,
+  .ambient-orb,
+  .ambient-shine {
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --vetro-blur: none;
+    --vetro-blur-mobile: none;
+    --vetro-blur-chrome: none;
+  }
+  .glass-panel,
+  .glass-card,
+  .glass-banner,
+  .glass-stats-bar,
+  .navbar-container,
+  .mobile-tab-bar,
+  .update-toast,
+  .banner-offline {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: var(--surface-2, rgba(20, 24, 40, 0.96)) !important;
+  }
+  /* Rimuove gli highlights iridescenti che si vedono solo grazie al blur */
+  .glass-panel::before,
+  .glass-panel::after,
+  .glass-card::before,
+  .glass-card::after {
+    display: none !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --vetro-bordo-colore: rgba(180, 200, 240, 0.55);
+    --glass-border: rgba(180, 200, 240, 0.55);
+    --text-muted: var(--text-main);
+  }
+  html[data-tema="chiaro"] {
+    --vetro-bordo-colore: rgba(40, 50, 80, 0.5);
+    --glass-border: rgba(40, 50, 80, 0.5);
+  }
+  .glass-panel,
+  .glass-card {
+    border-width: 2px !important;
+  }
+  .nav-link,
+  .btn-ghost {
+    outline: 1px solid var(--vetro-bordo-colore);
+  }
+}
+

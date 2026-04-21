@@ -4,7 +4,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, User, Bell, Shield, Palette, Eye, Database, LogOut, Check, Download, LogIn, Accessibility, Sun, Moon, SunMoon, Type } from 'lucide-react';
+import { Settings, User, Bell, Shield, Palette, Eye, Database, LogOut, Check, Download, LogIn, Accessibility, Sun, Moon, SunMoon, Sunrise, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useTema } from '../contexts/TemaContext';
@@ -24,9 +24,10 @@ const TEMI = [
 ];
 
 const MODALITA_TEMI = [
-  { id: 'scuro', label: 'Scuro', Icon: Moon },
-  { id: 'chiaro', label: 'Chiaro', Icon: Sun },
-  { id: 'auto', label: 'Auto', Icon: SunMoon },
+  { id: 'scuro',          label: 'Scuro',          Icon: Moon    },
+  { id: 'chiaro',         label: 'Chiaro',         Icon: Sun     },
+  { id: 'auto',           label: 'Auto',           Icon: SunMoon },
+  { id: 'alba-tramonto',  label: 'Alba/Tramonto',  Icon: Sunrise },
 ];
 
 const DIMENSIONI_FONT = [
@@ -83,7 +84,7 @@ export default function SettingsPage() {
   const [temaAttivo, setTemaAttivo] = useState(() => localStorage.getItem(TEMA_KEY) || 'default');
 
   // Modalità chiaro/scuro — gestita dal TemaContext condiviso con la Navbar
-  const { modalita: modalitaTema, setModalita: setModalitaTema } = useTema();
+  const { modalita: modalitaTema, setModalita: setModalitaTema, coordsRichieste, richiediCoords } = useTema();
 
   // Dimensione font (disponibile senza login)
   const [fontDimensione, setFontDimensione] = useState(
@@ -191,7 +192,7 @@ export default function SettingsPage() {
 
         {/* Modalità tema */}
         <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.55rem' }}>Modalità schermo:</p>
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.2rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: coordsRichieste ? '0.7rem' : '1.2rem', flexWrap: 'wrap' }}>
           {MODALITA_TEMI.map(({ id, label, Icon }) => (
             <button
               key={id}
@@ -212,6 +213,32 @@ export default function SettingsPage() {
             </button>
           ))}
         </div>
+
+        {/* Suggerimento permesso geolocazione per alba/tramonto */}
+        {modalitaTema === 'alba-tramonto' && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.2rem',
+            padding: '0.55rem 0.85rem', borderRadius: 'var(--r-md)',
+            background: 'var(--surface-1)', border: '1px solid var(--vetro-bordo-colore)',
+            fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.45,
+          }}>
+            <MapPin size={14} style={{ flexShrink: 0, color: 'var(--primary)' }} />
+            <span style={{ flex: 1 }}>
+              {coordsRichieste
+                ? <>Concedi la posizione per alba/tramonto precisi alla tua zona — altrimenti uso l'Italia centrale come riferimento.</>
+                : <>Tema cambia automaticamente in base all'orario di alba e tramonto.</>}
+            </span>
+            {coordsRichieste && (
+              <button
+                onClick={() => richiediCoords()}
+                className="btn btn-ghost"
+                style={{ fontSize: '0.74rem', padding: '0.3rem 0.7rem', flexShrink: 0 }}
+              >
+                Concedi
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Dimensione testo */}
         <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.55rem' }}>Dimensione testo:</p>

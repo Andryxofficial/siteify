@@ -9,12 +9,34 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Twitch, LogIn, RotateCcw, Trophy, Calendar, Crown, Award, Zap, Keyboard,
+  Twitch, LogIn, RotateCcw, Trophy, Calendar, Crown, Award, Zap, Keyboard, WifiOff,
 } from 'lucide-react';
 import SEO from '../components/SEO';
 import { getGameForMonth, loadGameModule, getAllGameMetas } from '../games/registry';
+import { useReti } from '../contexts/RetiContext';
 
 const CHIAVETWITCH = import.meta.env.VITE_CHIAVETWITCH;
+
+/* Coda di punteggi salvati offline, sincronizzati al ritorno online. */
+const CHIAVE_CODA_OFFLINE = 'andryxify_coda_punteggi_offline';
+
+function leggiCodaOffline() {
+  try {
+    const raw = localStorage.getItem(CHIAVE_CODA_OFFLINE);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+function salvaCodaOffline(coda) {
+  try { localStorage.setItem(CHIAVE_CODA_OFFLINE, JSON.stringify(coda)); }
+  catch { /* quota piena: ignoriamo silenziosamente */ }
+}
+function aggiungiACoda(elemento) {
+  const coda = leggiCodaOffline();
+  // Massimo 20 punteggi in coda per evitare bloat
+  coda.push(elemento);
+  if (coda.length > 20) coda.splice(0, coda.length - 20);
+  salvaCodaOffline(coda);
+}
 
 /* ─── Season key helper: each month = a unique "season" ─── */
 function getSeasonKey(now = new Date()) {
@@ -31,16 +53,19 @@ function getTwitchLoginUrl() {
   );
 }
 
+/* C — palette del gioco. text/textMuted usano CSS variables per seguire il
+   tema chiaro/scuro; gli altri sono colori vivaci leggibili su entrambi. */
 const C = {
   player: '#00f5d4',
   heart: '#FF0050',
-  text: '#f0ecf4',
-  textMuted: '#a8a3b3',
+  text: 'var(--text-main)',
+  textMuted: 'var(--text-muted)',
   exit: '#FFD700',
 };
 
 export default function GamePage() {
   const location = useLocation();
+  const { online } = useReti();
 
   /* ─── Current month & game module ─── */
   const now = new Date();
@@ -152,9 +177,15 @@ export default function GamePage() {
       setSubmitMsg('🎮 Modalità Prova — punteggio non registrato in classifica.');
       return;
     }
+    const seasonKey = getSeasonKey();
+    /* Offline: accoda il punteggio per inviarlo al ritorno della rete. */
+    if (!online) {
+      aggiungiACoda({ score: finalScore, season: seasonKey, token: twitchToken, ts: Date.now() });
+      setSubmitMsg('📡 Offline — punteggio salvato, verrà inviato al ritorno della rete.');
+      return;
+    }
     setSubmitMsg('Invio punteggio…');
     try {
-      const seasonKey = getSeasonKey();
       const r = await fetch('/api/leaderboard', {
         method: 'POST',
         headers: {
@@ -167,9 +198,46 @@ export default function GamePage() {
       setSubmitMsg(data.message || 'Punteggio inviato!');
       fetchBoard();
     } catch {
-      setSubmitMsg('Errore nell\'invio del punteggio.');
+      /* Fallita per qualunque motivo (DNS, fetch abort) → accoda anche qui */
+      aggiungiACoda({ score: finalScore, season: seasonKey, token: twitchToken, ts: Date.now() });
+      setSubmitMsg('Errore rete — punteggio salvato, verrà inviato più tardi.');
     }
-  }, [twitchToken, twitchUser, fetchBoard, isModalitaProva]);
+  }, [twitchToken, twitchUser, fetchBoard, isModalitaProva, online]);
+
+  /* ─── Sync coda offline al ritorno della rete ─── */
+  useEffect(() => {
+    if (!online || !twitchToken) return;
+    const coda = leggiCodaOffline();
+    if (coda.length === 0) return;
+    let cancellato = false;
+    (async () => {
+      const rimasti = [];
+      for (const item of coda) {
+        if (cancellato) { rimasti.push(item); continue; }
+        try {
+          const r = await fetch('/api/leaderboard', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${item.token || twitchToken}`,
+            },
+            body: JSON.stringify({ score: item.score, season: item.season }),
+          });
+          if (!r.ok) rimasti.push(item);
+        } catch {
+          rimasti.push(item);
+        }
+      }
+      if (cancellato) return;
+      salvaCodaOffline(rimasti);
+      const inviati = coda.length - rimasti.length;
+      if (inviati > 0) {
+        setSubmitMsg(`✅ Sincronizzati ${inviati} punteggi offline.`);
+        fetchBoard();
+      }
+    })();
+    return () => { cancellato = true; };
+  }, [online, twitchToken, fetchBoard]);
 
   /* ─── Create game engine (caricamento dinamico) ─── */
   const gameModuleRef = useRef(null);
@@ -567,6 +635,19 @@ export default function GamePage() {
 
         {/* Sidebar */}
         <div className="game-sidebar">
+          {/* Badge offline — mostrato quando l'utente perde la rete */}
+          {!online && (
+            <div className="glass-panel" style={{
+              padding: '0.7rem 1rem', display: 'flex', alignItems: 'center', gap: '0.55rem',
+              borderColor: 'rgba(255,107,107,0.4)',
+            }}>
+              <WifiOff size={14} style={{ color: '#ff6b6b', flexShrink: 0 }} />
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                Modalità offline — i punteggi verranno sincronizzati al ritorno della rete.
+              </span>
+            </div>
+          )}
+
           {/* Twitch login (compact) */}
           <div className="glass-panel" style={{ padding: '1rem 1.2rem' }}>
             {twitchUser ? (

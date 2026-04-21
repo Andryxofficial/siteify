@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, animate as fmAnimate } from 'framer-motion';
-import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon, MessageCircle as MessageCircleIcon, Settings as SettingsIcon, Sun, Moon, SunMoon } from 'lucide-react';
+import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon, MessageCircle as MessageCircleIcon, Settings as SettingsIcon, Sun, Moon, SunMoon, Sunrise } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 import useScrollHeader from '../hooks/useScrollHeader';
 import { hapticLight } from '../utils/haptics';
@@ -253,8 +253,13 @@ function MobileTabBar({ activePath, haNonLetti }) {
    (Apple-style), returns to activePath on mouse-leave.
    ───────────────────────────────────────────────────────── */
 
-const ICONE_TEMA = { auto: SunMoon, chiaro: Sun, scuro: Moon };
-const LABEL_TEMA = { auto: 'Tema: Auto (segue sistema)', chiaro: 'Tema: Chiaro', scuro: 'Tema: Scuro' };
+const ICONE_TEMA = { auto: SunMoon, 'alba-tramonto': Sunrise, chiaro: Sun, scuro: Moon };
+const LABEL_TEMA = {
+  auto:            'Tema: Auto (segue sistema)',
+  'alba-tramonto': 'Tema: Alba/Tramonto (in base all\'ora)',
+  chiaro:          'Tema: Chiaro',
+  scuro:           'Tema: Scuro',
+};
 
 export default function Navbar() {
   const location          = useLocation();
