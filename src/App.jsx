@@ -4,6 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { TwitchAuthProvider } from './contexts/TwitchAuthContext';
+import { ToastProvider } from './contexts/ToastContext';
 import Navbar from './components/Navbar';
 import SchermataCampione from './components/SchermataCampione';
 import Footer from './components/Footer';
@@ -167,14 +168,16 @@ function App() {
   return (
     <Router>
       <TwitchAuthProvider>
-        <TwitchOAuthRedirect />
-        {/* Layout overlay — no navbar/footer, sfondo trasparente */}
-        <Routes>
-          <Route path="/overlay/goals"  element={<Suspense fallback={null}><GoalsOverlay /></Suspense>} />
-          <Route path="/overlay/events" element={<Suspense fallback={null}><EventsOverlay /></Suspense>} />
-          <Route path="/overlay/alerts" element={<Suspense fallback={null}><AlertsOverlay /></Suspense>} />
-          <Route path="*" element={<AppLayout />} />
-        </Routes>
+        <ToastProvider>
+          <TwitchOAuthRedirect />
+          {/* Layout overlay — no navbar/footer, sfondo trasparente */}
+          <Routes>
+            <Route path="/overlay/goals"  element={<Suspense fallback={null}><GoalsOverlay /></Suspense>} />
+            <Route path="/overlay/events" element={<Suspense fallback={null}><EventsOverlay /></Suspense>} />
+            <Route path="/overlay/alerts" element={<Suspense fallback={null}><AlertsOverlay /></Suspense>} />
+            <Route path="*" element={<AppLayout />} />
+          </Routes>
+        </ToastProvider>
       </TwitchAuthProvider>
       <Analytics />
       <SpeedInsights />

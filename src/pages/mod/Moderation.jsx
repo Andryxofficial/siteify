@@ -1,9 +1,11 @@
 /**
- * Moderation.jsx — Azioni di moderazione: ban, timeout, unban, shoutout, clear chat.
+ * Moderation.jsx — Azioni di moderazione: ban, timeout, unban, shoutout, clear chat
+ * + impostazioni live della chat (slow/sub-only/follower/emote/unique).
  */
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Ban, Clock, UserCheck, Trash2, Zap, Loader, Search, AlertTriangle, X, Check } from 'lucide-react';
+import ChatSettings from './ChatSettings';
 
 const API = '/api/mod-moderation';
 
@@ -108,6 +110,9 @@ export default function Moderation({ token }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+      {/* Impostazioni chat live (slow/sub-only/follower/emote/unique) */}
+      <ChatSettings token={token} />
 
       {/* Feedback globale */}
       <AnimatePresence>
