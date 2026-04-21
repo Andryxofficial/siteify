@@ -187,6 +187,20 @@
       ]
     }
     </script>
+    <!-- Anti-FOUC: applica tema e dimensione font prima che React carichi -->
+    <script>
+    (function(){
+      var h=document.documentElement;
+      var t=localStorage.getItem('andryxify_tema_modalita');
+      var f=localStorage.getItem('andryxify_font_dimensione');
+      if(t==='chiaro'||(t==='auto'&&window.matchMedia('(prefers-color-scheme: light)').matches)){h.setAttribute('data-tema','chiaro');}
+      if(f&&f!=='normale'){h.setAttribute('data-font',f);}
+      // Ripristina anche il colore accent salvato
+      var a=localStorage.getItem('andryxify_tema');
+      var c={magenta:'#ff4081',cyan:'#00e5ff',amber:'#ffb300',emerald:'#4ade80'};
+      if(a&&c[a]){h.style.setProperty('--primary',c[a]);}
+    })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
