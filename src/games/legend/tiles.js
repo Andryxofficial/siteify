@@ -66,75 +66,7 @@ export function isSolid(ch) {
   return getTile(ch).solid === true;
 }
 
-/* ─── Metadati 3D per ogni tile ──────────────────────────────────────────
- * Usati da renderer3d.js / models3d.js per costruire la scena Three.js.
- * Ogni voce descrive:
- *   kind   — tipo di mesh ("ground"|"tree"|"stone"|"wall"|"house"|"door"
- *            |"fountain"|"bush"|"pot"|"block"|"plate"|"torch"|"portal"
- *            |"lava"|"water"|"path"|"sand"|"floor"|"dirt"|"flower")
- *   color  — colore base (esadecimale) per il materiale
- *   height — altezza in unita` mondo (1 unita` = 1 tile = 16 px logici).
- *            0 = piano a terra, valori positivi = oggetti rialzati.
- *   subKind — variante (es. tetto sinistro/centro/destro per le case).
- */
-export const TILE_3D = {
-  '.':  { kind: 'ground', color: 0x4a8830, height: 0 },
-  ',':  { kind: 'flower', color: 0x4a8830, height: 0, accent: 0xff7a7a },
-  '_':  { kind: 'path',   color: 0xc8a878, height: 0 },
-  '~':  { kind: 'water',  color: 0x3a72c8, height: 0 },
-  ':':  { kind: 'sand',   color: 0xe8c896, height: 0 },
-  'F':  { kind: 'floor',  color: 0x6a6a78, height: 0 },
-  'X':  { kind: 'dirt',   color: 0x7a4a25, height: 0 },
-  'L':  { kind: 'lava',   color: 0xff5a20, height: 0 },
-
-  'T':  { kind: 'tree',     color: 0x4a2812, height: 1.5, foliage: 0x266b26 },
-  'S':  { kind: 'stone',    color: 0x888888, height: 0.7 },
-  'W':  { kind: 'wall',     color: 0x4a4a55, height: 1.4 },
-  'H':  { kind: 'house',    color: 0x8e1818, height: 1.5, subKind: 'roof' },
-  'h':  { kind: 'house',    color: 0x7a4a25, height: 1.0, subKind: 'door' },
-
-  /* Case modulari (3 colonne x 2 righe) */
-  '1':  { kind: 'house', color: 0x8e1818, height: 1.4, subKind: 'roof_l' },
-  '2':  { kind: 'house', color: 0x8e1818, height: 1.6, subKind: 'roof_m' },
-  '3':  { kind: 'house', color: 0x8e1818, height: 1.4, subKind: 'roof_r' },
-  '7':  { kind: 'house', color: 0xfff5dd, height: 1.0, subKind: 'wall_l' },
-  '8':  { kind: 'house', color: 0xfff5dd, height: 1.0, subKind: 'wall_window' },
-  '9':  { kind: 'house', color: 0xfff5dd, height: 1.0, subKind: 'wall_r' },
-  '0':  { kind: 'house', color: 0x7a4a25, height: 1.0, subKind: 'door_closed' },
-  'A':  { kind: 'house', color: 0x4a2812, height: 0.05, subKind: 'door_open' },
-  'C':  { kind: 'fountain', color: 0xa0a0a8, height: 0.6 },
-
-  'b':  { kind: 'bush',  color: 0x266b26, height: 0.45 },
-  'p':  { kind: 'pot',   color: 0x7a4a25, height: 0.5 },
-  'q':  { kind: 'pot',   color: 0xb88830, height: 0.5, accent: 0xf0c850 },
-  'B':  { kind: 'block', color: 0x9c8060, height: 0.9 },
-  'P':  { kind: 'plate', color: 0xb88830, height: 0.05 },
-  'p2': { kind: 'plate', color: 0xb88830, height: 0.02, pressed: true },
-  'D':  { kind: 'door',  color: 0x4a2812, height: 1.4, subKind: 'closed' },
-  'd':  { kind: 'door',  color: 0x4a2812, height: 0.05, subKind: 'open' },
-  't':  { kind: 'torch', color: 0x4a2812, height: 0.9, lit: false },
-  'l':  { kind: 'torch', color: 0x4a2812, height: 0.9, lit: true, glow: 0xffaa30 },
-  '*':  { kind: 'portal', color: 0xb870d0, height: 0.05, glow: 0xff5af0 },
-};
-
-/** Restituisce i metadati 3D di un tile (fallback erba). */
-export function getTile3D(ch) {
-  return TILE_3D[ch] || TILE_3D['.'];
-}
-
-/** Schiarisce/scurisce un colore esadecimale. amt in [-1, 1]. */
-export function darkenColor(hex, amt) {
-  const r = (hex >> 16) & 0xff;
-  const g = (hex >> 8) & 0xff;
-  const b = hex & 0xff;
-  const f = (c) => Math.max(0, Math.min(255, Math.round(c + (amt < 0 ? c * amt : (255 - c) * amt))));
-  return (f(r) << 16) | (f(g) << 8) | f(b);
-}
-
-/**
- * Restituisce lo sprite corrente (gestendo animazioni).
- * `tick` è un contatore globale di frame.
- */
+/* ─── Restituisce lo sprite corrente (gestendo animazioni). ─── */
 export function getTileSprite(tileDef, tick) {
   const sp = tileDef.sprite;
   if (Array.isArray(sp)) {

@@ -21,7 +21,7 @@ import { getZone, cloneZoneMap, ZONE_W, ZONE_H } from './world.js';
 import { getDialog, selectNpcDialog, calculateFinalScore } from './dialog.js';
 import { SFX, playMusic, stopMusic, ensureAudio } from './audio.js';
 import { C } from './palette.js';
-import { Renderer3D } from './renderer3d.js';
+import { Renderer3D } from './renderer2d.js';
 
 const SCALE = 2;
 const VIEW_TILES = 15;            // 15×15 tile visibili
@@ -85,41 +85,14 @@ function makeInitialState(savedData) {
 export function startEngine(canvas, callbacks, options = {}) {
   preloadSprites();
 
-  /* ─── Renderer 3D Three.js sul canvas WebGL principale ─── */
+  /* ─── Renderer 2D pixel-art ispirato a The Minish Cap ───
+     Disegna su `canvas` con un backing buffer scalato per devicePixelRatio.
+     L'HUD viene disegnato sullo STESSO canvas, in cima al mondo, con il
+     ctx lasciato dal renderer in stato "DPR-scaled" (coord 480x480 logiche). */
   const renderer3d = new Renderer3D(canvas);
-
-  /* ─── Overlay 2D per HUD/dialog/minimap/overlay ───
-     Creato come sibling del canvas 3D, posizionato sopra in modo
-     assoluto, pointer-events:none cosi` non ruba i click. Backing
-     buffer a 2× per testo crisp su display HiDPI. */
-  const HUD_SCALE = 2;
-  const overlayCanvas = document.createElement('canvas');
-  overlayCanvas.width = canvas.width * HUD_SCALE;
-  overlayCanvas.height = canvas.height * HUD_SCALE;
-  /* Posizionamento assoluto sopra il canvas 3D */
-  const parent = canvas.parentNode;
-  if (parent) {
-    /* Assicuriamoci che il parent abbia position:relative cosi`
-       l'overlay si sovrapponga correttamente al canvas. */
-    const cs = window.getComputedStyle(parent);
-    if (cs.position === 'static') parent.style.position = 'relative';
-    /* Anche il canvas 3D deve essere posizionato per allinearsi */
-    canvas.style.position = canvas.style.position || 'relative';
-    canvas.style.zIndex = canvas.style.zIndex || '0';
-    overlayCanvas.style.position = 'absolute';
-    overlayCanvas.style.left = '0';
-    overlayCanvas.style.top = '0';
-    overlayCanvas.style.width = '100%';
-    overlayCanvas.style.height = '100%';
-    overlayCanvas.style.pointerEvents = 'none';
-    overlayCanvas.style.zIndex = '2';
-    parent.appendChild(overlayCanvas);
-  }
-  const ctx = overlayCanvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
-  /* Tutte le routine di rendering disegnano in coordinate "logiche"
-     480x480 ma su un buffer 2x → testo nitido. */
-  ctx.scale(HUD_SCALE, HUD_SCALE);
+  const ctx = renderer3d.ctx;
+  /* Il renderer reimposta la trasformazione ad ogni render(); per le routine
+     HUD chiamate dopo render() siamo gia` in scala DPR sulle coord 480x480. */
 
   const state = makeInitialState(options.savedData);
   let mutableMap = cloneZoneMap(state.zoneId);
@@ -983,50 +956,46 @@ export function startEngine(canvas, callbacks, options = {}) {
    */
 
   function renderHud() {
-    /* Cuori in alto a sinistra */
+    /* HUD-ALL pannello superiore: bar oro Minish-style con cuori, contatori e cristalli */
+    const barH = 38;
+    /* Bar gradient */
+    const barGrad = ctx.createLinearGradient(0, 0, 0, barH);
+    barGrad.addColorStop(0, 'rgba(20,28,72,0.85)');
+    barGrad.addColorStop(1, 'rgba(8,12,40,0.85)');
+    ctx.fillStyle = barGrad;
+    ctx.fillRect(0, 0, CANVAS_SIZE, barH);
+    /* Bordo basso oro */
+    ctx.fillStyle = '#f0c850';
+    ctx.fillRect(0, barH - 2, CANVAS_SIZE, 2);
+    ctx.fillStyle = 'rgba(240,200,80,0.45)';
+    ctx.fillRect(0, barH, CANVAS_SIZE, 1);
+
+    /* Cuori in alto a sinistra (grandi) */
     const fullHearts = Math.floor(state.player.hp / 2);
     const halfHeart  = state.player.hp % 2 === 1;
     const totalHearts = Math.ceil(state.player.maxHp / 2);
-    const heartSize = 22;
-    const padding = 10;
+    const heartSize = 26;
+    const padding = 8;
     for (let i = 0; i < totalHearts; i++) {
-      const x = padding + i * (heartSize + 3);
-      const y = padding;
+      const x = padding + i * (heartSize + 2);
+      const y = (barH - heartSize) / 2;
       if (i < fullHearts) {
         drawSpriteScaled(ctx, SPRITES.ITEM_HEART, x, y, heartSize, heartSize);
       } else if (i === fullHearts && halfHeart) {
-        /* Mezzo cuore: clip a meta` */
         ctx.save();
         ctx.beginPath();
         ctx.rect(x, y, heartSize / 2, heartSize);
         ctx.clip();
         drawSpriteScaled(ctx, SPRITES.ITEM_HEART, x, y, heartSize, heartSize);
         ctx.restore();
-        ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-        ctx.strokeRect(x, y, heartSize, heartSize);
-      } else {
-        /* Cuore vuoto: outline */
-        ctx.strokeStyle = 'rgba(255,80,80,0.45)';
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(255,80,80,0.7)';
+        ctx.lineWidth = 1;
         ctx.strokeRect(x + 2, y + 2, heartSize - 4, heartSize - 4);
+      } else {
+        ctx.strokeStyle = 'rgba(255,80,80,0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x + 3, y + 3, heartSize - 6, heartSize - 6);
       }
-    }
-
-    /* Rupie in alto a destra */
-    const text = `\u2666 ${state.rupees}`;
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px monospace';
-    ctx.textAlign = 'right';
-    ctx.shadowColor = 'rgba(0,0,0,0.8)';
-    ctx.shadowBlur = 4;
-    ctx.fillText(text, CANVAS_SIZE - padding, padding + 18);
-
-    /* Chiavi/bombe */
-    let yIcon = padding + 32;
-    if (state.keys > 0) {
-      drawSpriteScaled(ctx, SPRITES.ITEM_KEY, CANVAS_SIZE - padding - 60, yIcon, 20, 20);
-      ctx.fillText(`x${state.keys}`, CANVAS_SIZE - padding, yIcon + 16);
-      yIcon += 24;
     }
 
     /* Indicatore cristalli (in alto centro) */
@@ -1035,20 +1004,40 @@ export function startEngine(canvas, callbacks, options = {}) {
       { flag: 'has_crystal_blue',  sprite: 'ITEM_CRYSTAL_BLUE'  },
       { flag: 'has_crystal_red',   sprite: 'ITEM_CRYSTAL_RED'   },
     ];
-    const cSize = 20;
+    const cSize = 24;
     const cPad = 4;
     const cTotal = crystals.length * (cSize + cPad);
     const cStartX = (CANVAS_SIZE - cTotal) / 2;
     for (let i = 0; i < crystals.length; i++) {
       const cx = cStartX + i * (cSize + cPad);
-      const cy = padding + 2;
+      const cy = (barH - cSize) / 2;
       if (state.flags[crystals[i].flag]) {
         drawSpriteScaled(ctx, SPRITES[crystals[i].sprite], cx, cy, cSize, cSize);
       } else {
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
         ctx.lineWidth = 1.5;
-        ctx.strokeRect(cx + 2, cy + 2, cSize - 4, cSize - 4);
+        ctx.strokeRect(cx + 4, cy + 4, cSize - 8, cSize - 8);
       }
+    }
+
+    /* Rupie in alto a destra (grandi) */
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 4;
+    drawSpriteScaled(ctx, SPRITES.ITEM_RUPEE,
+                     CANVAS_SIZE - padding - 80, (barH - 22) / 2, 22, 22);
+    ctx.fillStyle = '#fff5b0';
+    ctx.font = 'bold 22px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${state.rupees}`, CANVAS_SIZE - padding, barH / 2 + 8);
+
+    /* Chiavi (riga sotto la bar, sinistra) */
+    if (state.keys > 0) {
+      const ky = barH + 4;
+      drawSpriteScaled(ctx, SPRITES.ITEM_KEY, padding, ky, 22, 22);
+      ctx.fillStyle = '#fff5b0';
+      ctx.font = 'bold 18px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`x${state.keys}`, padding + 26, ky + 17);
     }
 
     /* Mini-mappa in basso a destra */
@@ -1060,79 +1049,120 @@ export function startEngine(canvas, callbacks, options = {}) {
   }
 
   function renderMiniMap() {
-    const mmSize = 80;
+    const mmSize = 130;
     const mmX = CANVAS_SIZE - mmSize - 10;
-    const mmY = CANVAS_SIZE - mmSize - 10;
-    /* Sfondo + bordo doppio stile dialog */
-    ctx.fillStyle = 'rgba(10,14,40,0.7)';
+    const mmY = CANVAS_SIZE - mmSize - 14;
+
+    /* Etichetta zona sopra */
+    const z = getZone(state.zoneId);
+    ctx.shadowColor = 'rgba(0,0,0,0.95)';
+    ctx.shadowBlur = 4;
+    ctx.fillStyle = '#fff5b0';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(z.name, mmX + mmSize / 2, mmY - 6);
+    ctx.shadowBlur = 0;
+
+    /* Pannello sfondo + doppio bordo oro Minish */
+    ctx.fillStyle = 'rgba(8,12,40,0.78)';
     ctx.fillRect(mmX, mmY, mmSize, mmSize);
     ctx.strokeStyle = '#f0c850';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(mmX + 1, mmY + 1, mmSize - 2, mmSize - 2);
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(mmX + 1.5, mmY + 1.5, mmSize - 3, mmSize - 3);
+    ctx.strokeStyle = 'rgba(240,200,80,0.55)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(mmX + 5, mmY + 5, mmSize - 10, mmSize - 10);
+
     /* Tile colorati */
-    const sx = mmSize / ZONE_W;
-    const sy = mmSize / ZONE_H;
+    const sx = (mmSize - 10) / ZONE_W;
+    const sy = (mmSize - 10) / ZONE_H;
+    const ox = mmX + 5;
+    const oy = mmY + 5;
     for (let y = 0; y < ZONE_H; y++) {
+      const row = mutableMap[y];
+      if (!row) continue;
       for (let x = 0; x < ZONE_W; x++) {
-        const ch = mutableMap[y][x];
+        const ch = row[x];
         const t = getTile(ch);
         let col = null;
         if (t.solid) col = '#3a3a48';
         if (t.id === '.' || t.id === ',' || t.id === '_') col = '#5fb33a';
         if (t.id === '~') col = '#3a72c8';
-        if (t.id === 'F') col = '#aaaaaa';
-        if (t.id === '*') col = '#c878e0';
+        if (t.id === 'F') col = '#9090a0';
+        if (t.id === '*') col = '#ff5af0';
         if (t.id === 'L') col = '#e85030';
+        if (t.id === 'T') col = '#266b26';
+        if (t.id === '1' || t.id === '2' || t.id === '3') col = '#8e1818';
+        if (t.id === '7' || t.id === '8' || t.id === '9') col = '#e8d8b0';
         if (col) {
           ctx.fillStyle = col;
-          ctx.fillRect(mmX + x * sx, mmY + y * sy, sx + 0.5, sy + 0.5);
+          ctx.fillRect(ox + x * sx, oy + y * sy, sx + 0.5, sy + 0.5);
         }
       }
     }
     /* Player con pulse */
-    const pulse = 0.7 + Math.sin(tickCount * 0.15) * 0.3;
+    const pulse = 0.7 + Math.sin(tickCount * 0.18) * 0.3;
     ctx.fillStyle = '#00f5d4';
-    const pmx = mmX + (state.player.x / TILE_SIZE) * sx;
-    const pmy = mmY + (state.player.y / TILE_SIZE) * sy;
-    const ps = 3 + pulse * 1.5;
+    const pmx = ox + (state.player.x / TILE_SIZE) * sx;
+    const pmy = oy + (state.player.y / TILE_SIZE) * sy;
+    const ps = 4 + pulse * 2;
     ctx.fillRect(pmx - ps / 2, pmy - ps / 2, ps, ps);
     /* Nemici */
     ctx.fillStyle = '#ff4040';
     for (const e of entities) {
       if ((e.type === 'enemy' || e.type === 'boss') && e.hp > 0) {
-        const ex = mmX + (e.x / TILE_SIZE) * sx;
-        const ey = mmY + (e.y / TILE_SIZE) * sy;
-        const sz = e.type === 'boss' ? 4 : 2.5;
+        const ex = ox + (e.x / TILE_SIZE) * sx;
+        const ey = oy + (e.y / TILE_SIZE) * sy;
+        const sz = e.type === 'boss' ? 6 : 3;
         ctx.fillRect(ex - sz / 2, ey - sz / 2, sz, sz);
       }
     }
-    /* Etichetta zona */
-    ctx.fillStyle = '#fff5b0';
-    ctx.font = 'bold 12px monospace';
-    ctx.textAlign = 'center';
-    ctx.shadowColor = 'rgba(0,0,0,0.9)';
-    ctx.shadowBlur = 3;
-    const z = getZone(state.zoneId);
-    ctx.fillText(z.name, mmX + mmSize / 2, mmY - 5);
+    /* NPC dorati */
+    ctx.fillStyle = '#f0c850';
+    for (const e of entities) {
+      if (e.type === 'npc') {
+        const ex = ox + (e.x / TILE_SIZE) * sx;
+        const ey = oy + (e.y / TILE_SIZE) * sy;
+        ctx.fillRect(ex - 1.5, ey - 1.5, 3, 3);
+      }
+    }
     ctx.textAlign = 'left';
-    ctx.shadowBlur = 0;
+  }
+
+  /* Word-wrap helper: spezza `text` in righe che entrano in maxW. */
+  function wrapText(text, maxW, font) {
+    ctx.font = font;
+    const words = text.split(' ');
+    const lines = [];
+    let cur = '';
+    for (const w of words) {
+      const test = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(test).width > maxW && cur) {
+        lines.push(cur);
+        cur = w;
+      } else {
+        cur = test;
+      }
+    }
+    if (cur) lines.push(cur);
+    return lines;
   }
 
   function renderDialog() {
     if (!dialogState) return;
-    const boxH = 148;
-    const boxY = CANVAS_SIZE - boxH - 10;
-    const boxX = 10;
-    const boxW = CANVAS_SIZE - 20;
+    const boxH = 168;
+    const boxY = CANVAS_SIZE - boxH - 12;
+    const boxX = 12;
+    const boxW = CANVAS_SIZE - 24;
 
-    /* Pannello stile Minish Cap: ombra → fondo blu scuro → bordo doppio oro */
+    /* Pannello stile Minish Cap: ombra → fondo blu profondo → doppio bordo oro */
     /* Ombra */
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.fillRect(boxX + 4, boxY + 4, boxW, boxH);
-    /* Fondo a gradient blu profondo */
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(boxX + 5, boxY + 6, boxW, boxH);
+    /* Fondo a gradient */
     const grad = ctx.createLinearGradient(0, boxY, 0, boxY + boxH);
-    grad.addColorStop(0, 'rgba(22,28,72,0.96)');
-    grad.addColorStop(1, 'rgba(10,14,40,0.96)');
+    grad.addColorStop(0, 'rgba(28,38,90,0.97)');
+    grad.addColorStop(1, 'rgba(10,14,40,0.97)');
     ctx.fillStyle = grad;
     ctx.fillRect(boxX, boxY, boxW, boxH);
     /* Bordo esterno oro spesso */
@@ -1140,71 +1170,89 @@ export function startEngine(canvas, callbacks, options = {}) {
     ctx.lineWidth = 3;
     ctx.strokeRect(boxX + 1.5, boxY + 1.5, boxW - 3, boxH - 3);
     /* Bordo interno oro sottile */
-    ctx.strokeStyle = 'rgba(240,200,80,0.6)';
+    ctx.strokeStyle = 'rgba(240,200,80,0.55)';
     ctx.lineWidth = 1;
-    ctx.strokeRect(boxX + 6, boxY + 6, boxW - 12, boxH - 12);
+    ctx.strokeRect(boxX + 7, boxY + 7, boxW - 14, boxH - 14);
     /* Corner brackets stile Zelda */
     ctx.strokeStyle = '#fff5b0';
     ctx.lineWidth = 2;
-    const cb = 10;
-    /* Top-left */
+    const cb = 12;
     ctx.beginPath(); ctx.moveTo(boxX + 4, boxY + 4 + cb); ctx.lineTo(boxX + 4, boxY + 4); ctx.lineTo(boxX + 4 + cb, boxY + 4); ctx.stroke();
-    /* Top-right */
     ctx.beginPath(); ctx.moveTo(boxX + boxW - 4 - cb, boxY + 4); ctx.lineTo(boxX + boxW - 4, boxY + 4); ctx.lineTo(boxX + boxW - 4, boxY + 4 + cb); ctx.stroke();
-    /* Bottom-left */
     ctx.beginPath(); ctx.moveTo(boxX + 4, boxY + boxH - 4 - cb); ctx.lineTo(boxX + 4, boxY + boxH - 4); ctx.lineTo(boxX + 4 + cb, boxY + boxH - 4); ctx.stroke();
-    /* Bottom-right */
     ctx.beginPath(); ctx.moveTo(boxX + boxW - 4 - cb, boxY + boxH - 4); ctx.lineTo(boxX + boxW - 4, boxY + boxH - 4); ctx.lineTo(boxX + boxW - 4, boxY + boxH - 4 - cb); ctx.stroke();
 
     /* Ritratto NPC (se presente) */
-    let textX = boxX + 18;
+    let textX = boxX + 22;
     if (dialogState.portrait && SPRITES[dialogState.portrait]) {
-      /* Cornice ritratto */
-      ctx.fillStyle = 'rgba(0,0,0,0.45)';
-      ctx.fillRect(boxX + 12, boxY + 18, 72, 72);
+      const portraitSize = 80;
+      const px = boxX + 14;
+      const py = boxY + 22;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(px, py, portraitSize, portraitSize);
       ctx.strokeStyle = '#f0c850';
       ctx.lineWidth = 2;
-      ctx.strokeRect(boxX + 12, boxY + 18, 72, 72);
-      drawSpriteScaled(ctx, SPRITES[dialogState.portrait], boxX + 16, boxY + 22, 64, 64);
-      textX = boxX + 96;
+      ctx.strokeRect(px + 0.5, py + 0.5, portraitSize - 1, portraitSize - 1);
+      drawSpriteScaled(ctx, SPRITES[dialogState.portrait],
+                       px + 4, py + 4, portraitSize - 8, portraitSize - 8);
+      textX = px + portraitSize + 12;
     }
 
-    /* Speaker */
+    /* Speaker (giallo oro, sans bold grande) */
+    const speakerFont = 'bold 22px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
     ctx.fillStyle = '#ffd86a';
-    ctx.font = 'bold 18px monospace';
-    ctx.shadowColor = 'rgba(0,0,0,0.8)';
-    ctx.shadowBlur = 3;
-    ctx.fillText(dialogState.speaker || '', textX, boxY + 30);
+    ctx.font = speakerFont;
+    ctx.shadowColor = 'rgba(0,0,0,0.85)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(dialogState.speaker || '', textX, boxY + 34);
     ctx.shadowBlur = 0;
 
-    /* Linea corrente con typewriter */
+    /* Linea corrente con typewriter + word-wrap */
+    const bodyFont = 'bold 20px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
+    const previewFont = '18px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
+    const maxTextW = boxX + boxW - textX - 18;
+
     const line = dialogState.lines[dialogState.lineIdx] || '';
     const visible = line.substring(0, Math.floor(dialogState.charIdx));
+    const wrapped = wrapText(visible, maxTextW, bodyFont);
+    ctx.font = bodyFont;
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 17px monospace';
-    ctx.fillText(visible, textX, boxY + 60);
+    ctx.shadowColor = 'rgba(0,0,0,0.85)';
+    ctx.shadowBlur = 3;
+    let yCursor = boxY + 64;
+    for (const w of wrapped) {
+      ctx.fillText(w, textX, yCursor);
+      yCursor += 24;
+    }
+    ctx.shadowBlur = 0;
 
-    /* Linee successive (preview leggera) */
-    for (let i = 1; i < 3; i++) {
-      const next = dialogState.lines[dialogState.lineIdx + i];
-      if (!next) break;
-      ctx.fillStyle = 'rgba(255,255,255,0.42)';
-      ctx.font = '15px monospace';
-      ctx.fillText(next, textX, boxY + 60 + i * 22);
+    /* Linea successiva (preview leggera) */
+    if (yCursor < boxY + boxH - 22) {
+      const next = dialogState.lines[dialogState.lineIdx + 1];
+      if (next) {
+        ctx.fillStyle = 'rgba(255,255,255,0.42)';
+        const wrappedNext = wrapText(next, maxTextW, previewFont);
+        ctx.font = previewFont;
+        for (const w of wrappedNext) {
+          if (yCursor >= boxY + boxH - 22) break;
+          ctx.fillText(w, textX, yCursor);
+          yCursor += 20;
+        }
+      }
     }
 
-    /* Indicatore "premi azione" lampeggiante (solo dopo cooldown anti-skip) */
+    /* Indicatore "premi azione" lampeggiante */
     const ready = dialogState.charIdx >= line.length &&
                   (tickCount - (dialogState.completedAt || 0)) >= 8;
     if (ready) {
       const pulse = Math.sin(tickCount * 0.2);
       if (pulse > 0) {
         ctx.fillStyle = '#ffd86a';
-        ctx.font = 'bold 18px monospace';
+        ctx.font = 'bold 22px ui-sans-serif, system-ui, sans-serif';
         ctx.textAlign = 'right';
-        ctx.shadowColor = 'rgba(0,0,0,0.8)';
-        ctx.shadowBlur = 3;
-        ctx.fillText('▼', boxX + boxW - 18, boxY + boxH - 14);
+        ctx.shadowColor = 'rgba(0,0,0,0.85)';
+        ctx.shadowBlur = 4;
+        ctx.fillText('▼', boxX + boxW - 18, boxY + boxH - 16);
         ctx.shadowBlur = 0;
         ctx.textAlign = 'left';
       }
@@ -1268,26 +1316,19 @@ export function startEngine(canvas, callbacks, options = {}) {
   }
 
   function render() {
-    /* Aggiorna scena 3D */
+    /* Aggiorna stato del renderer */
     updateCamera();
     renderer3d.setCamera(camera, state.player);
     renderer3d.setPlayer(state.player, attackState);
     renderer3d.setEntities(entities, tickCount);
     renderer3d.setParticles(particles);
+    /* Render mondo (clear + scene). Lascia il ctx in scala DPR. */
     renderer3d.render();
 
-    /* HUD/Dialog/Overlay disegnati sopra in 2D */
-    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    /* HUD / Dialog / Overlay disegnati sullo stesso canvas, sopra il mondo */
     renderHud();
     renderDialog();
     renderOverlay();
-
-    /* Fade nero del renderer 3D (cambio zona): velo dopo l'HUD per dramma */
-    const fa = renderer3d.getFadeAlpha();
-    if (fa > 0.001) {
-      ctx.fillStyle = `rgba(0,0,0,${fa})`;
-      ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-    }
   }
 
   function loop(ts) {
@@ -1317,7 +1358,6 @@ export function startEngine(canvas, callbacks, options = {}) {
       cancelAnimationFrame(rafId);
       stopMusic();
       try { renderer3d.dispose(); } catch { /* ignored */ }
-      try { overlayCanvas.parentNode?.removeChild(overlayCanvas); } catch { /* ignored */ }
     },
     getState() { return state; },
     pause() { pausedRef.paused = true; },
