@@ -21,7 +21,7 @@ import { getZone, cloneZoneMap, ZONE_W, ZONE_H } from './world.js';
 import { getDialog, selectNpcDialog, calculateFinalScore } from './dialog.js';
 import { SFX, playMusic, stopMusic, ensureAudio } from './audio.js';
 import { C } from './palette.js';
-import { Renderer3D } from './renderer2d.js';
+import { Renderer2D } from './renderer2d.js';
 
 const SCALE = 2;
 const VIEW_TILES = 15;            // 15×15 tile visibili
@@ -89,8 +89,8 @@ export function startEngine(canvas, callbacks, options = {}) {
      Disegna su `canvas` con un backing buffer scalato per devicePixelRatio.
      L'HUD viene disegnato sullo STESSO canvas, in cima al mondo, con il
      ctx lasciato dal renderer in stato "DPR-scaled" (coord 480x480 logiche). */
-  const renderer3d = new Renderer3D(canvas);
-  const ctx = renderer3d.ctx;
+  const renderer2d = new Renderer2D(canvas);
+  const ctx = renderer2d.ctx;
   /* Il renderer reimposta la trasformazione ad ogni render(); per le routine
      HUD chiamate dopo render() siamo gia` in scala DPR sulle coord 480x480. */
 
@@ -129,7 +129,7 @@ export function startEngine(canvas, callbacks, options = {}) {
     dialogState = null;
     callbacks.onInfo?.(`📍 ${z.name}`);
     /* Ricostruisci la scena 3D per la nuova zona */
-    renderer3d.setZone(state.zoneId, mutableMap);
+    renderer2d.setZone(state.zoneId, mutableMap);
   }
 
   function applyMutations(zoneId) {
@@ -145,7 +145,7 @@ export function startEngine(canvas, callbacks, options = {}) {
     state.mapMutations[state.zoneId][`${x},${y}`] = ch;
     if (mutableMap[y]) mutableMap[y][x] = ch;
     /* Aggiorna anche la mesh 3D del singolo tile */
-    renderer3d.updateMapTile(x, y, ch);
+    renderer2d.updateMapTile(x, y, ch);
   }
 
   function evalRequires(req) {
@@ -329,8 +329,8 @@ export function startEngine(canvas, callbacks, options = {}) {
                 e.vx = (dx / m) * KNOCKBACK;
                 e.vy = (dy / m) * KNOCKBACK;
                 if (e.type === 'boss') SFX.bossHit(); else SFX.enemyHit();
-                if (e.type === 'boss') renderer3d.shake?.(0.5);
-                if (e.hp <= 0) { onEnemyDeath(e); renderer3d.shake?.(0.4); }
+                if (e.type === 'boss') renderer2d.shake?.(0.5);
+                if (e.hp <= 0) { onEnemyDeath(e); renderer2d.shake?.(0.4); }
               }
             }
           }
@@ -398,10 +398,10 @@ export function startEngine(canvas, callbacks, options = {}) {
     p.hp -= dmg;
     p.iframes = IFRAMES;
     SFX.hit();
-    renderer3d.shake?.(0.55);
+    renderer2d.shake?.(0.55);
     if (p.hp <= 0) {
       p.hp = 0;
-      renderer3d.fadeOut?.();
+      renderer2d.fadeOut?.();
       onGameOver();
     }
     callbacks.onHpChange?.(p.hp, p.maxHp);
@@ -948,9 +948,9 @@ export function startEngine(canvas, callbacks, options = {}) {
   }
 
   /* ─── Render ───
-   * NOTE: tile/entita`/player/particelle sono renderizzati in 3D dal Renderer3D.
+   * NOTE: tile/entita`/player/particelle sono renderizzati in 3D dal Renderer2D.
    * Le vecchie funzioni 2D (clear/renderTiles/renderEntities/renderPlayer/renderParticles/blit)
-   * sono state rimosse: il loro lavoro e` ora svolto da renderer3d.setZone /
+   * sono state rimosse: il loro lavoro e` ora svolto da renderer2d.setZone /
    * setEntities / setPlayer / setParticles / render. L'HUD/dialog/overlay
    * 2D sopravvive su `ctx` (canvas overlay).
    */
@@ -1318,12 +1318,12 @@ export function startEngine(canvas, callbacks, options = {}) {
   function render() {
     /* Aggiorna stato del renderer */
     updateCamera();
-    renderer3d.setCamera(camera, state.player);
-    renderer3d.setPlayer(state.player, attackState);
-    renderer3d.setEntities(entities, tickCount);
-    renderer3d.setParticles(particles);
+    renderer2d.setCamera(camera, state.player);
+    renderer2d.setPlayer(state.player, attackState);
+    renderer2d.setEntities(entities, tickCount);
+    renderer2d.setParticles(particles);
     /* Render mondo (clear + scene). Lascia il ctx in scala DPR. */
-    renderer3d.render();
+    renderer2d.render();
 
     /* HUD / Dialog / Overlay disegnati sullo stesso canvas, sopra il mondo */
     renderHud();
@@ -1357,7 +1357,7 @@ export function startEngine(canvas, callbacks, options = {}) {
       runningRef.running = false;
       cancelAnimationFrame(rafId);
       stopMusic();
-      try { renderer3d.dispose(); } catch { /* ignored */ }
+      try { renderer2d.dispose(); } catch { /* ignored */ }
     },
     getState() { return state; },
     pause() { pausedRef.paused = true; },

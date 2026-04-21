@@ -46,14 +46,13 @@ siteify/
 │   │   ├── maggio.js             ← Maggio
 │   │   ├── ottobre.js            ← Ottobre
 │   │   ├── [altri mesi].js       ← gennaio/febbraio/giugno/luglio/agosto/settembre/novembre/dicembre
-│   │   └── legend/               ← 🗡️ Andryx Legend (gioco principale, sempre disponibile) — **3D vero (Three.js)**
+│   │   └── legend/               ← 🗡️ Andryx Legend (gioco principale, sempre disponibile) — **2D pixel-art ispirato a *The Minish Cap***
 │   │       ├── index.js          ← Entry: meta + createGame, helpers save (hasSave/clearSave)
-│   │       ├── engine.js         ← Game loop monolitico: update/dialogo/quest/inventario/combat/puzzle/AI nemici/boss. Render delegato a Renderer3D + HUD su canvas overlay 2D
-│   │       ├── renderer3d.js     ← Renderer 3D Three.js: scena, camera prospettica top-down 3/4, luci, fog, mesh pool, sync entita`/player/particelle/camera ogni frame
-│   │       ├── models3d.js       ← Factory di mesh low-poly (player Andryx, NPC, nemici, boss, item, tile props) — solo primitive Three.js, nessun asset esterno. Cache geometrie/materiali per perf
+│   │       ├── engine.js         ← Game loop monolitico: update/dialogo/quest/inventario/combat/puzzle/AI nemici/boss. Render delegato a Renderer2D, HUD disegnato sullo stesso canvas
+│   │       ├── renderer2d.js     ← Renderer 2D pixel-art (Minish Cap-style): canvas con DPR scaling, tile vettoriali, ombre ovali, Y-sort, vignettatura, fade transizioni, camera shake
 │   │       ├── sprites.js        ← Pixel art procedurale (cuori, chiavi, ritratti NPC) — usata SOLO per HUD/dialog 2D overlay
 │   │       ├── palette.js        ← Palette colori condivisa
-│   │       ├── tiles.js          ← Costanti tile + collisioni + propieta` 2D + metadati 3D (`TILE_3D`, `getTile3D`, `darkenColor`)
+│   │       ├── tiles.js          ← Costanti tile + collisioni + proprieta` 2D (`TILES`, `TILE_SIZE`, `getTile`, `isSolid`, `getTileSprite`)
 │   │       ├── world.js          ← 4 zone (Foresta, Villaggio, Caverna, Castello), tilemap + entita` + connessioni
 │   │       ├── dialog.js         ← Sistema dialoghi (typewriter, scelte, ritratti NPC)
 │   │       ├── audio.js          ← SFX Web Audio API (no asset esterni)
@@ -84,7 +83,6 @@ siteify/
 |---|---|
 | React 19 | UI framework |
 | Vite 8 | Bundler / dev server |
-| Three.js 0.171 | Renderer 3D di Andryx Legend (vendor-three chunk) |
 | React Router v7 | Routing SPA |
 | Framer Motion v12 | Animazioni (pill navbar, transizioni pagina) |
 | Lucide React | Icone |
@@ -291,6 +289,7 @@ npm run lint      # ESLint (flat config)
 | 2026-04-17 | **Liquid Glass — True iOS 26 Rewrite v2**: riscrittura radicale per catturare il vero look Liquid Glass. Gradient backgrounds (simula profondità/curvatura vetro reale), radial specular highlights (macchie "wet glass" via radial-gradient ::before), refraction caustic overlays (color bleed ::after + mix-blend-mode:screen), backdrop-filter con blur(32px)+saturate(180%)+contrast(108%), bordi blue-tinted 1.5px rgba(130,170,240,0.14), ombre blue-tinted rgba(8,12,48,...), navbar blur 40px, tab bar blur 48px | `src/index.css`, `src/components/Footer.jsx`, `src/components/SocialHub.jsx`, `src/pages/TwitchPage.jsx`, `.github/copilot-instructions.md` |
 | 2026-04-21 | **🗡️ Andryx Legend** — nuovo gioco principale stile *Zelda: The Minish Cap*. Avventura top-down 2D pixel-art completa: 4 zone (Foresta di Twitchia, Villaggio dei Pixel, Caverna delle Gemme, Castello del Re Ombra), Andryx pixel-art a 4 direzioni, NPC con dialoghi typewriter, quest line (3 cristalli + boss finale), inventario (spada/scudo/chiavi/bombe/pozioni/cristalli), puzzle (blocchi spingibili, piastre, interruttori, candele), nemici con AI distinta, mini-boss + boss finale multifase, salvataggio localStorage versionato, audio Web Audio sintetizzato, HUD ricco. Hub modalita` in GamePage (Mese/Legend). Backend leaderboard esteso con `?game=monthly\|legend` (nuovo prefisso `lb:legend:*` per board separata). Chunk Vite separato `legend-*.js` (~16kB gz). | `src/games/legend/` (9 file: index.js, engine.js, sprites.js, palette.js, tiles.js, world.js, dialog.js, audio.js, save.js), `src/pages/GamePage.jsx`, `api/leaderboard.js`, `api/reset-leaderboard.js`, `.github/copilot-instructions.md` |
 | 2026-04-21 | **🎮 Andryx Legend → DAVVERO 3D (Three.js low-poly)**: porting completo del renderer da canvas 2D a Three.js. Aggiunta dipendenza `three@0.171.0` (chunk `vendor-three` ~121kB gz). Nuovi file `renderer3d.js` (scena, camera prospettica top-down 3/4 stile Link's Awakening Switch, luci ambient+direzionale+hemi+point light torce, fog dinamica per zone interne/esterne, mesh pool per tile/entita`/particelle) e `models3d.js` (factory low-poly: player Andryx con cappello a punta, NPC, slime/bat/skeleton/mage, boss Guardian + Shadow King, item, alberi/stone/case modulari/fontana/portale animato/torce con glow emissivo. Cache geometrie+materiali condivise per perf). `tiles.js` esteso con `TILE_3D` + `getTile3D` + `darkenColor`. `engine.js` mantiene gameplay invariato (collisioni, AI, dialoghi, quest, save) ma render delegato al Renderer3D; HUD/dialog/minimap/overlay disegnati su un canvas 2D overlay creato dinamicamente come sibling assoluto del canvas WebGL. Chunk `legend-*.js` 78kB / 22.77kB gz. | `package.json`, `vite.config.js`, `src/games/legend/renderer3d.js`, `src/games/legend/models3d.js`, `src/games/legend/tiles.js`, `src/games/legend/engine.js`, `.github/copilot-instructions.md` |
+| 2026-04-21 | **🎮 Andryx Legend → ritorno al 2D pixel-art (Minish Cap "vero")**: il renderer 3D Three.js era illeggibile e fragile (mappa rotta, texture rotte, scritte minuscole). Sostituito con `renderer2d.js`: canvas 2D con scaling per `devicePixelRatio` (testo crisp), tile vettoriali stile *The Minish Cap* (alberi tondi con highlight, sassi, cespugli, vasi, tetti rossi a listelli, finestre azzurre, fontana, torce con glow, portale pulsante), erba con variazione deterministica + filo d'erba, acqua animata, lava pulsante, ombre ovali sotto entità + Y-sort, slash arc spada, vignettatura, tinte zona, fade transizioni, camera shake. HUD molto più grande sul medesimo canvas (overlay rimosso): bar oro Minish con cuori 26px / rupie 22px / cristalli 24px, **mini-mappa 130×130** con doppio bordo oro e etichetta zona 16px, **dialog 168px** con font sans 22/20px e word-wrap automatico via `measureText`. **Eliminati** `renderer3d.js`, `models3d.js`, dipendenza `three`, chunk `vendor-three`. Esportazioni 3D rimosse anche da `tiles.js`. Chunk `legend-*.js` 72kB / 21kB gz (era 78kB+121kB Three → **-100kB+ gzipped**). | `src/games/legend/renderer2d.js` (nuovo), `src/games/legend/engine.js`, `src/games/legend/tiles.js`, `package.json`, `vite.config.js`, `.github/copilot-instructions.md`; eliminati: `renderer3d.js`, `models3d.js` |
 
 ---
 

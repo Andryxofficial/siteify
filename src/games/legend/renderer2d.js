@@ -848,9 +848,6 @@ export class Renderer2D {
   }
 }
 
-/* Esportato anche come Renderer3D per compat. con engine.js */
-export { Renderer2D as Renderer3D };
-
 /* Costanti utili per chi consuma il renderer */
 export { CANVAS_LOGICAL, SCALE, VIEW_LOGICAL, VIEW_TILES };
 
