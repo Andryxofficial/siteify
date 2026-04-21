@@ -21,6 +21,9 @@ export default defineConfig({
           if (id.includes('node_modules/react-helmet-async')) {
             return 'vendor-helmet';
           }
+          if (id.includes('node_modules/lucide-react')) {
+            return 'vendor-lucide';
+          }
           if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-') || id.includes('node_modules/victory-vendor')) {
             return 'vendor-recharts';
           }

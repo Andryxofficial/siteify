@@ -330,7 +330,7 @@ export default function Navbar() {
           >
             <div className="navbar-content">
               <Link to="/" className="navbar-logo" aria-label="ANDRYXify – Home">
-                <img src={LOGO_URL} alt="ANDRYXify" className="navbar-logo-img" />
+                <img src={LOGO_URL} alt="ANDRYXify" className="navbar-logo-img" fetchPriority="high" />
               </Link>
 
               <div
