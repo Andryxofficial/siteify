@@ -1620,6 +1620,55 @@ nav.navbar-container.glass-panel {
   display: none;
 }
 
+/* ─── Bottone fullscreen (top-right del game-canvas-wrapper) ─── */
+.game-fullscreen-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 12;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(130,170,240,0.22);
+  background: rgba(16,22,44,0.55);
+  color: var(--text-main, #f4f0fa);
+  cursor: pointer;
+  backdrop-filter: var(--vetro-blur);
+  -webkit-backdrop-filter: var(--vetro-blur);
+  transition: background 160ms ease, transform 160ms ease, border-color 160ms ease;
+}
+.game-fullscreen-btn:hover,
+.game-fullscreen-btn:focus-visible {
+  background: rgba(40,60,100,0.7);
+  border-color: rgba(130,170,240,0.4);
+  transform: scale(1.06);
+  outline: none;
+}
+.game-fullscreen-btn:active { transform: scale(0.96); }
+
+/* Quando il wrapper e` in fullscreen esclusivo, fai fillare lo schermo
+   mantenendo l'aspect-ratio 1:1 al renderer (gestito dal renderer 2D). */
+.game-canvas-wrapper.is-fullscreen,
+.game-canvas-wrapper:fullscreen,
+.game-canvas-wrapper:-webkit-full-screen {
+  aspect-ratio: auto;
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.game-canvas-wrapper.is-fullscreen .game-canvas,
+.game-canvas-wrapper:fullscreen .game-canvas,
+.game-canvas-wrapper:-webkit-full-screen .game-canvas {
+  border-radius: 0;
+}
+
 .game-touch-controls {
   display: none;
   align-items: center;

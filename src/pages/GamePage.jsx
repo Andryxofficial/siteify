@@ -10,6 +10,7 @@ import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Twitch, LogIn, RotateCcw, Trophy, Calendar, Crown, Award, Zap, Keyboard, WifiOff,
+  Maximize2, Minimize2,
 } from 'lucide-react';
 import SEO from '../components/SEO';
 import { getGameForMonth, loadGameModule, getAllGameMetas } from '../games/registry';
@@ -97,6 +98,7 @@ export default function GamePage() {
 
   /* ─── Refs for game engine communication ─── */
   const canvasRef = useRef(null);
+  const canvasWrapperRef = useRef(null);
   const keysRef = useRef({});
   const joystickRef = useRef({ active: false, dx: 0, dy: 0 });
   const joystickDivRef = useRef(null);
@@ -111,6 +113,7 @@ export default function GamePage() {
   const [, setHp] = useState(0);
   const [, setMaxHp] = useState(0);
   const [showKeyboard, setShowKeyboard] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Twitch auth
   const [twitchUser, setTwitchUser] = useState(null);
@@ -464,6 +467,46 @@ export default function GamePage() {
     };
   }, [onJoystickStart, onJoystickMove, onJoystickEnd]);
 
+  /* ─── Fullscreen esclusivo del canvas wrapper ───
+        Usa la Fullscreen API (con fallback webkit). Mostra Maximize quando
+        non in fullscreen e Minimize altrimenti. Lo stato `isFullscreen`
+        si sincronizza tramite l'evento `fullscreenchange`. */
+  const toggleFullscreen = useCallback(() => {
+    const el = canvasWrapperRef.current;
+    if (!el) return;
+    const fsElement = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!fsElement) {
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (req) {
+        try {
+          const p = req.call(el);
+          if (p && typeof p.catch === 'function') p.catch(() => { /* permesso negato/denied */ });
+        } catch { /* ignored */ }
+      }
+    } else {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exit) {
+        try {
+          const p = exit.call(document);
+          if (p && typeof p.catch === 'function') p.catch(() => { /* ignored */ });
+        } catch { /* ignored */ }
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const onChange = () => {
+      const fs = document.fullscreenElement || document.webkitFullscreenElement;
+      setIsFullscreen(!!fs);
+    };
+    document.addEventListener('fullscreenchange', onChange);
+    document.addEventListener('webkitfullscreenchange', onChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange);
+      document.removeEventListener('webkitfullscreenchange', onChange);
+    };
+  }, []);
+
   const onActionBtnPress = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -612,7 +655,7 @@ export default function GamePage() {
 
       <div className="game-layout">
         <div className="game-area">
-          <div className="glass-panel game-canvas-wrapper" style={{ padding: 0, overflow: 'hidden' }}>
+          <div ref={canvasWrapperRef} className={`glass-panel game-canvas-wrapper${isFullscreen ? ' is-fullscreen' : ''}`} style={{ padding: 0, overflow: 'hidden' }}>
             <canvas
               ref={canvasRef}
               width={480}
@@ -621,6 +664,17 @@ export default function GamePage() {
               onTouchStart={onCanvasTouch}
               style={{ touchAction: 'none' }}
             />
+
+            {/* Fullscreen toggle (top-right del canvas wrapper) */}
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="game-fullscreen-btn"
+              aria-label={isFullscreen ? 'Esci da schermo intero' : 'Schermo intero'}
+              title={isFullscreen ? 'Esci da schermo intero' : 'Schermo intero'}
+            >
+              {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
 
             {/* Idle overlay */}
             {gameStatus === 'idle' && (

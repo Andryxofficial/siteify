@@ -163,8 +163,8 @@ export const DIALOGS = {
     lines: [
       'Hai recuperato il CRISTALLO VERDE!',
       'Uno dei tre Cristalli del Pixel.',
-      'Ora puoi accedere al Castello',
-      'tramite il portale a est.',
+      'Tornato al Villaggio, esplora',
+      'la Caverna a sud per il prossimo.',
     ],
     onComplete: { setQuest: 'has_crystal_green', setFlag: 'has_crystal_green' },
   },
@@ -175,6 +175,8 @@ export const DIALOGS = {
     lines: [
       'Hai recuperato il CRISTALLO BLU!',
       'Il potere dell\'acqua fluisce in te.',
+      'La strada a NORD del Villaggio',
+      'verso il Castello e\` ora aperta.',
     ],
     onComplete: { setQuest: 'has_crystal_blue', setFlag: 'has_crystal_blue' },
   },
