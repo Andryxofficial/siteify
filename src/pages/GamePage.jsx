@@ -6,6 +6,7 @@
  * and a season-based leaderboard with archive.
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Twitch, LogIn, RotateCcw, Trophy, Calendar, Crown, Award, Zap, Keyboard,
@@ -39,6 +40,8 @@ const C = {
 };
 
 export default function GamePage() {
+  const location = useLocation();
+
   /* ─── Current month & game module ─── */
   const now = new Date();
   const currentMonth = now.getUTCMonth() + 1; // 1-12
@@ -92,11 +95,6 @@ export default function GamePage() {
       if (token) {
         localStorage.setItem('twitchGameToken', token);
         window.history.replaceState(null, '', window.location.pathname);
-      } else if (hash === '#classifica') {
-        // Scroll alla sezione classifica dopo che la pagina è pronta
-        setTimeout(() => {
-          document.getElementById('classifica')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 600);
       }
     }
     const saved = localStorage.getItem('twitchGameToken');
@@ -138,6 +136,13 @@ export default function GamePage() {
   }, []);
 
   useEffect(() => { fetchBoard(); }, [fetchBoard]);
+
+  /* ─── Scroll alla classifica se l'hash URL lo richiede ─── */
+  useEffect(() => {
+    if (!boardLoading && location.hash === '#classifica') {
+      document.getElementById('classifica')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [boardLoading, location.hash]);
 
   /* ─── Submit score ─── */
   const submitScore = useCallback(async (finalScore) => {
