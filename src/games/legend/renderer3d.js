@@ -54,7 +54,7 @@ export class Renderer3D {
       alpha: false,
       powerPreference: 'high-performance',
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
     this.renderer.setSize(canvas.width, canvas.height, false);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
@@ -200,16 +200,16 @@ export class Renderer3D {
       this.skyDome.visible = false;
     } else {
       this.ambient.color.setHex(0xfff5dd);
-      this.ambient.intensity = 0.6;
-      this.sun.color.setHex(0xffe8b0);
-      this.sun.intensity = 1.05;
-      this.hemi.intensity = 0.45;
-      this.scene.background = new THREE.Color(0xc8e8ff);
-      this.scene.fog.color.setHex(0xc8e8ff);
-      this.scene.fog.near = 16;
-      this.scene.fog.far = 32;
+      this.ambient.intensity = 0.7;
+      this.sun.color.setHex(0xffe4a0);
+      this.sun.intensity = 1.25;
+      this.hemi.intensity = 0.55;
+      this.scene.background = new THREE.Color(0xb8e8ff);
+      this.scene.fog.color.setHex(0xb8e8ff);
+      this.scene.fog.near = 18;
+      this.scene.fog.far = 36;
       this.skyDome.visible = true;
-      this._setSkyColors(0x4a90e0, 0xc8e8ff);
+      this._setSkyColors(0x3a86d8, 0xc8eeff);
     }
   }
 

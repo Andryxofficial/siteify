@@ -90,10 +90,12 @@ export function startEngine(canvas, callbacks, options = {}) {
 
   /* ─── Overlay 2D per HUD/dialog/minimap/overlay ───
      Creato come sibling del canvas 3D, posizionato sopra in modo
-     assoluto, pointer-events:none cosi` non ruba i click. */
+     assoluto, pointer-events:none cosi` non ruba i click. Backing
+     buffer a 2× per testo crisp su display HiDPI. */
+  const HUD_SCALE = 2;
   const overlayCanvas = document.createElement('canvas');
-  overlayCanvas.width = canvas.width;
-  overlayCanvas.height = canvas.height;
+  overlayCanvas.width = canvas.width * HUD_SCALE;
+  overlayCanvas.height = canvas.height * HUD_SCALE;
   /* Posizionamento assoluto sopra il canvas 3D */
   const parent = canvas.parentNode;
   if (parent) {
@@ -115,6 +117,9 @@ export function startEngine(canvas, callbacks, options = {}) {
   }
   const ctx = overlayCanvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
+  /* Tutte le routine di rendering disegnano in coordinate "logiche"
+     480x480 ma su un buffer 2x → testo nitido. */
+  ctx.scale(HUD_SCALE, HUD_SCALE);
 
   const state = makeInitialState(options.savedData);
   let mutableMap = cloneZoneMap(state.zoneId);
@@ -982,10 +987,10 @@ export function startEngine(canvas, callbacks, options = {}) {
     const fullHearts = Math.floor(state.player.hp / 2);
     const halfHeart  = state.player.hp % 2 === 1;
     const totalHearts = Math.ceil(state.player.maxHp / 2);
-    const heartSize = 16;
-    const padding = 8;
+    const heartSize = 22;
+    const padding = 10;
     for (let i = 0; i < totalHearts; i++) {
-      const x = padding + i * (heartSize + 2);
+      const x = padding + i * (heartSize + 3);
       const y = padding;
       if (i < fullHearts) {
         drawSpriteScaled(ctx, SPRITES.ITEM_HEART, x, y, heartSize, heartSize);
@@ -1001,8 +1006,8 @@ export function startEngine(canvas, callbacks, options = {}) {
         ctx.strokeRect(x, y, heartSize, heartSize);
       } else {
         /* Cuore vuoto: outline */
-        ctx.strokeStyle = 'rgba(255,80,80,0.4)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(255,80,80,0.45)';
+        ctx.lineWidth = 1.5;
         ctx.strokeRect(x + 2, y + 2, heartSize - 4, heartSize - 4);
       }
     }
@@ -1010,18 +1015,18 @@ export function startEngine(canvas, callbacks, options = {}) {
     /* Rupie in alto a destra */
     const text = `\u2666 ${state.rupees}`;
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 12px monospace';
+    ctx.font = 'bold 18px monospace';
     ctx.textAlign = 'right';
-    ctx.shadowColor = 'rgba(0,0,0,0.6)';
-    ctx.shadowBlur = 3;
-    ctx.fillText(text, CANVAS_SIZE - padding, padding + 12);
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(text, CANVAS_SIZE - padding, padding + 18);
 
     /* Chiavi/bombe */
-    let yIcon = padding + 26;
+    let yIcon = padding + 32;
     if (state.keys > 0) {
-      drawSpriteScaled(ctx, SPRITES.ITEM_KEY, CANVAS_SIZE - padding - 50, yIcon, 16, 16);
-      ctx.fillText(`x${state.keys}`, CANVAS_SIZE - padding, yIcon + 12);
-      yIcon += 18;
+      drawSpriteScaled(ctx, SPRITES.ITEM_KEY, CANVAS_SIZE - padding - 60, yIcon, 20, 20);
+      ctx.fillText(`x${state.keys}`, CANVAS_SIZE - padding, yIcon + 16);
+      yIcon += 24;
     }
 
     /* Indicatore cristalli (in alto centro) */
@@ -1030,17 +1035,18 @@ export function startEngine(canvas, callbacks, options = {}) {
       { flag: 'has_crystal_blue',  sprite: 'ITEM_CRYSTAL_BLUE'  },
       { flag: 'has_crystal_red',   sprite: 'ITEM_CRYSTAL_RED'   },
     ];
-    const cSize = 14;
-    const cPad = 2;
+    const cSize = 20;
+    const cPad = 4;
     const cTotal = crystals.length * (cSize + cPad);
     const cStartX = (CANVAS_SIZE - cTotal) / 2;
     for (let i = 0; i < crystals.length; i++) {
       const cx = cStartX + i * (cSize + cPad);
-      const cy = padding;
+      const cy = padding + 2;
       if (state.flags[crystals[i].flag]) {
         drawSpriteScaled(ctx, SPRITES[crystals[i].sprite], cx, cy, cSize, cSize);
       } else {
-        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 1.5;
         ctx.strokeRect(cx + 2, cy + 2, cSize - 4, cSize - 4);
       }
     }
@@ -1054,13 +1060,15 @@ export function startEngine(canvas, callbacks, options = {}) {
   }
 
   function renderMiniMap() {
-    const mmSize = 60;
-    const mmX = CANVAS_SIZE - mmSize - 8;
-    const mmY = CANVAS_SIZE - mmSize - 8;
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    const mmSize = 80;
+    const mmX = CANVAS_SIZE - mmSize - 10;
+    const mmY = CANVAS_SIZE - mmSize - 10;
+    /* Sfondo + bordo doppio stile dialog */
+    ctx.fillStyle = 'rgba(10,14,40,0.7)';
     ctx.fillRect(mmX, mmY, mmSize, mmSize);
-    ctx.strokeStyle = 'rgba(240,200,80,0.6)';
-    ctx.strokeRect(mmX, mmY, mmSize, mmSize);
+    ctx.strokeStyle = '#f0c850';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(mmX + 1, mmY + 1, mmSize - 2, mmSize - 2);
     /* Tile colorati */
     const sx = mmSize / ZONE_W;
     const sy = mmSize / ZONE_H;
@@ -1069,84 +1077,120 @@ export function startEngine(canvas, callbacks, options = {}) {
         const ch = mutableMap[y][x];
         const t = getTile(ch);
         let col = null;
-        if (t.solid) col = '#222';
-        if (t.id === '.' || t.id === ',' || t.id === '_') col = '#3a8c3a';
+        if (t.solid) col = '#3a3a48';
+        if (t.id === '.' || t.id === ',' || t.id === '_') col = '#5fb33a';
         if (t.id === '~') col = '#3a72c8';
-        if (t.id === 'F') col = '#888';
-        if (t.id === '*') col = '#b870d0';
-        if (t.id === 'L') col = '#d23a3a';
+        if (t.id === 'F') col = '#aaaaaa';
+        if (t.id === '*') col = '#c878e0';
+        if (t.id === 'L') col = '#e85030';
         if (col) {
           ctx.fillStyle = col;
           ctx.fillRect(mmX + x * sx, mmY + y * sy, sx + 0.5, sy + 0.5);
         }
       }
     }
-    /* Player */
+    /* Player con pulse */
+    const pulse = 0.7 + Math.sin(tickCount * 0.15) * 0.3;
     ctx.fillStyle = '#00f5d4';
     const pmx = mmX + (state.player.x / TILE_SIZE) * sx;
     const pmy = mmY + (state.player.y / TILE_SIZE) * sy;
-    ctx.fillRect(pmx - 1.5, pmy - 1.5, 3, 3);
+    const ps = 3 + pulse * 1.5;
+    ctx.fillRect(pmx - ps / 2, pmy - ps / 2, ps, ps);
     /* Nemici */
     ctx.fillStyle = '#ff4040';
     for (const e of entities) {
       if ((e.type === 'enemy' || e.type === 'boss') && e.hp > 0) {
         const ex = mmX + (e.x / TILE_SIZE) * sx;
         const ey = mmY + (e.y / TILE_SIZE) * sy;
-        ctx.fillRect(ex - 1, ey - 1, 2, 2);
+        const sz = e.type === 'boss' ? 4 : 2.5;
+        ctx.fillRect(ex - sz / 2, ey - sz / 2, sz, sz);
       }
     }
     /* Etichetta zona */
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '9px monospace';
+    ctx.fillStyle = '#fff5b0';
+    ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'center';
-    ctx.shadowColor = 'rgba(0,0,0,0.8)';
-    ctx.shadowBlur = 2;
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 3;
     const z = getZone(state.zoneId);
-    ctx.fillText(z.name, mmX + mmSize / 2, mmY - 3);
+    ctx.fillText(z.name, mmX + mmSize / 2, mmY - 5);
     ctx.textAlign = 'left';
     ctx.shadowBlur = 0;
   }
 
   function renderDialog() {
     if (!dialogState) return;
-    const boxH = 96;
-    const boxY = CANVAS_SIZE - boxH - 8;
-    const boxX = 8;
-    const boxW = CANVAS_SIZE - 16;
+    const boxH = 148;
+    const boxY = CANVAS_SIZE - boxH - 10;
+    const boxX = 10;
+    const boxW = CANVAS_SIZE - 20;
 
-    /* Pannello */
-    ctx.fillStyle = 'rgba(20,20,40,0.92)';
+    /* Pannello stile Minish Cap: ombra → fondo blu scuro → bordo doppio oro */
+    /* Ombra */
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(boxX + 4, boxY + 4, boxW, boxH);
+    /* Fondo a gradient blu profondo */
+    const grad = ctx.createLinearGradient(0, boxY, 0, boxY + boxH);
+    grad.addColorStop(0, 'rgba(22,28,72,0.96)');
+    grad.addColorStop(1, 'rgba(10,14,40,0.96)');
+    ctx.fillStyle = grad;
     ctx.fillRect(boxX, boxY, boxW, boxH);
+    /* Bordo esterno oro spesso */
     ctx.strokeStyle = '#f0c850';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(boxX + 1.5, boxY + 1.5, boxW - 3, boxH - 3);
+    /* Bordo interno oro sottile */
+    ctx.strokeStyle = 'rgba(240,200,80,0.6)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(boxX + 6, boxY + 6, boxW - 12, boxH - 12);
+    /* Corner brackets stile Zelda */
+    ctx.strokeStyle = '#fff5b0';
     ctx.lineWidth = 2;
-    ctx.strokeRect(boxX, boxY, boxW, boxH);
+    const cb = 10;
+    /* Top-left */
+    ctx.beginPath(); ctx.moveTo(boxX + 4, boxY + 4 + cb); ctx.lineTo(boxX + 4, boxY + 4); ctx.lineTo(boxX + 4 + cb, boxY + 4); ctx.stroke();
+    /* Top-right */
+    ctx.beginPath(); ctx.moveTo(boxX + boxW - 4 - cb, boxY + 4); ctx.lineTo(boxX + boxW - 4, boxY + 4); ctx.lineTo(boxX + boxW - 4, boxY + 4 + cb); ctx.stroke();
+    /* Bottom-left */
+    ctx.beginPath(); ctx.moveTo(boxX + 4, boxY + boxH - 4 - cb); ctx.lineTo(boxX + 4, boxY + boxH - 4); ctx.lineTo(boxX + 4 + cb, boxY + boxH - 4); ctx.stroke();
+    /* Bottom-right */
+    ctx.beginPath(); ctx.moveTo(boxX + boxW - 4 - cb, boxY + boxH - 4); ctx.lineTo(boxX + boxW - 4, boxY + boxH - 4); ctx.lineTo(boxX + boxW - 4, boxY + boxH - 4 - cb); ctx.stroke();
 
     /* Ritratto NPC (se presente) */
-    let textX = boxX + 12;
+    let textX = boxX + 18;
     if (dialogState.portrait && SPRITES[dialogState.portrait]) {
-      drawSpriteScaled(ctx, SPRITES[dialogState.portrait], boxX + 8, boxY + 12, 64, 64);
-      textX = boxX + 80;
+      /* Cornice ritratto */
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(boxX + 12, boxY + 18, 72, 72);
+      ctx.strokeStyle = '#f0c850';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(boxX + 12, boxY + 18, 72, 72);
+      drawSpriteScaled(ctx, SPRITES[dialogState.portrait], boxX + 16, boxY + 22, 64, 64);
+      textX = boxX + 96;
     }
 
     /* Speaker */
-    ctx.fillStyle = '#f0c850';
-    ctx.font = 'bold 12px monospace';
-    ctx.fillText(dialogState.speaker || '', textX, boxY + 16);
+    ctx.fillStyle = '#ffd86a';
+    ctx.font = 'bold 18px monospace';
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 3;
+    ctx.fillText(dialogState.speaker || '', textX, boxY + 30);
+    ctx.shadowBlur = 0;
 
     /* Linea corrente con typewriter */
     const line = dialogState.lines[dialogState.lineIdx] || '';
     const visible = line.substring(0, Math.floor(dialogState.charIdx));
     ctx.fillStyle = '#ffffff';
-    ctx.font = '13px monospace';
-    /* Wrap manuale: line e` gia` corta, no wrap */
-    ctx.fillText(visible, textX, boxY + 38);
+    ctx.font = 'bold 17px monospace';
+    ctx.fillText(visible, textX, boxY + 60);
 
     /* Linee successive (preview leggera) */
     for (let i = 1; i < 3; i++) {
       const next = dialogState.lines[dialogState.lineIdx + i];
       if (!next) break;
-      ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      ctx.fillText(next, textX, boxY + 38 + i * 16);
+      ctx.fillStyle = 'rgba(255,255,255,0.42)';
+      ctx.font = '15px monospace';
+      ctx.fillText(next, textX, boxY + 60 + i * 22);
     }
 
     /* Indicatore "premi azione" lampeggiante (solo dopo cooldown anti-skip) */
@@ -1155,10 +1199,13 @@ export function startEngine(canvas, callbacks, options = {}) {
     if (ready) {
       const pulse = Math.sin(tickCount * 0.2);
       if (pulse > 0) {
-        ctx.fillStyle = '#f0c850';
-        ctx.font = 'bold 11px monospace';
+        ctx.fillStyle = '#ffd86a';
+        ctx.font = 'bold 18px monospace';
         ctx.textAlign = 'right';
-        ctx.fillText('▼', boxX + boxW - 12, boxY + boxH - 8);
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 3;
+        ctx.fillText('▼', boxX + boxW - 18, boxY + boxH - 14);
+        ctx.shadowBlur = 0;
         ctx.textAlign = 'left';
       }
     }
@@ -1168,20 +1215,26 @@ export function startEngine(canvas, callbacks, options = {}) {
     if (gameOverRef.gameOver) {
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-      ctx.fillStyle = '#d23a3a';
-      ctx.font = 'bold 32px monospace';
+      ctx.fillStyle = '#ff5050';
+      ctx.font = 'bold 56px monospace';
       ctx.textAlign = 'center';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur = 8;
       ctx.fillText('SEI CADUTO', CANVAS_SIZE / 2, CANVAS_SIZE / 2);
+      ctx.shadowBlur = 0;
       ctx.textAlign = 'left';
     } else if (winRef.win) {
       ctx.fillStyle = 'rgba(240,200,80,0.4)';
       ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 28px monospace';
+      ctx.font = 'bold 48px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('VITTORIA!', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 20);
-      ctx.font = 'bold 16px monospace';
-      ctx.fillText('Twitchia è salva', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 10);
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur = 8;
+      ctx.fillText('VITTORIA!', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 30);
+      ctx.font = 'bold 22px monospace';
+      ctx.fillText('Twitchia è salva', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 16);
+      ctx.shadowBlur = 0;
       ctx.textAlign = 'left';
     }
   }
