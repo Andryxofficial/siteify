@@ -67,8 +67,8 @@ const VILLAGE_ENTITIES = [
   /* Vaso speciale 'q' (col 11, row 14) — ora gestito come tile, non entita`. */
   /* La spada di papa` Andryx — appare DAVANTI casa appena la porta si apre */
   { type: 'item', kind: 'sword', x: 2, y: 13, requires: 'house_key' },
-  { type: 'sign', x: 14, y: 17, text: 'Verso est: Foresta Sussurrante.\nVerso sud-est: Portale Caverna.\nLa tua casa: a ovest.' },
-  { type: 'sign', x: 16, y: 9, text: 'Fontana del Villaggio.\nL\'acqua riflette le stelle.' },
+  { type: 'sign', x: 14, y: 17, textKey: 'village_main', text: 'Verso est: Foresta Sussurrante.\nVerso sud-est: Portale Caverna.\nLa tua casa: a ovest.' },
+  { type: 'sign', x: 16, y: 9, textKey: 'village_fountain', text: 'Fontana del Villaggio.\nL\'acqua riflette le stelle.' },
 ];
 
 /* ─── ZONA 1: Foresta Sussurrante — primo dungeon all'aperto ─── */
@@ -104,7 +104,7 @@ const FOREST_ENTITIES = [
   { type: 'enemy', kind: 'skeleton', x: 24, y: 11 },
   { type: 'item', kind: 'heart_container', x: 25, y: 17, requires: 'has_crystal_green:false' },
   { type: 'item', kind: 'crystal_green', x: 14, y: 1, requires: 'forest_clear' },
-  { type: 'sign', x: 2, y: 17, text: 'Foresta Sussurrante.\nElimina i nemici per\nfar apparire il Cristallo.' },
+  { type: 'sign', x: 2, y: 17, textKey: 'forest_main', text: 'Foresta Sussurrante.\nElimina i nemici per\nfar apparire il Cristallo.' },
 ];
 
 /* ─── ZONA 2: Caverna delle Gemme — dungeon con puzzle e mini-boss ─── */
@@ -141,7 +141,7 @@ const CAVE_ENTITIES = [
   { type: 'item', kind: 'shield', x: 3, y: 3, requires: 'has_shield:false' },
   { type: 'item', kind: 'key', x: 27, y: 3 },
   { type: 'item', kind: 'crystal_blue', x: 14, y: 18, requires: 'guardian_defeated' },
-  { type: 'sign', x: 2, y: 1, text: 'Caverna delle Gemme.\nAccendi le 2 torce per\nrisvegliare il Custode.' },
+  { type: 'sign', x: 2, y: 1, textKey: 'cave_main', text: 'Caverna delle Gemme.\nAccendi le 2 torce per\nrisvegliare il Custode.' },
 ];
 
 /* ─── ZONA 3: Castello del Re Ombra — boss finale ─── */
@@ -175,7 +175,7 @@ const CASTLE_ENTITIES = [
   { type: 'enemy', kind: 'mage', x: 21, y: 14 },
   { type: 'boss', kind: 'shadow_king', x: 14, y: 7, requires: 'castle_clear' },
   { type: 'item', kind: 'crystal_red', x: 14, y: 5, requires: 'shadow_king_defeated' },
-  { type: 'sign', x: 14, y: 17, text: 'Castello del Re Ombra.\nIl tuo destino ti attende.' },
+  { type: 'sign', x: 14, y: 17, textKey: 'castle_main', text: 'Castello del Re Ombra.\nIl tuo destino ti attende.' },
 ];
 
 /* ─── Definizioni zone ─── */

@@ -21,6 +21,7 @@ import { getZone, cloneZoneMap, ZONE_W, ZONE_H } from './world.js';
 import { getDialog, selectNpcDialog, calculateFinalScore } from './dialog.js';
 import { SFX, playMusic, stopMusic, ensureAudio } from './audio.js';
 import { C } from './palette.js';
+import { getLegendSign, getLegendZoneName, getLegendEngineText } from './i18n.js';
 
 const SCALE = 2;
 const VIEW_TILES = 15;            // 15×15 tile visibili
@@ -120,7 +121,7 @@ export function startEngine(canvas, callbacks, options = {}) {
     particles = [];
     playMusic(z.music);
     dialogState = null;
-    callbacks.onInfo?.(`📍 ${z.name}`);
+    callbacks.onInfo?.(`📍 ${getLegendZoneName(z.id) || z.name}`);
   }
 
   function applyMutations(zoneId) {
@@ -497,7 +498,7 @@ export function startEngine(canvas, callbacks, options = {}) {
           }
         }
         SFX.door();
-        showSystemMessage('Le porte si aprono!');
+        showSystemMessage(getLegendEngineText('doors_open'));
         /* Ricarica entita` per spawnare boss/mago */
         const z = getZone(state.zoneId);
         const newEnts = z.entities.filter(e => e.requires === 'cave_door1' || e.requires === 'cave_torches');
@@ -869,11 +870,13 @@ export function startEngine(canvas, callbacks, options = {}) {
 
   function openSignDialog(sign) {
     if (dialogState) return;
-    const lines = sign.def.text.split('\n');
+    /* Usa textKey (tradotto) se presente, altrimenti fallback a text hardcoded. */
+    const rawText = sign.def.textKey ? (getLegendSign(sign.def.textKey) || sign.def.text || '') : (sign.def.text || '');
+    const lines = rawText.split('\n');
     dialogState = {
       dialogId: 'sign',
       lineIdx: 0, charIdx: 0,
-      lines, speaker: 'Cartello', portrait: null,
+      lines, speaker: getLegendEngineText('sign_speaker') || 'Cartello', portrait: null,
     };
   }
 
@@ -1180,7 +1183,7 @@ export function startEngine(canvas, callbacks, options = {}) {
     ctx.shadowColor = 'rgba(0,0,0,0.8)';
     ctx.shadowBlur = 2;
     const z = getZone(state.zoneId);
-    ctx.fillText(z.name, mmX + mmSize / 2, mmY - 3);
+    ctx.fillText(getLegendZoneName(z.id) || z.name, mmX + mmSize / 2, mmY - 3);
     ctx.textAlign = 'left';
     ctx.shadowBlur = 0;
   }
@@ -1249,7 +1252,7 @@ export function startEngine(canvas, callbacks, options = {}) {
       ctx.fillStyle = '#d23a3a';
       ctx.font = 'bold 32px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('SEI CADUTO', CANVAS_SIZE / 2, CANVAS_SIZE / 2);
+      ctx.fillText(getLegendEngineText('game_over') || 'SEI CADUTO', CANVAS_SIZE / 2, CANVAS_SIZE / 2);
       ctx.textAlign = 'left';
     } else if (winRef.win) {
       ctx.fillStyle = 'rgba(240,200,80,0.4)';
@@ -1257,9 +1260,9 @@ export function startEngine(canvas, callbacks, options = {}) {
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 28px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('VITTORIA!', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 20);
+      ctx.fillText(getLegendEngineText('victory') || 'VITTORIA!', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 20);
       ctx.font = 'bold 16px monospace';
-      ctx.fillText('Twitchia è salva', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 10);
+      ctx.fillText(getLegendEngineText('victory_sub') || 'Twitchia è salva', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 10);
       ctx.textAlign = 'left';
     }
   }
