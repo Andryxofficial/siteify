@@ -420,6 +420,8 @@ export class Renderer3D {
     this.particlePool.length = 0;
     M.disposeShared();
     this.renderer.dispose();
+    /* Reset id counter cosi` start/stop ripetuti non lo fanno crescere indefinitamente */
+    _idCounter = 1;
   }
 }
 

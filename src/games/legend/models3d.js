@@ -35,7 +35,10 @@ function mat(key, factory) {
 }
 
 function lambert(color, opts = {}) {
-  const k = `lamb_${color.toString(16)}_${JSON.stringify(opts)}`;
+  /* Chiave cache: ordine chiavi deterministico per evitare cache miss
+     tra `{a:1,b:2}` e `{b:2,a:1}`. */
+  const sortedOpts = JSON.stringify(opts, Object.keys(opts).sort());
+  const k = `lamb_${color.toString(16)}_${sortedOpts}`;
   return mat(k, () => new THREE.MeshLambertMaterial({ color, ...opts }));
 }
 function emissive(color, intensity = 1.0) {
