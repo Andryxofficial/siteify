@@ -145,7 +145,7 @@ function BotIndicator({ status, onToggle }) {
   const Icon       = acceso ? Wifi : WifiOff;
   const coloreIcona = acceso ? 'var(--accent-spotify)' : inAttesa ? 'var(--accent-warm)' : 'var(--text-faint)';
   const titolo     = inAttesa
-    ? 'Bot in connessione…'
+    ? 'Bot in connessione… clicca per annullare'
     : acceso ? 'Bot attivo — clicca per disattivare' : 'Bot disattivo — clicca per attivare';
   return (
     <div className="mod-bot-switch-wrap" title={titolo}>
@@ -155,9 +155,9 @@ function BotIndicator({ status, onToggle }) {
         type="button"
         role="switch"
         aria-checked={acceso}
-        aria-label={acceso ? 'Disattiva bot' : 'Attiva bot'}
+        aria-label={acceso ? 'Disattiva bot' : inAttesa ? 'Annulla connessione bot' : 'Attiva bot'}
+        aria-busy={inAttesa}
         onClick={onToggle}
-        disabled={inAttesa}
         className={`mod-bot-switch${acceso ? ' is-on' : ''}${inAttesa ? ' is-loading' : ''}`}
         style={{ '--on': acceso ? 1 : 0 }}
       >
@@ -295,9 +295,14 @@ export default function ModPanel() {
   }, []);
 
   const toggleBot = useCallback(() => {
-    if (botRef.current && botStatus === 'connected') {
+    // Se esiste già un'istanza bot — in qualsiasi stato (connected, connecting,
+    // error, disconnected in auto-reconnect) — la spegniamo. In questo modo lo
+    // switch funziona anche per annullare un tentativo di connessione bloccato
+    // e non si accumulano istanze fantasma che continuano a riconnettersi.
+    if (botRef.current) {
       botRef.current.disconnect();
       botRef.current = null;
+      setBotStatus('disconnected');
       return;
     }
     if (!twitchToken || !twitchUser || !broadcaster) return;
@@ -313,7 +318,7 @@ export default function ModPanel() {
       .catch(() => {});
     botRef.current = bot;
     bot.connect();
-  }, [botStatus, twitchToken, twitchUser, broadcaster]);
+  }, [twitchToken, twitchUser, broadcaster]);
 
   // Voci della command palette: tutte le sezioni
   const vociPalette = useMemo(() => SEZIONI.map(s => ({
