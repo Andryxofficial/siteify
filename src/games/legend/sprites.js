@@ -33,185 +33,201 @@ function flipH(rows) {
   return rows.map(r => r.split('').reverse().join(''));
 }
 
-/* ─── Player Andryx — 16×16, eroe in tunica verde con cappello ─── */
+/* ─── Player Andryx — 16×16, eroe stile Minish Cap ─── */
+/* Convenzioni sprite:
+   - N = outline scuro (#2a2a35)
+   - g/G = verde cappello, l = verde chiaro (highlight)
+   - k = pelle chiara, K = pelle ombra
+   - h/H = capelli marrone scuro
+   - e = occhi (quasi-nero)
+   - r/R/p = tunica rossa (p=highlight, r=mid, R=ombra)
+   - b/B = stivali/cintura marrone
+   - Ogni riga = esattamente 16 caratteri
+*/
 
 /* Idle DOWN (di fronte) — frame 0 */
 const PLAYER_DOWN_0 = S([
-  '....ggggg.......',
-  '...gGGGGGg......',
-  '..gGgggggGg.....',
-  '..ggkkkkkgg.....',
-  '..gkkhhhkk......',
-  '..ekheekheee....',
-  '..ekKekKkek.....',
-  '..gkkkKkkkg.....',
-  '...rkkkkkr......',
-  '..rRRRrRRRr.....',
-  '..rRRRrRRRr.b...',
-  '.brRRRrRRRrbB...',
-  'b.brRRrRRRb.B...',
-  '...kkk.kkk......',
-  '..bbB...bbB.....',
-  '..BBB...BBB.....',
+  '......gGg.......',  // 0: punta cappello
+  '.....gGGGGg.....',  // 1: cappello
+  '....gGGlGGGg....',  // 2: cappello, highlight l
+  '....gGGGGGGg....',  // 3: base cappello
+  '....ggGGGGgg....',  // 4: tesa cappello
+  '.....NkkkkN.....',  // 5: fronte (N=outline)
+  '....NkekekN.....',  // 6: occhi (e=pupille)
+  '....NkkKkkN.....',  // 7: viso basso (K=ombra naso/mento)
+  '...hNkrrrNh.....',  // 8: capelli lati + colletto
+  '...NrrRRRRrN....',  // 9: spalle+torso alta
+  '...NrRRpRRrN....',  // 10: torso (p=highlight)
+  '...NrRRRRRrN....',  // 11: torso bassa
+  '...NbBBBBBbN....',  // 12: cintura
+  '.....NbNbN......',  // 13: gambe
+  '.....NbNbN......',  // 14: gambe
+  '.....NBNBN......',  // 15: stivali
 ]);
-/* Walk DOWN — frame 1 (gambe avanti/indietro) */
+
+/* Walk DOWN — frame 1 (passo alternato) */
 const PLAYER_DOWN_1 = S([
-  '....ggggg.......',
-  '...gGGGGGg......',
-  '..gGgggggGg.....',
-  '..ggkkkkkgg.....',
-  '..gkkhhhkk......',
-  '..ekheekheee....',
-  '..ekKekKkek.....',
-  '..gkkkKkkkg.....',
-  '...rkkkkkr......',
-  '..rRRRrRRRr.....',
-  '..rRRRrRRRr.....',
-  '...rRRrRRRr.....',
-  '...rrRRRrr......',
-  '..bbB.kkk.......',
-  '..BBB.kkbB......',
-  '...B...BBB......',
+  '......gGg.......',
+  '.....gGGGGg.....',
+  '....gGGlGGGg....',
+  '....gGGGGGGg....',
+  '....ggGGGGgg....',
+  '.....NkkkkN.....',
+  '....NkekekN.....',
+  '....NkkKkkN.....',
+  '...hNkrrrNh.....',
+  '...NrrRRRRrN....',
+  '...NrRRpRRrN....',
+  '...NrRRRRRrN....',
+  '...NbBBBBBbN....',
+  '.....NbNNN......',  // gamba destra avanti
+  '....NbbNN.......',  // entrambe le gambe
+  '....NBNBN.......',  // stivali passi alternati
 ]);
 
-/* Idle UP (di spalle) */
+/* Idle UP (di spalle) — cappello e dorso tunica */
 const PLAYER_UP_0 = S([
-  '....ggggg.......',
-  '...gGGGGGg......',
-  '..gGgggggGg.....',
-  '..ggHHHHHgg.....',
-  '..gHHHHHHHg.....',
-  '..eHHHHHHHe.....',
-  '..eHHHHHHHe.....',
-  '..gHHHHHHHg.....',
-  '...HHHHHHH......',
-  '..rRRRrRRRr.....',
-  '..rRRRrRRRr.....',
-  '..rRRRrRRRr.....',
-  '...rRRrRRr......',
-  '...kkk.kkk......',
-  '..bbB...bbB.....',
-  '..BBB...BBB.....',
-]);
-const PLAYER_UP_1 = S([
-  '....ggggg.......',
-  '...gGGGGGg......',
-  '..gGgggggGg.....',
-  '..ggHHHHHgg.....',
-  '..gHHHHHHHg.....',
-  '..eHHHHHHHe.....',
-  '..eHHHHHHHe.....',
-  '..gHHHHHHHg.....',
-  '...HHHHHHH......',
-  '..rRRRrRRRr.....',
-  '..rRRRrRRRr.....',
-  '...rRRrRRRr.....',
-  '...rrRRRrr......',
-  '..bbB.kkk.......',
-  '..BBB.kkbB......',
-  '...B...BBB......',
+  '......gGg.......',
+  '.....gGGGGg.....',
+  '....gGGGGGGg....',  // nessun highlight (dorso)
+  '....gGGGGGGg....',
+  '....ggGGGGgg....',
+  '.....NHHHHhN....',  // 5: nuca (H=capelli scuri)
+  '.....NHHHHhN....',  // 6: capelli
+  '.....NhHHHhN....',  // 7: capelli collo
+  '...hNhhhhhNh....',  // 8: capelli ai lati
+  '...NrrRRRRrN....',  // 9: dorso tunica
+  '...NrRRRRRrN....',  // 10
+  '...NrRRRRRrN....',  // 11
+  '...NbBBBBBbN....',  // 12: cintura
+  '.....NbNbN......',  // 13
+  '.....NbNbN......',  // 14
+  '.....NBNBN......',  // 15
 ]);
 
-/* Idle RIGHT (di lato) */
-const PLAYER_RIGHT_0 = S([
-  '.....ggggg......',
-  '....gGGGGGg.....',
-  '...gGggggGg.....',
-  '...gkkkkkgg.....',
-  '...gkhhhkkg.....',
-  '..eHHkeekkg.....',
-  '..eHHkkkkkg.....',
-  '..gkkkkKkkg.....',
-  '...rkkkkkr......',
-  '...rRRRRRr......',
-  '...rRRRrRr......',
-  '...rRRRrRr......',
-  '..brRRrrRrb.....',
-  '...kkk.kkk......',
-  '..bbB...BBB.....',
-  '..BBB...BBB.....',
+const PLAYER_UP_1 = S([
+  '......gGg.......',
+  '.....gGGGGg.....',
+  '....gGGGGGGg....',
+  '....gGGGGGGg....',
+  '....ggGGGGgg....',
+  '.....NHHHHhN....',
+  '.....NHHHHhN....',
+  '.....NhHHHhN....',
+  '...hNhhhhhNh....',
+  '...NrrRRRRrN....',
+  '...NrRRRRRrN....',
+  '...NrRRRRRrN....',
+  '...NbBBBBBbN....',
+  '.....NbNNN......',  // gamba destra avanti (specchio di DOWN_1)
+  '....NbbNN.......',
+  '....NBNBN.......',
 ]);
+
+/* Idle RIGHT (profilo destro) */
+const PLAYER_RIGHT_0 = S([
+  '......gGGgg.....',  // 0: cappello (punta vs dorso)
+  '.....gGGGGGg....',  // 1
+  '....gGGlGGGGg...',  // 2: highlight
+  '....gGGGGGGGg...',  // 3
+  '....ggGGGGGgg...',  // 4: tesa
+  '....NhhhkkN.....',  // 5: profilo (h=capelli, k=pelle)
+  '...NhhekkN......',  // 6: occhio (e), capelli, pelle
+  '...NhhkkkN......',  // 7: viso basso
+  '....NrrrN.......',  // 8: colletto
+  '...NrRRRRN......',  // 9: torso (profilo, più stretto)
+  '...NrRRpRN......',  // 10: highlight
+  '...NrRRRRN......',  // 11: torso bassa
+  '....NbBBN.......',  // 12: cintura
+  '....NbbNN.......',  // 13: gambe profilo
+  '....NbbNN.......',  // 14
+  '....NBBNN.......',  // 15: stivale
+]);
+
 const PLAYER_RIGHT_1 = S([
-  '.....ggggg......',
-  '....gGGGGGg.....',
-  '...gGggggGg.....',
-  '...gkkkkkgg.....',
-  '...gkhhhkkg.....',
-  '..eHHkeekkg.....',
-  '..eHHkkkkkg.....',
-  '..gkkkkKkkg.....',
-  '...rkkkkkr......',
-  '...rRRRRRr......',
-  '...rRRRrRr......',
-  '...rRRRrRr......',
-  '...rRRrrRr......',
-  '...kkk.kkk......',
-  '....BB.kkb......',
-  '....BB..BB......',
+  '......gGGgg.....',
+  '.....gGGGGGg....',
+  '....gGGlGGGGg...',
+  '....gGGGGGGGg...',
+  '....ggGGGGGgg...',
+  '....NhhhkkN.....',
+  '...NhhekkN......',
+  '...NhhkkkN......',
+  '....NrrrN.......',
+  '...NrRRRRN......',
+  '...NrRRpRN......',
+  '...NrRRRRN......',
+  '....NbBBN.......',
+  '.....NbbN.......',  // gamba singola avanti (passo)
+  '.....NbbN.......',
+  '.....NBBN.......',
 ]);
 
 const PLAYER_LEFT_0 = S(flipH(PLAYER_RIGHT_0.grid));
 const PLAYER_LEFT_1 = S(flipH(PLAYER_RIGHT_1.grid));
 
 /* Attack frames — spada estesa nella direzione */
-/* DOWN attack — spada davanti */
+/* DOWN attack */
 const PLAYER_ATK_DOWN = S([
-  '....ggggg.......',
-  '...gGGGGGg......',
-  '..gGgggggGg.....',
-  '..ggkkkkkgg.....',
-  '..gkkhhhkk......',
-  '..ekheekheee....',
-  '..ekKekKkek.....',
-  '..gkkkKkkkg.....',
-  '...rkkkkkr......',
-  '..rRRRrRRRr.....',
-  '...rRRrRRRr.....',
-  '...rrRRRrr......',
-  '...rkkkkkr......',
-  '....kMWMk.......',
-  '....kMWMk.......',
-  '....kMWMk.......',
+  '......gGg.......',
+  '.....gGGGGg.....',
+  '....gGGlGGGg....',
+  '....gGGGGGGg....',
+  '....ggGGGGgg....',
+  '.....NkkkkN.....',
+  '....NkekekN.....',
+  '....NkkKkkN.....',
+  '...hNkrrrNh.....',
+  '...NrrRRRRrN....',
+  '...NrRRpRRrN....',
+  '...NrRRRRRrN....',
+  '...NbBBBBBbN....',
+  '.....kMWMk......',  // impugnatura spada
+  '.....kMWMk......',  // lama
+  '......MWM.......',  // punta lama
 ]);
-/* UP attack — spada in alto */
+
+/* UP attack */
 const PLAYER_ATK_UP = S([
-  '....kMWMk.......',
-  '....kMWMk.......',
-  '....kMWMk.......',
-  '....ggggg.......',
-  '...gGGGGGg......',
-  '..gGgggggGg.....',
-  '..ggHHHHHgg.....',
-  '..gHHHHHHHg.....',
-  '..eHHHHHHHe.....',
-  '..gHHHHHHHg.....',
-  '...HHHHHHH......',
-  '..rRRRrRRRr.....',
-  '..rRRRrRRRr.....',
-  '...kkk.kkk......',
-  '..bbB...bbB.....',
-  '..BBB...BBB.....',
+  '......MWM.......',  // punta lama in alto
+  '.....kMWMk......',
+  '.....kMWMk......',
+  '......gGg.......',
+  '.....gGGGGg.....',
+  '....gGGGGGGg....',
+  '....gGGGGGGg....',
+  '....ggGGGGgg....',
+  '.....NHHHHhN....',
+  '...hNhhhhhNh....',
+  '...NrrRRRRrN....',
+  '...NrRRRRRrN....',
+  '...NbBBBBBbN....',
+  '.....NbNbN......',
+  '.....NBNBN......',
+  '.....NBNBN......',
 ]);
-/* RIGHT attack — spada a destra */
+
+/* RIGHT attack — braccio e spada estesi */
 const PLAYER_ATK_RIGHT = S([
-  '....ggggg.......',
-  '...gGGGGGg......',
-  '..gGggggGg......',
-  '..gkkkkkgg......',
-  '..gkhhhkkg......',
-  '.eHHkeekkg......',
-  '.eHHkkkkkg......',
-  '..gkkkKkkg......',
-  '...rkkkkr.kkkk..',
-  '...rRRRRr.kMWM..',
-  '...rRRRrR.kMWM..',
-  '...rRRRrRr......',
-  '..brRRrrRrb.....',
-  '...kkk.kkk......',
-  '..bbB...BBB.....',
-  '..BBB...BBB.....',
+  '......gGGgg.....',
+  '.....gGGGGGg....',
+  '....gGGlGGGGg...',
+  '....gGGGGGGGg...',
+  '....ggGGGGGgg...',
+  '....NhhhkkN.....',
+  '...NhhekkN......',
+  '...NhhkkkN......',
+  '....NrrrNkMW....',  // braccio + spada estesa destra
+  '...NrRRRNkMWM...',  // spada
+  '...NrRRpNkMWM...',
+  '...NrRRRN.......',
+  '....NbBBN.......',
+  '....NbbNN.......',
+  '....NbbNN.......',
+  '....NBBNN.......',
 ]);
 const PLAYER_ATK_LEFT = S(flipH(PLAYER_ATK_RIGHT.grid));
+
 
 /* ─── NPC: Anziano del villaggio (saggio con barba bianca) ─── */
 const NPC_ELDER = S([
@@ -295,22 +311,22 @@ const NPC_KING = S([
 
 /* ─── Nemici ─── */
 
-/* Slime — verde gelatinoso */
+/* Slime — verde gelatinoso stile Minish Cap: shiny top, occhi tondi */
 const ENEMY_SLIME_0 = S([
   '................',
   '................',
-  '....jjjjjj......',
-  '...jllJJJjj.....',
-  '..jllJJJJJjj....',
-  '..jlJJlJlJJj....',
-  '..jJJeJJeJJj....',
-  '..jJJJJJJJJj....',
-  '..jJJJJJJJJj....',
-  '..jJJJlJJJJj....',
-  '..jjJJJJJJjj....',
-  '...jjjjjjjj.....',
-  '....jJjJjJ......',
-  '................',
+  '.....GGGGGg.....',  // top outline scuro
+  '...GjlWWWjJG....',  // W=specular highlight, l=chiaro, j=medio
+  '..GjlWWJJJjJG...',  // zona lucida top-left
+  '..GjlWJJJJJjG...',  // luce
+  '..GjJJeNNeJJG...',  // occhi: e=pupilla, N=outline occhio
+  '..GjJJNeeNJJG...',  // sotto occhi
+  '..GjJJJJJJJjG...',  // corpo
+  '..GjJJlJJJJjG...',  // riflesso belly
+  '..GjJJJJJJJjG...',
+  '...GjJJJJJjG....',  // restringimento base
+  '....GGjjjGG.....',  // base
+  '....jJJJJJj.....',  // piede gelatinoso
   '................',
   '................',
 ]);
@@ -318,17 +334,17 @@ const ENEMY_SLIME_1 = S([
   '................',
   '................',
   '................',
-  '....jjjjjj......',
-  '...jllJJJjj.....',
-  '..jllJJJJJjj....',
-  '..jJJeJJeJJj....',
-  '..jJJJJlJJJj....',
-  '..jJJJJJJJJj....',
-  '..jJJJlJJJJj....',
-  '.jjJJJJJJJJjj...',
-  '.jjjjjjjjjjjj...',
-  '..jJjJjJjJjJ....',
-  '................',
+  '.....GGGGGg.....',  // leggermente schiacciato
+  '...GjlWWWjJGG...',
+  '..GjlWWJJJJjJG..',
+  '..GjJJeNNeJJJG..',
+  '..GjJJNeeNJJJG..',
+  '..GjJJJJJJJJjG..',
+  '.GjJJJlJJJJJjGG.',  // più largo
+  '.GGjJJJJJJJjGG..',
+  '..GGjjJJJJjGG...',  // base larga
+  '...GGGjjjGGG....',
+  '...jjJJJJJjj....',  // drip
   '................',
   '................',
 ]);
@@ -371,62 +387,61 @@ const ENEMY_SKELETON_1 = S([
   '..MM.....MM.....',
 ]);
 
-/* Pipistrello — viola, ali aperte/chiuse */
+/* Pipistrello — viola, ali aperte/chiuse — stile Minish Cap */
 const ENEMY_BAT_0 = S([
   '................',
+  '....V.....V.....',  // punta ali
+  '...VmV...VmV....',  // ali: V=scuro, m=viola chiaro
+  '..VmmVv.vVmmV...',  // ali espanse
+  '.VmmmVvHvVmmmV..',  // corpo H in mezzo
+  'VmmmVHeHeHVmmmV.',  // corpo con occhi e (dark)
+  '..VmmVHKKKHVmV..',  // K=tono marrone corpo
+  '...VVHHKKHHVmV..',
+  '....VHHHHHHV....',  // testa
+  '.....VmmmV......',  // corpo basso
+  '......VVV.......',  // coda
   '................',
-  '..v.........v...',
-  '.vV.........Vv..',
-  'vVVv.......vVVv.',
-  'vVVVv.....vVVVv.',
-  '.vVVVvHHHvVVVv..',
-  '..vVVHeHeHVVv...',
-  '...vHHKKKHHv....',
-  '....HHHHHHH.....',
-  '....HKKKKKH.....',
-  '.....HHHHH......',
-  '......HHH.......',
   '................',
   '................',
   '................',
 ]);
 const ENEMY_BAT_1 = S([
   '................',
-  '...v.......v....',
-  '..vV.......Vv...',
-  '.vVVv.....vVVv..',
-  'vVVVVv...vVVVVv.',
-  '.vVVVVvHvVVVVv..',
-  '..vVVHeHeHVVv...',
-  '...vHHKKKHHv....',
-  '....HHHHHHH.....',
-  '....HKKKKKH.....',
-  '.....HHHHH......',
-  '......HHH.......',
+  '................',
+  '....V.....V.....',
+  '...VmV...VmV....',
+  '..VmmVv.vVmmV...',
+  '.VmmmVvHvVmmmV..',
+  '.VmmVHeHeHVmmV..',  // ali più chiuse
+  '..VVHHKKKHHVmV..',
+  '...VHHKKKHHVmV..',
+  '....VHHHHHHV....',
+  '.....VmmmV......',
+  '......VVV.......',
   '................',
   '................',
   '................',
   '................',
 ]);
 
-/* Spettro/Mago Ombra — viola scuro, fluttuante */
+/* Spettro/Mago Ombra — outline nitido, veste con cristalli */
 const ENEMY_MAGE_0 = S([
-  '....VVVVV.......',
-  '...VVvvvVV......',
-  '..VvvWWWvvV.....',
-  '..VvWeWeWvV.....',
-  '..VvWWWWWvV.....',
-  '..VvvWWWvvV.....',
-  '..VVVvvvVVV.....',
-  '..VqQQqQQqV.....',
-  '..VqQQqQQqV.....',
-  '.VVVqQQQqVVV....',
-  'VVVVVqqqVVVVV...',
-  'VqQVVVQVVVQqV...',
-  '.VqQQQQQQQqV....',
-  '..VVQQQQQVV.....',
-  '...VVVqVVV......',
-  '....VVqVV.......',
+  '....NVVVVN......',  // N=outline scuro, V=viola
+  '...NVvvvvVN.....',
+  '..NVvmWWmvVN....',  // m=viola chiaro, W=bianco occhi
+  '..NVvWeWevVN....',  // e=pupilla
+  '..NVvWWWWvVN....',  // espressione
+  '..NVvvvvvvVN....',
+  '..NVVVvvvVVN....',  // restringimento vita
+  '..NVqQVVqQVN....',  // q/Q=cristalli viola
+  '..NVQqQQqQVN....',
+  '.NVVVqQQQqVVN...',
+  'NVVVVVqqqVVVVN..',  // veste allargata verso il basso
+  'NVqQVVVQVVVqVN..',
+  '.NVqQQQQQqVVN...',
+  '..NVVqQQqVVN....',
+  '...NVVqVVVN.....',
+  '....NVVVNN......',
 ]);
 
 /* Mini-boss: Custode della Caverna (golem di pietra 24×24) */
@@ -690,105 +705,106 @@ const ITEM_HEART_CONTAINER = S([
 
 /* ─── Tile sprites — disegnate come 16×16, da tilare ─── */
 
-/* Erba base (foresta/villaggio) */
-/* Erba — texture a ciuffi sparsi con highlight, non solo rumore */
+/* Erba base (foresta/villaggio) — stile Minish Cap:
+   ciuffi di lame strutturati su base scura.
+   J=base scuro, n=medio, j=chiaro, l=highlight, t=tip chiarissimo */
 const TILE_GRASS = S([
-  'JJJJJJJJJJJJJJJJ',
-  'JjJJJjjJJJJJJjJJ',
-  'JjlJJjJJJJJjjJJJ',
-  'JjJJJJJJJjjlJJJJ',
-  'JJJJJjJJJjJJJJjJ',
-  'JJjjJjlJJJJJJjJJ',
-  'JJjJJjJJJjJJJjlJ',
-  'JJJJJJJJJjJJJjJJ',
-  'JjJJJJjJJJJJJJJJ',
-  'JjlJJjjJJjJJJJJJ',
-  'JjJJJjJJJjlJJjJJ',
-  'JJJJJJJJJjJJJjJJ',
-  'JJjJJJjJJJJJJjlJ',
-  'JJjlJjjJJJJjJJJJ',
-  'JJjJJjJJJjjlJJJJ',
-  'JJJJJJJJJJJJJJJJ',
+  'JJJJJJJJJJJJJJnJ',  // base con sporadico chiaro
+  'JJjlJJJJJJjlJJJJ',  // ciuffo col 2 e col 10
+  'JJjJJJJJJJjJJnJJ',  // steli
+  'JnJJJJJJJJJJJJJJ',  // base variata
+  'JJJJJJjlJJJJJJjl',  // ciuffo col 6 e col 14
+  'JJJJJJjJJJJJJJjJ',  // steli
+  'JJJJJnJJJJnJJJJJ',  // variazioni
+  'JJJJJJJJJJJJJJJn',  // base
+  'JJjlJJJJjlJJjlJJ',  // tre ciuffi
+  'JJjJJJJJjJJJjJJJ',  // steli
+  'JnJJJJJJJJJnJJJJ',  // variazioni scure (tono n)
+  'JJJJjlJJJJjlJJJJ',  // ciuffo col 4 e col 10
+  'JJJJjJJJJJjJJJJJ',  // steli
+  'JJJJJJJJnJJJJnJJ',  // sporadic n
+  'JJjlJJjlJJJJJjlJ',  // tre ciuffi
+  'JJJJJJJJJJJJJJJJ',  // base solida (seamless)
 ]);
 
-/* Erba con fiore — fiore centrale a 4 petali rossi + ciuffi ai lati */
+/* Erba con fiore — bocciolo a 4 petali centrato */
 const TILE_GRASS_FLOWER = S([
-  'JJJJJJJJJJJJJJJJ',
-  'JjJJJJJJJJJJJjJJ',
-  'JjlJJJjJJJjJJjJJ',
-  'JJJJJJJJJjjlJJJJ',
-  'JJJJJrrJJJJJJJJJ',
-  'JJjjJrWrJJJJJjJJ',
-  'JJjJrWyWrJJJJjlJ',
-  'JJJJrWyWrJjJJjJJ',
-  'JJJJJrWrJJjlJJJJ',
-  'JJJJJrrJJJJJJJJJ',
-  'JjJJJJJJJfJJJJJJ',
-  'JjlJjjJJfWfJjJJJ',
-  'JJJJJjJJJfJJJjlJ',
-  'JJJJJJJJJJJJJjJJ',
-  'JJjJJjjlJJJJJJJJ',
+  'JJJJJJJJJJJJJJnJ',
+  'JJjlJJJJJJjlJJJJ',
+  'JJjJJJJJJJjJJJJJ',
+  'JJJJJJJJJJJJnJJJ',
+  'JJJJJJJJJJJJJJjl',
+  'JJjlJJJrrrJJJjlJ',  // petali rossi 3-wide
+  'JJjJJJrpWprJJjJJ',  // p=petali rosa, W=centro bianco
+  'JJJJJJrWyWrJJJJJ',  // y=polline giallo
+  'JJJJJJJrrrJJJJJJ',  // petali base
+  'JnJJJJJJJJJJnJJJ',
+  'JJJJjlJJJJjlJJJJ',
+  'JJJJjJJJJJjJJJJJ',
+  'JJJJJJJJJJJJJnJJ',
+  'JJjlJJJJJJJJjlJJ',
+  'JJjJJJJJJJJJjJJJ',
   'JJJJJJJJJJJJJJJJ',
 ]);
 
-/* Sentiero lastricato — pietre arrotondate con highlight + bordi scuri */
+/* Sentiero lastricato stile Minish Cap — mattoni caldi con giunture scure */
 const TILE_PATH = S([
-  'BcSScBcSScBcSScB',
-  'cssScSscSScssScS',
-  'cswSccswSccswScc',
-  'cssScSssccsSscSS',
-  'BcccBccSScBccSSB',
-  'cscScSScssScScsB',
-  'cwSScswScSswSScc',
-  'cssScSScssScSScS',
-  'BcSSccccBcSSccBc',
-  'cscScssScSscScsS',
-  'cwScssswScswSccs',
-  'cSScssScssscSScS',
-  'BcSSBcSSBcSSBcSS',
-  'cscScScSscScScSc',
-  'cssSccssScssSccs',
-  'BcccBcSSccBcccBc',
+  'NNNNNNNNNNNNNNNo',  // giuntura superiore
+  'NwSSSSSSNwSSSSss',  // pietra A testa: w=highlight, S=base pietra
+  'NSSSSSSsNSSSSSSs',  // corpo pietra
+  'NSsSSSSSNSsSSSss',  // variazione texture
+  'NSSSSSSsNSSSSSSs',  // corpo
+  'NSSSSsSsNSSSsSss',  // leggera ombra
+  'NSSSSSSSNSSSSSSs',  // basso pietra
+  'NNNNNNNNNNNNNNNo',  // giuntura centrale
+  'NwSNwSSSNwSNwSSS',  // pietra B (sfasata): mattone più stretto
+  'NSSSSSSSNSSSSSSs',
+  'NSsSSSSSNSsSSSss',
+  'NSSSSSSsNSSSSSSs',
+  'NSSSSsSsNSSSsSss',
+  'NSSSSSSSNSSSSSSs',
+  'NSSSSSSsNSSSSSSs',
+  'NNNNNNNNNNNNNNNo',  // giuntura inferiore
 ]);
 
-/* Albero — chioma piu` voluminosa con highlight definiti, ombra sotto */
+/* Albero — chioma a 3 livelli luce, tronco caldo stile GBA */
 const TILE_TREE = S([
-  '....GGGGGG......',
-  '...GgggggGG.....',
-  '..GgglllggGG....',
-  '.GgglllllggGG...',
-  '.GggllWlllgggG..',
-  'GgglWlllllgggGG.',
-  'GgggllllllgggG..',
-  'GgglWlWllgggggG.',
-  '.GgglllllggGG...',
-  '.GgggllllgggG...',
-  '..GgggllggGG....',
-  '...GggggGGG.....',
-  '....bBcBb.......',
-  '....bccBb.......',
-  '....bBBBb.......',
-  '...NNbbbNN......',
+  '....GGGGGGg.....',  // 0: cima scura
+  '...GglllllgG....',  // 1: anello esterno foglie
+  '..GglllWlllgG...',  // 2: W=specular highlight
+  '.GgglllWllllgG..',  // 3: espansione
+  '.GggllllllllgG..',  // 4: zona media
+  'GggglllllllggGG.',  // 5: larghezza max
+  'GgggllllllgggGG.',  // 6: ombra destra G
+  'GggglllllggggGG.',  // 7: taper verso il basso
+  '.GgggllllgggGG..',  // 8: restringimento
+  '.GgggllllggGGG..',  // 9
+  '..GgggllgggGGG..',  // 10: fondo chioma
+  '...GggggggGGG...',  // 11
+  '....GGGggGGG....',  // 12: scuro base chioma
+  '.....NbBBbN.....',  // 13: tronco con outline
+  '.....NbBBbN.....',  // 14
+  '....NNbBBNN.....',  // 15: radici
 ]);
 
-/* Roccia/parete pietra */
+/* Roccia/parete pietra — blocchi con outline e highlight */
 const TILE_STONE = S([
-  'OoOoOoOoOoOoOoOo',
-  'oOoOoOoOoOoOoOoO',
-  'OoOOOoOoOoOOOoOo',
-  'oOoOoOoOoOoOoOoO',
-  'OoOoOoOoOoOoOoOo',
-  'oOoOoOOOOoOoOoOO',
-  'OoOoOoOoOoOoOoOo',
-  'oOoOoOoOoOoOoOoO',
-  'OoOoOoOoOoOoOoOo',
-  'oOoOOoOoOoOoOOoO',
-  'OoOoOoOoOoOoOoOo',
-  'oOoOoOoOOOoOoOoO',
-  'OoOoOoOoOoOoOoOo',
-  'oOoOoOoOoOoOoOoO',
-  'OoOoOoOoOoOoOoOo',
-  'oOoOoOoOoOoOoOoO',
+  '................',
+  '....NNNNNN......',  // 1: outline top boulder
+  '...NoMMMoNN.....',  // 2: highlight M top-left
+  '..NooMMoooN.....',  // 3
+  '..NooMooooN.....',  // 4
+  '..NooooooooN....',  // 5: corpo
+  '..NooooooooN....',  // 6
+  '..NooooooOON....',  // 7: ombra basso destra
+  '..NNooooOONN....',  // 8
+  '...NNooooNN.....',  // 9: restringimento
+  '....NNNNNN......',  // 10: base
+  '...oNNNNNNoo....',  // 11: ombra sotto
+  '...oooooooooo...',  // 12: cast shadow
+  '................',
+  '................',
+  '................',
 ]);
 
 /* Acqua animata frame 0 */
@@ -849,44 +865,44 @@ const TILE_SAND = S([
   'SsSsSsSsSsSsSsSs',
 ]);
 
-/* Pavimento dungeon (lastre di pietra) */
+/* Pavimento dungeon — lastre di pietra con giunture e highlight Minish Cap */
 const TILE_FLOOR = S([
-  'oOOOOOOOoOOOOOOO',
-  'oOOOOOOOoOOOOOOO',
-  'oOOOOOOOoOOOOOOO',
-  'oOOOOOOOoOOOOOOO',
-  'oOOOOOOOoOOOOOOO',
-  'oOOOOOOOoOOOOOOO',
-  'oOOOOOOOoOOOOOOO',
-  'oooooooooooooooo',
-  'oOOOOOOOoOOOOOOO',
-  'oOOOOOOOoOOOOOOO',
-  'oOOOOOOOoOOOOOOO',
-  'oOOOOOOOoOOOOOOO',
-  'oOOOOOOOoOOOOOOO',
-  'oOOOOOOOoOOOOOOO',
-  'oOOOOOOOoOOOOOOO',
-  'oooooooooooooooo',
+  'NNNNNNNNNNNNNNNN',  // giuntura top
+  'NMoooooNNMoooooN',  // lastra A sinistra + lastra B destra: M=highlight
+  'NooooooNNooooooN',  // corpo lastra
+  'NooooooNNooooooN',
+  'NoooooONNooooONN',  // O=ombra angolo basso-destra
+  'NoooooONNooooONN',
+  'NNNNNNNNNNNNNNNN',  // giuntura centrale
+  'NMooNMoNNMooNMoN',  // lastre più piccole (sfasate per brick pattern)
+  'NooooooNNooooooN',
+  'NoooooONNooooONN',
+  'NNNNNNNNNNNNNNNN',  // giuntura
+  'NMoooooNNMoooooN',  // ripete blocco superiore
+  'NooooooNNooooooN',
+  'NooooooNNooooooN',
+  'NoooooONNooooONN',
+  'NNNNNNNNNNNNNNNN',  // giuntura bottom
 ]);
 
-/* Muro dungeon */
+/* Muro dungeon — blocchi di pietra con outline e specular stile GBA */
 const TILE_WALL = S([
-  'NNNNNNNNNNNNNNNN',
-  'NOOOOOOOOOOOOOON',
-  'NOoOoOoOoOoOoOoN',
-  'NoOoOoOoOoOoOoON',
-  'NOoOoOoOoOoOoOoN',
-  'NoOoOoOoOoOoOoON',
-  'NOoOoOoOoOoOoOoN',
-  'NoOoOoOoOoOoOoON',
-  'NOoOoOoOoOoOoOoN',
-  'NoOoOoOoOoOoOoON',
-  'NOoOoOoOoOoOoOoN',
-  'NoOoOoOoOoOoOoON',
-  'NOoOoOoOoOoOoOoN',
-  'NoOoOoOoOoOoOoON',
-  'NOOOOOOOOOOOOOON',
-  'NNNNNNNNNNNNNNNN',
+  'NNNNNNNNNNNNNNNN',  // top border
+  'NMOOOOONNMOOOOoN',  // top pietre: M=highlight, O=corpo grigio
+  'NOOOOOoNNOOOOoON',
+  'NOOOoOoNNOOooOoN',  // texture grigia
+  'NOOOOOoNNOOOOoON',
+  'NOOOOoONNOOOoOON',
+  'NNNNNNNNNNNNNNNN',  // giuntura centrale
+  'NMONMOONNMONMOoN',  // blocchi sfasati
+  'NOOOOOoNNOOOOoON',
+  'NOOoOOoNNOOoOOoN',
+  'NOOOOOoNNOOOOoON',
+  'NNNNNNNNNNNNNNNN',  // giuntura
+  'NMOOOOONNMOOOOoN',  // ripete
+  'NOOOOOoNNOOOOoON',
+  'NOOOOoONNOOOoOON',
+  'NNNNNNNNNNNNNNNN',  // bottom border
 ]);
 
 /* Casa villaggio (parete con tetto) */

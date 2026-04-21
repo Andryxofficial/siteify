@@ -75,6 +75,10 @@ export const PAL = {
   a: '#5fa0e0', // acqua media
   A: '#3a78c0', // acqua scura
   i: '#a8d0f0', // acqua chiara/spuma
+
+  // Toni extra per erba/foresta
+  n: '#6a9c48', // verde erba medio (tra J e j)
+  t: '#c8e890', // verde erba chiaro/quasi giallino (tra j e l)
 };
 
 /* Combine: colore primario del gioco (per HUD/menu) */

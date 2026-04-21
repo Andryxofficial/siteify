@@ -399,13 +399,15 @@ export default function GamePage() {
   /* ─── Touch handlers (ultra-responsive) ─── */
   const joystickTouchId = useRef(null);
   const joystickCenterRef = useRef({ cx: 0, cy: 0, r: 0 });
+  /* Ref diretto al knob: aggiorniamo il DOM senza passare da React
+     per avere feedback visivo immediato senza re-render. */
+  const joystickKnobRef = useRef(null);
 
   const onJoystickStart = useCallback((e) => {
     e.preventDefault();
     const t = e.changedTouches[0];
     if (t) {
       joystickTouchId.current = t.identifier;
-      // Use the actual touch position as the joystick centre (floating joystick)
       const el = joystickDivRef.current;
       const r = el ? el.getBoundingClientRect().width / 2 : 60;
       joystickCenterRef.current = { cx: t.clientX, cy: t.clientY, r };
@@ -423,6 +425,11 @@ export default function GamePage() {
         const mag = Math.sqrt(dx * dx + dy * dy);
         if (mag > 1) { dx /= mag; dy /= mag; }
         joystickRef.current = { active: true, dx, dy, _touch: true };
+        /* Aggiornamento DOM diretto: 0 lag visivo */
+        if (joystickKnobRef.current) {
+          joystickKnobRef.current.style.transform = `translate(${dx * 36}px, ${dy * 36}px)`;
+          joystickKnobRef.current.style.transition = 'none';
+        }
         break;
       }
     }
@@ -434,6 +441,10 @@ export default function GamePage() {
       if (t.identifier === joystickTouchId.current) {
         joystickTouchId.current = null;
         joystickRef.current = { active: false, dx: 0, dy: 0 };
+        if (joystickKnobRef.current) {
+          joystickKnobRef.current.style.transform = 'translate(0px, 0px)';
+          joystickKnobRef.current.style.transition = 'transform 0.18s cubic-bezier(.34,1.56,.64,1)';
+        }
         break;
       }
     }
@@ -455,10 +466,16 @@ export default function GamePage() {
     };
   }, [onJoystickStart, onJoystickMove, onJoystickEnd]);
 
-  const onActionBtn = useCallback((e) => {
+  const onActionBtnPress = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     actionBtnRef.current = true;
+    e.currentTarget?.classList?.add('pressed');
+  }, []);
+
+  const onActionBtnRelease = useCallback((e) => {
+    e.preventDefault();
+    e.currentTarget?.classList?.remove('pressed');
   }, []);
 
   /* ─── Also handle tap-anywhere on canvas for "tap" games ─── */
@@ -731,10 +748,11 @@ export default function GamePage() {
               className="game-joystick"
               style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
             >
-              <div className="game-joystick-knob" style={{
-                transform: `translate(${joystickRef.current.dx * 28}px, ${joystickRef.current.dy * 28}px)`,
-                transition: joystickRef.current.active ? 'none' : 'transform 0.1s ease-out',
-              }} />
+              {/* Indicatori direzionali */}
+              <div className="game-joystick-dirs">
+                <span>▲</span><span>▶</span><span>▼</span><span>◀</span>
+              </div>
+              <div ref={joystickKnobRef} className="game-joystick-knob" />
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -747,12 +765,15 @@ export default function GamePage() {
               </button>
               <button
                 className="game-attack-btn"
-                onTouchStart={onActionBtn}
-                onTouchEnd={(e) => e.preventDefault()}
-                onPointerDown={onActionBtn}
+                onTouchStart={onActionBtnPress}
+                onTouchEnd={onActionBtnRelease}
+                onTouchCancel={onActionBtnRelease}
+                onPointerDown={onActionBtnPress}
+                onPointerUp={onActionBtnRelease}
                 style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
               >
-                {gameMeta.actionLabel}
+                <span className="game-attack-label">{gameMeta.actionLabel}</span>
+                <span className="game-attack-letter">A</span>
               </button>
             </div>
           </div>
