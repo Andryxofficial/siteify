@@ -406,13 +406,11 @@ export default function GamePage() {
   const onJoystickStart = useCallback((e) => {
     e.preventDefault();
     const t = e.changedTouches[0];
-    if (t) {
-      joystickTouchId.current = t.identifier;
-      const el = joystickDivRef.current;
-      const r = el ? el.getBoundingClientRect().width / 2 : 60;
-      joystickCenterRef.current = { cx: t.clientX, cy: t.clientY, r };
-      joystickRef.current = { active: true, dx: 0, dy: 0, _touch: true };
-    }
+    if (!t || !joystickDivRef.current) return;
+    joystickTouchId.current = t.identifier;
+    const r = joystickDivRef.current.getBoundingClientRect().width / 2;
+    joystickCenterRef.current = { cx: t.clientX, cy: t.clientY, r };
+    joystickRef.current = { active: true, dx: 0, dy: 0, _touch: true };
   }, []);
 
   const onJoystickMove = useCallback((e) => {
