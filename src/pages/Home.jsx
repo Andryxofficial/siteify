@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Twitch, Sparkles, Zap, Brain, Gamepad2 } from 'lucide-react';
+import {
+  Twitch, Sparkles, Zap, Brain, Gamepad2,
+  Trophy, Crown, Star, Lock, MessageSquare,
+  Fingerprint, Shield,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SocialHub from '../components/SocialHub';
 import PodcastPromo from '../components/PodcastPromo';
@@ -20,6 +24,51 @@ const inView = (delay = 0) => ({
   transition: { delay, type: 'spring', stiffness: 200, damping: 26 },
 });
 
+const PREMI = [
+  {
+    emoji: '🏆',
+    colore: 'var(--accent-twitch)',
+    titolo: 'VIP Settimanale',
+    desc: 'Il punteggio più alto della settimana vince il ruolo VIP su Twitch per un mese intero.',
+    cta: { label: 'Gioca ora', to: '/gioco', ext: null },
+  },
+  {
+    emoji: '👑',
+    colore: 'var(--accent-warm)',
+    titolo: 'Campione Mensile',
+    desc: 'Il punteggio più alto del mese riceve un premio speciale rivelato in live da Andryx.',
+    cta: { label: 'Classifica', to: '/gioco', ext: null },
+  },
+  {
+    emoji: '⭐',
+    colore: 'var(--primary)',
+    titolo: 'Social Star',
+    desc: 'Il membro più attivo e costruttivo della community ogni mese ottiene un riconoscimento speciale.',
+    cta: { label: 'Community', to: null, ext: 'https://discord.gg/BuckKZ4' },
+  },
+];
+
+const MSG_FEATURES = [
+  {
+    icona: <Twitch size={22} />,
+    colore: 'var(--accent-twitch)',
+    titolo: 'Login con Twitch',
+    desc: 'Accedi con il tuo account Twitch in un click, nessuna registrazione extra.',
+  },
+  {
+    icona: <Lock size={22} />,
+    colore: 'var(--secondary)',
+    titolo: 'Cifrati End‑to‑End',
+    desc: 'I messaggi sono leggibili solo da te e dal destinatario. Nemmeno il server può leggerli.',
+  },
+  {
+    icona: <Fingerprint size={22} />,
+    colore: 'var(--primary)',
+    titolo: 'Passkey',
+    desc: 'Proteggi le tue chiavi con Face ID, impronta digitale o PIN del dispositivo.',
+  },
+];
+
 export default function Home() {
   const [liveState, setLiveState] = useState(0); // 0=offline 1=twitch 2=simulcast
 
@@ -37,13 +86,14 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="main-content">
+    <div className="main-content home-flow">
       <SEO
         title="Home"
         description="ANDRYXify (Andrea Taliento) — Streamer Twitch, gamer e content creator italiano. Live streaming di videogiochi, podcast su Intelligenza Artificiale, video YouTube, clip TikTok e minigioco esclusivo con classifica."
         path="/"
         keywords="andryxify, andrea taliento, streamer twitch italiano, content creator gaming, podcast intelligenza artificiale"
       />
+
       {/* ── Hero ── */}
       <section className="header hero-section" style={{ paddingTop: '2.5rem', paddingBottom: '0.5rem' }}>
 
@@ -149,6 +199,89 @@ export default function Home() {
         <Link to="/twitch" className="btn btn-primary" style={{ alignSelf: 'center' }}>
           Apri stream completo
         </Link>
+      </motion.section>
+
+      {/* ── Premi della Community ── */}
+      <motion.section
+        className="glass-panel"
+        style={{ padding: '1.6rem 1.8rem' }}
+        {...inView(0)}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <Trophy size={20} color="var(--accent-warm)" />
+          <h2 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700, fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>
+            Premi della Community
+          </h2>
+          <span className="chip" style={{ marginLeft: 'auto', background: 'rgba(255,184,108,0.12)', color: 'var(--accent-warm)', border: '1px solid rgba(255,184,108,0.22)', fontSize: '0.7rem', padding: '3px 10px' }}>
+            Ogni settimana e ogni mese
+          </span>
+        </div>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.5rem', lineHeight: 1.65 }}>
+          Competi nel gioco del mese, rimani attivo nella community e vinci premi esclusivi. Tre modi per distinguersi.
+        </p>
+
+        <div className="premi-grid">
+          {PREMI.map(p => (
+            <div key={p.titolo} className="premio-card">
+              <div className="premio-emoji">{p.emoji}</div>
+              <div className="premio-titolo" style={{ color: p.colore }}>{p.titolo}</div>
+              <div className="premio-desc">{p.desc}</div>
+              {p.cta.to ? (
+                <Link
+                  to={p.cta.to}
+                  className="btn btn-ghost"
+                  style={{ fontSize: '0.76rem', padding: '0.3rem 0.85rem', marginTop: 'auto', alignSelf: 'flex-start', minHeight: 'unset' }}
+                >
+                  {p.cta.label} →
+                </Link>
+              ) : (
+                <a
+                  href={p.cta.ext}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-ghost"
+                  style={{ fontSize: '0.76rem', padding: '0.3rem 0.85rem', marginTop: 'auto', alignSelf: 'flex-start', minHeight: 'unset' }}
+                >
+                  {p.cta.label} →
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* ── Messaggi Privati promo ── */}
+      <motion.section
+        className="glass-panel"
+        style={{ padding: '1.6rem 1.8rem' }}
+        {...inView(0.04)}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <Shield size={20} color="var(--secondary)" />
+          <h2 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700, fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>
+            <span className="text-gradient-cyan">Messaggi Privati</span>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> — Cifrati E2E</span>
+          </h2>
+        </div>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.5rem', lineHeight: 1.65 }}>
+          Chatta in modo sicuro con gli altri membri della community. Zero intercettazioni, massima privacy — protetto dalla tua passkey.
+        </p>
+
+        <div className="msg-features">
+          {MSG_FEATURES.map(f => (
+            <div key={f.titolo} className="msg-feature">
+              <div style={{ color: f.colore }}>{f.icona}</div>
+              <div className="msg-feature-titolo">{f.titolo}</div>
+              <div className="msg-feature-desc">{f.desc}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.25rem' }}>
+          <Link to="/messaggi" className="btn btn-primary">
+            <MessageSquare size={15} /> Prova i Messaggi
+          </Link>
+        </div>
       </motion.section>
 
       {/* ── Social Hub ── */}
