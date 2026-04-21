@@ -4516,6 +4516,9 @@ img.msg-avatar {
 /* ── Layout shell ── */
 .mod-panel-shell {
   width: 100%;
+  /* Impedisce qualsiasi overflow orizzontale causato da figli */
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .mod-panel-layout {
@@ -4523,6 +4526,8 @@ img.msg-avatar {
   grid-template-columns: 196px 1fr;
   gap: 1rem;
   align-items: start;
+  /* min-width:0 previene che il contenuto 1fr faccia overflow */
+  min-width: 0;
 }
 
 /* ── Sidebar desktop ── */
@@ -4558,6 +4563,13 @@ img.msg-avatar {
 
 .mod-nav-item-active {
   font-weight: 600;
+}
+
+/* Area contenuto principale — min-width:0 garantisce che non sfori in grid */
+.mod-main-area {
+  min-width: 0;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 /* ── Mobile tab bar mod — sticky, scroll orizzontale con tap target comodi ── */
@@ -4841,6 +4853,9 @@ img.msg-avatar {
       transparent 100%);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    /* Evita overflow oltre il bordo destro */
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   /* Header più compatto: meno padding, font ridotti, info canale che va a capo */
@@ -4857,6 +4872,13 @@ img.msg-avatar {
   /* Griglie 2-col → 1-col per evitare card cramped */
   .mod-grid-2 {
     grid-template-columns: 1fr;
+  }
+
+  /* Tutti i pannelli nelle sezioni devono rispettare il box */
+  .mod-panel-shell .glass-panel,
+  .mod-panel-shell .glass-card {
+    max-width: 100%;
+    box-sizing: border-box;
   }
 }
 
@@ -5370,5 +5392,286 @@ img.msg-avatar {
   }
   .mod-cmdk-hint {
     display: none; /* poco utile su mobile (no tastiera fisica) */
+  }
+  /* Live pill — tronca se troppo lunga */
+  .live-pill {
+    max-width: 100%;
+    overflow: hidden;
+    flex-wrap: wrap;
+  }
+  /* Header titolo — no overflow */
+  .mod-header-titolo {
+    font-size: 0.82rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   COOKIE BANNER — Glass minimalista, bottom-left
+   ═══════════════════════════════════════════════════ */
+
+/* --tab-bar-offset: altezza della tab bar mobile (73px) + padding di sicurezza */
+.cookie-banner {
+  position: fixed;
+  /* Su mobile: sopra la tab bar di navigazione in basso */
+  bottom: calc(var(--tab-bar-offset, 73px) + 0.75rem);
+  left: 1rem;
+  z-index: 950;
+  width: min(290px, calc(100vw - 2rem));
+  /* Materiale vetro */
+  background: linear-gradient(145deg,
+    rgba(18, 24, 42, 0.92) 0%,
+    rgba(40, 55, 90, 0.60) 100%);
+  backdrop-filter: blur(28px) saturate(180%) contrast(1.06);
+  -webkit-backdrop-filter: blur(28px) saturate(180%) contrast(1.06);
+  border: 1.5px solid rgba(130, 170, 240, 0.20);
+  border-radius: var(--r-lg);
+  box-shadow:
+    0 12px 40px rgba(8, 12, 48, 0.48),
+    0 2px 8px rgba(8, 12, 48, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  overflow: hidden;
+}
+
+/* Linea speculare superiore — effetto vetro */
+.cookie-speculare {
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent);
+  pointer-events: none;
+  border-radius: 1px;
+  display: block;
+}
+
+.cookie-header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.cookie-icona {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(224, 64, 251, 0.16);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.cookie-titolo {
+  flex: 1;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.cookie-chiudi {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--vetro-bordo-colore);
+  background: var(--surface-1);
+  color: var(--text-faint);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  transition: background .18s, color .18s, border-color .18s;
+}
+.cookie-chiudi:hover {
+  background: var(--surface-3);
+  color: var(--text-main);
+  border-color: var(--vetro-bordo-hover);
+}
+
+.cookie-testo {
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.cookie-azioni {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.cookie-btn {
+  flex: 1;
+  padding: 0.42rem 0.65rem;
+  min-height: 32px;
+  border-radius: var(--r-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all .22s var(--ease-spring);
+}
+
+.cookie-btn-rifiuta {
+  background: var(--surface-2);
+  border: 1px solid var(--vetro-bordo-colore);
+  color: var(--text-muted);
+}
+.cookie-btn-rifiuta:hover {
+  background: var(--surface-3);
+  color: var(--text-main);
+  border-color: var(--vetro-bordo-hover);
+}
+
+.cookie-btn-accetta {
+  background: linear-gradient(135deg, var(--primary), #A855F7 70%);
+  color: white;
+  border: none;
+  box-shadow: 0 3px 14px rgba(224, 64, 251, 0.28);
+}
+.cookie-btn-accetta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 20px rgba(224, 64, 251, 0.36);
+}
+.cookie-btn-accetta:active {
+  transform: translateY(0);
+}
+
+/* Desktop: posizione sempre bottom-left, non sopra la tab bar */
+@media (min-width: 641px) {
+  .cookie-banner {
+    bottom: 1.5rem;
+    left: 1.5rem;
+    width: min(295px, calc(100vw - 3rem));
+  }
+}
+
+/* Schermi molto piccoli: rimpicciolisce ulteriormente */
+@media (max-width: 360px) {
+  .cookie-banner {
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   ENHANCEMENTS — Effetti magici & micro-interazioni
+   ═══════════════════════════════════════════════════ */
+
+/* Flottamento logo hero — sinusoide tridimensionale.
+   drop-shadow SOLO come stato statico; l'animazione muove solo transform
+   per evitare calcoli filter per-frame che sono costosi su GPU mobile. */
+@keyframes logo-flotta {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  30%      { transform: translateY(-8px) rotate(0.4deg); }
+  60%      { transform: translateY(-4px) rotate(-0.3deg); }
+}
+
+.logo-hero-flotta {
+  animation: logo-flotta 5s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  /* will-change rimosso: il browser ottimizza già transform su GPU; mantenerlo
+     su un'animazione infinita causerebbe overhead di memoria permanente */
+  filter: drop-shadow(0 8px 24px rgba(224,64,251,.22));
+}
+
+/* Glow colorato sulle SocialHub card al hover */
+.link-item-glow {
+  transition: box-shadow .3s var(--ease-vetro), border-color .3s var(--ease-vetro);
+}
+.link-item-glow:hover {
+  box-shadow:
+    0 0 0 1px var(--card-glow, transparent),
+    0 8px 32px color-mix(in srgb, var(--card-glow, #6366f1) 22%, transparent),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  border-color: color-mix(in srgb, var(--card-glow, #6366f1) 35%, transparent) !important;
+}
+
+/* Shimmer speculare sullo scroll — sezioni "magiche" */
+@keyframes sezione-entra {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Pulsazione ambient sul chip live */
+@keyframes chip-live-ambient {
+  0%, 100% { box-shadow: 0 0 16px rgba(255,60,60,.10), inset 0 1px 0 rgba(255,255,255,.06); }
+  50%      { box-shadow: 0 0 28px rgba(255,60,60,.22), inset 0 1px 0 rgba(255,255,255,.10); }
+}
+.chip-live {
+  animation: chip-live-ambient 2.8s ease-in-out infinite;
+}
+
+/* Effetto ripple su btn-primary al click */
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.18) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity .25s;
+  pointer-events: none;
+}
+.btn-primary:active::after {
+  opacity: 1;
+}
+
+/* Shine scanning su glass-card — usa ::after (non ::before che è riservato allo speculare) */
+@keyframes glass-shine-scan {
+  0%   { transform: translateX(-140%) skewX(-12deg); opacity: 0; }
+  8%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { transform: translateX(300%) skewX(-12deg); opacity: 0; }
+}
+
+/* ── Miglioramenti link-icon-wrapper ── */
+.link-icon-wrapper {
+  transition: transform .3s var(--ease-bounce), box-shadow .3s var(--ease-vetro), background .25s;
+}
+.link-item:hover .link-icon-wrapper {
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--card-glow, #6366f1) 30%, transparent);
+}
+
+/* ── Pulsazione sul dot di stato ── */
+@keyframes status-breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.12); opacity: 0.85; }
+}
+
+/* ── Glow aurora sul body (solo desktop) — lento e fluido ── */
+@keyframes aurora-shift {
+  0%, 100% {
+    background-position: 50% 0%;
+  }
+  33% {
+    background-position: 30% 50%;
+  }
+  66% {
+    background-position: 70% 50%;
+  }
+}
+
+/* ── Hover focale sulle card della leaderboard ── */
+@media (min-width: 641px) {
+  .glass-card.link-item:hover {
+    transform: translateY(-5px) scale(1.008);
+  }
+  /* Icona ancora più interattiva su desktop */
+  .link-item:hover .link-icon-wrapper {
+    transform: scale(1.16) rotate(5deg);
   }
 }

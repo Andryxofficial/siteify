@@ -17,13 +17,27 @@ import {
   LayoutDashboard, Activity, Terminal, Shield, Zap,
   TrendingUp, Monitor, Calendar, Twitch, Loader,
   ChevronRight, Wifi, WifiOff, Users as UsersIcon,
-  Film, Award, Command, Radio,
+  Film, Award, Command, Radio, AlertTriangle, RefreshCw,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { createTwitchBot } from '../utils/twitchBot';
 import SEO from '../components/SEO';
 import QuickActions from './mod/QuickActions';
 import CommandPalette from './mod/CommandPalette';
+
+// Scope minimi richiesti per il Pannello Mod.
+// ATTENZIONE: questa lista deve restare allineata con i `scope` nell'URL OAuth
+// definito in src/contexts/TwitchAuthContext.jsx → buildTwitchLoginUrl().
+// Se aggiungi/rimuovi scope dall'URL OAuth, aggiorna anche questa lista.
+const SCOPI_PANNELLO_MOD = [
+  'moderation:read',
+  'channel:manage:broadcast',
+  'channel:read:subscriptions',
+  'channel:read:vips',
+  'channel:manage:redemptions',
+  'moderator:manage:banned_users',
+  'moderator:manage:chat_settings',
+];
 
 // Sezioni lazy-loaded
 const SecOverview    = lazy(() => import('./mod/Overview'));
@@ -76,6 +90,52 @@ function SkeletonSezione() {
         <div key={h} className="glass-panel skeleton" style={{ height: h }} />
       ))}
     </div>
+  );
+}
+
+/**
+ * Banner scope mancanti — mostra un avviso chiaro quando il token OAuth
+ * non include tutti i permessi necessari per il Pannello Mod.
+ * Il token vecchio viene eliminato e l'utente viene reindirizzato al login.
+ */
+function BannerScopiMancanti({ scopiMancanti, onRiautentica }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass-card"
+      style={{
+        padding: '1rem 1.1rem',
+        marginBottom: '1rem',
+        borderColor: 'rgba(255,184,108,0.35)',
+        background: 'linear-gradient(135deg, rgba(255,184,108,0.10), rgba(255,107,107,0.05) 60%, transparent)',
+        display: 'flex',
+        gap: '0.75rem',
+        alignItems: 'flex-start',
+        flexWrap: 'wrap',
+      }}
+    >
+      <AlertTriangle size={18} style={{ color: 'var(--accent-warm)', flexShrink: 0, marginTop: 1 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.25rem', color: 'var(--accent-warm)' }}>
+          Permessi Twitch insufficienti
+        </div>
+        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '0.6rem' }}>
+          Il tuo token di accesso è vecchio e manca di alcuni permessi necessari
+          (es. <code style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.06)', padding: '1px 5px', borderRadius: 4 }}>
+            {scopiMancanti.slice(0, 3).join(', ')}{scopiMancanti.length > 3 ? ` e altri ${scopiMancanti.length - 3}` : ''}
+          </code>).
+          Riautentica per aggiornare i permessi — i tuoi dati rimarranno invariati.
+        </div>
+        <button
+          className="btn btn-primary"
+          style={{ fontSize: '0.78rem', padding: '0.38rem 1rem', minHeight: 32 }}
+          onClick={onRiautentica}
+        >
+          <RefreshCw size={13} /> Aggiorna permessi
+        </button>
+      </div>
+    </motion.div>
   );
 }
 
@@ -160,7 +220,7 @@ function LiveIndicator({ token }) {
 }
 
 export default function ModPanel() {
-  const { twitchToken, twitchUser, twitchDisplay, twitchAvatar, isLoggedIn, loading, getTwitchLoginUrl } = useTwitchAuth();
+  const { twitchToken, twitchUser, twitchDisplay, twitchAvatar, twitchScopes, isLoggedIn, loading, getTwitchLoginUrl, logout } = useTwitchAuth();
   const [sezione,    setSezione]    = useState(() => {
     // Leggi ?sezione= dalla callback OAuth del bot
     const params = new URLSearchParams(window.location.search);
@@ -313,9 +373,22 @@ export default function ModPanel() {
   const sezioneInfo = SEZIONI.find(s => s.id === sezione) || SEZIONI[0];
   const SezioneIcona = sezioneInfo.icon;
 
+  // Calcola scope mancanti: confronta quelli necessari con quelli presenti nel token
+  const scopiMancanti = twitchScopes.length > 0
+    ? SCOPI_PANNELLO_MOD.filter(s => !twitchScopes.includes(s))
+    : [];
+
+  // Handler ri-autenticazione: elimina il token da localStorage (sincrono)
+  // poi reindirizza — la rimozione è garantita prima del redirect poiché
+  // localStorage.removeItem() è un'operazione sincrona.
+  const riautentica = useCallback(() => {
+    localStorage.removeItem('twitchGameToken');
+    window.location.href = getTwitchLoginUrl('/mod-panel');
+  }, [getTwitchLoginUrl]);
+
   return (
-    <main className="main-content mod-panel-shell" style={{ maxWidth: 1080, margin: '0 auto', padding: '0 0 4rem' }}>
-      <SEO title="Mod Panel" noindex />
+    <main className="main-content mod-panel-shell" style={{ maxWidth: 1080, margin: '0 auto', padding: '0 0 4rem', width: '100%', boxSizing: 'border-box' }}>
+      <SEO title="Pannello Mod" noindex />
 
       {/* ─── Header magico ─── */}
       <motion.div
@@ -334,7 +407,7 @@ export default function ModPanel() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="mod-header-titolo">
               <Radio size={13} style={{ color: 'var(--primary)' }} />
-              Mod Panel
+              Pannello Mod
               <LiveIndicator token={twitchToken} />
             </div>
             <div className="mod-header-sotto">
@@ -397,6 +470,11 @@ export default function ModPanel() {
               );
             })}
           </div>
+
+          {/* ── Banner scope mancanti: visibile se il token non ha i permessi necessari ── */}
+          {scopiMancanti.length > 0 && (
+            <BannerScopiMancanti scopiMancanti={scopiMancanti} onRiautentica={riautentica} />
+          )}
 
           {/* Titolo sezione */}
           <div className="mod-section-titolo">

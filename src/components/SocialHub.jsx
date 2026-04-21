@@ -78,24 +78,26 @@ export default function SocialHub() {
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="glass-card link-item"
+          className="glass-card link-item link-item-glow"
           variants={item}
-          whileHover={{ scale: 1.02 }}
+          whileHover={{ scale: 1.02, y: -3 }}
           whileTap={{ scale: 0.97 }}
           style={{
             borderColor: `${link.color}20`,
+            '--card-glow': link.color,
           }}
         >
-          <div
+          <motion.div
             className="link-icon-wrapper"
             style={{
               color: link.color,
               background: `${link.color}18`,
               border: `1px solid ${link.color}25`,
             }}
+            whileHover={{ rotate: [0, -5, 5, -3, 0], transition: { duration: 0.4 } }}
           >
             {link.icon}
-          </div>
+          </motion.div>
           <div className="link-content">
             <span className="link-title" style={{ color: link.color }}>{link.title}</span>
             <span className="link-desc">{link.desc}</span>

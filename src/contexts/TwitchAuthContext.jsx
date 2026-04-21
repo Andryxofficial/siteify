@@ -47,6 +47,7 @@ export function TwitchAuthProvider({ children }) {
   const [twitchAvatar,  setTwitchAvatar]  = useState(null); // profile_image_url
   const [twitchToken,   setTwitchToken]   = useState(null);
   const [twitchUserId,  setTwitchUserId]  = useState(null); // user_id numerico stabile
+  const [twitchScopes,  setTwitchScopes]  = useState([]);   // scope del token corrente
   const [loading,       setLoading]       = useState(true);
 
   /* ── Valida un token contro Twitch e imposta lo stato ── */
@@ -60,6 +61,7 @@ export function TwitchAuthProvider({ children }) {
       setTwitchUser(data.login);
       setTwitchToken(token);
       setTwitchUserId(data.user_id || null);
+      setTwitchScopes(data.scopes || []);
 
       // Recupera profilo completo (display_name, avatar)
       try {
@@ -85,6 +87,7 @@ export function TwitchAuthProvider({ children }) {
       setTwitchDisplay(null);
       setTwitchAvatar(null);
       setTwitchUserId(null);
+      setTwitchScopes([]);
     } finally {
       setLoading(false);
     }
@@ -134,6 +137,7 @@ export function TwitchAuthProvider({ children }) {
     setTwitchAvatar(null);
     setTwitchToken(null);
     setTwitchUserId(null);
+    setTwitchScopes([]);
   }, []);
 
   return (
@@ -143,6 +147,7 @@ export function TwitchAuthProvider({ children }) {
       twitchAvatar,
       twitchToken,
       twitchUserId,
+      twitchScopes,
       loading,
       isLoggedIn: !!twitchUser,
       clientId: CHIAVETWITCH,

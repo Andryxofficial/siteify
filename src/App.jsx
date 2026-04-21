@@ -9,6 +9,7 @@ import Navbar from './components/Navbar';
 import SchermataCampione from './components/SchermataCampione';
 import Footer from './components/Footer';
 import PageTransition from './components/PageTransition';
+import CookieBanner from './components/CookieBanner';
 import useStandalone from './hooks/useStandalone';
 import useScrollToTop from './hooks/useScrollToTop';
 import UpdateToast from './components/UpdateToast';
@@ -160,6 +161,7 @@ function AppLayout() {
       </AnimatePresence>
       <Footer />
       <UpdateToast />
+      <CookieBanner />
     </div>
   );
 }
