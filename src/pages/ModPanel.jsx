@@ -507,7 +507,7 @@ export default function ModPanel() {
             </span>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: '1rem', fontWeight: 700 }}>{sezioneInfo.label}</div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>{sezioneInfo.descrizione}</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{sezioneInfo.descrizione}</div>
             </div>
           </div>
 
