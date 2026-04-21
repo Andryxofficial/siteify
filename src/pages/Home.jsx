@@ -6,10 +6,18 @@ import SocialHub from '../components/SocialHub';
 import PodcastPromo from '../components/PodcastPromo';
 import SEO from '../components/SEO';
 
-const up = (delay = 0) => ({
+const su = (delay = 0) => ({
   initial:    { opacity: 0, y: 22 },
   animate:    { opacity: 1, y: 0 },
   transition: { delay, type: 'spring', stiffness: 220, damping: 24 },
+});
+
+// Variante con whileInView per sezioni sotto il fold
+const inView = (delay = 0) => ({
+  initial:    { opacity: 0, y: 28 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport:   { once: true, margin: '-60px' },
+  transition: { delay, type: 'spring', stiffness: 200, damping: 26 },
 });
 
 export default function Home() {
@@ -38,14 +46,15 @@ export default function Home() {
       />
       {/* ── Hero ── */}
       <section className="header" style={{ paddingTop: '1.5rem', paddingBottom: '0.5rem' }}>
-        <motion.div {...up(0.05)} style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.9rem' }}>
+        <motion.div {...su(0.05)} style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.9rem' }}>
           <img
             src="/Firma_Andryx.png"
             alt="ANDRYXify"
+            className="logo-hero-flotta"
             style={{ height: 'clamp(60px, 14vw, 110px)', width: 'auto', objectFit: 'contain' }}
           />
         </motion.div>
-        <motion.p className="subtitle" {...up(0.15)}>
+        <motion.p className="subtitle" {...su(0.15)}>
           Esplorando il confine tra{' '}
           <span style={{ color: 'var(--primary)',   fontWeight: 600 }}>Umanità</span>,{' '}
           <span style={{ color: 'var(--secondary)', fontWeight: 600 }}>Intelligenza Artificiale</span>{' '}
@@ -53,21 +62,28 @@ export default function Home() {
         </motion.p>
 
         {/* Tagline chips */}
-        <motion.div {...up(0.22)} style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', marginTop: '1.2rem', flexWrap: 'wrap' }}>
+        <motion.div {...su(0.22)} style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', marginTop: '1.2rem', flexWrap: 'wrap' }}>
           {[
             { icon: <Sparkles size={14} />, label: 'Content Creator', color: 'var(--primary)', bg: 'rgba(224,64,251,0.12)', border: 'rgba(224,64,251,0.20)' },
             { icon: <Brain size={14} />,    label: 'AI Explorer',     color: 'var(--secondary)', bg: 'rgba(0,229,255,0.12)', border: 'rgba(0,229,255,0.20)' },
             { icon: <Zap size={14} />,      label: 'Gamer',           color: 'var(--accent-warm)', bg: 'rgba(255,184,108,0.12)', border: 'rgba(255,184,108,0.20)' },
           ].map(t => (
-            <span key={t.label} className="chip" style={{
-              background: t.bg,
-              color: t.color,
-              border: `1px solid ${t.border}`,
-              fontSize: '0.72rem',
-              padding: '4px 12px',
-            }}>
+            <motion.span
+              key={t.label}
+              className="chip"
+              style={{
+                background: t.bg,
+                color: t.color,
+                border: `1px solid ${t.border}`,
+                fontSize: '0.72rem',
+                padding: '4px 12px',
+              }}
+              whileHover={{ scale: 1.06, y: -2 }}
+              whileTap={{ scale: 0.96 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+            >
               {t.icon} {t.label}
-            </span>
+            </motion.span>
           ))}
         </motion.div>
       </section>
@@ -76,7 +92,7 @@ export default function Home() {
       <motion.section
         className="glass-panel"
         style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}
-        {...up(0.28)}
+        {...su(0.28)}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <Twitch size={20} color="#9146FF" />
@@ -116,13 +132,16 @@ export default function Home() {
       </motion.section>
 
       {/* ── Social Hub ── */}
-      <motion.div {...up(0.38)}>
+      <motion.div {...inView(0)}>
         <h2 className="section-title" style={{ textAlign: 'center' }}>Trovami su 📡</h2>
         <SocialHub />
       </motion.div>
 
       {/* ── Podcast Promo ── */}
-      <PodcastPromo />
+      <motion.div {...inView(0.05)}>
+        <PodcastPromo />
+      </motion.div>
     </div>
   );
 }
+

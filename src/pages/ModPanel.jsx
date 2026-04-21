@@ -314,8 +314,8 @@ export default function ModPanel() {
   const SezioneIcona = sezioneInfo.icon;
 
   return (
-    <main className="main-content mod-panel-shell" style={{ maxWidth: 1080, margin: '0 auto', padding: '0 0 4rem' }}>
-      <SEO title="Mod Panel" noindex />
+    <main className="main-content mod-panel-shell" style={{ maxWidth: 1080, margin: '0 auto', padding: '0 0 4rem', width: '100%', boxSizing: 'border-box' }}>
+      <SEO title="Pannello Mod" noindex />
 
       {/* ─── Header magico ─── */}
       <motion.div
@@ -334,7 +334,7 @@ export default function ModPanel() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="mod-header-titolo">
               <Radio size={13} style={{ color: 'var(--primary)' }} />
-              Mod Panel
+              Pannello Mod
               <LiveIndicator token={twitchToken} />
             </div>
             <div className="mod-header-sotto">
