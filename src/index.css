@@ -1571,6 +1571,11 @@ nav.navbar-container.glass-panel {
   -webkit-backdrop-filter: var(--vetro-blur-forte);
   border-radius: var(--r-lg);
   z-index: 10;
+  /* Lo sfondo è sempre scuro: forza il testo chiaro indipendentemente dal tema */
+  --text-main:  #F4F0FA;
+  --text-muted: #9E97AD;
+  --text-faint: #6e6a7c;
+  color: #F4F0FA;
 }
 
 .game-overlay-content {
