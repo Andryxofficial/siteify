@@ -2969,10 +2969,13 @@ body {
   flex-shrink: 0;
   padding: 0;
 }
-.mod-bot-switch:disabled,
-.mod-bot-switch.is-loading {
+.mod-bot-switch:disabled {
   opacity: 0.6;
   cursor: wait;
+}
+.mod-bot-switch.is-loading {
+  opacity: 0.75;
+  cursor: pointer; /* cliccabile per annullare la connessione */
 }
 .mod-bot-switch-knob {
   position: absolute;
