@@ -186,7 +186,7 @@ export const ZONES = {
     name: 'Villaggio dei Pixel',
     map: VILLAGE_MAP,
     entities: VILLAGE_ENTITIES,
-    spawn: { x: 4, y: 12 },
+    spawn: { x: 5, y: 13 },
     music: 'village',
     /* Transizioni: { fromBorder: 'east'|'west'|'north'|'south', toZone, spawn } */
     transitions: [

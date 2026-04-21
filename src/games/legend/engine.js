@@ -40,7 +40,9 @@ function makeInitialState(savedData) {
   const base = {
     zoneId: 'village',
     player: {
-      x: 4 * TILE_SIZE, y: 12 * TILE_SIZE,
+      /* Spawn villaggio: tile (5, 13) centrato (= pixel 88, 216).
+         IMPORTANT: il +8 centra il player NEL tile, allineandosi a `enterZone`. */
+      x: 5 * TILE_SIZE + 8, y: 13 * TILE_SIZE + 8,
       dir: 'down', hp: 6, maxHp: 6, frame: 0,
       iframes: 0, vx: 0, vy: 0,
     },
