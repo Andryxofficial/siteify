@@ -45,27 +45,17 @@ export default function Home() {
         keywords="andryxify, andrea taliento, streamer twitch italiano, content creator gaming, podcast intelligenza artificiale"
       />
       {/* ── Hero ── */}
-      <section className="header" style={{ paddingTop: '1.5rem', paddingBottom: '0.5rem' }}>
+      <section className="header hero-section" style={{ paddingTop: '2.5rem', paddingBottom: '0.5rem' }}>
 
-        {/* Avatar con alone luminoso rotante */}
-        <motion.div {...su(0)} style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.1rem' }}>
-          <div className="profile-img-container">
-            <img src="/logo.png" alt="ANDRYXify" className="profile-img" loading="eager" />
-          </div>
-        </motion.div>
+        {/* Orb decorativo ambientale */}
+        <div className="hero-orb" aria-hidden="true" />
 
-        {/* Firma / Wordmark */}
-        <motion.div {...su(0.08)} style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.6rem' }}>
-          <img
-            src="/Firma_Andryx.png"
-            alt="ANDRYXify"
-            className="logo-hero-flotta"
-            loading="eager"
-            style={{ height: 'clamp(38px, 9vw, 68px)', width: 'auto', objectFit: 'contain' }}
-          />
-        </motion.div>
+        {/* Headline tipografica */}
+        <motion.h1 className="hero-title" {...su(0)}>
+          ANDRYX<span className="hero-title-ify">ify</span>
+        </motion.h1>
 
-        <motion.p className="subtitle" {...su(0.16)}>
+        <motion.p className="subtitle" {...su(0.10)}>
           Esplorando il confine tra{' '}
           <span style={{ color: 'var(--primary)',   fontWeight: 600 }}>Umanità</span>,{' '}
           <span style={{ color: 'var(--secondary)', fontWeight: 600 }}>Intelligenza Artificiale</span>{' '}
