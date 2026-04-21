@@ -351,7 +351,8 @@ export function startEngine(canvas, callbacks, options = {}) {
                 e.vx = (dx / m) * KNOCKBACK;
                 e.vy = (dy / m) * KNOCKBACK;
                 if (e.type === 'boss') SFX.bossHit(); else SFX.enemyHit();
-                if (e.hp <= 0) onEnemyDeath(e);
+                if (e.type === 'boss') renderer3d.shake?.(0.5);
+                if (e.hp <= 0) { onEnemyDeath(e); renderer3d.shake?.(0.4); }
               }
             }
           }
@@ -419,8 +420,10 @@ export function startEngine(canvas, callbacks, options = {}) {
     p.hp -= dmg;
     p.iframes = IFRAMES;
     SFX.hit();
+    renderer3d.shake?.(0.55);
     if (p.hp <= 0) {
       p.hp = 0;
+      renderer3d.fadeOut?.();
       onGameOver();
     }
     callbacks.onHpChange?.(p.hp, p.maxHp);
@@ -1225,6 +1228,13 @@ export function startEngine(canvas, callbacks, options = {}) {
     renderHud();
     renderDialog();
     renderOverlay();
+
+    /* Fade nero del renderer 3D (cambio zona): velo dopo l'HUD per dramma */
+    const fa = renderer3d.getFadeAlpha();
+    if (fa > 0.001) {
+      ctx.fillStyle = `rgba(0,0,0,${fa})`;
+      ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    }
   }
 
   function loop(ts) {

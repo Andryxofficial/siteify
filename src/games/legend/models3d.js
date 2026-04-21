@@ -38,12 +38,78 @@ function lambert(color, opts = {}) {
   /* Chiave cache: ordine chiavi deterministico per evitare cache miss
      tra `{a:1,b:2}` e `{b:2,a:1}`. */
   const sortedOpts = JSON.stringify(opts, Object.keys(opts).sort());
-  const k = `lamb_${color.toString(16)}_${sortedOpts}`;
-  return mat(k, () => new THREE.MeshLambertMaterial({ color, ...opts }));
+  const k = `toon_${color.toString(16)}_${sortedOpts}`;
+  return mat(k, () => new THREE.MeshToonMaterial({
+    color,
+    gradientMap: getToonGradientMap(),
+    ...opts,
+  }));
 }
 function emissive(color, intensity = 1.0) {
   const k = `emi_${color.toString(16)}_${intensity}`;
   return mat(k, () => new THREE.MeshBasicMaterial({ color }));
+}
+
+/* Toon gradient texture (4 toni discreti) — condivisa con renderer3d. */
+let _toonGradient = null;
+function getToonGradientMap() {
+  if (_toonGradient) return _toonGradient;
+  const data = new Uint8Array([70,70,70,255, 150,150,150,255, 210,210,210,255, 255,255,255,255]);
+  const tex = new THREE.DataTexture(data, 4, 1, THREE.RGBAFormat);
+  tex.minFilter = THREE.NearestFilter;
+  tex.magFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  _toonGradient = tex;
+  return tex;
+}
+
+/* Materiale outline cartoon: nero su BackSide. Cached. */
+function outlineMat() {
+  return mat('outline_black', () => new THREE.MeshBasicMaterial({
+    color: 0x0a0a14,
+    side: THREE.BackSide,
+  }));
+}
+
+/**
+ * Crea un Group "outline" per qualsiasi Group/Mesh dato:
+ * clona ricorsivamente tutte le mesh con materiale nero BackSide e scala
+ * leggermente, ottenendo un bordo cartoon stile Wind Waker / Minish Cap 3D.
+ */
+export function makeOutlineFromGroup(srcGroup, scale = 1.06) {
+  const out = new THREE.Group();
+  const om = outlineMat();
+  srcGroup.traverse((child) => {
+    if (!child.isMesh || !child.geometry) return;
+    /* Skippa mesh "trasparenti" (es. flame, glow) — non vogliamo outline su quelle */
+    const m = child.material;
+    if (m && (m.transparent || m.opacity < 1)) return;
+    const clone = new THREE.Mesh(child.geometry, om);
+    /* Replica posizione/rotazione/scala "world relative" rispetto al group sorgente */
+    child.updateMatrixWorld(true);
+    /* Trovo trasformazione locale rispetto al root sorgente */
+    const localMat = new THREE.Matrix4();
+    let cur = child;
+    const stack = [];
+    while (cur && cur !== srcGroup) {
+      stack.push(cur);
+      cur = cur.parent;
+    }
+    /* compone le matrici dal root verso la mesh */
+    localMat.identity();
+    for (let i = stack.length - 1; i >= 0; i--) {
+      const node = stack[i];
+      const m4 = new THREE.Matrix4().compose(node.position, node.quaternion, node.scale);
+      localMat.multiply(m4);
+    }
+    clone.matrixAutoUpdate = false;
+    clone.matrix.copy(localMat);
+    clone.matrix.scale(new THREE.Vector3(scale, scale, scale));
+    out.add(clone);
+  });
+  out.userData.outline = true;
+  return out;
 }
 
 /* ─── Tile / mondo ──────────────────────────────────────────────────── */
@@ -447,6 +513,7 @@ export function makeSlime() {
   const eyeR = eyeL.clone();
   eyeR.position.x = 0.08;
   g.add(body, eyeL, eyeR);
+  g.userData.slimeBody = body;
   return g;
 }
 
