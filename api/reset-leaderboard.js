@@ -59,17 +59,25 @@ import { Redis } from '@upstash/redis';
  */
 
 const GENERAL_KEY = 'lb:general';
+const SUPPORTED_GAMES = new Set(['monthly', 'legend']);
+
+function gamePrefix(game) {
+  return game === 'legend' ? 'lb:legend' : 'lb';
+}
+function generalKeyFor(game) {
+  return game === 'legend' ? 'lb:legend:general' : GENERAL_KEY;
+}
 
 function getCurrentSeason(now = new Date()) {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
-function getWeeklyKey(season, now = new Date()) {
+function getWeeklyKey(season, now = new Date(), game = 'monthly') {
   const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
-  return `lb:${season}:weekly:${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+  return `${gamePrefix(game)}:${season}:weekly:${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
 }
 
 function parseScores(raw) {
@@ -131,8 +139,13 @@ export default async function handler(req, res) {
 
   const now = new Date();
   const season = getCurrentSeason(now);
-  const weeklyKey = getWeeklyKey(season, now);
-  const monthlyKey = `lb:${season}:monthly`;
+  /* `game` puo` essere passato come query (?game=legend) o nel body. */
+  const requestedGame = SUPPORTED_GAMES.has(req.query?.game)
+    ? req.query.game
+    : (SUPPORTED_GAMES.has(req.body?.game) ? req.body.game : 'monthly');
+  const weeklyKey = getWeeklyKey(season, now, requestedGame);
+  const monthlyKey = `${gamePrefix(requestedGame)}:${season}:monthly`;
+  const generalKey = generalKeyFor(requestedGame);
 
   /* ─── GET: status ─── */
   if (req.method === 'GET') {
@@ -140,7 +153,7 @@ export default async function handler(req, res) {
       const [weeklyCount, monthlyCount, generalCount, weeklyTtl, allKeys] = await Promise.all([
         redis.zcard(weeklyKey),
         redis.zcard(monthlyKey),
-        redis.zcard(GENERAL_KEY),
+        redis.zcard(generalKey),
         redis.ttl(weeklyKey),
         scanKeys(redis, 'lb:*'),
       ]);
@@ -150,7 +163,7 @@ export default async function handler(req, res) {
         keys: {
           weekly: weeklyKey,
           monthly: monthlyKey,
-          general: GENERAL_KEY,
+          general: generalKey,
         },
         entries: {
           weekly: weeklyCount ?? 0,
@@ -184,7 +197,7 @@ export default async function handler(req, res) {
 
     // ── Wipe general leaderboard ──
     if (body.general === true) {
-      await redis.del(GENERAL_KEY);
+      await redis.del(generalKey);
       console.log('[reset-leaderboard] General leaderboard wiped.');
       return res.status(200).json({
         action: 'reset_general',
@@ -194,7 +207,7 @@ export default async function handler(req, res) {
 
     // ── Recalculate general from all monthly keys ──
     if (body.recalculate_general === true) {
-      const monthlyKeys = await scanKeys(redis, 'lb:*:monthly');
+      const monthlyKeys = await scanKeys(redis, `${gamePrefix(requestedGame)}:*:monthly`);
       const allData = await Promise.all(
         monthlyKeys.map(k => redis.zrange(k, 0, -1, { rev: false, withScores: true }))
       );
@@ -204,10 +217,10 @@ export default async function handler(req, res) {
           if (username) userTotals[username] = (userTotals[username] || 0) + score;
         }
       }
-      await redis.del(GENERAL_KEY);
+      await redis.del(generalKey);
       const entries = Object.entries(userTotals);
       if (entries.length > 0) {
-        await Promise.all(entries.map(([u, s]) => redis.zadd(GENERAL_KEY, { score: s, member: u })));
+        await Promise.all(entries.map(([u, s]) => redis.zadd(generalKey, { score: s, member: u })));
       }
       console.log(`[reset-leaderboard] General recalculated from ${monthlyKeys.length} monthly key(s). ${entries.length} user(s).`);
       return res.status(200).json({
@@ -225,8 +238,8 @@ export default async function handler(req, res) {
       await redis.del(monthlyKey);
       // Subtract each user's monthly score from general; remove user if score drops to 0
       for (const { username, score } of entries) {
-        const newScore = await redis.zincrby(GENERAL_KEY, -score, username);
-        if (Number(newScore) <= 0) await redis.zrem(GENERAL_KEY, username);
+        const newScore = await redis.zincrby(generalKey, -score, username);
+        if (Number(newScore) <= 0) await redis.zrem(generalKey, username);
       }
       console.log(`[reset-leaderboard] Monthly ${monthlyKey} reset. ${entries.length} user(s) adjusted.`);
       return res.status(200).json({
@@ -247,8 +260,8 @@ export default async function handler(req, res) {
         redis.zrem(monthlyKey, username),
       ]);
       if (monthlyScore !== null) {
-        const newScore = await redis.zincrby(GENERAL_KEY, -Number(monthlyScore), username);
-        if (Number(newScore) <= 0) await redis.zrem(GENERAL_KEY, username);
+        const newScore = await redis.zincrby(generalKey, -Number(monthlyScore), username);
+        if (Number(newScore) <= 0) await redis.zrem(generalKey, username);
       }
       console.log(`[reset-leaderboard] User "${username}" removed. Monthly score was: ${monthlyScore}`);
       return res.status(200).json({
@@ -260,7 +273,7 @@ export default async function handler(req, res) {
     }
 
     // ── Reset current weekly (default) ──
-    const allWeeklyKeys = await scanKeys(redis, `lb:${season}:weekly:*`);
+    const allWeeklyKeys = await scanKeys(redis, `${gamePrefix(requestedGame)}:${season}:weekly:*`);
     const toDelete = allWeeklyKeys.length > 0 ? allWeeklyKeys : [weeklyKey];
     const existing = toDelete.filter(Boolean);
     if (existing.length > 0) await redis.del(...existing);

@@ -12,8 +12,8 @@ siteify/
 ├── .github/
 │   └── copilot-instructions.md   ← questo file
 ├── api/                          ← Serverless functions (Vercel)
-│   ├── leaderboard.js            ← GET/POST classifica (weekly/monthly/general)
-│   ├── reset-leaderboard.js      ← GET status + POST admin (reset/wipe/recalculate)
+│   ├── leaderboard.js            ← GET/POST classifica weekly/monthly/general (param `?game=monthly|legend`)
+│   ├── reset-leaderboard.js      ← GET status + POST admin (param `?game=monthly|legend`)
 │   └── ikigai-bridge.js
 ├── public/                       ← Asset statici serviti direttamente
 │   ├── andryx-logo.svg           ← Logo Andryx SVG (navbar & footer)
@@ -45,7 +45,17 @@ siteify/
 │   │   ├── marzo.js              ← Marzo
 │   │   ├── maggio.js             ← Maggio
 │   │   ├── ottobre.js            ← Ottobre
-│   │   └── [altri mesi].js       ← gennaio/febbraio/giugno/luglio/agosto/settembre/novembre/dicembre
+│   │   ├── [altri mesi].js       ← gennaio/febbraio/giugno/luglio/agosto/settembre/novembre/dicembre
+│   │   └── legend/               ← 🗡️ Andryx Legend (gioco principale, sempre disponibile)
+│   │       ├── index.js          ← Entry: meta + createGame, helpers save (hasSave/clearSave)
+│   │       ├── engine.js         ← Game loop monolitico: update/render/dialogo/quest/inventario/combat/puzzle/AI nemici/boss
+│   │       ├── sprites.js        ← Pixel art procedurale (Andryx 4-dir, NPC, nemici, oggetti, tile) — prerender canvas
+│   │       ├── palette.js        ← Palette colori condivisa per gli sprite
+│   │       ├── tiles.js          ← Costanti tile (GRASS, WALL, DOOR, CHEST, ecc.) + collisioni + propieta`
+│   │       ├── world.js          ← 4 zone (Foresta, Villaggio, Caverna, Castello), tilemap + entita` + connessioni
+│   │       ├── dialog.js         ← Sistema dialoghi (typewriter, scelte, ritratti NPC)
+│   │       ├── audio.js          ← SFX Web Audio API (no asset esterni)
+│   │       └── save.js           ← localStorage versionato (zona, posizione, inventario, quest, HP, cristalli)
 │   └── pages/
 │       ├── Home.jsx              ← Homepage: hero, live preview Twitch, SocialHub, PodcastPromo
 │       ├── TwitchPage.jsx        ← Embed stream Twitch + chat
@@ -130,19 +140,26 @@ siteify/
 
 ## 🏆 Classifica — `api/leaderboard.js`
 
-### Struttura Redis
+### Struttura Redis (multi-gioco)
 
-| Board | Logica | Chiave Redis | TTL |
-|---|---|---|---|
-| **Settimanale** | MAX punteggio utente nella settimana ISO corrente | `lb:<YYYY-MM>:weekly:<YYYY-WNN>` | 8 giorni |
-| **Mensile** | MAX punteggio utente nel mese corrente | `lb:<YYYY-MM>:monthly` | permanente |
-| **Generale** | Somma dei MAX mensili (`ZINCRBY Δ`) | `lb:general` | permanente |
+Il parametro `game` (default `monthly` per retrocompatibilita`) determina il prefisso delle chiavi:
+
+| game | Prefisso |
+|---|---|
+| `monthly` (default) | `lb:` |
+| `legend` | `lb:legend:` |
+
+| Board | Logica | Chiave Redis (monthly) | Chiave Redis (legend) | TTL |
+|---|---|---|---|---|
+| **Settimanale** | MAX punteggio utente nella settimana ISO corrente | `lb:<YYYY-MM>:weekly:<YYYY-WNN>` | `lb:legend:<YYYY-MM>:weekly:<YYYY-WNN>` | 8 giorni |
+| **Mensile** | MAX punteggio utente nel mese corrente | `lb:<YYYY-MM>:monthly` | `lb:legend:<YYYY-MM>:monthly` | permanente |
+| **Generale** | Somma dei MAX mensili (`ZINCRBY Δ`) | `lb:general` | `lb:legend:general` | permanente |
 
 ### Logica generale
 Quando un utente migliora il suo max mensile di Δ → `ZINCRBY lb:general Δ username`.
 Risultato: `general[user] = Σ monthly_max(user, mese)` su tutti i mesi giocati.
 
-### GET `/api/leaderboard[?season=YYYY-MM]`
+### GET `/api/leaderboard[?season=YYYY-MM][&game=monthly|legend]`
 ```json
 {
   "weekly":  [{ "username": "...", "score": 0 }],
@@ -155,15 +172,15 @@ Risultato: `general[user] = Σ monthly_max(user, mese)` su tutti i mesi giocati.
 ```
 
 ### POST `/api/leaderboard`
-- Body: `{ score: number, season?: string }`
+- Body: `{ score: number, season?: string, game?: 'monthly'|'legend' }`
 - Header: `Authorization: ******`
-- Valida token Twitch → scrive su weekly + monthly + ZINCRBY general
+- Valida token Twitch → scrive su weekly + monthly + ZINCRBY general (per il `game` selezionato)
 
 ---
 
 ## 🔧 Admin — `api/reset-leaderboard.js`
 
-Protetto da `Authorization: ******` (`IUA_SECRET` env var).
+Protetto da `Authorization: ******` (`IUA_SECRET` env var). Tutte le operazioni accettano `?game=monthly|legend` (default `monthly`) per agire sulla board del gioco corrispondente.
 
 ### GET — stato attuale
 ```bash
@@ -269,6 +286,7 @@ npm run lint      # ESLint (flat config)
 | 2026-04-17 | **Liquid Glass Desktop Enhancement**: potenziamento specifico della resa glass su desktop — nuove classi CSS `.glass-banner` (shimmer overlay + prismatic line per banner pagine), `.glass-avatar` (box-shadow profondità per avatar), `.glass-stats-bar` (capsule con backdrop-filter per barre statistiche), sezione `@media (min-width: 641px)` con hover glass-card più profondi, glass-panel hover glow, btn-primary/btn-ghost hover potenziati, leaderboard-tab hover. Applicato `.glass-banner` ai banner di YouTube, Instagram, TikTok; `.glass-avatar` agli avatar profilo; `.glass-stats-bar` alle barre stats di Twitch e TikTok. Fix `.active-pill` da `1px` a `0.5px`. Aggiunto hover `.game-calendar-row`. | `src/index.css`, `src/pages/YouTubePage.jsx`, `src/pages/InstagramPage.jsx`, `src/pages/TikTokPage.jsx`, `src/pages/TwitchPage.jsx`, `src/pages/PodcastPage.jsx` |
 | 2026-04-17 | **Liquid Glass — Apple Authentic Rewrite**: riscrittura completa del CSS per aderire alla documentazione ufficiale Apple (developer.apple.com/documentation/technologyoverviews/liquid-glass). Rimossi effetti prismatici/iridescenti rainbow (non nell'spec Apple), rimosso `brightness()` da backdrop-filter, blur ridotto a 24px standard (32px per navbar), saturate a 180% (era 210-220%), background opacity alzato a rgba(40,50,70,0.35) (era 0.06 troppo trasparente), bordi da 0.5px a 1px (standard Apple), box-shadow semplificati (outer + single inset specular), specular highlight solo bianco (no rainbow gradient), radii corretti (22-28px), varianti Regular/Clear rispettate. | `src/index.css`, `.github/copilot-instructions.md` |
 | 2026-04-17 | **Liquid Glass — True iOS 26 Rewrite v2**: riscrittura radicale per catturare il vero look Liquid Glass. Gradient backgrounds (simula profondità/curvatura vetro reale), radial specular highlights (macchie "wet glass" via radial-gradient ::before), refraction caustic overlays (color bleed ::after + mix-blend-mode:screen), backdrop-filter con blur(32px)+saturate(180%)+contrast(108%), bordi blue-tinted 1.5px rgba(130,170,240,0.14), ombre blue-tinted rgba(8,12,48,...), navbar blur 40px, tab bar blur 48px | `src/index.css`, `src/components/Footer.jsx`, `src/components/SocialHub.jsx`, `src/pages/TwitchPage.jsx`, `.github/copilot-instructions.md` |
+| 2026-04-21 | **🗡️ Andryx Legend** — nuovo gioco principale stile *Zelda: The Minish Cap*. Avventura top-down 2D pixel-art completa: 4 zone (Foresta di Twitchia, Villaggio dei Pixel, Caverna delle Gemme, Castello del Re Ombra), Andryx pixel-art a 4 direzioni, NPC con dialoghi typewriter, quest line (3 cristalli + boss finale), inventario (spada/scudo/chiavi/bombe/pozioni/cristalli), puzzle (blocchi spingibili, piastre, interruttori, candele), nemici con AI distinta, mini-boss + boss finale multifase, salvataggio localStorage versionato, audio Web Audio sintetizzato, HUD ricco. Hub modalita` in GamePage (Mese/Legend). Backend leaderboard esteso con `?game=monthly\|legend` (nuovo prefisso `lb:legend:*` per board separata). Chunk Vite separato `legend-*.js` (~16kB gz). | `src/games/legend/` (9 file: index.js, engine.js, sprites.js, palette.js, tiles.js, world.js, dialog.js, audio.js, save.js), `src/pages/GamePage.jsx`, `api/leaderboard.js`, `api/reset-leaderboard.js`, `.github/copilot-instructions.md` |
 
 ---
 
