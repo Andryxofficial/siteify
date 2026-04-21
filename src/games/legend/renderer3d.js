@@ -41,20 +41,9 @@ const DIR_TO_YAW = {
 const logicalToWorldX = (lx) => lx / TILE_SIZE;
 const logicalToWorldZ = (ly) => ly / TILE_SIZE;
 
-/** Toon gradient texture (4 toni discreti). */
-let _toonGradient = null;
-function getToonGradient() {
-  if (_toonGradient) return _toonGradient;
-  /* RGBA: usiamo R per il valore di shading (gradientMap legge il rosso) */
-  const data = new Uint8Array([60,60,60,255, 140,140,140,255, 200,200,200,255, 255,255,255,255]);
-  const tex = new THREE.DataTexture(data, 4, 1, THREE.RGBAFormat);
-  tex.minFilter = THREE.NearestFilter;
-  tex.magFilter = THREE.NearestFilter;
-  tex.generateMipmaps = false;
-  tex.needsUpdate = true;
-  _toonGradient = tex;
-  return tex;
-}
+/* Gradient toon condiviso con i materiali in models3d.js per garantire
+   shading coerente fra tile/entita`/sky (fonte unica di verita`). */
+const getToonGradient = M.getToonGradientMap;
 
 export class Renderer3D {
   constructor(canvas) {

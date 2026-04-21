@@ -50,9 +50,10 @@ function emissive(color, intensity = 1.0) {
   return mat(k, () => new THREE.MeshBasicMaterial({ color }));
 }
 
-/* Toon gradient texture (4 toni discreti) — condivisa con renderer3d. */
+/* Toon gradient texture (4 toni discreti) — esportata e condivisa con
+   renderer3d (fonte unica di verita`). */
 let _toonGradient = null;
-function getToonGradientMap() {
+export function getToonGradientMap() {
   if (_toonGradient) return _toonGradient;
   const data = new Uint8Array([70,70,70,255, 150,150,150,255, 210,210,210,255, 255,255,255,255]);
   const tex = new THREE.DataTexture(data, 4, 1, THREE.RGBAFormat);
