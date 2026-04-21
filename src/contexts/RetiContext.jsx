@@ -49,7 +49,7 @@ export function RetiProvider({ children }) {
       const r = await fetch(`/favicon.ico?_=${Date.now()}`, {
         method: 'HEAD',
         cache: 'no-store',
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(3000),
       });
       setOnline(r.ok || r.status === 0);
     } catch {

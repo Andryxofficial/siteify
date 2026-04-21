@@ -22,9 +22,19 @@ const CHIAVE_MODALITA = 'andryxify_tema_modalita';
 const CHIAVE_COORDS   = 'andryxify_tema_coords';
 const SEQUENZA        = ['auto', 'alba-tramonto', 'chiaro', 'scuro'];
 
-/* Ricontrolla se è "ora di luce" almeno ogni 5 minuti. Sufficiente per
+/* Ricontrolla se è "ora di luce" almeno ogni 10 minuti. Sufficiente per
    rilevare il passaggio attraverso alba/tramonto senza sprecare cicli. */
-const INTERVALLO_RICONTROLLO_MS = 5 * 60 * 1000;
+const INTERVALLO_RICONTROLLO_MS = 10 * 60 * 1000;
+
+/* Privacy: arrotondiamo le coordinate a 1 decimale (~11 km di precisione)
+   prima di salvarle in localStorage. Sufficiente per calcolare alba/tramonto
+   al minuto, ma rimuove la geolocalizzazione precisa dell'utente. */
+function arrotondaCoords(c) {
+  return {
+    lat: Math.round(c.lat * 10) / 10,
+    lon: Math.round(c.lon * 10) / 10,
+  };
+}
 
 function leggiCoordsSalvate() {
   try {
@@ -82,7 +92,8 @@ export function TemaProvider({ children }) {
       }
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          const c = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+          /* Arrotondiamo prima di salvare per non persistere geolocalizzazione precisa. */
+          const c = arrotondaCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
           setCoords(c);
           try { localStorage.setItem(CHIAVE_COORDS, JSON.stringify(c)); } catch { /* ignore */ }
           setCoordsRich(false);

@@ -1,5 +1,4 @@
-/**
- * sole.js — Calcolo alba/tramonto (NOAA Solar Position Algorithm semplificato).
+/* sole.js — Calcolo alba/tramonto (NOAA Solar Position Algorithm semplificato).
  *
  * Tutte le funzioni sono pure, zero dipendenze esterne.
  *   calcolaAlbaTramonto(data, lat, lon) → { alba: Date, tramonto: Date }
@@ -14,6 +13,17 @@ const ROMA = { lat: 41.9028, lon: 12.4964 };
 
 const RAD = Math.PI / 180;
 const DEG = 180 / Math.PI;
+
+/* Zenith standard per l'orizzonte (90° + correzione rifrazione atmosferica
+   ~0.833° = 90.833°). Usato dalla USNO/NOAA per definire alba/tramonto
+   "ufficiali" (sole appare/scompare all'orizzonte apparente). */
+const ZENITH_ALBA_TRAMONTO_DEG = 90.833;
+
+/* Fallback per regioni polari (sole sempre sopra/sotto orizzonte): consideriamo
+   "giorno" l'intervallo 7:00-19:00 ora locale. Stessi valori usati dall'anti-FOUC
+   in index.html per coerenza. */
+const ORA_ALBA_FALLBACK     = 7;
+const ORA_TRAMONTO_FALLBACK = 19;
 
 /* Giorno giuliano da Date UTC */
 function giornoGiuliano(d) {
@@ -71,8 +81,8 @@ export function calcolaAlbaTramonto(data, lat = ROMA.lat, lon = ROMA.lon) {
   const dec = declinazione(L);
   const eqt = equazioneTempo(M, L);
 
-  // Angolo orario all'orizzonte (zenith standard 90°50' = 90.833° per rifrazione)
-  const cosH = (Math.cos(90.833 * RAD) - Math.sin(lat * RAD) * Math.sin(dec * RAD))
+  // Angolo orario all'orizzonte (zenith standard + correzione rifrazione)
+  const cosH = (Math.cos(ZENITH_ALBA_TRAMONTO_DEG * RAD) - Math.sin(lat * RAD) * Math.sin(dec * RAD))
              / (Math.cos(lat * RAD) * Math.cos(dec * RAD));
   if (cosH > 1 || cosH < -1) {
     return { alba: null, tramonto: null };
@@ -99,7 +109,7 @@ export function inOreDiLuce(now = new Date(), lat, lon) {
   const { alba, tramonto } = calcolaAlbaTramonto(now, lat, lon);
   if (!alba || !tramonto) {
     const ora = now.getHours();
-    return ora >= 7 && ora < 19;
+    return ora >= ORA_ALBA_FALLBACK && ora < ORA_TRAMONTO_FALLBACK;
   }
   return now >= alba && now < tramonto;
 }

@@ -19,6 +19,9 @@ const CHIAVETWITCH = import.meta.env.VITE_CHIAVETWITCH;
 
 /* Coda di punteggi salvati offline, sincronizzati al ritorno online. */
 const CHIAVE_CODA_OFFLINE = 'andryxify_coda_punteggi_offline';
+/* Massimo punteggi accodati offline. Cap per evitare bloat di localStorage:
+   l'utente medio non gioca >20 partite consecutive senza connessione. */
+const MAX_CODA_PUNTEGGI = 20;
 
 function leggiCodaOffline() {
   try {
@@ -32,9 +35,8 @@ function salvaCodaOffline(coda) {
 }
 function aggiungiACoda(elemento) {
   const coda = leggiCodaOffline();
-  // Massimo 20 punteggi in coda per evitare bloat
   coda.push(elemento);
-  if (coda.length > 20) coda.splice(0, coda.length - 20);
+  if (coda.length > MAX_CODA_PUNTEGGI) coda.splice(0, coda.length - MAX_CODA_PUNTEGGI);
   salvaCodaOffline(coda);
 }
 

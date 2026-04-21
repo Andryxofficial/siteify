@@ -198,8 +198,9 @@
       if(t==='chiaro'){chiaro=true;}
       else if(t==='scuro'){chiaro=false;}
       else if(t==='alba-tramonto'){
-        // Approssimazione veloce per anti-FOUC: chiaro tra le 7:00 e le 19:00 ora locale
-        // (sufficiente prima che React carichi e ricalcoli alba/tramonto precisi).
+        // Approssimazione veloce per anti-FOUC: chiaro tra le 7:00 e le 19:00
+        // ora locale (stessi valori usati in src/utils/sole.js come fallback).
+        // Sufficiente prima che React carichi e ricalcoli alba/tramonto precisi.
         var ora=new Date().getHours();
         chiaro=(ora>=7&&ora<19);
       }
