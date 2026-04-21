@@ -18,37 +18,57 @@
 export const ZONE_W = 30;
 export const ZONE_H = 20;
 
-/* ─── ZONA 0: Villaggio dei Pixel — punto di partenza ─── */
+/* ─── ZONA 0: Villaggio dei Pixel — punto di partenza ───
+   Case = 3 tile larghi × 2 tile alti.
+     Riga 0 (tetto):   1 2 3
+     Riga 1 (muro):    7 8 9   (con finestra centrale, casa generica)
+                       7 0 9   (con porta — casa di Andryx, sbloccabile)
+   Layout:
+   - Bordi alberi (T)
+   - Casa Re a destra (cols 21-23, rows 1-2) — Re davanti
+   - Casa Anziano centro (cols 13-15, rows 1-2) — Anziano davanti
+   - Casa di Andryx a sinistra (cols 1-3, rows 10-11) — porta '0' bloccata, spada davanti
+   - Fontana C circondata da pavimento _, lampioni
+   - Vaso speciale q nascosto fra cespugli
+   - Portale ** giù a destra (verso Caverna)
+   - Bordo est apre la Foresta
+*/
 const VILLAGE_MAP = [
   'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-  'T,..,..bb..,...,..,...bb..,..T',
-  'T.,..,..,..bb...HH..,..,..,..T',
-  'T..,bb,...,..,..Hh..,bb,...,.T',
-  'T,..,..__________________,..,T',
-  'T.,..,_,bb..,..bb,..,..,_..,.T',
-  'T..,.._..HH...HH..HH...,_,..,T',
-  'Tb,..,_,.Hh...Hh..Hh.,.._,bb.T',
-  'T..,..________..__________,..T',
-  'T,..,..,..bb..__,...,..,..,..T',
-  'T.,..,..,..,..__..bb...,..,..T',
-  'T..,...HH...HH__..HH...,..,..T',
-  'T,..,..Hh...Hh__..Hh..,..,..,T',
-  'T...,..,..,..,__,..,..,..,...T',
-  'T..,..,..,..,.__,bb..,..,..,.T',
-  'T,..,..,..,..,__..,..,..,..,.T',
-  'Tbb..,..,..,..__..,..,..,..,.T',
-  'T..,..,..,..,.__..,..,..,..,*T',
-  'T,..,..,..,..,__..,..,..,..,*T',
+  'T,..,..b..,..123..,..123..,..T',
+  'T.,..,...bb..789...,.789...,.T',
+  'T,..,..,..,..,..,..,..,..,..,T',
+  'T..b..,..,...,.,..p.,..,.,..,T',
+  'T,..,..,..,..__.__.,...,..b,.T',
+  'T..,..bb,...._..._...,..,..,.T',
+  'T,..,..,..,.._..._..,..,..,..T',
+  'T..,..,______._..._________,.T',
+  'T,..,.._....._..._........_..T',
+  'T123..b_..bb._..._...._..._..T',
+  'T709..,_..,.._.C._..._....._.T',
+  'T..,..b______._..._...._..._.T',
+  'T..,..,..,..,_..._..._______.T',
+  'T,..,..,..q.._..._.,..,..,..,T',
+  'T..,..,..,..,_..._.,..,..,..,T',
+  'Tb..,..,..,.._..._..,..,..,..T',
+  'T..,bbb,..,.._..._...,..,..*,T',
+  'T,..,..,..,.._..._....,..,.**T',
   'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
 ];
 
 const VILLAGE_ENTITIES = [
-  { type: 'npc', kind: 'king', x: 18, y: 4, dialog: 'king_intro' },
-  { type: 'npc', kind: 'elder', x: 12, y: 4, dialog: 'elder_intro' },
-  { type: 'npc', kind: 'merchant', x: 12, y: 11, dialog: 'merchant' },
-  { type: 'npc', kind: 'child', x: 16, y: 11, dialog: 'child' },
-  { type: 'item', kind: 'sword', x: 4, y: 11, requires: 'has_sword:false' },
-  { type: 'sign', x: 16, y: 8, text: 'Verso est: Foresta Sussurrante.\nVerso sud: Portale per la Caverna.' },
+  /* Re davanti alla sua casa (a destra) */
+  { type: 'npc', kind: 'king', x: 22, y: 4, dialog: 'king_intro' },
+  /* Anziano davanti casa propria (in alto al centro) */
+  { type: 'npc', kind: 'elder', x: 14, y: 4, dialog: 'elder_intro' },
+  /* Mercante e bambino vicino alla fontana */
+  { type: 'npc', kind: 'merchant', x: 24, y: 13, dialog: 'merchant' },
+  { type: 'npc', kind: 'child', x: 18, y: 14, dialog: 'child' },
+  /* Vaso speciale 'q' (col 11, row 14) — ora gestito come tile, non entita`. */
+  /* La spada di papa` Andryx — appare DAVANTI casa appena la porta si apre */
+  { type: 'item', kind: 'sword', x: 2, y: 13, requires: 'house_key' },
+  { type: 'sign', x: 14, y: 17, text: 'Verso est: Foresta Sussurrante.\nVerso sud-est: Portale Caverna.\nLa tua casa: a ovest.' },
+  { type: 'sign', x: 16, y: 9, text: 'Fontana del Villaggio.\nL\'acqua riflette le stelle.' },
 ];
 
 /* ─── ZONA 1: Foresta Sussurrante — primo dungeon all'aperto ─── */

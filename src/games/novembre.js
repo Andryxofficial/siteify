@@ -36,18 +36,37 @@ export function createGame(canvas, { keysRef, joystickRef, onScore, onGameOver, 
   canvas.height = H;
   let animFrame = null;
 
-  function makeCloud(y, isFirst) {
-    const w = isFirst ? 80 : 45 + Math.random() * 40;
-    const type = isFirst ? 'normal' :
-      Math.random() < 0.15 ? 'breaking' :
-      Math.random() < 0.2 ? 'moving' : 'normal';
+  /* Difficolta` progressiva: 0 (inizio) → 1 (max, raggiunta a ~3500 punti).
+     Curva leggermente accelerata cosi` i primi 500 sono "facili",
+     poi sale piu` rapidamente. */
+  function getDifficulty() {
+    const t = Math.min(state.maxHeight / 3500, 1);
+    return t * t * (3 - 2 * t);  // smoothstep
+  }
+
+  function makeCloud(y, isFirst, diff = 0) {
+    /* Larghezza: parte da 45-85 (facile), scende a 28-50 (max) */
+    const wMin = 45 - 17 * diff;
+    const wRange = 40 - 18 * diff;
+    const w = isFirst ? 80 : wMin + Math.random() * wRange;
+    /* Probabilita` tipi cloud: breaking 0.15→0.38, moving 0.18→0.36 */
+    const pBreak = 0.15 + 0.23 * diff;
+    const pMove = 0.18 + 0.18 * diff;
+    const r = Math.random();
+    const type = isFirst ? 'normal'
+      : r < pBreak ? 'breaking'
+      : r < pBreak + pMove ? 'moving'
+      : 'normal';
+    /* Velocita` movimento: 0.8-2.0 → 1.6-3.6 a max difficolta` */
+    const moveSpeedBase = 0.8 + 0.8 * diff;
+    const moveSpeedRange = 1.2 + 0.4 * diff;
     return {
       x: isFirst ? W / 2 - w / 2 : 15 + Math.random() * (W - w - 30),
       y, w,
       type,
       breaking: false, breakTimer: 0,
       moveDir: Math.random() < 0.5 ? 1 : -1,
-      moveSpeed: 0.8 + Math.random() * 1.2,
+      moveSpeed: moveSpeedBase + Math.random() * moveSpeedRange,
       hasStar: !isFirst && Math.random() < 0.25,
       starCollected: false,
     };
@@ -112,6 +131,14 @@ export function createGame(canvas, { keysRef, joystickRef, onScore, onGameOver, 
 
     state.vx = mx * 5;
     state.vy += GRAVITY;
+    /* Vento d'alta quota: a difficolta` >0.4 una corrente laterale sinusoidale
+       spinge dolcemente il player. Picco di ~1.2px/frame a max difficolta`. */
+    const diffNow = getDifficulty();
+    if (diffNow > 0.4) {
+      const windStrength = (diffNow - 0.4) * 2;             // 0 → 1.2
+      const wind = Math.sin(state.frame * 0.012) * windStrength;
+      state.vx += wind;
+    }
     state.px += state.vx;
     state.py += state.vy;
 
@@ -171,10 +198,14 @@ export function createGame(canvas, { keysRef, joystickRef, onScore, onGameOver, 
       onScore(state.score);
     }
 
-    // Generate clouds above
+    // Generate clouds above (difficolta` cresce con altitudine)
+    const diff = getDifficulty();
     const topCloudY = Math.min(...clouds.map(c => c.y));
+    /* Gap verticale tra nuvole: 32-52 (facile) → 50-78 (difficile, salti piu` lunghi) */
+    const gapBase = 32 + 18 * diff;
+    const gapRange = 20 + 8 * diff;
     if (topCloudY > state.cameraY - 100) {
-      clouds.push(makeCloud(topCloudY - 32 - Math.random() * 20, false));
+      clouds.push(makeCloud(topCloudY - gapBase - Math.random() * gapRange, false, diff));
     }
 
     // Remove clouds below

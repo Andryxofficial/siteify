@@ -31,9 +31,21 @@ export const TILES = {
   'H': { id: 'H', sprite: 'TILE_HOUSE_ROOF', solid: true, layer: 'object' },
   'h': { id: 'h', sprite: 'TILE_HOUSE_DOOR', solid: true, layer: 'object' },
 
+  /* Case "vere" — composte da 3 tile larghi × 2 tile alti (tetto + muro/porta) */
+  '1': { id: '1', sprite: 'TILE_ROOF_TL', solid: true, layer: 'object' },
+  '2': { id: '2', sprite: 'TILE_ROOF_TM', solid: true, layer: 'object' },
+  '3': { id: '3', sprite: 'TILE_ROOF_TR', solid: true, layer: 'object' },
+  '7': { id: '7', sprite: 'TILE_HWALL_L', solid: true, layer: 'object' },
+  '8': { id: '8', sprite: 'TILE_HWINDOW', solid: true, layer: 'object' },
+  '9': { id: '9', sprite: 'TILE_HWALL_R', solid: true, layer: 'object' },
+  '0': { id: '0', sprite: 'TILE_HDOOR', solid: true, layer: 'object', door: true, locked: true },
+  'A': { id: 'A', sprite: 'TILE_HDOOR_OPEN', solid: false, layer: 'object', door: true, open: true },
+  'C': { id: 'C', sprite: 'TILE_FOUNTAIN', solid: true, layer: 'object' },
+
   /* Interactive */
   'b': { id: 'b', sprite: 'TILE_BUSH', solid: true, layer: 'object', cuttable: true, drops: 'random' },
   'p': { id: 'p', sprite: 'TILE_POT', solid: true, layer: 'object', smashable: true, drops: 'random' },
+  'q': { id: 'q', sprite: 'TILE_POT_SPECIAL', solid: true, layer: 'object', smashable: true, drops: 'house_key' },
   'B': { id: 'B', sprite: 'TILE_BLOCK', solid: true, layer: 'object', pushable: true },
   'P': { id: 'P', sprite: 'TILE_PLATE_UP', solid: false, layer: 'ground', plate: true },
   'p2': { id: 'p2', sprite: 'TILE_PLATE_DOWN', solid: false, layer: 'ground', plate: true, pressed: true },

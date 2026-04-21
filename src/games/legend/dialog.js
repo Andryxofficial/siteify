@@ -69,10 +69,23 @@ export const DIALOGS = {
     speaker: 'Anziano',
     portrait: 'NPC_ELDER',
     lines: [
-      'Ah, giovane eroe...',
-      'La spada di tuo padre giace nella casa a ovest.',
-      'Prendila prima di affrontare i mostri!',
-      'Ricorda: premi SPAZIO per attaccare.',
+      'Andryx... finalmente sei qui.',
+      'Tuo padre, eroe del passato,',
+      'nascose la sua spada nella tua casa,',
+      'quella con la porta chiusa a ovest.',
+      'La chiave e` in uno dei vasi del villaggio.',
+      'Cercala: rompi i vasi premendo SPAZIO.',
+      'Solo allora potrai sfidare il Re Ombra.',
+    ],
+  },
+
+  elder_after_key: {
+    speaker: 'Anziano',
+    portrait: 'NPC_ELDER',
+    lines: [
+      'Hai trovato la chiave! Bene.',
+      'Vai a recuperare la spada in casa,',
+      'la porta e` ora aperta per te.',
     ],
   },
 
@@ -80,10 +93,22 @@ export const DIALOGS = {
     speaker: 'Anziano',
     portrait: 'NPC_ELDER',
     lines: [
-      'Vedo che hai la spada. Bene.',
+      'La spada di tuo padre risplende ancora.',
+      'Sii degno del suo nome, eroe.',
       'Nella Caverna trovai uno scudo:',
       'cercalo, ti proteggera` dalle frecce.',
     ],
+  },
+
+  house_key_pickup: {
+    speaker: 'Sistema',
+    portrait: 'ITEM_HOUSE_KEY',
+    lines: [
+      'Hai trovato la CHIAVE DI CASA!',
+      'La porta della tua dimora si apre.',
+      'Recupera la spada di tuo padre dentro.',
+    ],
+    onComplete: { setFlag: 'house_key' },
   },
 
   merchant: {
@@ -104,7 +129,8 @@ export const DIALOGS = {
       'Wow! Sei davvero un eroe?',
       'Mio fratello dice che nei vasi',
       'a volte ci sono cuori e rupie!',
-      'Distruggili con la spada, prova!',
+      'Uno luccica di oro pero`...',
+      'forse nasconde qualcosa di speciale!',
     ],
   },
 
@@ -113,9 +139,10 @@ export const DIALOGS = {
     portrait: 'ITEM_SWORD',
     lines: [
       'Hai trovato la SPADA DI ANDRYX!',
-      'Premi SPAZIO o il pulsante azione',
-      'per attaccare nella direzione',
-      'in cui guardi.',
+      'L\'eredita` di tuo padre brilla nella tua mano.',
+      'Premi SPAZIO per attaccare nella',
+      'direzione in cui guardi.',
+      'Ora puoi sfidare i mostri della Foresta!',
     ],
     onComplete: { setQuest: 'has_sword', setFlag: 'has_sword' },
   },
@@ -243,7 +270,9 @@ export function selectNpcDialog(npcId, state) {
     return 'king_intro';
   }
   if (npcId === 'elder_intro') {
-    return flags.has_sword ? 'elder_after_sword' : 'elder_intro';
+    if (flags.has_sword) return 'elder_after_sword';
+    if (flags.house_key) return 'elder_after_key';
+    return 'elder_intro';
   }
   return npcId;
 }

@@ -544,6 +544,27 @@ const ITEM_KEY = S([
   '................',
 ]);
 
+/* Chiave di casa di Andryx — più ornata, in oro/rame, con runa */
+const ITEM_HOUSE_KEY = S([
+  '....rRRr........',
+  '...rYffYr.......',
+  '..rYfWWfYr......',
+  '..rYWeeWYr......',
+  '.rYfWeKeWfYr....',
+  '.rYfWeKeWfYr....',
+  '..rYfWWfYr......',
+  '...rYffYr.......',
+  '....yYy.........',
+  '....yYy.........',
+  '....yYy.........',
+  '....yYy.........',
+  '....yYyyy.......',
+  '....yYy.........',
+  '....yYyy........',
+  '....yYy.........',
+]);
+
+
 const ITEM_BOMB = S([
   '......yy........',
   '.......y........',
@@ -1146,7 +1167,207 @@ const TILE_LAVA = S([
   'RrRrRrRrRrRrRyRr',
 ]);
 
-/* ─── Render helpers ─── */
+/* ─── Case "vere" — sistema 3 wide × 2 tall (3 colonne, 2 righe) ───
+   Riga 0: 1 2 3 = tetto pieno con tegole rosse
+   Riga 1: 7 8 9 = muro con finestra centrale (oppure 7 0 9 con porta)
+   Le pareti sono solide; la porta '0' diventa 'A' (passabile) quando aperta. */
+
+/* Tetto SX — diagonale verso l'alto, tegole rosse, cornicione marrone in basso */
+const TILE_ROOF_TL = S([
+  '..........RRRRRR',
+  '........RRrrrrrr',
+  '......RRrrRRRRRR',
+  '....RRrrRRrrrrrr',
+  '..RRrrRRrrRRRRRR',
+  'RRrrRRrrRRrrrrrr',
+  'rRrRrRrRrRrRrRrR',
+  'RrRrRrRrRrRrRrRr',
+  'rRrRrRrRrRrRrRrR',
+  'RrRrRrRrRrRrRrRr',
+  'rRrRrRrRrRrRrRrR',
+  'RrRrRrRrRrRrRrRr',
+  'rRrRrRrRrRrRrRrR',
+  'RRRRRRRRRRRRRRRR',
+  'BBBBBBBBBBBBBBBB',
+  'cccccccccccccccc',
+]);
+/* Tetto centro — tegole orizzontali, cornicione */
+const TILE_ROOF_TM = S([
+  'RRRRRRRRRRRRRRRR',
+  'rrrrrrrrrrrrrrrr',
+  'RRRRRRRRRRRRRRRR',
+  'rrrrrrrrrrrrrrrr',
+  'RRRRRRRRRRRRRRRR',
+  'rrrrrrrrrrrrrrrr',
+  'rRrRrRrRrRrRrRrR',
+  'RrRrRrRrRrRrRrRr',
+  'rRrRrRrRrRrRrRrR',
+  'RrRrRrRrRrRrRrRr',
+  'rRrRrRrRrRrRrRrR',
+  'RrRrRrRrRrRrRrRr',
+  'rRrRrRrRrRrRrRrR',
+  'RRRRRRRRRRRRRRRR',
+  'BBBBBBBBBBBBBBBB',
+  'cccccccccccccccc',
+]);
+/* Tetto DX — diagonale opposta */
+const TILE_ROOF_TR = S([
+  'RRRRRR..........',
+  'rrrrrrRR........',
+  'RRRRRRrrRR......',
+  'rrrrrrRRrrRR....',
+  'RRRRRRrrRRrrRR..',
+  'rrrrrrRRrrRRrrRR',
+  'rRrRrRrRrRrRrRrR',
+  'RrRrRrRrRrRrRrRr',
+  'rRrRrRrRrRrRrRrR',
+  'RrRrRrRrRrRrRrRr',
+  'rRrRrRrRrRrRrRrR',
+  'RrRrRrRrRrRrRrRr',
+  'rRrRrRrRrRrRrRrR',
+  'RRRRRRRRRRRRRRRR',
+  'BBBBBBBBBBBBBBBB',
+  'cccccccccccccccc',
+]);
+
+/* Muro casa SX — pietra beige con angolo */
+const TILE_HWALL_L = S([
+  'cccccccccccccccc',
+  'cBBBBBBBBBBBBBBB',
+  'cBssssssssssssss',
+  'cBsccccccccccccc',
+  'cBscBBBBBBBBBBBB',
+  'cBscBssssssssccc',
+  'cBscBssccccccccc',
+  'cBscBBBBBBBBcccc',
+  'cBssssssssssssss',
+  'cBsccccccccccccc',
+  'cBscBBBBBBBBBBBB',
+  'cBscBssssssssccc',
+  'cBscBssccccccccc',
+  'cBscBBBBBBBBcccc',
+  'cBssssssssssssss',
+  'OOOOOOOOOOOOOOOO',
+]);
+/* Muro casa centro — finestra grande */
+const TILE_HWINDOW = S([
+  'cccccccccccccccc',
+  'BBBBBBBBBBBBBBBB',
+  'ssssssssssssssss',
+  'ssBBBBBBBBBBBBss',
+  'ssBuUUUUUUUUUBss',
+  'ssBudddddddduBss',
+  'ssBudWWWWWdduBss',
+  'ssBudWdddWdduBss',
+  'ssBuduuuuuuduBss',
+  'ssBudddddddduBss',
+  'ssBuUUUUUUUUUBss',
+  'ssBBBBBBBBBBBBss',
+  'ssssssssssssssss',
+  'cccccccccccccccc',
+  'ssssssssssssssss',
+  'OOOOOOOOOOOOOOOO',
+]);
+/* Muro casa DX */
+const TILE_HWALL_R = S([
+  'cccccccccccccccc',
+  'BBBBBBBBBBBBBBBc',
+  'sssssssssssssBBc',
+  'cccccccccccsBssc',
+  'BBBBBBBBBBBcsBsc',
+  'cccsssssssBcsBsc',
+  'cccccccccsBcsBsc',
+  'ccccBBBBBcBcsBsc',
+  'sssssssssssssBBc',
+  'cccccccccccsBssc',
+  'BBBBBBBBBBBcsBsc',
+  'cccsssssssBcsBsc',
+  'cccccccccsBcsBsc',
+  'ccccBBBBBcBcsBsc',
+  'sssssssssssssBsc',
+  'OOOOOOOOOOOOOOOO',
+]);
+
+/* Porta in legno (al centro tra HWALL_L e HWALL_R) — chiusa */
+const TILE_HDOOR = S([
+  'cccccccccccccccc',
+  'BBBBBBBBBBBBBBBB',
+  'ssssssssssssssss',
+  'ssBBBBBBBBBBBBss',
+  'ssBbbbbbbbbbBBss',
+  'ssBbBBbbBBbBBBss',
+  'ssBbBccBccBccBss',
+  'ssBbBccBccBccBss',
+  'ssBbBccBccyccBss',
+  'ssBbBccBccyycBss',
+  'ssBbBccBccBccBss',
+  'ssBbBccBccBccBss',
+  'ssBbBBbbBBbBBBss',
+  'ssBBBBBBBBBBBBss',
+  'ssssssssssssssss',
+  'OOOOOOOOOOOOOOOO',
+]);
+/* Porta aperta — passaggio buio dentro */
+const TILE_HDOOR_OPEN = S([
+  'cccccccccccccccc',
+  'BBBBBBBBBBBBBBBB',
+  'ssssssssssssssss',
+  'ssBBBBBBBBBBBBss',
+  'ssBNNNNNNNNNNBss',
+  'ssBeNNNNNNNNeBss',
+  'ssBeNNyyNNNNeBss',
+  'ssBeNNNNNNNNeBss',
+  'ssBeNNNNNNNNeBss',
+  'ssBeNNNNNNNNeBss',
+  'ssBeNNNNNNNNeBss',
+  'ssBeNNNNNNNNeBss',
+  'ssBeeeeeeeeeeBss',
+  'ssBBBBBBBBBBBBss',
+  'ssssssssssssssss',
+  'OOOOOOOOOOOOOOOO',
+]);
+
+/* Vaso speciale (luccica oro): contiene la chiave di casa di Andryx */
+const TILE_POT_SPECIAL = S([
+  '................',
+  '....yyyyyy......',
+  '...yyyyyyyy.....',
+  '...ycccccccy....',
+  '...yccsScccy....',
+  '...ycssScccy....',
+  '..yccscscccy....',
+  '..yccccccccy....',
+  '..yccccyccccy...',
+  '..yccccyycccy...',
+  '..yccsscccccy...',
+  '..yccccccccyy...',
+  '...yccccccyy....',
+  '...yyYYYYyy.....',
+  '....yyYYyy......',
+  '................',
+]);
+
+/* Fontana centrale del villaggio — bordo pietra, acqua azzurra, getto */
+const TILE_FOUNTAIN = S([
+  '....OOOOOOOO....',
+  '...OoooooooooO..',
+  '..OoaaiAaaaaaoO.',
+  '..OaiAAAAAAAaaO.',
+  '..OaAAdddddAAaO.',
+  '..OaAddWdWdAAaO.',
+  '..OaAdddddddAaO.',
+  '..OaAddudddddaO.',
+  '..OaAdduudddAaO.',
+  '..OaAddddddAAaO.',
+  '..OaiAAAAAAAaaO.',
+  '..OoaaaaaaaaaoO.',
+  '...OoooooooooO..',
+  '....OOOOOOOO....',
+  '....OOOOOOOO....',
+  '................',
+]);
+
+
 
 /** Disegna uno sprite (cached) sul context al pixel (x, y). */
 export function drawSprite(ctx, sprite, x, y) {
@@ -1214,7 +1435,7 @@ export const SPRITES = {
   BOSS_GUARDIAN, BOSS_SHADOW_KING,
 
   /* Items */
-  ITEM_HEART, ITEM_RUPEE, ITEM_KEY, ITEM_BOMB, ITEM_POTION,
+  ITEM_HEART, ITEM_RUPEE, ITEM_KEY, ITEM_HOUSE_KEY, ITEM_BOMB, ITEM_POTION,
   ITEM_CRYSTAL_GREEN, ITEM_CRYSTAL_BLUE, ITEM_CRYSTAL_RED,
   ITEM_SWORD, ITEM_SHIELD, ITEM_HEART_CONTAINER,
 
@@ -1224,6 +1445,11 @@ export const SPRITES = {
   TILE_HOUSE_ROOF, TILE_HOUSE_DOOR, TILE_BUSH, TILE_POT, TILE_BLOCK,
   TILE_PLATE_UP, TILE_PLATE_DOWN, TILE_DOOR_CLOSED, TILE_DOOR_OPEN,
   TILE_TORCH_ON, TILE_TORCH_OFF, TILE_PORTAL, TILE_DIRT, TILE_LAVA,
+  /* Case multi-tile + decorazioni villaggio (3 wide × 2 tall) */
+  TILE_ROOF_TL, TILE_ROOF_TM, TILE_ROOF_TR,
+  TILE_HWALL_L, TILE_HWINDOW, TILE_HWALL_R,
+  TILE_HDOOR, TILE_HDOOR_OPEN,
+  TILE_POT_SPECIAL, TILE_FOUNTAIN,
 };
 
 /* Helper: ritorna lo sprite del player per direzione + frame anim/attack */

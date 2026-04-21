@@ -39,7 +39,11 @@ const TEXT_SPEED = 1.5;           // caratteri per frame nel typewriter
 function makeInitialState(savedData) {
   const base = {
     zoneId: 'village',
-    player: { x: 4 * TILE_SIZE, y: 12 * TILE_SIZE, dir: 'down', hp: 6, maxHp: 6, frame: 0 },
+    player: {
+      x: 4 * TILE_SIZE, y: 12 * TILE_SIZE,
+      dir: 'down', hp: 6, maxHp: 6, frame: 0,
+      iframes: 0, vx: 0, vy: 0,
+    },
     rupees: 0,
     keys: 0,
     bombs: 0,
@@ -236,13 +240,20 @@ export function startEngine(canvas, callbacks, options = {}) {
     return { dx, dy };
   }
 
-  function readAction() {
+  /* Edge-trigger: una pressione = un evento, non frame-by-frame.
+     Evita che tenere SPAZIO premuto skippi tutti i dialoghi e che si attacchi
+     a raffica tenendo il tasto premuto. */
+  let prevActionDown = false;
+  let actionEdge = false;
+  function refreshActionEdge() {
     const k = keys.current || {};
-    if (k[' '] || k.z || k.Z || k.x || k.X || k.j || k.J) return true;
-    if (actionBtn.current) {
-      actionBtn.current = false;
-      return true;
-    }
+    const down = !!(k[' '] || k.z || k.Z || k.x || k.X || k.j || k.J);
+    actionEdge = (down && !prevActionDown);
+    prevActionDown = down;
+  }
+  function consumeAction() {
+    if (actionEdge) { actionEdge = false; return true; }
+    if (actionBtn.current) { actionBtn.current = false; return true; }
     return false;
   }
 
@@ -340,17 +351,25 @@ export function startEngine(canvas, callbacks, options = {}) {
       } else if (e.type === 'item' && !e.collected) {
         if (entitiesOverlap(p, e, 14)) onItemPickup(e);
       } else if (e.type === 'sign') {
-        if (entitiesOverlap(p, e, 14) && readAction()) openSignDialog(e);
+        if (entitiesOverlap(p, e, 14) && consumeAction()) openSignDialog(e);
       } else if (e.type === 'npc') {
-        if (entitiesOverlap(p, e, 18) && readAction()) openNpcDialog(e);
+        if (entitiesOverlap(p, e, 18) && consumeAction()) openNpcDialog(e);
       }
     }
 
-    /* Azione: attacco se non in dialogo */
-    if (!dialogState && !attackState && readAction()) {
+    /* Azione: attacco se non in dialogo. Edge-trigger (consume) per evitare
+       spam di attacchi tenendo premuto SPAZIO. */
+    if (!dialogState && !attackState && consumeAction()) {
       if (state.flags.has_sword) {
         attackState = { frame: 0, dir: p.dir };
         SFX.sword();
+      } else {
+        /* Senza spada: interazione diretta — rompi vaso/cespuglio adiacente,
+           accendi torcia. Nessun danno ai nemici. */
+        const hit = swordHitbox(p, p.dir);
+        const broke = tryDestroyTile(hit);
+        tryLightTorch(p, p.dir);
+        if (!broke) SFX.text();
       }
     }
 
@@ -414,6 +433,7 @@ export function startEngine(canvas, callbacks, options = {}) {
   }
 
   function tryDestroyTile(hitbox) {
+    let any = false;
     const x0 = Math.floor(hitbox.x / TILE_SIZE);
     const x1 = Math.floor((hitbox.x + hitbox.w) / TILE_SIZE);
     const y0 = Math.floor(hitbox.y / TILE_SIZE);
@@ -424,11 +444,26 @@ export function startEngine(canvas, callbacks, options = {}) {
         const t = getTile(ch);
         if (t.cuttable || t.smashable) {
           setMutation(x, y, '.');
-          spawnDrop(x * TILE_SIZE + 8, y * TILE_SIZE + 8);
+          /* Vaso speciale 'q': droppa la chiave di casa */
+          if (ch === 'q' && !state.flags.house_key) {
+            spawnItem(x * TILE_SIZE + 8, y * TILE_SIZE + 8, 'house_key');
+          } else {
+            spawnDrop(x * TILE_SIZE + 8, y * TILE_SIZE + 8);
+          }
           SFX.hit();
+          any = true;
         }
       }
     }
+    return any;
+  }
+
+  function spawnItem(x, y, kind) {
+    entities.push({
+      type: 'item', kind, x, y, tx: 0, ty: 0,
+      hp: 0, maxHp: 0, dir: 'down', frame: 0, iframes: 0,
+      vx: 0, vy: 0, cooldown: 0, bobPhase: 0,
+    });
   }
 
   function tryLightTorch(p, dir) {
@@ -502,6 +537,30 @@ export function startEngine(canvas, callbacks, options = {}) {
     } else if (e.kind === 'key') {
       state.keys++;
       SFX.key();
+    } else if (e.kind === 'house_key') {
+      state.flags.house_key = true;
+      SFX.key();
+      /* Sblocca la porta di casa di Andryx nel villaggio:
+         '0' (TILE_HDOOR chiusa) → 'A' (TILE_HDOOR_OPEN aperta).
+         Anche eventuali porte 'D' generiche se presenti. */
+      if (state.zoneId === 'village') {
+        for (let y = 0; y < ZONE_H; y++) {
+          for (let x = 0; x < ZONE_W; x++) {
+            const ch = mutableMap[y][x];
+            if (ch === '0') setMutation(x, y, 'A');
+            else if (ch === 'D') setMutation(x, y, 'd');
+          }
+        }
+        SFX.door();
+        /* Forza il rispawn della spada ora che il requires e` soddisfatto */
+        const z = getZone(state.zoneId);
+        for (const ent of z.entities) {
+          if (ent.kind === 'sword' && evalRequires(ent.requires)) {
+            if (!entities.find(ex => ex.def === ent)) entities.push(instantiateEntity(ent));
+          }
+        }
+      }
+      openDialogById('house_key_pickup');
     } else if (e.kind === 'bomb') {
       state.bombs++;
       SFX.pickup();
@@ -821,19 +880,38 @@ export function startEngine(canvas, callbacks, options = {}) {
     const d = dialogState;
     const line = d.lines[d.lineIdx] || '';
     if (d.charIdx < line.length) {
-      d.charIdx = Math.min(line.length, d.charIdx + TEXT_SPEED);
+      /* Pause naturali su punteggiatura */
+      const nextChar = line.charAt(Math.floor(d.charIdx));
+      const pause = (nextChar === '.' || nextChar === '!' || nextChar === '?') ? 0.45
+                  : (nextChar === ',' || nextChar === ';') ? 0.7
+                  : 1;
+      d.charIdx = Math.min(line.length, d.charIdx + TEXT_SPEED * pause);
       if (Math.floor(d.charIdx) % 3 === 0) SFX.text();
+      if (d.charIdx >= line.length) {
+        d.completedAt = tickCount;       // cooldown anti-skip
+      }
     }
-    if (readAction()) {
+    /* Permetti di accelerare il typewriter (porta charIdx a fine riga)
+       solo all'edge della pressione, non in continuo. */
+    const pressed = consumeAction();
+    if (pressed) {
       if (d.charIdx < line.length) {
         d.charIdx = line.length;
-      } else if (d.lineIdx < d.lines.length - 1) {
-        d.lineIdx++;
-        d.charIdx = 0;
+        d.completedAt = tickCount;
       } else {
-        /* Fine dialogo */
-        applyDialogComplete(d);
-        dialogState = null;
+        /* Cooldown: almeno 8 frame da quando il typewriter ha finito,
+           cosi` se rilasci e ripremi non skippi una riga involontariamente. */
+        const ready = (tickCount - (d.completedAt || 0)) >= 8;
+        if (!ready) return;
+        if (d.lineIdx < d.lines.length - 1) {
+          d.lineIdx++;
+          d.charIdx = 0;
+          d.completedAt = 0;
+        } else {
+          /* Fine dialogo */
+          applyDialogComplete(d);
+          dialogState = null;
+        }
       }
     }
   }
@@ -907,7 +985,7 @@ export function startEngine(canvas, callbacks, options = {}) {
         if (e.kind === 'shadow_king') sp = SPRITES.BOSS_SHADOW_KING;
       } else if (e.type === 'item') {
         const map = {
-          heart: 'ITEM_HEART', rupee: 'ITEM_RUPEE', key: 'ITEM_KEY',
+          heart: 'ITEM_HEART', rupee: 'ITEM_RUPEE', key: 'ITEM_KEY', house_key: 'ITEM_HOUSE_KEY',
           bomb: 'ITEM_BOMB', potion: 'ITEM_POTION',
           sword: 'ITEM_SWORD', shield: 'ITEM_SHIELD',
           heart_container: 'ITEM_HEART_CONTAINER',
@@ -1147,8 +1225,10 @@ export function startEngine(canvas, callbacks, options = {}) {
       ctx.fillText(next, textX, boxY + 38 + i * 16);
     }
 
-    /* Indicatore "premi azione" lampeggiante */
-    if (dialogState.charIdx >= line.length) {
+    /* Indicatore "premi azione" lampeggiante (solo dopo cooldown anti-skip) */
+    const ready = dialogState.charIdx >= line.length &&
+                  (tickCount - (dialogState.completedAt || 0)) >= 8;
+    if (ready) {
       const pulse = Math.sin(tickCount * 0.2);
       if (pulse > 0) {
         ctx.fillStyle = '#f0c850';
@@ -1185,6 +1265,7 @@ export function startEngine(canvas, callbacks, options = {}) {
   /* ─── Loop ─── */
   function update() {
     tickCount++;
+    refreshActionEdge();
     if (gameOverRef.gameOver || winRef.win) return;
     if (dialogState) {
       updateDialog();
