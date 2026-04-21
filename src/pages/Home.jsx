@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Twitch, Sparkles, Zap, Brain } from 'lucide-react';
+import { Twitch, Sparkles, Zap, Brain, Gamepad2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SocialHub from '../components/SocialHub';
 import PodcastPromo from '../components/PodcastPromo';
@@ -46,16 +46,26 @@ export default function Home() {
       />
       {/* ── Hero ── */}
       <section className="header" style={{ paddingTop: '1.5rem', paddingBottom: '0.5rem' }}>
-        <motion.div {...su(0.05)} style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.9rem' }}>
+
+        {/* Avatar con alone luminoso rotante */}
+        <motion.div {...su(0)} style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.1rem' }}>
+          <div className="profile-img-container">
+            <img src="/logo.png" alt="ANDRYXify" className="profile-img" loading="eager" />
+          </div>
+        </motion.div>
+
+        {/* Firma / Wordmark */}
+        <motion.div {...su(0.08)} style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.6rem' }}>
           <img
             src="/Firma_Andryx.png"
             alt="ANDRYXify"
             className="logo-hero-flotta"
             loading="eager"
-            style={{ height: 'clamp(60px, 14vw, 110px)', width: 'auto', objectFit: 'contain' }}
+            style={{ height: 'clamp(38px, 9vw, 68px)', width: 'auto', objectFit: 'contain' }}
           />
         </motion.div>
-        <motion.p className="subtitle" {...su(0.15)}>
+
+        <motion.p className="subtitle" {...su(0.16)}>
           Esplorando il confine tra{' '}
           <span style={{ color: 'var(--primary)',   fontWeight: 600 }}>Umanità</span>,{' '}
           <span style={{ color: 'var(--secondary)', fontWeight: 600 }}>Intelligenza Artificiale</span>{' '}
@@ -63,7 +73,7 @@ export default function Home() {
         </motion.p>
 
         {/* Tagline chips */}
-        <motion.div {...su(0.22)} style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', marginTop: '1.2rem', flexWrap: 'wrap' }}>
+        <motion.div {...su(0.24)} style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', marginTop: '1.1rem', flexWrap: 'wrap' }}>
           {[
             { icon: <Sparkles size={14} />, label: 'Content Creator', color: 'var(--primary)', bg: 'rgba(224,64,251,0.12)', border: 'rgba(224,64,251,0.20)' },
             { icon: <Brain size={14} />,    label: 'AI Explorer',     color: 'var(--secondary)', bg: 'rgba(0,229,255,0.12)', border: 'rgba(0,229,255,0.20)' },
@@ -86,6 +96,25 @@ export default function Home() {
               {t.icon} {t.label}
             </motion.span>
           ))}
+        </motion.div>
+
+        {/* CTA principali */}
+        <motion.div
+          {...su(0.32)}
+          style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', marginTop: '1.6rem', flexWrap: 'wrap' }}
+        >
+          {liveState > 0 ? (
+            <Link to="/twitch" className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #9146FF, #6441a5)' }}>
+              <Twitch size={15} /> Guarda la LIVE
+            </Link>
+          ) : (
+            <a href="https://twitch.tv/andryxify" target="_blank" rel="noreferrer" className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #9146FF, #6441a5)' }}>
+              <Twitch size={15} /> Seguimi su Twitch
+            </a>
+          )}
+          <Link to="/gioco" className="btn btn-ghost">
+            <Gamepad2 size={15} /> Gioca ora
+          </Link>
         </motion.div>
       </section>
 
