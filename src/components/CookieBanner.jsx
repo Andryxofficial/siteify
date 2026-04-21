@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cookie, X, Check } from 'lucide-react';
+import { useLingua } from '../contexts/LinguaContext';
 
 const CHIAVE_STORAGE = 'andryx_cookie_consent';
 // Ritardo prima della comparsa: lascia caricare la pagina senza interferire
@@ -14,6 +15,7 @@ const RITARDO_BANNER_MS = 1400;
 
 export default function CookieBanner() {
   const [visibile, setVisibile] = useState(false);
+  const { t } = useLingua();
 
   useEffect(() => {
     const consenso = localStorage.getItem(CHIAVE_STORAGE);
@@ -35,7 +37,7 @@ export default function CookieBanner() {
         <motion.div
           className="cookie-banner"
           role="dialog"
-          aria-label="Consenso cookie"
+          aria-label={t('cookie.aria.banner')}
           aria-modal="false"
           initial={{ opacity: 0, x: -24, y: 16 }}
           animate={{ opacity: 1, x: 0, y: 0 }}
@@ -49,21 +51,20 @@ export default function CookieBanner() {
             <span className="cookie-icona" aria-hidden="true">
               <Cookie size={15} />
             </span>
-            <span className="cookie-titolo">Cookie & Privacy</span>
+            <span className="cookie-titolo">{t('cookie.titolo')}</span>
             <button
               className="cookie-chiudi"
               onClick={() => chiudi('rifiutato')}
-              aria-label="Chiudi banner cookie"
+              aria-label={t('cookie.aria.chiudi')}
             >
               <X size={11} />
             </button>
           </div>
 
           <p className="cookie-testo">
-            Usiamo cookie tecnici essenziali per far funzionare il sito.
-            Nessun dato venduto a terzi.{' '}
+            {t('cookie.testo')}{' '}
             <a href="/privacy" style={{ color: 'var(--secondary)', opacity: 0.8, fontSize: 'inherit' }}>
-              Maggiori info
+              {t('cookie.maggiori')}
             </a>
           </p>
 
@@ -72,13 +73,13 @@ export default function CookieBanner() {
               className="cookie-btn cookie-btn-rifiuta"
               onClick={() => chiudi('rifiutato')}
             >
-              Rifiuta
+              {t('cookie.rifiuta')}
             </button>
             <button
               className="cookie-btn cookie-btn-accetta"
               onClick={() => chiudi('accettato')}
             >
-              <Check size={11} /> Accetta
+              <Check size={11} /> {t('cookie.accetta')}
             </button>
           </div>
         </motion.div>

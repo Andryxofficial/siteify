@@ -7,6 +7,7 @@ import { TwitchAuthProvider } from './contexts/TwitchAuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { TemaProvider } from './contexts/TemaContext';
 import { RetiProvider } from './contexts/RetiContext';
+import { LinguaProvider, useLingua } from './contexts/LinguaContext';
 import Navbar from './components/Navbar';
 import SchermataCampione from './components/SchermataCampione';
 import Footer from './components/Footer';
@@ -51,27 +52,33 @@ class ErrorBoundary extends Component {
 
   render() {
     if (this.state.errore) {
-      return (
-        <div style={{
-          textAlign: 'center', padding: '3rem 1rem', minHeight: '60vh',
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          justifyContent: 'center', gap: '1rem',
-        }}>
-          <span style={{ fontSize: '2.5rem' }}>⚠️</span>
-          <h2 style={{ color: '#f87171', margin: 0 }}>Qualcosa è andato storto</h2>
-          <p style={{ color: 'var(--text-muted)', maxWidth: 420, lineHeight: 1.5 }}>
-            {this.state.errore.message || 'Errore inaspettato. Ricarica la pagina per riprovare.'}
-          </p>
-          <button
-            className="btn btn-primary"
-            onClick={() => window.location.reload()}>
-            Ricarica la pagina
-          </button>
-        </div>
-      );
+      return <ErrorFallback messaggio={this.state.errore.message} />;
     }
     return this.props.children;
   }
+}
+
+/* Fallback tradotto per l'ErrorBoundary — hook useLingua richiede un componente funzionale */
+function ErrorFallback({ messaggio }) {
+  const { t } = useLingua();
+  return (
+    <div style={{
+      textAlign: 'center', padding: '3rem 1rem', minHeight: '60vh',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      justifyContent: 'center', gap: '1rem',
+    }}>
+      <span style={{ fontSize: '2.5rem' }}>⚠️</span>
+      <h2 style={{ color: '#f87171', margin: 0 }}>{t('errore.titolo')}</h2>
+      <p style={{ color: 'var(--text-muted)', maxWidth: 420, lineHeight: 1.5 }}>
+        {messaggio || t('errore.generico')}
+      </p>
+      <button
+        className="btn btn-primary"
+        onClick={() => window.location.reload()}>
+        {t('errore.ricarica')}
+      </button>
+    </div>
+  );
 }
 
 // Skeleton minimo di fallback per Suspense
@@ -180,20 +187,22 @@ function App() {
   return (
     <Router>
       <TemaProvider>
-        <RetiProvider>
-          <TwitchAuthProvider>
-            <ToastProvider>
-              <TwitchOAuthRedirect />
-              {/* Layout overlay — no navbar/footer, sfondo trasparente */}
-              <Routes>
-                <Route path="/overlay/goals"  element={<Suspense fallback={null}><GoalsOverlay /></Suspense>} />
-                <Route path="/overlay/events" element={<Suspense fallback={null}><EventsOverlay /></Suspense>} />
-                <Route path="/overlay/alerts" element={<Suspense fallback={null}><AlertsOverlay /></Suspense>} />
-                <Route path="*" element={<AppLayout />} />
-              </Routes>
-            </ToastProvider>
-          </TwitchAuthProvider>
-        </RetiProvider>
+        <LinguaProvider>
+          <RetiProvider>
+            <TwitchAuthProvider>
+              <ToastProvider>
+                <TwitchOAuthRedirect />
+                {/* Layout overlay — no navbar/footer, sfondo trasparente */}
+                <Routes>
+                  <Route path="/overlay/goals"  element={<Suspense fallback={null}><GoalsOverlay /></Suspense>} />
+                  <Route path="/overlay/events" element={<Suspense fallback={null}><EventsOverlay /></Suspense>} />
+                  <Route path="/overlay/alerts" element={<Suspense fallback={null}><AlertsOverlay /></Suspense>} />
+                  <Route path="*" element={<AppLayout />} />
+                </Routes>
+              </ToastProvider>
+            </TwitchAuthProvider>
+          </RetiProvider>
+        </LinguaProvider>
       </TemaProvider>
       <Analytics />
       <SpeedInsights />

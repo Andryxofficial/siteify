@@ -10,6 +10,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw } from 'lucide-react';
+import { useLingua } from '../contexts/LinguaContext';
 
 // Dopo questo tempo dalla comparsa del toast, l'update viene applicato
 // automaticamente anche se la tab resta in primo piano.
@@ -19,6 +20,7 @@ export default function UpdateToast() {
   const [show, setShow] = useState(false);
   const [registration, setRegistration] = useState(null);
   const autoApplyTimerRef = useRef(null);
+  const { t } = useLingua();
 
   useEffect(() => {
     const handler = (e) => {
@@ -101,10 +103,10 @@ export default function UpdateToast() {
           transition={{ type: 'spring', stiffness: 300, damping: 28 }}
           onClick={applyUpdate}
           className="update-toast"
-          aria-label="Aggiorna alla nuova versione"
+          aria-label={t('update.aria.aggiorna')}
         >
           <RefreshCw size={15} className="update-toast-icon" />
-          <span>Nuova versione disponibile — tocca per aggiornare</span>
+          <span>{t('update.messaggio')}</span>
         </motion.button>
       )}
     </AnimatePresence>
