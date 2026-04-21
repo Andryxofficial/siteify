@@ -173,7 +173,10 @@ body::before {
   margin: 0 auto;
   padding: 2.5rem;
   position: relative;
-  overflow: hidden;
+  /* overflow: hidden rimosso — causava il clipping di dropdown/popover
+     posizionati assolutamente (EmotePicker, game search, ecc.) dentro la card.
+     border-radius clipa già il background senza bisogno di overflow:hidden. */
+  overflow: visible;
   transition: box-shadow .35s var(--ease-vetro), border-color .35s var(--ease-vetro);
   contain: style;
 }
@@ -213,7 +216,8 @@ body::before {
   box-shadow: var(--vetro-ombra-leggera);
   transition: transform .3s var(--ease-spring), box-shadow .3s var(--ease-vetro),
               border-color .3s var(--ease-vetro);
-  overflow: hidden;
+  /* overflow: hidden rimosso — causava il clipping di dropdown/popover assoluti */
+  overflow: visible;
   position: relative;
   contain: style;
 }
@@ -4938,8 +4942,12 @@ img.msg-avatar {
 /* ── Layout shell ── */
 .mod-panel-shell {
   width: 100%;
+  /* Layout a colonna per header + griglia layout */
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
   /* Impedisce qualsiasi overflow orizzontale causato da figli */
-  overflow-x: hidden;
+  overflow-x: clip;
   box-sizing: border-box;
 }
 
@@ -5309,6 +5317,14 @@ img.msg-avatar {
   .mod-mobile-tab {
     padding: 0.5rem 0.75rem;
     font-size: 0.75rem;
+  }
+}
+
+/* Fascia 641-700px: navbar desktop ancora visibile ma layout mod già in colonna.
+   Le tab sticky devono restare sotto la navbar (90px padding-top dell'app-container). */
+@media (min-width: 641px) and (max-width: 700px) {
+  .mod-mobile-tabs {
+    top: 90px;
   }
 }
 

@@ -412,7 +412,7 @@ export default function ModPanel() {
     : [];
 
   return (
-    <main className="main-content mod-panel-shell" style={{ maxWidth: 1080, margin: '0 auto', padding: '0 0 4rem', width: '100%', boxSizing: 'border-box' }}>
+    <main className="mod-panel-shell" style={{ maxWidth: 1080, margin: '0 auto', padding: '0 0 4rem', width: '100%', boxSizing: 'border-box' }}>
       <SEO title="Pannello Mod" noindex />
 
       {/* ─── Header magico ─── */}
@@ -420,7 +420,6 @@ export default function ModPanel() {
         initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 240, damping: 22 }}
         className="mod-panel-header glass-card"
-        style={{ marginBottom: '1rem' }}
       >
         <div className="mod-panel-header-row">
           {twitchAvatar && (
