@@ -15,13 +15,14 @@
  * ad ogni RAF (interpolazione visiva non necessaria a queste velocita`).
  */
 
-import { SPRITES, getPlayerSprite, drawSpriteScaled, preloadSprites } from './sprites.js';
-import { TILE_SIZE, TILES, getTile, getTileSprite } from './tiles.js';
+import { SPRITES, drawSpriteScaled, preloadSprites } from './sprites.js';
+import { TILE_SIZE, getTile } from './tiles.js';
 import { getZone, cloneZoneMap, ZONE_W, ZONE_H } from './world.js';
 import { getDialog, selectNpcDialog, calculateFinalScore } from './dialog.js';
 import { SFX, playMusic, stopMusic, ensureAudio } from './audio.js';
 import { C } from './palette.js';
 import { getLegendSign, getLegendZoneName, getLegendEngineText } from './i18n.js';
+import { Renderer2D } from './renderer2d.js';
 
 const SCALE = 2;
 const VIEW_TILES = 15;            // 15×15 tile visibili
@@ -85,8 +86,14 @@ function makeInitialState(savedData) {
 export function startEngine(canvas, callbacks, options = {}) {
   preloadSprites();
 
-  const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
+  /* ─── Renderer 2D pixel-art ispirato a The Minish Cap ───
+     Disegna su `canvas` con un backing buffer scalato per devicePixelRatio.
+     L'HUD viene disegnato sullo STESSO canvas, in cima al mondo, con il
+     ctx lasciato dal renderer in stato "DPR-scaled" (coord 480x480 logiche). */
+  const renderer2d = new Renderer2D(canvas);
+  const ctx = renderer2d.ctx;
+  /* Il renderer reimposta la trasformazione ad ogni render(); per le routine
+     HUD chiamate dopo render() siamo gia` in scala DPR sulle coord 480x480. */
 
   const state = makeInitialState(options.savedData);
   let mutableMap = cloneZoneMap(state.zoneId);
@@ -122,6 +129,8 @@ export function startEngine(canvas, callbacks, options = {}) {
     playMusic(z.music);
     dialogState = null;
     callbacks.onInfo?.(`📍 ${getLegendZoneName(z.id) || z.name}`);
+    /* Aggiorna il renderer 2D per la nuova zona */
+    renderer2d.setZone(state.zoneId, mutableMap);
   }
 
   function applyMutations(zoneId) {
@@ -136,6 +145,8 @@ export function startEngine(canvas, callbacks, options = {}) {
     if (!state.mapMutations[state.zoneId]) state.mapMutations[state.zoneId] = {};
     state.mapMutations[state.zoneId][`${x},${y}`] = ch;
     if (mutableMap[y]) mutableMap[y][x] = ch;
+    /* Aggiorna il singolo tile nel renderer 2D */
+    renderer2d.updateMapTile(x, y, ch);
   }
 
   function evalRequires(req) {
@@ -319,7 +330,8 @@ export function startEngine(canvas, callbacks, options = {}) {
                 e.vx = (dx / m) * KNOCKBACK;
                 e.vy = (dy / m) * KNOCKBACK;
                 if (e.type === 'boss') SFX.bossHit(); else SFX.enemyHit();
-                if (e.hp <= 0) onEnemyDeath(e);
+                if (e.type === 'boss') renderer2d.shake?.(0.5);
+                if (e.hp <= 0) { onEnemyDeath(e); renderer2d.shake?.(0.4); }
               }
             }
           }
@@ -387,8 +399,10 @@ export function startEngine(canvas, callbacks, options = {}) {
     p.hp -= dmg;
     p.iframes = IFRAMES;
     SFX.hit();
+    renderer2d.shake?.(0.55);
     if (p.hp <= 0) {
       p.hp = 0;
+      renderer2d.fadeOut?.();
       onGameOver();
     }
     callbacks.onHpChange?.(p.hp, p.maxHp);
@@ -936,173 +950,53 @@ export function startEngine(canvas, callbacks, options = {}) {
     }
   }
 
-  /* ─── Render ─── */
-  function clear() {
-    ctx.fillStyle = '#0a0e17';
-    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-  }
-
-  function renderTiles() {
-    /* Disegna solo i tile visibili attorno alla camera */
-    const x0 = Math.max(0, Math.floor(camera.x / TILE_SIZE));
-    const y0 = Math.max(0, Math.floor(camera.y / TILE_SIZE));
-    const x1 = Math.min(ZONE_W - 1, x0 + VIEW_TILES + 1);
-    const y1 = Math.min(ZONE_H - 1, y0 + VIEW_TILES + 1);
-    for (let y = y0; y <= y1; y++) {
-      for (let x = x0; x <= x1; x++) {
-        const ch = mutableMap[y][x];
-        const t = getTile(ch);
-        const sp = getTileSprite(t, tickCount);
-        if (sp) {
-          /* Erba di base sotto agli oggetti */
-          if (t.layer === 'object') {
-            const grass = getTileSprite(getTile('.'), tickCount);
-            blit(grass, x * TILE_SIZE, y * TILE_SIZE);
-          }
-          blit(sp, x * TILE_SIZE, y * TILE_SIZE);
-        }
-      }
-    }
-  }
-
-  /** Disegna uno sprite a coordinate logiche, applicando camera + scale. */
-  function blit(sprite, lx, ly) {
-    const sx = (lx - camera.x) * SCALE;
-    const sy = (ly - camera.y) * SCALE;
-    if (sx < -32 * SCALE || sy < -32 * SCALE || sx > CANVAS_SIZE || sy > CANVAS_SIZE) return;
-    drawSpriteScaled(ctx, sprite, sx, sy, sprite.w * SCALE, sprite.h * SCALE);
-  }
-
-  function renderEntities() {
-    /* Ordina per Y per profondità */
-    const sorted = [...entities].sort((a, b) => a.y - b.y);
-    for (const e of sorted) {
-      if (e.dead) continue;
-      let sp = null;
-      let offsetY = 0;
-      if (e.type === 'enemy') {
-        if (e.kind === 'slime')    sp = e.frame < 1 ? SPRITES.ENEMY_SLIME_0    : SPRITES.ENEMY_SLIME_1;
-        if (e.kind === 'bat')      sp = e.frame < 1 ? SPRITES.ENEMY_BAT_0      : SPRITES.ENEMY_BAT_1;
-        if (e.kind === 'skeleton') sp = e.frame < 1 ? SPRITES.ENEMY_SKELETON_0 : SPRITES.ENEMY_SKELETON_1;
-        if (e.kind === 'mage')     sp = SPRITES.ENEMY_MAGE_0;
-      } else if (e.type === 'boss') {
-        if (e.kind === 'guardian')    sp = SPRITES.BOSS_GUARDIAN;
-        if (e.kind === 'shadow_king') sp = SPRITES.BOSS_SHADOW_KING;
-      } else if (e.type === 'item') {
-        const map = {
-          heart: 'ITEM_HEART', rupee: 'ITEM_RUPEE', key: 'ITEM_KEY', house_key: 'ITEM_HOUSE_KEY',
-          bomb: 'ITEM_BOMB', potion: 'ITEM_POTION',
-          sword: 'ITEM_SWORD', shield: 'ITEM_SHIELD',
-          heart_container: 'ITEM_HEART_CONTAINER',
-          crystal_green: 'ITEM_CRYSTAL_GREEN',
-          crystal_blue: 'ITEM_CRYSTAL_BLUE',
-          crystal_red: 'ITEM_CRYSTAL_RED',
-        };
-        sp = SPRITES[map[e.kind]];
-        offsetY = Math.sin((tickCount + e.bobPhase * 60) * 0.08) * 1.5;
-      } else if (e.type === 'npc') {
-        const map = { king: 'NPC_KING', elder: 'NPC_ELDER', merchant: 'NPC_MERCHANT', child: 'NPC_CHILD' };
-        sp = SPRITES[map[e.kind]];
-      } else if (e.type === 'projectile') {
-        /* Disegnato come cerchio luminoso */
-        const sx = (e.x - camera.x) * SCALE;
-        const sy = (e.y - camera.y) * SCALE;
-        ctx.fillStyle = e.col;
-        ctx.beginPath();
-        ctx.arc(sx, sy, 4 * SCALE, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowColor = e.col;
-        ctx.shadowBlur = 8;
-        ctx.beginPath();
-        ctx.arc(sx, sy, 2 * SCALE, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        continue;
-      } else if (e.type === 'sign') {
-        /* Cartello: piccolo blocco marrone con punto giallo */
-        const sx = (e.x - camera.x - 6) * SCALE;
-        const sy = (e.y - camera.y - 6) * SCALE;
-        ctx.fillStyle = '#7a4a25';
-        ctx.fillRect(sx, sy, 12 * SCALE, 12 * SCALE);
-        ctx.fillStyle = '#f0c850';
-        ctx.fillRect(sx + 4 * SCALE, sy + 3 * SCALE, 4 * SCALE, 6 * SCALE);
-        continue;
-      }
-      if (!sp) continue;
-      /* Centra sprite sul punto x,y dell'entita` */
-      const drawX = e.x - sp.w / 2;
-      const drawY = e.y - sp.h / 2 + offsetY;
-      /* Lampeggio se iframes */
-      if (e.iframes && Math.floor(e.iframes / 3) % 2 === 0) continue;
-      blit(sp, drawX, drawY);
-    }
-  }
-
-  function renderPlayer() {
-    const p = state.player;
-    /* Lampeggio se iframes */
-    if (p.iframes && Math.floor(p.iframes / 4) % 2 === 0) return;
-    const sp = getPlayerSprite(p.dir, p.frame >= 1, !!attackState);
-    blit(sp, p.x - sp.w / 2, p.y - sp.h / 2);
-  }
-
-  function renderParticles() {
-    for (const pa of particles) {
-      const sx = (pa.x - camera.x) * SCALE;
-      const sy = (pa.y - camera.y) * SCALE;
-      ctx.fillStyle = pa.col;
-      ctx.globalAlpha = pa.life / pa.maxLife;
-      ctx.fillRect(sx, sy, 2 * SCALE, 2 * SCALE);
-    }
-    ctx.globalAlpha = 1;
-  }
+  /* ─── Render ───
+   * Tile/entita`/player/particelle sono renderizzati dal Renderer2D pixel-art.
+   * L'HUD/dialog/overlay vengono disegnati sullo STESSO canvas dopo il
+   * rendering del mondo, riutilizzando lo stesso `ctx` (nessun canvas overlay).
+   */
 
   function renderHud() {
-    /* Cuori in alto a sinistra */
+    /* HUD-ALL pannello superiore: bar oro Minish-style con cuori, contatori e cristalli */
+    const barH = 38;
+    /* Bar gradient */
+    const barGrad = ctx.createLinearGradient(0, 0, 0, barH);
+    barGrad.addColorStop(0, 'rgba(20,28,72,0.85)');
+    barGrad.addColorStop(1, 'rgba(8,12,40,0.85)');
+    ctx.fillStyle = barGrad;
+    ctx.fillRect(0, 0, CANVAS_SIZE, barH);
+    /* Bordo basso oro */
+    ctx.fillStyle = '#f0c850';
+    ctx.fillRect(0, barH - 2, CANVAS_SIZE, 2);
+    ctx.fillStyle = 'rgba(240,200,80,0.45)';
+    ctx.fillRect(0, barH, CANVAS_SIZE, 1);
+
+    /* Cuori in alto a sinistra (grandi) */
     const fullHearts = Math.floor(state.player.hp / 2);
     const halfHeart  = state.player.hp % 2 === 1;
     const totalHearts = Math.ceil(state.player.maxHp / 2);
-    const heartSize = 16;
+    const heartSize = 26;
     const padding = 8;
     for (let i = 0; i < totalHearts; i++) {
       const x = padding + i * (heartSize + 2);
-      const y = padding;
+      const y = (barH - heartSize) / 2;
       if (i < fullHearts) {
         drawSpriteScaled(ctx, SPRITES.ITEM_HEART, x, y, heartSize, heartSize);
       } else if (i === fullHearts && halfHeart) {
-        /* Mezzo cuore: clip a meta` */
         ctx.save();
         ctx.beginPath();
         ctx.rect(x, y, heartSize / 2, heartSize);
         ctx.clip();
         drawSpriteScaled(ctx, SPRITES.ITEM_HEART, x, y, heartSize, heartSize);
         ctx.restore();
-        ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-        ctx.strokeRect(x, y, heartSize, heartSize);
-      } else {
-        /* Cuore vuoto: outline */
-        ctx.strokeStyle = 'rgba(255,80,80,0.4)';
+        ctx.strokeStyle = 'rgba(255,80,80,0.7)';
         ctx.lineWidth = 1;
         ctx.strokeRect(x + 2, y + 2, heartSize - 4, heartSize - 4);
+      } else {
+        ctx.strokeStyle = 'rgba(255,80,80,0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x + 3, y + 3, heartSize - 6, heartSize - 6);
       }
-    }
-
-    /* Rupie in alto a destra */
-    const text = `\u2666 ${state.rupees}`;
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 12px monospace';
-    ctx.textAlign = 'right';
-    ctx.shadowColor = 'rgba(0,0,0,0.6)';
-    ctx.shadowBlur = 3;
-    ctx.fillText(text, CANVAS_SIZE - padding, padding + 12);
-
-    /* Chiavi/bombe */
-    let yIcon = padding + 26;
-    if (state.keys > 0) {
-      drawSpriteScaled(ctx, SPRITES.ITEM_KEY, CANVAS_SIZE - padding - 50, yIcon, 16, 16);
-      ctx.fillText(`x${state.keys}`, CANVAS_SIZE - padding, yIcon + 12);
-      yIcon += 18;
     }
 
     /* Indicatore cristalli (in alto centro) */
@@ -1111,19 +1005,40 @@ export function startEngine(canvas, callbacks, options = {}) {
       { flag: 'has_crystal_blue',  sprite: 'ITEM_CRYSTAL_BLUE'  },
       { flag: 'has_crystal_red',   sprite: 'ITEM_CRYSTAL_RED'   },
     ];
-    const cSize = 14;
-    const cPad = 2;
+    const cSize = 24;
+    const cPad = 4;
     const cTotal = crystals.length * (cSize + cPad);
     const cStartX = (CANVAS_SIZE - cTotal) / 2;
     for (let i = 0; i < crystals.length; i++) {
       const cx = cStartX + i * (cSize + cPad);
-      const cy = padding;
+      const cy = (barH - cSize) / 2;
       if (state.flags[crystals[i].flag]) {
         drawSpriteScaled(ctx, SPRITES[crystals[i].sprite], cx, cy, cSize, cSize);
       } else {
-        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-        ctx.strokeRect(cx + 2, cy + 2, cSize - 4, cSize - 4);
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(cx + 4, cy + 4, cSize - 8, cSize - 8);
       }
+    }
+
+    /* Rupie in alto a destra (grandi) */
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 4;
+    drawSpriteScaled(ctx, SPRITES.ITEM_RUPEE,
+                     CANVAS_SIZE - padding - 80, (barH - 22) / 2, 22, 22);
+    ctx.fillStyle = '#fff5b0';
+    ctx.font = 'bold 22px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${state.rupees}`, CANVAS_SIZE - padding, barH / 2 + 8);
+
+    /* Chiavi (riga sotto la bar, sinistra) */
+    if (state.keys > 0) {
+      const ky = barH + 4;
+      drawSpriteScaled(ctx, SPRITES.ITEM_KEY, padding, ky, 22, 22);
+      ctx.fillStyle = '#fff5b0';
+      ctx.font = 'bold 18px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`x${state.keys}`, padding + 26, ky + 17);
     }
 
     /* Mini-mappa in basso a destra */
@@ -1135,111 +1050,211 @@ export function startEngine(canvas, callbacks, options = {}) {
   }
 
   function renderMiniMap() {
-    const mmSize = 60;
-    const mmX = CANVAS_SIZE - mmSize - 8;
-    const mmY = CANVAS_SIZE - mmSize - 8;
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    const mmSize = 130;
+    const mmX = CANVAS_SIZE - mmSize - 10;
+    const mmY = CANVAS_SIZE - mmSize - 14;
+
+    /* Etichetta zona sopra */
+    const z = getZone(state.zoneId);
+    ctx.shadowColor = 'rgba(0,0,0,0.95)';
+    ctx.shadowBlur = 4;
+    ctx.fillStyle = '#fff5b0';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(z.name, mmX + mmSize / 2, mmY - 6);
+    ctx.shadowBlur = 0;
+
+    /* Pannello sfondo + doppio bordo oro Minish */
+    ctx.fillStyle = 'rgba(8,12,40,0.78)';
     ctx.fillRect(mmX, mmY, mmSize, mmSize);
-    ctx.strokeStyle = 'rgba(240,200,80,0.6)';
-    ctx.strokeRect(mmX, mmY, mmSize, mmSize);
+    ctx.strokeStyle = '#f0c850';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(mmX + 1.5, mmY + 1.5, mmSize - 3, mmSize - 3);
+    ctx.strokeStyle = 'rgba(240,200,80,0.55)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(mmX + 5, mmY + 5, mmSize - 10, mmSize - 10);
+
     /* Tile colorati */
-    const sx = mmSize / ZONE_W;
-    const sy = mmSize / ZONE_H;
+    const sx = (mmSize - 10) / ZONE_W;
+    const sy = (mmSize - 10) / ZONE_H;
+    const ox = mmX + 5;
+    const oy = mmY + 5;
     for (let y = 0; y < ZONE_H; y++) {
+      const row = mutableMap[y];
+      if (!row) continue;
       for (let x = 0; x < ZONE_W; x++) {
-        const ch = mutableMap[y][x];
+        const ch = row[x];
         const t = getTile(ch);
         let col = null;
-        if (t.solid) col = '#222';
-        if (t.id === '.' || t.id === ',' || t.id === '_') col = '#3a8c3a';
+        if (t.solid) col = '#3a3a48';
+        if (t.id === '.' || t.id === ',' || t.id === '_') col = '#5fb33a';
         if (t.id === '~') col = '#3a72c8';
-        if (t.id === 'F') col = '#888';
-        if (t.id === '*') col = '#b870d0';
-        if (t.id === 'L') col = '#d23a3a';
+        if (t.id === 'F') col = '#9090a0';
+        if (t.id === '*') col = '#ff5af0';
+        if (t.id === 'L') col = '#e85030';
+        if (t.id === 'T') col = '#266b26';
+        if (t.id === '1' || t.id === '2' || t.id === '3') col = '#8e1818';
+        if (t.id === '7' || t.id === '8' || t.id === '9') col = '#e8d8b0';
         if (col) {
           ctx.fillStyle = col;
-          ctx.fillRect(mmX + x * sx, mmY + y * sy, sx + 0.5, sy + 0.5);
+          ctx.fillRect(ox + x * sx, oy + y * sy, sx + 0.5, sy + 0.5);
         }
       }
     }
-    /* Player */
+    /* Player con pulse */
+    const pulse = 0.7 + Math.sin(tickCount * 0.18) * 0.3;
     ctx.fillStyle = '#00f5d4';
-    const pmx = mmX + (state.player.x / TILE_SIZE) * sx;
-    const pmy = mmY + (state.player.y / TILE_SIZE) * sy;
-    ctx.fillRect(pmx - 1.5, pmy - 1.5, 3, 3);
+    const pmx = ox + (state.player.x / TILE_SIZE) * sx;
+    const pmy = oy + (state.player.y / TILE_SIZE) * sy;
+    const ps = 4 + pulse * 2;
+    ctx.fillRect(pmx - ps / 2, pmy - ps / 2, ps, ps);
     /* Nemici */
     ctx.fillStyle = '#ff4040';
     for (const e of entities) {
       if ((e.type === 'enemy' || e.type === 'boss') && e.hp > 0) {
-        const ex = mmX + (e.x / TILE_SIZE) * sx;
-        const ey = mmY + (e.y / TILE_SIZE) * sy;
-        ctx.fillRect(ex - 1, ey - 1, 2, 2);
+        const ex = ox + (e.x / TILE_SIZE) * sx;
+        const ey = oy + (e.y / TILE_SIZE) * sy;
+        const sz = e.type === 'boss' ? 6 : 3;
+        ctx.fillRect(ex - sz / 2, ey - sz / 2, sz, sz);
       }
     }
-    /* Etichetta zona */
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '9px monospace';
-    ctx.textAlign = 'center';
-    ctx.shadowColor = 'rgba(0,0,0,0.8)';
-    ctx.shadowBlur = 2;
-    const z = getZone(state.zoneId);
-    ctx.fillText(getLegendZoneName(z.id) || z.name, mmX + mmSize / 2, mmY - 3);
+    /* NPC dorati */
+    ctx.fillStyle = '#f0c850';
+    for (const e of entities) {
+      if (e.type === 'npc') {
+        const ex = ox + (e.x / TILE_SIZE) * sx;
+        const ey = oy + (e.y / TILE_SIZE) * sy;
+        ctx.fillRect(ex - 1.5, ey - 1.5, 3, 3);
+      }
+    }
     ctx.textAlign = 'left';
-    ctx.shadowBlur = 0;
+  }
+
+  /* Word-wrap helper: spezza `text` in righe che entrano in maxW. */
+  function wrapText(text, maxW, font) {
+    ctx.font = font;
+    const words = text.split(' ');
+    const lines = [];
+    let cur = '';
+    for (const w of words) {
+      const test = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(test).width > maxW && cur) {
+        lines.push(cur);
+        cur = w;
+      } else {
+        cur = test;
+      }
+    }
+    if (cur) lines.push(cur);
+    return lines;
   }
 
   function renderDialog() {
     if (!dialogState) return;
-    const boxH = 96;
-    const boxY = CANVAS_SIZE - boxH - 8;
-    const boxX = 8;
-    const boxW = CANVAS_SIZE - 16;
+    const boxH = 168;
+    const boxY = CANVAS_SIZE - boxH - 12;
+    const boxX = 12;
+    const boxW = CANVAS_SIZE - 24;
 
-    /* Pannello */
-    ctx.fillStyle = 'rgba(20,20,40,0.92)';
+    /* Pannello stile Minish Cap: ombra → fondo blu profondo → doppio bordo oro */
+    /* Ombra */
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(boxX + 5, boxY + 6, boxW, boxH);
+    /* Fondo a gradient */
+    const grad = ctx.createLinearGradient(0, boxY, 0, boxY + boxH);
+    grad.addColorStop(0, 'rgba(28,38,90,0.97)');
+    grad.addColorStop(1, 'rgba(10,14,40,0.97)');
+    ctx.fillStyle = grad;
     ctx.fillRect(boxX, boxY, boxW, boxH);
+    /* Bordo esterno oro spesso */
     ctx.strokeStyle = '#f0c850';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(boxX + 1.5, boxY + 1.5, boxW - 3, boxH - 3);
+    /* Bordo interno oro sottile */
+    ctx.strokeStyle = 'rgba(240,200,80,0.55)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(boxX + 7, boxY + 7, boxW - 14, boxH - 14);
+    /* Corner brackets stile Zelda */
+    ctx.strokeStyle = '#fff5b0';
     ctx.lineWidth = 2;
-    ctx.strokeRect(boxX, boxY, boxW, boxH);
+    const cb = 12;
+    ctx.beginPath(); ctx.moveTo(boxX + 4, boxY + 4 + cb); ctx.lineTo(boxX + 4, boxY + 4); ctx.lineTo(boxX + 4 + cb, boxY + 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(boxX + boxW - 4 - cb, boxY + 4); ctx.lineTo(boxX + boxW - 4, boxY + 4); ctx.lineTo(boxX + boxW - 4, boxY + 4 + cb); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(boxX + 4, boxY + boxH - 4 - cb); ctx.lineTo(boxX + 4, boxY + boxH - 4); ctx.lineTo(boxX + 4 + cb, boxY + boxH - 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(boxX + boxW - 4 - cb, boxY + boxH - 4); ctx.lineTo(boxX + boxW - 4, boxY + boxH - 4); ctx.lineTo(boxX + boxW - 4, boxY + boxH - 4 - cb); ctx.stroke();
 
     /* Ritratto NPC (se presente) */
-    let textX = boxX + 12;
+    let textX = boxX + 22;
     if (dialogState.portrait && SPRITES[dialogState.portrait]) {
-      drawSpriteScaled(ctx, SPRITES[dialogState.portrait], boxX + 8, boxY + 12, 64, 64);
-      textX = boxX + 80;
+      const portraitSize = 80;
+      const px = boxX + 14;
+      const py = boxY + 22;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(px, py, portraitSize, portraitSize);
+      ctx.strokeStyle = '#f0c850';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(px + 0.5, py + 0.5, portraitSize - 1, portraitSize - 1);
+      drawSpriteScaled(ctx, SPRITES[dialogState.portrait],
+                       px + 4, py + 4, portraitSize - 8, portraitSize - 8);
+      textX = px + portraitSize + 12;
     }
 
-    /* Speaker */
-    ctx.fillStyle = '#f0c850';
-    ctx.font = 'bold 12px monospace';
-    ctx.fillText(dialogState.speaker || '', textX, boxY + 16);
+    /* Speaker (giallo oro, sans bold grande) */
+    const speakerFont = 'bold 22px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
+    ctx.fillStyle = '#ffd86a';
+    ctx.font = speakerFont;
+    ctx.shadowColor = 'rgba(0,0,0,0.85)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(dialogState.speaker || '', textX, boxY + 34);
+    ctx.shadowBlur = 0;
 
-    /* Linea corrente con typewriter */
+    /* Linea corrente con typewriter + word-wrap */
+    const bodyFont = 'bold 20px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
+    const previewFont = '18px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
+    const maxTextW = boxX + boxW - textX - 18;
+
     const line = dialogState.lines[dialogState.lineIdx] || '';
     const visible = line.substring(0, Math.floor(dialogState.charIdx));
+    const wrapped = wrapText(visible, maxTextW, bodyFont);
+    ctx.font = bodyFont;
     ctx.fillStyle = '#ffffff';
-    ctx.font = '13px monospace';
-    /* Wrap manuale: line e` gia` corta, no wrap */
-    ctx.fillText(visible, textX, boxY + 38);
+    ctx.shadowColor = 'rgba(0,0,0,0.85)';
+    ctx.shadowBlur = 3;
+    let yCursor = boxY + 64;
+    for (const w of wrapped) {
+      ctx.fillText(w, textX, yCursor);
+      yCursor += 24;
+    }
+    ctx.shadowBlur = 0;
 
-    /* Linee successive (preview leggera) */
-    for (let i = 1; i < 3; i++) {
-      const next = dialogState.lines[dialogState.lineIdx + i];
-      if (!next) break;
-      ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      ctx.fillText(next, textX, boxY + 38 + i * 16);
+    /* Linea successiva (preview leggera) */
+    if (yCursor < boxY + boxH - 22) {
+      const next = dialogState.lines[dialogState.lineIdx + 1];
+      if (next) {
+        ctx.fillStyle = 'rgba(255,255,255,0.42)';
+        const wrappedNext = wrapText(next, maxTextW, previewFont);
+        ctx.font = previewFont;
+        for (const w of wrappedNext) {
+          if (yCursor >= boxY + boxH - 22) break;
+          ctx.fillText(w, textX, yCursor);
+          yCursor += 20;
+        }
+      }
     }
 
-    /* Indicatore "premi azione" lampeggiante (solo dopo cooldown anti-skip) */
+    /* Indicatore "premi azione" lampeggiante */
     const ready = dialogState.charIdx >= line.length &&
                   (tickCount - (dialogState.completedAt || 0)) >= 8;
     if (ready) {
       const pulse = Math.sin(tickCount * 0.2);
       if (pulse > 0) {
-        ctx.fillStyle = '#f0c850';
-        ctx.font = 'bold 11px monospace';
+        ctx.fillStyle = '#ffd86a';
+        ctx.font = 'bold 22px ui-sans-serif, system-ui, sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText('▼', boxX + boxW - 12, boxY + boxH - 8);
+        ctx.shadowColor = 'rgba(0,0,0,0.85)';
+        ctx.shadowBlur = 4;
+        ctx.fillText('▼', boxX + boxW - 18, boxY + boxH - 16);
+        ctx.shadowBlur = 0;
         ctx.textAlign = 'left';
       }
     }
@@ -1249,20 +1264,26 @@ export function startEngine(canvas, callbacks, options = {}) {
     if (gameOverRef.gameOver) {
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-      ctx.fillStyle = '#d23a3a';
-      ctx.font = 'bold 32px monospace';
+      ctx.fillStyle = '#ff5050';
+      ctx.font = 'bold 56px monospace';
       ctx.textAlign = 'center';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur = 8;
       ctx.fillText(getLegendEngineText('game_over') || 'SEI CADUTO', CANVAS_SIZE / 2, CANVAS_SIZE / 2);
+      ctx.shadowBlur = 0;
       ctx.textAlign = 'left';
     } else if (winRef.win) {
       ctx.fillStyle = 'rgba(240,200,80,0.4)';
       ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 28px monospace';
+      ctx.font = 'bold 48px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(getLegendEngineText('victory') || 'VITTORIA!', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 20);
-      ctx.font = 'bold 16px monospace';
-      ctx.fillText(getLegendEngineText('victory_sub') || 'Twitchia è salva', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 10);
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur = 8;
+      ctx.fillText(getLegendEngineText('victory') || 'VITTORIA!', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 30);
+      ctx.font = 'bold 22px monospace';
+      ctx.fillText(getLegendEngineText('victory_sub') || 'Twitchia è salva', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 16);
+      ctx.shadowBlur = 0;
       ctx.textAlign = 'left';
     }
   }
@@ -1296,12 +1317,16 @@ export function startEngine(canvas, callbacks, options = {}) {
   }
 
   function render() {
-    clear();
+    /* Aggiorna stato del renderer */
     updateCamera();
-    renderTiles();
-    renderEntities();
-    renderPlayer();
-    renderParticles();
+    renderer2d.setCamera(camera, state.player);
+    renderer2d.setPlayer(state.player, attackState);
+    renderer2d.setEntities(entities, tickCount);
+    renderer2d.setParticles(particles);
+    /* Render mondo (clear + scene). Lascia il ctx in scala DPR. */
+    renderer2d.render();
+
+    /* HUD / Dialog / Overlay disegnati sullo stesso canvas, sopra il mondo */
     renderHud();
     renderDialog();
     renderOverlay();
@@ -1333,6 +1358,7 @@ export function startEngine(canvas, callbacks, options = {}) {
       runningRef.running = false;
       cancelAnimationFrame(rafId);
       stopMusic();
+      try { renderer2d.dispose(); } catch { /* ignored */ }
     },
     getState() { return state; },
     pause() { pausedRef.paused = true; },
