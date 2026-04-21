@@ -21,6 +21,32 @@ const TwitchAuthContext = createContext(null);
  * Usa sempre /gioco come redirect_uri (l'unico URI registrato su Twitch).
  * Se `returnPath` è fornito, viene salvato in sessionStorage per il redirect post-login.
  */
+const OAUTH_SCOPES = [
+  'user:read:email',
+  'moderation:read',
+  'channel:manage:broadcast',
+  'channel:read:subscriptions',
+  'channel:read:vips',
+  'channel:manage:vips',
+  'channel:manage:moderators',
+  'channel:manage:polls',
+  'channel:manage:predictions',
+  'channel:manage:schedule',
+  'channel:manage:raids',
+  'channel:edit:commercial',
+  'channel:read:redemptions',
+  'channel:manage:redemptions',
+  'moderator:manage:banned_users',
+  'moderator:manage:chat_messages',
+  'moderator:manage:chat_settings',
+  'moderator:manage:automod',
+  'moderator:manage:shoutouts',
+  'moderator:read:followers',
+  // scope richiesti dal bot IRC (wss://irc-ws.chat.twitch.tv)
+  'chat:read',
+  'chat:edit',
+].join('+');
+
 function buildTwitchLoginUrl(returnPath) {
   const redirect    = window.location.origin + '/gioco';
   const desiredPath = returnPath || window.location.pathname;
@@ -30,7 +56,7 @@ function buildTwitchLoginUrl(returnPath) {
   return (
     `https://id.twitch.tv/oauth2/authorize?client_id=${CHIAVETWITCH}` +
     `&redirect_uri=${encodeURIComponent(redirect)}` +
-    `&response_type=token&scope=user:read:email+moderation:read+channel:manage:broadcast+channel:read:subscriptions+channel:read:vips+channel:manage:vips+channel:manage:moderators+channel:manage:polls+channel:manage:predictions+channel:manage:schedule+channel:manage:raids+channel:edit:commercial+channel:read:redemptions+channel:manage:redemptions+moderator:manage:banned_users+moderator:manage:chat_messages+moderator:manage:chat_settings+moderator:manage:automod+moderator:manage:shoutouts+moderator:read:followers`
+    `&response_type=token&scope=${OAUTH_SCOPES}`
   );
 }
 

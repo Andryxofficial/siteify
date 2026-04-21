@@ -24,6 +24,7 @@ const PING_INTERVAL = 60_000; // PING ogni 60s per tenere viva la connessione
 export function createTwitchBot({ token, username, channel, onMessage, onStatus, onRawLine }) {
   let ws          = null;
   let destroyed   = false;
+  let erroreAuth  = false; // flag: disconnessione causata da errore di autenticazione IRC
   let pingTimer   = null;
   let reconnTimer = null;
   let commandData = { commands: [], timers: [], quotes: [], counters: [] };
@@ -134,6 +135,21 @@ export function createTwitchBot({ token, username, channel, onMessage, onStatus,
       return;
     }
 
+    // Errori fatali di autenticazione IRC: interrompi la connessione senza riprovare.
+    // Il pattern controlla il formato IRC standard (:server NOTICE * :msg o :server NOTICE #ch :msg)
+    // per evitare falsi positivi su messaggi di chat contenenti la parola NOTICE.
+    if (/NOTICE [*#][^ ]* :/.test(line) && (
+      line.includes('Login authentication failed') ||
+      line.includes('Improperly formatted auth') ||
+      line.includes('Invalid NICK')
+    )) {
+      erroreAuth = true;
+      destroyed  = true;
+      ws?.close();
+      setStatus('error');
+      return;
+    }
+
     if (line.includes('PRIVMSG')) {
       // Formato: @tags :user!user@user.tmi.twitch.tv PRIVMSG #channel :!comando args
       const tagMatch = line.match(/^@([^ ]+) /);
@@ -164,6 +180,7 @@ export function createTwitchBot({ token, username, channel, onMessage, onStatus,
 
   function connect() {
     if (destroyed) return;
+    erroreAuth = false;
     setStatus('connecting');
 
     ws = new WebSocket(IRC_WS_URL);
@@ -181,8 +198,9 @@ export function createTwitchBot({ token, username, channel, onMessage, onStatus,
 
     ws.onclose = () => {
       clearInterval(pingTimer);
-      setStatus('disconnected');
-      if (!destroyed) {
+      // Preserva lo stato 'error' se la chiusura è causata da un errore di autenticazione
+      if (!erroreAuth) setStatus('disconnected');
+      if (!destroyed && !erroreAuth) {
         reconnTimer = setTimeout(() => connect(), RECONNECT_MS);
       }
     };
