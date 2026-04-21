@@ -17,24 +17,14 @@ import useStandalone from './hooks/useStandalone';
 import useScrollToTop from './hooks/useScrollToTop';
 import UpdateToast from './components/UpdateToast';
 import Home from './pages/Home';
+import FallbackRitardato from './components/FallbackRitardato';
+import {
+  TwitchPage, YouTubePage, InstagramPage, PodcastPage, TikTokPage,
+  GamePage, CommunityPage, ThreadView, Scoiattoli, ModPanel,
+  FriendsPage, MessagesPage, ChatGeneralePage, SettingsPage, ProfiloPage,
+  prefetchPagineMain,
+} from './lazyPages';
 import './index.css';
-
-// Lazy loading per tutte le pagine secondarie — riduce il bundle iniziale
-const TwitchPage    = lazy(() => import('./pages/TwitchPage'));
-const YouTubePage   = lazy(() => import('./pages/YouTubePage'));
-const InstagramPage = lazy(() => import('./pages/InstagramPage'));
-const PodcastPage   = lazy(() => import('./pages/PodcastPage'));
-const TikTokPage    = lazy(() => import('./pages/TikTokPage'));
-const GamePage      = lazy(() => import('./pages/GamePage'));
-const CommunityPage = lazy(() => import('./pages/CommunityPage'));
-const ThreadView    = lazy(() => import('./components/ThreadView'));
-const Scoiattoli    = lazy(() => import('./pages/tracker_scoiattoli'));
-const ModPanel      = lazy(() => import('./pages/ModPanel'));
-const FriendsPage        = lazy(() => import('./pages/FriendsPage'));
-const MessagesPage       = lazy(() => import('./pages/MessagesPage'));
-const ChatGeneralePage   = lazy(() => import('./pages/ChatGeneralePage'));
-const SettingsPage       = lazy(() => import('./pages/SettingsPage'));
-const ProfiloPage        = lazy(() => import('./pages/ProfiloPage'));
 
 // Overlay OBS — layout minimo senza navbar/footer
 const GoalsOverlay  = lazy(() => import('./pages/overlay/GoalsOverlay'));
@@ -141,6 +131,11 @@ function AppLayout() {
     }
   }, []);
 
+  // Prefetch in idle dei chunk delle pagine principali della navbar:
+  // così la prima navigazione dopo l'home è già istantanea, anche su mobile
+  // dove non c'è hover. Sicuro chiamare più volte (cache interna).
+  useEffect(() => { prefetchPagineMain(); }, []);
+
   return (
     <div className={`app-container${isStandalone ? ' pwa-standalone' : ''}`}>
       <Navbar />
@@ -148,7 +143,7 @@ function AppLayout() {
       <AnimatePresence mode="wait">
         <PageTransition key={location.pathname}>
           <ErrorBoundary>
-          <Suspense fallback={<PaginaCaricamento />}>
+          <Suspense fallback={<FallbackRitardato><PaginaCaricamento /></FallbackRitardato>}>
             <Routes location={location}>
               <Route path="/" element={<Home />} />
               <Route path="/twitch" element={<TwitchPage />} />

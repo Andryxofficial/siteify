@@ -6,6 +6,7 @@ import TikTokIcon from './TikTokIcon';
 import useScrollHeader from '../hooks/useScrollHeader';
 import { hapticLight } from '../utils/haptics';
 import { useTema } from '../contexts/TemaContext';
+import { prefetchPagina } from '../lazyPages';
 
 const LOGO_URL = '/Firma_Andryx.png';
 
@@ -217,6 +218,8 @@ function MobileTabBar({ activePath, haNonLetti }) {
               aria-label={label}
               aria-current={isActive ? 'page' : undefined}
               onClick={handleTabClick}
+              onTouchStart={() => prefetchPagina(path)}
+              onPointerEnter={() => prefetchPagina(path)}
             >
               <motion.span
                 className="tab-icon"
@@ -353,7 +356,8 @@ export default function Navbar() {
                       key={path}
                       ref={el => { linkRefs.current[path] = el; }}
                       style={{ position: 'relative', zIndex: 1 }}
-                      onMouseEnter={() => setHoveredPath(path)}
+                      onMouseEnter={() => { setHoveredPath(path); prefetchPagina(path); }}
+                      onFocus={() => prefetchPagina(path)}
                     >
                       <Link
                         to={path}
