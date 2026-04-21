@@ -140,16 +140,30 @@ function BannerScopiMancanti({ scopiMancanti, onRiautentica }) {
 }
 
 function BotIndicator({ status, onToggle }) {
-  const color = status === 'connected' ? 'var(--accent-spotify)' : status === 'connecting' ? 'var(--accent-warm)' : 'var(--text-faint)';
-  const Icon  = status === 'connected' ? Wifi : WifiOff;
+  const acceso     = status === 'connected';
+  const inAttesa   = status === 'connecting';
+  const Icon       = acceso ? Wifi : WifiOff;
+  const coloreIcona = acceso ? 'var(--accent-spotify)' : inAttesa ? 'var(--accent-warm)' : 'var(--text-faint)';
+  const titolo     = inAttesa
+    ? 'Bot in connessione…'
+    : acceso ? 'Bot attivo — clicca per disattivare' : 'Bot disattivo — clicca per attivare';
   return (
-    <button onClick={onToggle}
-      className="mod-icon-btn"
-      title={`Bot ${status === 'connected' ? 'connesso' : 'disconnesso'} — clicca per ${status === 'connected' ? 'disconnettere' : 'connettere'}`}
-      style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color, width: 'auto', padding: '0 0.55rem' }}>
-      <Icon size={14} />
-      <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>{status === 'connected' ? 'BOT ON' : 'BOT OFF'}</span>
-    </button>
+    <div className="mod-bot-switch-wrap" title={titolo}>
+      <Icon size={13} style={{ color: coloreIcona, flexShrink: 0 }} />
+      <span className="mod-bot-switch-label">Bot</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={acceso}
+        aria-label={acceso ? 'Disattiva bot' : 'Attiva bot'}
+        onClick={onToggle}
+        disabled={inAttesa}
+        className={`mod-bot-switch${acceso ? ' is-on' : ''}${inAttesa ? ' is-loading' : ''}`}
+        style={{ '--on': acceso ? 1 : 0 }}
+      >
+        <span className="mod-bot-switch-knob" />
+      </button>
+    </div>
   );
 }
 
