@@ -128,7 +128,7 @@ export function startEngine(canvas, callbacks, options = {}) {
     playMusic(z.music);
     dialogState = null;
     callbacks.onInfo?.(`📍 ${z.name}`);
-    /* Ricostruisci la scena 3D per la nuova zona */
+    /* Aggiorna il renderer 2D per la nuova zona */
     renderer2d.setZone(state.zoneId, mutableMap);
   }
 
@@ -144,7 +144,7 @@ export function startEngine(canvas, callbacks, options = {}) {
     if (!state.mapMutations[state.zoneId]) state.mapMutations[state.zoneId] = {};
     state.mapMutations[state.zoneId][`${x},${y}`] = ch;
     if (mutableMap[y]) mutableMap[y][x] = ch;
-    /* Aggiorna anche la mesh 3D del singolo tile */
+    /* Aggiorna il singolo tile nel renderer 2D */
     renderer2d.updateMapTile(x, y, ch);
   }
 
