@@ -5625,18 +5625,14 @@ img.msg-avatar {
   left: 1rem;
   z-index: 950;
   width: min(290px, calc(100vw - 2rem));
-  /* Materiale vetro */
-  background: linear-gradient(145deg,
-    rgba(18, 24, 42, 0.92) 0%,
-    rgba(40, 55, 90, 0.60) 100%);
+  /* Materiale vetro — usa i token del design system per adattarsi al tema */
+  background: var(--vetro-sfondo);
   backdrop-filter: blur(28px) saturate(180%) contrast(1.06);
   -webkit-backdrop-filter: blur(28px) saturate(180%) contrast(1.06);
-  border: 1.5px solid rgba(130, 170, 240, 0.20);
+  border: var(--vetro-bordo);
   border-radius: var(--r-lg);
-  box-shadow:
-    0 12px 40px rgba(8, 12, 48, 0.48),
-    0 2px 8px rgba(8, 12, 48, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: var(--vetro-ombra);
+  color: var(--text-main);
   padding: 1rem;
   display: flex;
   flex-direction: column;
@@ -6105,5 +6101,15 @@ html[data-tema="chiaro"] .glass-panel:hover {
     0 10px 40px rgba(60, 80, 160, 0.14),
     0 2px 8px rgba(60, 80, 160, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+/* ── Cookie banner: linea speculare scurita per il tema chiaro ── */
+html[data-tema="chiaro"] .cookie-speculare {
+  background: linear-gradient(90deg, transparent, rgba(80, 110, 200, 0.22), transparent);
+}
+
+/* ── Cookie banner: icona con tinta più morbida nel tema chiaro ── */
+html[data-tema="chiaro"] .cookie-icona {
+  background: rgba(224, 64, 251, 0.10);
 }
 
