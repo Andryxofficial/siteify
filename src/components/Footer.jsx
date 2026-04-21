@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Twitch, Youtube, Instagram, Mic } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 import DiscordIcon from './DiscordIcon';
+import { useLingua } from '../contexts/LinguaContext';
 
 const LOGO_URL = '/Firma_Andryx.png';
 
@@ -15,14 +16,15 @@ const socials = [
 ];
 
 export default function Footer() {
+  const { t } = useLingua();
   return (
     <footer className="footer glass-panel" style={{ margin: '2rem auto 2rem', maxWidth: '860px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem' }}>
         {/* Brand */}
-        <Link to="/" aria-label="ANDRYXify – Home" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
+        <Link to="/" aria-label={t('nav.aria.logo')} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
           <img src={LOGO_URL} alt="ANDRYXify" className="footer-logo-img" />
           <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: 0, letterSpacing: '0.2px' }}>
-            Esplorando Umanità, IA & Gaming.
+            {t('footer.tagline')}
           </p>
         </Link>
 
@@ -51,7 +53,7 @@ export default function Footer() {
 
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '1.5rem', paddingTop: '1rem', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
         <span style={{ fontSize: '0.76rem', color: 'var(--text-faint)' }}>
-          &copy; {new Date().getFullYear()} ANDRYXify. Fatto con ♥ per il futuro.
+          &copy; {new Date().getFullYear()} ANDRYXify. {t('footer.copyright')}
         </span>
         <span style={{ fontSize: '0.76rem', color: 'var(--text-faint)' }}>
           · andryxify.it

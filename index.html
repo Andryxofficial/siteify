@@ -186,7 +186,7 @@
       ]
     }
     </script>
-    <!-- Anti-FOUC: applica tema e dimensione font prima che React carichi -->
+    <!-- Anti-FOUC: applica tema, dimensione font e lingua prima che React carichi -->
     <script>
     (function(){
       var h=document.documentElement;
@@ -226,6 +226,22 @@
       var a=localStorage.getItem('andryxify_tema');
       var c={default:'#e040fb',magenta:'#ff4081',cyan:'#00e5ff',amber:'#ffb300',emerald:'#4ade80'};
       if(a&&c[a]){h.style.setProperty('--primary',c[a]);}
+      // Lingua: 'auto' (default) o codice forzato dall'utente. In auto rileva da navigator.
+      // Aggiorniamo html[lang] subito, prima che React monti, per screen reader e SEO.
+      try{
+        var lMod=localStorage.getItem('andryxify_lingua')||'auto';
+        var supp={it:1,en:1,es:1};
+        var lRes='it';
+        if(lMod!=='auto'&&supp[lMod]){lRes=lMod;}
+        else{
+          var cand=(navigator.languages&&navigator.languages.length)?navigator.languages:[navigator.language||'it'];
+          for(var i=0;i<cand.length;i++){
+            var base=String(cand[i]||'').toLowerCase().split('-')[0];
+            if(supp[base]){lRes=base;break;}
+          }
+        }
+        h.setAttribute('lang',lRes);
+      }catch(e){}
     })();
     </script>
   </head>

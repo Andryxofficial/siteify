@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import SocialHub from '../components/SocialHub';
 import PodcastPromo from '../components/PodcastPromo';
 import SEO from '../components/SEO';
+import { useLingua } from '../contexts/LinguaContext';
 
 const su = (delay = 0) => ({
   initial:    { opacity: 0, y: 22 },
@@ -76,6 +77,7 @@ const MSG_FEATURES = [
 
 export default function Home() {
   const [liveState, setLiveState] = useState(0); // 0=offline 1=twitch 2=simulcast
+  const { t } = useLingua();
 
   useEffect(() => {
     const check = async () => {
@@ -111,26 +113,26 @@ export default function Home() {
         </motion.h1>
 
         <motion.p className="subtitle" {...su(0.10)}>
-          Esplorando il confine tra{' '}
-          <span style={{ color: 'var(--primary)',   fontWeight: 600 }}>Umanità</span>,{' '}
-          <span style={{ color: 'var(--secondary)', fontWeight: 600 }}>Intelligenza Artificiale</span>{' '}
-          e <span style={{ color: 'var(--accent-warm)',  fontWeight: 600 }}>Gaming</span>.
+          {t('home.hero.sottotitolo_prefix')}{' '}
+          <span style={{ color: 'var(--primary)',   fontWeight: 600 }}>{t('home.hero.umanita')}</span>,{' '}
+          <span style={{ color: 'var(--secondary)', fontWeight: 600 }}>{t('home.hero.ai')}</span>{' '}
+          {t('home.hero.e')} <span style={{ color: 'var(--accent-warm)',  fontWeight: 600 }}>{t('home.hero.gaming')}</span>.
         </motion.p>
 
         {/* Tagline chips */}
         <motion.div {...su(0.24)} style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', marginTop: '1.1rem', flexWrap: 'wrap' }}>
           {[
-            { icon: <Sparkles size={14} />, label: 'Content Creator', color: 'var(--primary)', bg: 'rgba(224,64,251,0.12)', border: 'rgba(224,64,251,0.20)' },
-            { icon: <Brain size={14} />,    label: 'AI Explorer',     color: 'var(--secondary)', bg: 'rgba(0,229,255,0.12)', border: 'rgba(0,229,255,0.20)' },
-            { icon: <Zap size={14} />,      label: 'Gamer',           color: 'var(--accent-warm)', bg: 'rgba(255,184,108,0.12)', border: 'rgba(255,184,108,0.20)' },
-          ].map(t => (
+            { icon: <Sparkles size={14} />, label: t('home.chip.creator'),     color: 'var(--primary)', bg: 'rgba(224,64,251,0.12)', border: 'rgba(224,64,251,0.20)' },
+            { icon: <Brain size={14} />,    label: t('home.chip.ai_explorer'), color: 'var(--secondary)', bg: 'rgba(0,229,255,0.12)', border: 'rgba(0,229,255,0.20)' },
+            { icon: <Zap size={14} />,      label: t('home.chip.gamer'),       color: 'var(--accent-warm)', bg: 'rgba(255,184,108,0.12)', border: 'rgba(255,184,108,0.20)' },
+          ].map(chip => (
             <motion.span
-              key={t.label}
+              key={chip.label}
               className="chip"
               style={{
-                background: t.bg,
-                color: t.color,
-                border: `1px solid ${t.border}`,
+                background: chip.bg,
+                color: chip.color,
+                border: `1px solid ${chip.border}`,
                 fontSize: '0.72rem',
                 padding: '4px 12px',
               }}
@@ -138,7 +140,7 @@ export default function Home() {
               whileTap={{ scale: 0.96 }}
               transition={{ type: 'spring', stiffness: 400, damping: 20 }}
             >
-              {t.icon} {t.label}
+              {chip.icon} {chip.label}
             </motion.span>
           ))}
         </motion.div>
@@ -150,15 +152,15 @@ export default function Home() {
         >
           {liveState > 0 ? (
             <Link to="/twitch" className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #9146FF, #6441a5)' }}>
-              <Twitch size={15} /> Guarda la LIVE
+              <Twitch size={15} /> {t('home.cta.guarda_live')}
             </Link>
           ) : (
             <a href="https://twitch.tv/andryxify" target="_blank" rel="noreferrer" className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #9146FF, #6441a5)' }}>
-              <Twitch size={15} /> Seguimi su Twitch
+              <Twitch size={15} /> {t('home.cta.seguimi')}
             </a>
           )}
           <Link to="/gioco" className="btn btn-ghost">
-            <Gamepad2 size={15} /> Gioca ora
+            <Gamepad2 size={15} /> {t('home.cta.gioca_ora')}
           </Link>
         </motion.div>
       </section>
@@ -171,11 +173,11 @@ export default function Home() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <Twitch size={20} color="#9146FF" />
-          <h2 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700, fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>Live Preview</h2>
+          <h2 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700, fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>{t('home.live.titolo')}</h2>
           <div style={{ marginLeft: 'auto' }}>
             {liveState > 0
-              ? <span className="chip chip-live"><span className="chip-live-dot" /> LIVE ORA</span>
-              : <span className="chip chip-offline">⚪ OFFLINE</span>
+              ? <span className="chip chip-live"><span className="chip-live-dot" /> {t('home.live.live_ora')}</span>
+              : <span className="chip chip-offline">{t('home.live.offline')}</span>
             }
           </div>
         </div>
@@ -197,12 +199,12 @@ export default function Home() {
             style={{ background: 'linear-gradient(135deg,#FF0000,#990000)', color: '#fff', justifyContent: 'center' }}
             initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           >
-            🔴 In simulcast anche su YouTube
+            {t('home.live.simulcast')}
           </motion.a>
         )}
 
         <Link to="/twitch" className="btn btn-primary" style={{ alignSelf: 'center' }}>
-          Apri stream completo
+          {t('home.live.apri')}
         </Link>
       </motion.section>
 
@@ -299,7 +301,7 @@ export default function Home() {
 
       {/* ── Social Hub ── */}
       <motion.div {...inView(0)}>
-        <h2 className="section-title" style={{ textAlign: 'center' }}>Trovami su 📡</h2>
+        <h2 className="section-title" style={{ textAlign: 'center' }}>{t('home.trovami')}</h2>
         <SocialHub />
       </motion.div>
 

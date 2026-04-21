@@ -4,10 +4,11 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, User, Bell, Shield, Palette, Eye, Database, LogOut, Check, Download, LogIn, Accessibility, Sun, Moon, SunMoon, Sunrise, MapPin } from 'lucide-react';
+import { Settings, User, Bell, Shield, Palette, Eye, Database, LogOut, Check, Download, LogIn, Accessibility, Sun, Moon, SunMoon, Sunrise, MapPin, Languages } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useTema } from '../contexts/TemaContext';
+import { useLingua } from '../contexts/LinguaContext';
 import SEO from '../components/SEO';
 
 const NOTIF_PREFS_KEY       = 'andryxify_msg_notif_prefs';
@@ -23,17 +24,18 @@ const TEMI = [
   { id: 'emerald', label: 'Smeraldo', color: '#4ade80' },
 ];
 
+/* Chiavi i18n risolte a runtime; gli id restano stabili per persistenza */
 const MODALITA_TEMI = [
-  { id: 'scuro',          label: 'Scuro',          Icon: Moon    },
-  { id: 'chiaro',         label: 'Chiaro',         Icon: Sun     },
-  { id: 'auto',           label: 'Auto',           Icon: SunMoon },
-  { id: 'alba-tramonto',  label: 'Alba/Tramonto',  Icon: Sunrise },
+  { id: 'scuro',          labelKey: 'settings.tema.scuro',         Icon: Moon    },
+  { id: 'chiaro',         labelKey: 'settings.tema.chiaro',        Icon: Sun     },
+  { id: 'auto',           labelKey: 'settings.tema.auto',          Icon: SunMoon },
+  { id: 'alba-tramonto',  labelKey: 'settings.tema.alba-tramonto', Icon: Sunrise },
 ];
 
 const DIMENSIONI_FONT = [
-  { id: 'normale', label: 'A', dimensione: '0.88rem', titolo: 'Normale' },
-  { id: 'grande',  label: 'A', dimensione: '1.05rem', titolo: 'Grande'  },
-  { id: 'gigante', label: 'A', dimensione: '1.22rem', titolo: 'Molto grande' },
+  { id: 'normale', label: 'A', dimensione: '0.88rem', titoloKey: 'settings.font.normale' },
+  { id: 'grande',  label: 'A', dimensione: '1.05rem', titoloKey: 'settings.font.grande'  },
+  { id: 'gigante', label: 'A', dimensione: '1.22rem', titoloKey: 'settings.font.gigante' },
 ];
 
 const entrata = (ritardo = 0) => ({
@@ -71,6 +73,9 @@ export default function SettingsPage() {
     isLoggedIn, twitchUser, twitchDisplay, twitchAvatar, twitchToken,
     logout, clientId, getTwitchLoginUrl,
   } = useTwitchAuth();
+
+  /* i18n — label tradotte e selettore lingua */
+  const { t, modalita: modalitaLingua, setModalita: setModalitaLingua, lingueDisponibili } = useLingua();
 
   // Notifiche
   const [notifiche, setNotifiche] = useState(() => {
@@ -174,26 +179,26 @@ export default function SettingsPage() {
 
   return (
     <div className="main-content">
-      <SEO title="Impostazioni" description="Gestisci il tuo account, notifiche, privacy e sicurezza su ANDRYXify." path="/impostazioni" noindex />
+      <SEO title={t('settings.titolo')} description="Gestisci il tuo account, notifiche, privacy e sicurezza su ANDRYXify." path="/impostazioni" noindex />
 
       {/* Intestazione */}
       <section className="header" style={{ paddingTop: '1rem', paddingBottom: '0.5rem' }}>
         <motion.h1 className="title" {...entrata(0.05)}>
           <Settings size={28} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />
-          <span className="text-gradient">Impostazioni</span>
+          <span className="text-gradient">{t('settings.titolo')}</span>
         </motion.h1>
       </section>
 
       {/* ═══ Accessibilità — visibile senza login ═══ */}
       <motion.section className="glass-panel" style={{ padding: '1.2rem', marginBottom: '1rem' }} {...entrata(0.1)}>
         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '1.1rem', fontSize: '1rem' }}>
-          <Accessibility size={18} /> Accessibilità
+          <Accessibility size={18} /> {t('settings.accessibilita')}
         </h3>
 
         {/* Modalità tema */}
-        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.55rem' }}>Modalità schermo:</p>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.55rem' }}>{t('settings.modalita_schermo')}</p>
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: coordsRichieste ? '0.7rem' : '1.2rem', flexWrap: 'wrap' }}>
-          {MODALITA_TEMI.map(({ id, label, Icon }) => (
+          {MODALITA_TEMI.map(({ id, labelKey, Icon }) => (
             <button
               key={id}
               onClick={() => setModalitaTema(id)}
@@ -209,7 +214,7 @@ export default function SettingsPage() {
                 fontFamily: 'inherit',
               }}
             >
-              <Icon size={14} /> {label}
+              <Icon size={14} /> {t(labelKey)}
             </button>
           ))}
         </div>
@@ -224,9 +229,7 @@ export default function SettingsPage() {
           }}>
             <MapPin size={14} style={{ flexShrink: 0, color: 'var(--primary)' }} />
             <span style={{ flex: 1 }}>
-              {coordsRichieste
-                ? <>Concedi la posizione per alba/tramonto precisi alla tua zona — altrimenti uso l'Italia centrale come riferimento.</>
-                : <>Tema cambia automaticamente in base all'orario di alba e tramonto.</>}
+              {coordsRichieste ? t('settings.alba.richiedi') : t('settings.alba.descr')}
             </span>
             {coordsRichieste && (
               <button
@@ -234,36 +237,88 @@ export default function SettingsPage() {
                 className="btn btn-ghost"
                 style={{ fontSize: '0.74rem', padding: '0.3rem 0.7rem', flexShrink: 0 }}
               >
-                Concedi
+                {t('settings.alba.concedi')}
               </button>
             )}
           </div>
         )}
 
         {/* Dimensione testo */}
-        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.55rem' }}>Dimensione testo:</p>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.55rem' }}>{t('settings.dimensione_testo')}</p>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {DIMENSIONI_FONT.map(({ id, label, dimensione, titolo }) => (
+          {DIMENSIONI_FONT.map(({ id, label, dimensione, titoloKey }) => {
+            const titolo = t(titoloKey);
+            return (
+              <button
+                key={id}
+                onClick={() => setFontDimensione(id)}
+                aria-pressed={fontDimensione === id}
+                title={titolo}
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem',
+                  padding: '0.5rem 1.1rem', borderRadius: 'var(--r-md)',
+                  border: fontDimensione === id ? '1.5px solid var(--primary)' : '1.5px solid var(--vetro-bordo-colore)',
+                  background: fontDimensione === id ? 'var(--primary-light)' : 'transparent',
+                  color: fontDimensione === id ? 'var(--primary)' : 'var(--text-muted)',
+                  cursor: 'pointer', fontWeight: 700,
+                  transition: 'all 0.2s var(--ease-glass)',
+                  fontFamily: 'inherit',
+                  fontSize: dimensione,
+                  lineHeight: 1.1,
+                }}
+              >
+                {label}
+                <span style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.2px', opacity: 0.75 }}>{titolo}</span>
+              </button>
+            );
+          })}
+        </div>
+      </motion.section>
+
+      {/* ═══ Lingua — visibile senza login ═══ */}
+      <motion.section className="glass-panel" style={{ padding: '1.2rem', marginBottom: '1rem' }} {...entrata(0.13)}>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.8rem', fontSize: '1rem' }}>
+          <Languages size={18} /> {t('settings.lingua')}
+        </h3>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.8rem' }}>
+          {t('settings.lingua.descr')}
+        </p>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {/* Automatica: segue la lingua del dispositivo */}
+          <button
+            onClick={() => setModalitaLingua('auto')}
+            aria-pressed={modalitaLingua === 'auto'}
+            title={t('settings.lingua.auto_descr')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.4rem',
+              padding: '0.45rem 1rem', borderRadius: 'var(--r-full)',
+              border: modalitaLingua === 'auto' ? '1.5px solid var(--primary)' : '1.5px solid var(--vetro-bordo-colore)',
+              background: modalitaLingua === 'auto' ? 'var(--primary-light)' : 'transparent',
+              color: modalitaLingua === 'auto' ? 'var(--primary)' : 'var(--text-muted)',
+              cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
+              transition: 'all 0.2s var(--ease-glass)',
+              fontFamily: 'inherit',
+            }}
+          >
+            🌐 {t('settings.lingua.auto')}
+          </button>
+          {lingueDisponibili.map(({ codice, nome, bandiera }) => (
             <button
-              key={id}
-              onClick={() => setFontDimensione(id)}
-              aria-pressed={fontDimensione === id}
-              title={titolo}
+              key={codice}
+              onClick={() => setModalitaLingua(codice)}
+              aria-pressed={modalitaLingua === codice}
               style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem',
-                padding: '0.5rem 1.1rem', borderRadius: 'var(--r-md)',
-                border: fontDimensione === id ? '1.5px solid var(--primary)' : '1.5px solid var(--vetro-bordo-colore)',
-                background: fontDimensione === id ? 'var(--primary-light)' : 'transparent',
-                color: fontDimensione === id ? 'var(--primary)' : 'var(--text-muted)',
-                cursor: 'pointer', fontWeight: 700,
+                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                padding: '0.45rem 1rem', borderRadius: 'var(--r-full)',
+                border: modalitaLingua === codice ? '1.5px solid var(--primary)' : '1.5px solid var(--vetro-bordo-colore)',
+                background: modalitaLingua === codice ? 'var(--primary-light)' : 'transparent',
+                color: modalitaLingua === codice ? 'var(--primary)' : 'var(--text-muted)',
+                cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
                 transition: 'all 0.2s var(--ease-glass)',
                 fontFamily: 'inherit',
-                fontSize: dimensione,
-                lineHeight: 1.1,
               }}
             >
-              {label}
-              <span style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.2px', opacity: 0.75 }}>{titolo}</span>
+              <span aria-hidden="true">{bandiera}</span> {nome}
             </button>
           ))}
         </div>
@@ -272,9 +327,9 @@ export default function SettingsPage() {
       {/* ═══ Aspetto — visibile senza login ═══ */}
       <motion.section className="glass-panel" style={{ padding: '1.2rem', marginBottom: '1rem' }} {...entrata(0.15)}>
         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.8rem', fontSize: '1rem' }}>
-          <Palette size={18} /> Aspetto
+          <Palette size={18} /> {t('settings.aspetto')}
         </h3>
-        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.8rem' }}>Colore principale dell'interfaccia:</p>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.8rem' }}>{t('settings.colore_principale')}</p>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {TEMI.map(tema => (
             <button
@@ -301,13 +356,13 @@ export default function SettingsPage() {
       {!isLoggedIn ? (
         <motion.div className="glass-panel" style={{ textAlign: 'center', padding: '2rem 1.5rem' }} {...entrata(0.2)}>
           <Settings size={32} color="var(--primary)" style={{ marginBottom: '0.75rem' }} />
-          <h2 style={{ marginBottom: '0.4rem', fontSize: '1.1rem' }}>Accedi per altre impostazioni</h2>
+          <h2 style={{ marginBottom: '0.4rem', fontSize: '1.1rem' }}>{t('settings.accedi_altre')}</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '1.2rem', lineHeight: 1.55 }}>
-            Effettua il login con Twitch per gestire account, notifiche e privacy.
+            {t('settings.accedi_descr')}
           </p>
           {clientId && (
             <a href={getTwitchLoginUrl('/impostazioni')} className="btn social-btn-twitch">
-              <LogIn size={14} /> Accedi con Twitch
+              <LogIn size={14} /> {t('settings.accedi_con_twitch')}
             </a>
           )}
         </motion.div>
@@ -316,7 +371,7 @@ export default function SettingsPage() {
           {/* ═══ Account ═══ */}
           <motion.section className="glass-panel" style={{ padding: '1.2rem', marginBottom: '1rem' }} {...entrata(0.2)}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '1rem', fontSize: '1rem' }}>
-              <User size={18} /> Account
+              <User size={18} /> {t('settings.account')}
             </h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
               {twitchAvatar ? (
@@ -333,10 +388,10 @@ export default function SettingsPage() {
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <Link to={`/profilo/${twitchUser}`} className="btn btn-ghost" style={{ fontSize: '0.82rem' }}>
-                <User size={14} /> Vedi profilo
+                <User size={14} /> {t('settings.vedi_profilo')}
               </Link>
               <button className="btn btn-ghost" style={{ fontSize: '0.82rem', color: 'var(--accent)' }} onClick={logout}>
-                <LogOut size={14} /> Esci
+                <LogOut size={14} /> {t('settings.esci')}
               </button>
             </div>
           </motion.section>
@@ -344,25 +399,24 @@ export default function SettingsPage() {
           {/* ═══ Notifiche ═══ */}
           <motion.section className="glass-panel" style={{ padding: '1.2rem', marginBottom: '1rem' }} {...entrata(0.25)}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.8rem', fontSize: '1rem' }}>
-              <Bell size={18} /> Notifiche
+              <Bell size={18} /> {t('settings.notifiche')}
             </h3>
-            <Interruttore etichetta="Notifiche in-app" attivo={notifiche.inApp} onChange={v => aggiornaNotifica('inApp', v)} />
-            <Interruttore etichetta="Notifiche push" attivo={notifiche.push} onChange={v => aggiornaNotifica('push', v)} />
-            <Interruttore etichetta="Suoni" attivo={notifiche.sound} onChange={v => aggiornaNotifica('sound', v)} />
+            <Interruttore etichetta={t('settings.notif.in_app')} attivo={notifiche.inApp} onChange={v => aggiornaNotifica('inApp', v)} />
+            <Interruttore etichetta={t('settings.notif.push')} attivo={notifiche.push} onChange={v => aggiornaNotifica('push', v)} />
+            <Interruttore etichetta={t('settings.notif.suoni')} attivo={notifiche.sound} onChange={v => aggiornaNotifica('sound', v)} />
           </motion.section>
 
           {/* ═══ Sicurezza E2E ═══ */}
           <motion.section className="glass-panel" style={{ padding: '1.2rem', marginBottom: '1rem' }} {...entrata(0.3)}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.8rem', fontSize: '1rem' }}>
-              <Shield size={18} /> Sicurezza E2E
+              <Shield size={18} /> {t('settings.sicurezza')}
             </h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem', lineHeight: 1.5 }}>
-              La crittografia end-to-end è configurata direttamente nella sezione Messaggi.
-              Puoi gestire le chiavi, aggiungere dispositivi o reimpostare la crittografia da lì.
+              {t('settings.e2e.descr')}
             </p>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <Link to="/messaggi" className="btn btn-ghost" style={{ fontSize: '0.82rem' }}>
-                <Check size={13} /> Vai a Messaggi
+                <Check size={13} /> {t('settings.e2e.vai_messaggi')}
               </Link>
             </div>
           </motion.section>
@@ -370,15 +424,15 @@ export default function SettingsPage() {
           {/* ═══ Privacy ═══ */}
           <motion.section className="glass-panel" style={{ padding: '1.2rem', marginBottom: '1rem' }} {...entrata(0.35)}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.8rem', fontSize: '1rem' }}>
-              <Eye size={18} /> Privacy
+              <Eye size={18} /> {t('settings.privacy')}
             </h3>
             <Interruttore
-              etichetta="Richieste di amicizia aperte"
+              etichetta={t('settings.privacy.amicizia')}
               attivo={privacy.friendRequestsOpen}
               onChange={v => salvaPrivacy({ ...privacy, friendRequestsOpen: v })}
             />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0' }}>
-              <span style={{ fontSize: '0.9rem' }}>Visibilità profilo</span>
+              <span style={{ fontSize: '0.9rem' }}>{t('settings.privacy.visibilita')}</span>
               <select
                 value={privacy.visibility}
                 onChange={e => salvaPrivacy({ ...privacy, visibility: e.target.value })}
@@ -388,9 +442,9 @@ export default function SettingsPage() {
                   borderRadius: 8, padding: '0.3rem 0.6rem', fontSize: '0.82rem', cursor: 'pointer',
                 }}
               >
-                <option value="public">Pubblico</option>
-                <option value="friends">Solo amici</option>
-                <option value="private">Privato</option>
+                <option value="public">{t('settings.privacy.pubblico')}</option>
+                <option value="friends">{t('settings.privacy.amici')}</option>
+                <option value="private">{t('settings.privacy.privato')}</option>
               </select>
             </div>
           </motion.section>
@@ -398,13 +452,13 @@ export default function SettingsPage() {
           {/* ═══ Dati ═══ */}
           <motion.section className="glass-panel" style={{ padding: '1.2rem', marginBottom: '2rem' }} {...entrata(0.4)}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.8rem', fontSize: '1rem' }}>
-              <Database size={18} /> Dati
+              <Database size={18} /> {t('settings.dati')}
             </h3>
             <button className="btn btn-ghost" style={{ fontSize: '0.82rem', marginBottom: '0.8rem' }} onClick={esportaDati}>
-              <Download size={14} /> Esporta impostazioni (JSON)
+              <Download size={14} /> {t('settings.dati.esporta')}
             </button>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>
-              Per eliminare il tuo account e tutti i dati associati, contatta l'amministratore tramite i canali social.
+              {t('settings.dati.elimina_descr')}
             </p>
           </motion.section>
         </>

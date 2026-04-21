@@ -1,22 +1,29 @@
 import { Helmet } from 'react-helmet-async';
+import { useLingua } from '../contexts/LinguaContext';
 
 const SITE_NAME = 'ANDRYXify';
 const BASE_URL = 'https://andryxify.it';
 const DEFAULT_IMAGE = `${BASE_URL}/logo.png`;
 const DEFAULT_KEYWORDS = 'ANDRYXify, Andrea Taliento, streamer italiano, Twitch, gaming, intelligenza artificiale, podcast, YouTube, TikTok, Instagram, content creator, live streaming';
 
+/* Mappa lingua → locale Open Graph */
+const OG_LOCALE = { it: 'it_IT', en: 'en_US', es: 'es_ES' };
+
 export default function SEO({
   title, description, path = '/', image = DEFAULT_IMAGE,
   type = 'website', keywords = '', jsonLd = null, noindex = false,
   article = null,
 }) {
+  const { lingua } = useLingua();
   const fullTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} — Streamer, Gaming & IA`;
   const url = `${BASE_URL}${path}`;
   const allKeywords = keywords ? `${keywords}, ${DEFAULT_KEYWORDS}` : DEFAULT_KEYWORDS;
   const desc = description || 'ANDRYXify — Streamer Twitch, gaming, IA e intrattenimento italiano.';
+  const ogLocale = OG_LOCALE[lingua] || OG_LOCALE.it;
 
   return (
     <Helmet>
+      <html lang={lingua} />
       <title>{fullTitle}</title>
       <meta name="description" content={desc} />
       <meta name="keywords" content={allKeywords} />
@@ -30,7 +37,7 @@ export default function SEO({
       <meta property="og:description" content={desc} />
       <meta property="og:image" content={image} />
       <meta property="og:site_name" content={SITE_NAME} />
-      <meta property="og:locale" content="it_IT" />
+      <meta property="og:locale" content={ogLocale} />
 
       {/* Article metadata (per pagine tipo post/thread) */}
       {article?.publishedTime && <meta property="article:published_time" content={article.publishedTime} />}
