@@ -81,9 +81,9 @@ export default function SettingsPage() {
   // Tema colore accent
   const [temaAttivo, setTemaAttivo] = useState(() => localStorage.getItem(TEMA_KEY) || 'default');
 
-  // Modalità chiaro/scuro (disponibile senza login)
+  // Modalità chiaro/scuro — default 'auto' (rispetta preferenza sistema)
   const [modalitaTema, setModalitaTema] = useState(
-    () => localStorage.getItem(TEMA_MODALITA_KEY) || 'scuro'
+    () => localStorage.getItem(TEMA_MODALITA_KEY) || 'auto'
   );
 
   // Dimensione font (disponibile senza login)
@@ -126,20 +126,29 @@ export default function SettingsPage() {
     if (tema) document.documentElement.style.setProperty('--primary', tema.color);
   }, [temaAttivo]);
 
-  // Applica modalità chiaro/scuro
+  // Applica modalità chiaro/scuro + listener live per la modalità 'auto'
   useEffect(() => {
     localStorage.setItem(TEMA_MODALITA_KEY, modalitaTema);
-    const html = document.documentElement;
-    if (modalitaTema === 'chiaro') {
-      html.setAttribute('data-tema', 'chiaro');
-    } else if (modalitaTema === 'auto' && window.matchMedia('(prefers-color-scheme: light)').matches) {
-      html.setAttribute('data-tema', 'chiaro');
-    } else {
-      html.removeAttribute('data-tema');
+
+    const applica = (mq) => {
+      const html = document.documentElement;
+      if (modalitaTema === 'chiaro' || (modalitaTema === 'auto' && mq.matches)) {
+        html.setAttribute('data-tema', 'chiaro');
+      } else {
+        html.removeAttribute('data-tema');
+      }
+      const metaTheme = document.querySelector('meta[name="theme-color"]:not([media])');
+      if (metaTheme) metaTheme.content = html.hasAttribute('data-tema') ? '#f0f2f8' : '#050506';
+    };
+
+    const sistemaMq = window.matchMedia('(prefers-color-scheme: light)');
+    applica(sistemaMq);
+
+    if (modalitaTema === 'auto') {
+      const listener = (e) => applica(e);
+      sistemaMq.addEventListener('change', listener);
+      return () => sistemaMq.removeEventListener('change', listener);
     }
-    // Aggiorna theme-color meta tag
-    const metaTheme = document.querySelector('meta[name="theme-color"]:not([media])');
-    if (metaTheme) metaTheme.content = modalitaTema === 'chiaro' ? '#f0f2f8' : '#050506';
   }, [modalitaTema]);
 
   // Applica dimensione font

@@ -26,8 +26,8 @@
     <meta name="description" content="ANDRYXify (Andrea Taliento) — Streamer Twitch, gamer e content creator italiano. Live streaming di videogiochi, podcast su Intelligenza Artificiale, video YouTube, clip TikTok e minigioco esclusivo con classifica. Seguimi su Twitch, YouTube, Instagram e TikTok!" />
     <meta name="author" content="Andrea Taliento (ANDRYXify)" />
     <meta name="theme-color" content="#050506" />
+    <meta name="theme-color" content="#f0f2f8" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#050506" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#050506" media="(prefers-color-scheme: light)" />
     <link rel="canonical" href="https://andryxify.it/" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="googlebot" content="index, follow" />
@@ -193,8 +193,22 @@
       var h=document.documentElement;
       var t=localStorage.getItem('andryxify_tema_modalita');
       var f=localStorage.getItem('andryxify_font_dimensione');
-      if(t==='chiaro'||(t==='auto'&&window.matchMedia('(prefers-color-scheme: light)').matches)){h.setAttribute('data-tema','chiaro');}
-      if(f&&f!=='normale'){h.setAttribute('data-font',f);}
+      // null o 'auto' → rispetta preferenza sistema
+      if(t==='chiaro'||((t===null||t==='auto')&&window.matchMedia('(prefers-color-scheme: light)').matches)){h.setAttribute('data-tema','chiaro');}
+      // Font: se impostato manualmente → applica; se null (primo accesso) → rileva default browser
+      if(f&&f!=='normale'){
+        h.setAttribute('data-font',f);
+      } else if(!f){
+        try{
+          var el=document.createElement('div');
+          el.style.cssText='position:fixed;top:-9999px;font-size:1rem;';
+          document.head.appendChild(el);
+          var fs=parseFloat(window.getComputedStyle(el).fontSize);
+          document.head.removeChild(el);
+          if(fs>=20){h.setAttribute('data-font','gigante');localStorage.setItem('andryxify_font_dimensione','gigante');}
+          else if(fs>=18){h.setAttribute('data-font','grande');localStorage.setItem('andryxify_font_dimensione','grande');}
+        }catch(e){}
+      }
       // Ripristina anche il colore accent salvato
       var a=localStorage.getItem('andryxify_tema');
       var c={default:'#e040fb',magenta:'#ff4081',cyan:'#00e5ff',amber:'#ffb300',emerald:'#4ade80'};
