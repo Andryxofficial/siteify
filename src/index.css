@@ -6365,3 +6365,156 @@ html[data-tema="chiaro"] .cookie-icona {
   background: rgba(224, 64, 251, 0.10);
 }
 
+/* ═══════════════════════════════════════════════════
+   TEMA CHIARO — Patch leggibilità (v2)
+   Sovrascrive le superfici/scrollbar/bolle che restavano
+   bianche-su-bianche nella variante chiara, rendendo
+   testo e feedback interattivo invisibili.
+   ═══════════════════════════════════════════════════ */
+
+/* ── Scrollbar globali ── */
+html[data-tema="chiaro"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+html[data-tema="chiaro"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.10);
+}
+html[data-tema="chiaro"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.20);
+}
+
+/* ── Scrollbar componenti specifici ── */
+html[data-tema="chiaro"] .leaderboard-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+}
+html[data-tema="chiaro"] .leaderboard-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.20);
+}
+html[data-tema="chiaro"] .msg-scroll-area {
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+}
+html[data-tema="chiaro"] .msg-scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.14);
+}
+html[data-tema="chiaro"] .msg-nuova-convo-lista {
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+}
+html[data-tema="chiaro"] .msg-nuova-convo-lista::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.14);
+}
+
+/* ── Twitch container divider ── */
+html[data-tema="chiaro"] .twitch-container {
+  background: rgba(0, 0, 0, 0.06);
+}
+html[data-tema="chiaro"] .chat-side {
+  background: rgba(0, 0, 0, 0.025);
+}
+
+/* ── Leaderboard hover ── */
+html[data-tema="chiaro"] .leaderboard-entry:hover {
+  background: rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+/* ── Calendario gioco hover ── */
+html[data-tema="chiaro"] .game-calendar-row:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+/* ── Link items ── */
+html[data-tema="chiaro"] .link-item:active {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* ── Messaggi: bolla "loro" — sfondo bianco-su-bianco invisibile ── */
+html[data-tema="chiaro"] .msg-theirs {
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.025));
+  border-color: rgba(0, 0, 0, 0.10);
+}
+
+/* ── Messaggi: header e footer chat con tinta scura sottile ── */
+html[data-tema="chiaro"] .msg-conv-header,
+html[data-tema="chiaro"] .msg-input-form {
+  background: rgba(0, 0, 0, 0.025);
+}
+
+/* ── Messaggi: separatore data ── */
+html[data-tema="chiaro"] .msg-date-separator span {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* ── Messaggi: menu contestuale e bottom-sheet ── */
+html[data-tema="chiaro"] .msg-context-item:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+html[data-tema="chiaro"] .msg-context-item:active {
+  background: rgba(0, 0, 0, 0.10);
+}
+html[data-tema="chiaro"] .msg-context-handle {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+/* ── Messaggi: pillole reazione e picker ── */
+html[data-tema="chiaro"] .msg-reaction-pill {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+html[data-tema="chiaro"] .msg-reaction-pill:hover {
+  background: rgba(0, 0, 0, 0.09);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+html[data-tema="chiaro"] .msg-reaction-btn:hover {
+  background: rgba(0, 0, 0, 0.07);
+}
+
+/* ── Messaggi: toggle ── */
+html[data-tema="chiaro"] .msg-toggle {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+/* ── Messaggi: track audio voce ── */
+html[data-tema="chiaro"] .msg-voice-track {
+  background: rgba(0, 0, 0, 0.10);
+}
+
+/* ── Messaggi: pulsante microfono ── */
+html[data-tema="chiaro"] .msg-mic-btn {
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+html[data-tema="chiaro"] .msg-mic-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.10) !important;
+}
+
+/* ── Messaggi: amico item / friend item / forward ── */
+html[data-tema="chiaro"] .msg-amico-item:hover,
+html[data-tema="chiaro"] .msg-forward-friend:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+html[data-tema="chiaro"] .msg-friend-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* ── Messaggi: avatar fallback ── */
+html[data-tema="chiaro"] .msg-bubble:hover {
+  box-shadow: 0 2px 8px rgba(60, 80, 160, 0.18);
+}
+
+/* ── Toast (notifiche) — hover azioni ── */
+html[data-tema="chiaro"] .toast-azione:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+html[data-tema="chiaro"] .toast-chiudi:hover {
+  background: rgba(0, 0, 0, 0.07);
+}
+
+/* ── Mod panel: tasto kbd inline ── */
+html[data-tema="chiaro"] .mod-cmdk-hint kbd {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* ── Lightbox immagini: l'overlay resta scuro (fullscreen viewer)
+   quindi i bottoni bianchi vanno bene anche in tema chiaro. ── */
+

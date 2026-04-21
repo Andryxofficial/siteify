@@ -67,7 +67,7 @@ class ErrorBoundary extends Component {
         }}>
           <span style={{ fontSize: '2.5rem' }}>⚠️</span>
           <h2 style={{ color: '#f87171', margin: 0 }}>Qualcosa è andato storto</h2>
-          <p style={{ color: 'rgba(255,255,255,0.5)', maxWidth: 420, lineHeight: 1.5 }}>
+          <p style={{ color: 'var(--text-muted)', maxWidth: 420, lineHeight: 1.5 }}>
             {this.state.errore.message || 'Errore inaspettato. Ricarica la pagina per riprovare.'}
           </p>
           <button
