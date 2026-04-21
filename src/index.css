@@ -5409,6 +5409,7 @@ img.msg-avatar {
    COOKIE BANNER — Glass minimalista, bottom-left
    ═══════════════════════════════════════════════════ */
 
+/* --tab-bar-offset: altezza della tab bar mobile (73px) + padding di sicurezza */
 .cookie-banner {
   position: fixed;
   /* Su mobile: sopra la tab bar di navigazione in basso */
@@ -5568,16 +5569,19 @@ img.msg-avatar {
    ENHANCEMENTS — Effetti magici & micro-interazioni
    ═══════════════════════════════════════════════════ */
 
-/* Flottamento logo hero — sinusoide tridimensionale */
+/* Flottamento logo hero — sinusoide tridimensionale.
+   drop-shadow SOLO come stato statico; l'animazione muove solo transform
+   per evitare calcoli filter per-frame che sono costosi su GPU mobile. */
 @keyframes logo-flotta {
-  0%, 100% { transform: translateY(0px) rotate(0deg); filter: drop-shadow(0 6px 24px rgba(224,64,251,.18)); }
-  30%      { transform: translateY(-8px) rotate(0.4deg); filter: drop-shadow(0 14px 32px rgba(224,64,251,.28)); }
-  60%      { transform: translateY(-4px) rotate(-0.3deg); filter: drop-shadow(0 10px 28px rgba(0,229,255,.18)); }
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  30%      { transform: translateY(-8px) rotate(0.4deg); }
+  60%      { transform: translateY(-4px) rotate(-0.3deg); }
 }
 
 .logo-hero-flotta {
   animation: logo-flotta 5s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-  will-change: transform, filter;
+  will-change: transform;
+  filter: drop-shadow(0 8px 24px rgba(224,64,251,.22));
 }
 
 /* Glow colorato sulle SocialHub card al hover */

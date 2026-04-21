@@ -9,6 +9,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Cookie, X, Check } from 'lucide-react';
 
 const CHIAVE_STORAGE = 'andryx_cookie_consent';
+// Ritardo prima della comparsa: lascia caricare la pagina senza interferire
+const RITARDO_BANNER_MS = 1400;
 
 export default function CookieBanner() {
   const [visibile, setVisibile] = useState(false);
@@ -17,7 +19,7 @@ export default function CookieBanner() {
     const consenso = localStorage.getItem(CHIAVE_STORAGE);
     if (!consenso) {
       // Piccolo delay: prima carica la pagina, poi appare il banner
-      const t = setTimeout(() => setVisibile(true), 1400);
+      const t = setTimeout(() => setVisibile(true), RITARDO_BANNER_MS);
       return () => clearTimeout(t);
     }
   }, []);
