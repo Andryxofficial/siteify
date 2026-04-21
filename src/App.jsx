@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { TwitchAuthProvider } from './contexts/TwitchAuthContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { TemaProvider } from './contexts/TemaContext';
 import Navbar from './components/Navbar';
 import SchermataCampione from './components/SchermataCampione';
 import Footer from './components/Footer';
@@ -129,7 +130,7 @@ function AppLayout() {
   useScrollToTop();
 
   // Ripristina tema colore accent al carico (tema chiaro/scuro e font
-  // sono già gestiti dallo script anti-FOUC in index.html)
+  // sono già gestiti dallo script anti-FOUC in index.html e TemaProvider)
   useEffect(() => {
     const accento = localStorage.getItem('andryxify_tema');
     const colori = { default: '#e040fb', magenta: '#ff4081', cyan: '#00e5ff', amber: '#ffb300', emerald: '#4ade80' };
@@ -179,18 +180,20 @@ function AppLayout() {
 function App() {
   return (
     <Router>
-      <TwitchAuthProvider>
-        <ToastProvider>
-          <TwitchOAuthRedirect />
-          {/* Layout overlay — no navbar/footer, sfondo trasparente */}
-          <Routes>
-            <Route path="/overlay/goals"  element={<Suspense fallback={null}><GoalsOverlay /></Suspense>} />
-            <Route path="/overlay/events" element={<Suspense fallback={null}><EventsOverlay /></Suspense>} />
-            <Route path="/overlay/alerts" element={<Suspense fallback={null}><AlertsOverlay /></Suspense>} />
-            <Route path="*" element={<AppLayout />} />
-          </Routes>
-        </ToastProvider>
-      </TwitchAuthProvider>
+      <TemaProvider>
+        <TwitchAuthProvider>
+          <ToastProvider>
+            <TwitchOAuthRedirect />
+            {/* Layout overlay — no navbar/footer, sfondo trasparente */}
+            <Routes>
+              <Route path="/overlay/goals"  element={<Suspense fallback={null}><GoalsOverlay /></Suspense>} />
+              <Route path="/overlay/events" element={<Suspense fallback={null}><EventsOverlay /></Suspense>} />
+              <Route path="/overlay/alerts" element={<Suspense fallback={null}><AlertsOverlay /></Suspense>} />
+              <Route path="*" element={<AppLayout />} />
+            </Routes>
+          </ToastProvider>
+        </TwitchAuthProvider>
+      </TemaProvider>
       <Analytics />
       <SpeedInsights />
     </Router>

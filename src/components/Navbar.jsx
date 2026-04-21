@@ -1,10 +1,11 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, animate as fmAnimate } from 'framer-motion';
-import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon, MessageCircle as MessageCircleIcon, Settings as SettingsIcon } from 'lucide-react';
+import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon, MessageCircle as MessageCircleIcon, Settings as SettingsIcon, Sun, Moon, SunMoon } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 import useScrollHeader from '../hooks/useScrollHeader';
 import { hapticLight } from '../utils/haptics';
+import { useTema } from '../contexts/TemaContext';
 
 const LOGO_URL = '/Firma_Andryx.png';
 
@@ -251,12 +252,17 @@ function MobileTabBar({ activePath, haNonLetti }) {
    animate(), no drag. Pill follows hover across links
    (Apple-style), returns to activePath on mouse-leave.
    ───────────────────────────────────────────────────────── */
+
+const ICONE_TEMA = { auto: SunMoon, chiaro: Sun, scuro: Moon };
+const LABEL_TEMA = { auto: 'Tema: Auto (segue sistema)', chiaro: 'Tema: Chiaro', scuro: 'Tema: Scuro' };
+
 export default function Navbar() {
   const location          = useLocation();
   const linksContainerRef = useRef(null);
   const linkRefs          = useRef({});
   const headerVisible     = useScrollHeader();
   const haNonLetti        = useNonLetti();
+  const { modalita, cicla } = useTema();
 
   const [hoveredPath, setHoveredPath] = useState(null);
   const [pillPos,     setPillPos]     = useState({ left: 0, width: 0 });
@@ -363,8 +369,30 @@ export default function Navbar() {
                 })}
               </div>
 
+              {/* Pulsante toggle tema chiaro/scuro */}
+              <motion.button
+                onClick={() => { cicla(); hapticLight(); }}
+                className="nav-link nav-tema-toggle"
+                aria-label={LABEL_TEMA[modalita]}
+                title={LABEL_TEMA[modalita]}
+                style={{ marginLeft: '0.25rem', border: 'none', cursor: 'pointer', background: 'transparent' }}
+                whileHover={{ scale: 1.12 }}
+                whileTap={{ scale: 0.9, rotate: 15 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+              >
+                <motion.span
+                  key={modalita}
+                  initial={{ opacity: 0, rotate: -30, scale: 0.7 }}
+                  animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+                  style={{ display: 'flex' }}
+                >
+                  {React.createElement(ICONE_TEMA[modalita], { size: 17 })}
+                </motion.span>
+              </motion.button>
+
               {/* Icona impostazioni */}
-              <Link to="/impostazioni" className="nav-link" aria-label="Impostazioni" style={{ marginLeft: '0.5rem', display: 'flex', alignItems: 'center' }}>
+              <Link to="/impostazioni" className="nav-link" aria-label="Impostazioni" style={{ marginLeft: '0.25rem', display: 'flex', alignItems: 'center' }}>
                 <SettingsIcon size={17} />
               </Link>
             </div>
