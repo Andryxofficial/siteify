@@ -29,6 +29,20 @@ const GENERAL_KEY = 'lb:general';
 const MAX_ENTRIES = 50;
 const WEEKLY_TTL_SECONDS = 8 * 24 * 60 * 60; // 8 days
 
+/* Giochi supportati. 'monthly' = gioco del mese (key prefix 'lb');
+   'legend' = Andryx Legend (key prefix 'lb:legend'). */
+const SUPPORTED_GAMES = new Set(['monthly', 'legend']);
+
+/** Prefisso Redis per il gioco (default = monthly per retrocompatibilita`). */
+function gamePrefix(game) {
+  return game === 'legend' ? 'lb:legend' : 'lb';
+}
+
+/** Chiave generale per il gioco. */
+function generalKeyFor(game) {
+  return game === 'legend' ? 'lb:legend:general' : GENERAL_KEY;
+}
+
 const MONTH_NAMES = [
   'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
   'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre',
@@ -47,17 +61,17 @@ function italianDate(now = new Date()) {
   return { year: y, month: m - 1, day: d }; // month 0-based
 }
 
-function getWeeklyKey(season, now = new Date()) {
+function getWeeklyKey(season, now = new Date(), game = 'monthly') {
   const it = italianDate(now);
   const d = new Date(Date.UTC(it.year, it.month, it.day));
   d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
-  return `lb:${season}:weekly:${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+  return `${gamePrefix(game)}:${season}:weekly:${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
 }
 
-function getMonthlyKey(season) {
-  return `lb:${season}:monthly`;
+function getMonthlyKey(season, game = 'monthly') {
+  return `${gamePrefix(game)}:${season}:monthly`;
 }
 
 function getCurrentSeason(now = new Date()) {
@@ -146,6 +160,12 @@ export default async function handler(req, res) {
   const currentSeason = getCurrentSeason(now);
   const requestedSeason = (req.query?.season || currentSeason).replace(/[^0-9-]/g, '');
 
+  /* Gioco richiesto: 'monthly' (default, gioco del mese) o 'legend' (Andryx Legend).
+     Sanificato in modo strict: qualsiasi valore non riconosciuto cade su 'monthly'
+     per non perdere punteggi inviati con valori malformati. */
+  const requestedGame = SUPPORTED_GAMES.has(req.query?.game) ? req.query.game : 'monthly';
+  const GENERAL = generalKeyFor(requestedGame);
+
   /* ─── GET: fetch leaderboard data ─── */
   if (req.method === 'GET') {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -161,7 +181,7 @@ export default async function handler(req, res) {
       const username = valData.login;
 
       const season = getCurrentSeason(now);
-      const weeklyKey = getWeeklyKey(season, now);
+      const weeklyKey = getWeeklyKey(season, now, requestedGame);
 
       // Chi è il vincitore settimanale?
       const top = await redis.zrange(weeklyKey, 0, 0, { rev: true, withScores: true });
@@ -187,18 +207,18 @@ export default async function handler(req, res) {
     }
 
     try {
-      const weeklyKey = getWeeklyKey(requestedSeason, now);
-      const monthlyKey = getMonthlyKey(requestedSeason);
+      const weeklyKey = getWeeklyKey(requestedSeason, now, requestedGame);
+      const monthlyKey = getMonthlyKey(requestedSeason, requestedGame);
       const completedSeasons = getCompletedSeasons(now);
 
       const archivePromises = completedSeasons.map(s =>
-        redis.zrange(getMonthlyKey(s.season), 0, 2, { rev: true, withScores: true })
+        redis.zrange(getMonthlyKey(s.season, requestedGame), 0, 2, { rev: true, withScores: true })
       );
 
       const [weeklyRaw, monthlyRaw, generalRaw, ...archiveRawArr] = await Promise.all([
         redis.zrange(weeklyKey, 0, MAX_ENTRIES - 1, { rev: true, withScores: true }),
         redis.zrange(monthlyKey, 0, MAX_ENTRIES - 1, { rev: true, withScores: true }),
-        redis.zrange(GENERAL_KEY, 0, MAX_ENTRIES - 1, { rev: true, withScores: true }),
+        redis.zrange(GENERAL, 0, MAX_ENTRIES - 1, { rev: true, withScores: true }),
         ...archivePromises,
       ]);
 
@@ -220,6 +240,7 @@ export default async function handler(req, res) {
         archive,
         currentSeason: requestedSeason,
         currentLabel: getCurrentMonthLabel(now),
+        game: requestedGame,
       });
     } catch (e) {
       console.error('Leaderboard GET error:', e);
@@ -274,8 +295,9 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true, grantee: targetUsername });
       }
 
-      const { score, season: bodySeason } = body;
+      const { score, season: bodySeason, game: bodyGame } = body;
       const targetSeason = (bodySeason || currentSeason).replace(/[^0-9-]/g, '');
+      const targetGame = SUPPORTED_GAMES.has(bodyGame) ? bodyGame : 'monthly';
 
       if (typeof score !== 'number' || score < 0 || !Number.isFinite(score) || score > 999999) {
         return res.status(400).json({ error: 'Punteggio non valido.' });
@@ -302,8 +324,9 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Impossibile ottenere il nome utente Twitch.' });
       }
 
-      const weeklyKey = getWeeklyKey(targetSeason, now);
-      const monthlyKey = getMonthlyKey(targetSeason);
+      const weeklyKey = getWeeklyKey(targetSeason, now, targetGame);
+      const monthlyKey = getMonthlyKey(targetSeason, targetGame);
+      const generalKey = generalKeyFor(targetGame);
 
       // Fetch current best scores
       const [oldMonthly, oldWeekly] = await Promise.all([
@@ -334,7 +357,7 @@ export default async function handler(req, res) {
       // This keeps general = Σ monthly_max across all months
       if (updatedMonthly) {
         const delta = score - (oldMonthly !== null ? Number(oldMonthly) : 0);
-        await redis.zincrby(GENERAL_KEY, delta, username);
+        await redis.zincrby(generalKey, delta, username);
       }
 
       if (!updatedMonthly && !updatedWeekly) {

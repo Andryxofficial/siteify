@@ -21,14 +21,14 @@ const NAV_LINKS = [
   { path: '/instagram', label: 'Instagram', Icon: InstagramIcon },
   { path: '/podcast',   label: 'Podcast',   Icon: MicIcon       },
   { path: '/tiktok',    label: 'TikTok',    Icon: ({ size }) => <TikTokIcon size={size} /> },
-  { path: '/gioco',     label: 'Gioco',     Icon: GameIcon      },
+  { path: '/gioco',     label: 'Giochi',    Icon: GameIcon      },
   { path: '/chat',      label: 'Chat',      Icon: MessageCircleIcon },
 ];
 
 const MOBILE_LINKS = [
   { path: '/',              label: 'Home',        Icon: HomeIcon          },
   { path: '/socialify',     label: 'SOCIALify',   Icon: UsersIcon         },
-  { path: '/gioco',         label: 'Gioco',       Icon: GameIcon          },
+  { path: '/gioco',         label: 'Giochi',      Icon: GameIcon          },
   { path: '/chat',          label: 'Chat',        Icon: MessageCircleIcon },
   { path: '/impostazioni',  label: 'Impostazioni', Icon: SettingsIcon     },
 ];

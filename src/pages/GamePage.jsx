@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import SEO from '../components/SEO';
 import { getGameForMonth, loadGameModule, getAllGameMetas } from '../games/registry';
+import { meta as legendMeta, hasSave as hasLegendSave, clearSave as clearLegendSave } from '../games/legend/index.js';
 import { useReti } from '../contexts/RetiContext';
 
 const CHIAVETWITCH = import.meta.env.VITE_CHIAVETWITCH;
@@ -73,14 +74,26 @@ export default function GamePage() {
   const now = new Date();
   const currentMonth = now.getUTCMonth() + 1; // 1-12
 
+  /* ─── Modalita` di gioco: 'monthly' (gioco del mese) o 'legend' (Andryx Legend).
+        Quest'ultimo e` un'avventura completa stile Zelda sempre disponibile,
+        con sua propria classifica server-side (game=legend). ─── */
+  const [modalitaGioco, setModalitaGioco] = useState('monthly');
+  const isLegend = modalitaGioco === 'legend';
+
   /* ─── Mese selezionato per giocare (default = mese corrente).
         I mesi diversi da quello corrente vengono giocati in
-        "Modalità Prova": niente invio in classifica. ─── */
+        "Modalità Prova": niente invio in classifica.
+        In modalita` Legend questa scelta non e` rilevante. ─── */
   const [meseSelezionato, setMeseSelezionato] = useState(currentMonth);
-  const isModalitaProva = meseSelezionato !== currentMonth;
+  const isModalitaProva = !isLegend && meseSelezionato !== currentMonth;
 
-  const gameEntry = getGameForMonth(meseSelezionato);
-  const gameMeta = gameEntry.meta;
+  const monthlyEntry = getGameForMonth(meseSelezionato);
+  const gameMeta = isLegend ? legendMeta : monthlyEntry.meta;
+
+  /* Stato "ho un salvataggio Legend?" — aggiornato all'init e dopo eventi. */
+  const [legendSaveAvailable, setLegendSaveAvailable] = useState(() => {
+    try { return hasLegendSave(); } catch { return false; }
+  });
 
   /* ─── Refs for game engine communication ─── */
   const canvasRef = useRef(null);
@@ -142,13 +155,14 @@ export default function GamePage() {
     }
   }, []);
 
-  /* ─── Fetch leaderboard ─── */
+  /* ─── Fetch leaderboard (separata per modalita`) ─── */
   const fetchBoard = useCallback(async () => {
     setBoardLoading(true);
     setBoardError('');
     try {
       const seasonKey = getSeasonKey();
-      const r = await fetch(`/api/leaderboard?season=${seasonKey}`);
+      const gameParam = isLegend ? '&game=legend' : '';
+      const r = await fetch(`/api/leaderboard?season=${seasonKey}${gameParam}`);
       if (!r.ok) throw new Error('Fetch failed');
       const data = await r.json();
       setWeeklyBoard(data.weekly || []);
@@ -160,7 +174,7 @@ export default function GamePage() {
     } finally {
       setBoardLoading(false);
     }
-  }, []);
+  }, [isLegend]);
 
   useEffect(() => { fetchBoard(); }, [fetchBoard]);
 
@@ -180,9 +194,10 @@ export default function GamePage() {
       return;
     }
     const seasonKey = getSeasonKey();
+    const gameParam = isLegend ? 'legend' : 'monthly';
     /* Offline: accoda il punteggio per inviarlo al ritorno della rete. */
     if (!online) {
-      aggiungiACoda({ score: finalScore, season: seasonKey, token: twitchToken, ts: Date.now() });
+      aggiungiACoda({ score: finalScore, season: seasonKey, game: gameParam, token: twitchToken, ts: Date.now() });
       setSubmitMsg('📡 Offline — punteggio salvato, verrà inviato al ritorno della rete.');
       return;
     }
@@ -194,17 +209,17 @@ export default function GamePage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${twitchToken}`,
         },
-        body: JSON.stringify({ score: finalScore, season: seasonKey }),
+        body: JSON.stringify({ score: finalScore, season: seasonKey, game: gameParam }),
       });
       const data = await r.json();
       setSubmitMsg(data.message || 'Punteggio inviato!');
       fetchBoard();
     } catch {
       /* Fallita per qualunque motivo (DNS, fetch abort) → accoda anche qui */
-      aggiungiACoda({ score: finalScore, season: seasonKey, token: twitchToken, ts: Date.now() });
+      aggiungiACoda({ score: finalScore, season: seasonKey, game: gameParam, token: twitchToken, ts: Date.now() });
       setSubmitMsg('Errore rete — punteggio salvato, verrà inviato più tardi.');
     }
-  }, [twitchToken, twitchUser, fetchBoard, isModalitaProva, online]);
+  }, [twitchToken, twitchUser, fetchBoard, isModalitaProva, online, isLegend]);
 
   /* ─── Sync coda offline al ritorno della rete ─── */
   useEffect(() => {
@@ -223,7 +238,7 @@ export default function GamePage() {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${item.token || twitchToken}`,
             },
-            body: JSON.stringify({ score: item.score, season: item.season }),
+            body: JSON.stringify({ score: item.score, season: item.season, game: item.game || 'monthly' }),
           });
           if (!r.ok) rimasti.push(item);
         } catch {
@@ -243,15 +258,19 @@ export default function GamePage() {
 
   /* ─── Create game engine (caricamento dinamico) ─── */
   const gameModuleRef = useRef(null);
+  /* Quando si avvia Legend, l'utente puo` scegliere "continua partita" se ha un save. */
+  const legendContinueRef = useRef(false);
 
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    /* Pre-carica il modulo gioco del mese selezionato.
-       Invalida il riferimento precedente: cambiando mese
-       dobbiamo caricare un modulo diverso. */
+    /* Pre-carica il modulo gioco appropriato (legend o mese selezionato).
+       Invalida il riferimento precedente per forzare ricaricamento al cambio modalita`. */
     gameModuleRef.current = null;
-    loadGameModule(meseSelezionato)
+    const loader = isLegend
+      ? import('../games/legend/index.js').then(m => ({ createGame: m.createGame, meta: m.meta }))
+      : loadGameModule(meseSelezionato);
+    loader
       .then(mod => { gameModuleRef.current = mod; })
       .catch(() => { /* pre-caricamento fallito, verrà riprovato in startGame */ });
 
@@ -264,7 +283,9 @@ export default function GamePage() {
       /* Se non ancora caricato, carica ora */
       try {
         if (!gameModuleRef.current) {
-          gameModuleRef.current = await loadGameModule(meseSelezionato);
+          gameModuleRef.current = isLegend
+            ? await import('../games/legend/index.js').then(m => ({ createGame: m.createGame, meta: m.meta }))
+            : await loadGameModule(meseSelezionato);
         }
       } catch {
         setSubmitMsg('Errore nel caricamento del gioco. Controlla la connessione e riprova.');
@@ -282,12 +303,18 @@ export default function GamePage() {
           setGameStatus('gameover');
           if (finalScore > highScore) setHighScore(finalScore);
           submitScore(finalScore);
+          /* Aggiorna lo stato di "save disponibile" — Legend cancella il save su game-over */
+          if (isLegend) {
+            try { setLegendSaveAvailable(hasLegendSave()); } catch { /* ignored */ }
+          }
         },
         onInfo: () => {},
-      });
+      },
+      /* Opzioni extra per Legend (ignorate dai giochi mensili) */
+      isLegend ? { continueSave: legendContinueRef.current, fresh: !legendContinueRef.current } : undefined);
       return cleanup;
     };
-  }, [meseSelezionato, highScore, submitScore]);
+  }, [meseSelezionato, highScore, submitScore, isLegend]);
 
   /* ─── Start/stop game on status change ─── */
   useEffect(() => {
@@ -372,18 +399,18 @@ export default function GamePage() {
   /* ─── Touch handlers (ultra-responsive) ─── */
   const joystickTouchId = useRef(null);
   const joystickCenterRef = useRef({ cx: 0, cy: 0, r: 0 });
+  /* Ref diretto al knob: aggiorniamo il DOM senza passare da React
+     per avere feedback visivo immediato senza re-render. */
+  const joystickKnobRef = useRef(null);
 
   const onJoystickStart = useCallback((e) => {
     e.preventDefault();
     const t = e.changedTouches[0];
-    if (t) {
-      joystickTouchId.current = t.identifier;
-      // Use the actual touch position as the joystick centre (floating joystick)
-      const el = joystickDivRef.current;
-      const r = el ? el.getBoundingClientRect().width / 2 : 60;
-      joystickCenterRef.current = { cx: t.clientX, cy: t.clientY, r };
-      joystickRef.current = { active: true, dx: 0, dy: 0, _touch: true };
-    }
+    if (!t || !joystickDivRef.current) return;
+    joystickTouchId.current = t.identifier;
+    const r = joystickDivRef.current.getBoundingClientRect().width / 2;
+    joystickCenterRef.current = { cx: t.clientX, cy: t.clientY, r };
+    joystickRef.current = { active: true, dx: 0, dy: 0, _touch: true };
   }, []);
 
   const onJoystickMove = useCallback((e) => {
@@ -396,6 +423,11 @@ export default function GamePage() {
         const mag = Math.sqrt(dx * dx + dy * dy);
         if (mag > 1) { dx /= mag; dy /= mag; }
         joystickRef.current = { active: true, dx, dy, _touch: true };
+        /* Aggiornamento DOM diretto: 0 lag visivo */
+        if (joystickKnobRef.current) {
+          joystickKnobRef.current.style.transform = `translate(${dx * 36}px, ${dy * 36}px)`;
+          joystickKnobRef.current.style.transition = 'none';
+        }
         break;
       }
     }
@@ -407,6 +439,10 @@ export default function GamePage() {
       if (t.identifier === joystickTouchId.current) {
         joystickTouchId.current = null;
         joystickRef.current = { active: false, dx: 0, dy: 0 };
+        if (joystickKnobRef.current) {
+          joystickKnobRef.current.style.transform = 'translate(0px, 0px)';
+          joystickKnobRef.current.style.transition = 'transform 0.18s cubic-bezier(.34,1.56,.64,1)';
+        }
         break;
       }
     }
@@ -428,10 +464,16 @@ export default function GamePage() {
     };
   }, [onJoystickStart, onJoystickMove, onJoystickEnd]);
 
-  const onActionBtn = useCallback((e) => {
+  const onActionBtnPress = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     actionBtnRef.current = true;
+    e.currentTarget?.classList?.add('pressed');
+  }, []);
+
+  const onActionBtnRelease = useCallback((e) => {
+    e.preventDefault();
+    e.currentTarget?.classList?.remove('pressed');
   }, []);
 
   /* ─── Also handle tap-anywhere on canvas for "tap" games ─── */
@@ -484,6 +526,73 @@ export default function GamePage() {
         </h1>
         <p className="subtitle">{gameMeta.description}</p>
       </header>
+
+      {/* ─── Hub modalita`: gioco del mese vs Andryx Legend ─── */}
+      <div className="game-mode-hub" style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '0.5rem',
+        marginBottom: '1rem',
+      }}>
+        <button
+          type="button"
+          onClick={() => {
+            if (gameStatus === 'playing') return;
+            setModalitaGioco('monthly');
+            setGameStatus('idle');
+            setSubmitMsg('');
+          }}
+          className="glass-card"
+          aria-pressed={!isLegend}
+          style={{
+            cursor: gameStatus === 'playing' ? 'not-allowed' : 'pointer',
+            padding: '0.75rem',
+            textAlign: 'left',
+            border: !isLegend ? `1.5px solid ${monthlyEntry.meta.color || C.player}` : '1.5px solid var(--vetro-bordo-color, rgba(130,170,240,0.14))',
+            opacity: gameStatus === 'playing' && isLegend ? 0.5 : 1,
+            transition: 'opacity 0.2s, border 0.2s',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <span style={{ fontSize: '1.4rem' }}>🗓️</span>
+            <strong style={{ fontSize: '0.95rem', color: C.text }}>Gioco del Mese</strong>
+            {!isLegend && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: monthlyEntry.meta.color || C.player, fontWeight: 700 }}>● ATTIVO</span>}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: C.textMuted, lineHeight: 1.4 }}>
+            {monthlyEntry.meta.emoji} {monthlyEntry.meta.name} — cambia ogni mese, classifica competitiva
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (gameStatus === 'playing') return;
+            setModalitaGioco('legend');
+            setGameStatus('idle');
+            setSubmitMsg('');
+            try { setLegendSaveAvailable(hasLegendSave()); } catch { /* ignored */ }
+          }}
+          className="glass-card"
+          aria-pressed={isLegend}
+          style={{
+            cursor: gameStatus === 'playing' ? 'not-allowed' : 'pointer',
+            padding: '0.75rem',
+            textAlign: 'left',
+            border: isLegend ? `1.5px solid ${legendMeta.color}` : '1.5px solid var(--vetro-bordo-color, rgba(130,170,240,0.14))',
+            opacity: gameStatus === 'playing' && !isLegend ? 0.5 : 1,
+            transition: 'opacity 0.2s, border 0.2s',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <span style={{ fontSize: '1.4rem' }}>{legendMeta.emoji}</span>
+            <strong style={{ fontSize: '0.95rem', color: C.text }}>{legendMeta.name}</strong>
+            {isLegend && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: legendMeta.color, fontWeight: 700 }}>● ATTIVO</span>}
+            {legendSaveAvailable && !isLegend && <span style={{ marginLeft: 'auto', fontSize: '0.65rem', color: 'var(--accent-warm, #ffb86c)', fontWeight: 700 }}>⏵ SAVE</span>}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: C.textMuted, lineHeight: 1.4 }}>
+            Avventura epica top-down: 4 zone, dialoghi, puzzle, boss. Classifica dedicata.
+          </div>
+        </button>
+      </div>
 
       {isModalitaProva && (
         <div className="trial-banner" role="status">
@@ -559,9 +668,44 @@ export default function GamePage() {
                     </p>
                   )}
 
-                  <button onClick={() => setGameStatus('playing')} className="btn btn-primary" style={{ fontSize: '1rem', padding: '0.75rem 2rem' }}>
-                    {gameMeta.emoji} Gioca!
-                  </button>
+                  {isLegend && legendSaveAvailable ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center' }}>
+                      <button
+                        onClick={() => { legendContinueRef.current = true; setGameStatus('playing'); }}
+                        className="btn btn-primary"
+                        style={{ fontSize: '1rem', padding: '0.75rem 2rem', minWidth: '220px' }}
+                      >
+                        ⏵ Continua avventura
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!confirm('Iniziare una nuova partita? Il salvataggio attuale verra` cancellato.')) return;
+                          try { clearLegendSave(); } catch { /* ignored */ }
+                          legendContinueRef.current = false;
+                          setLegendSaveAvailable(false);
+                          setGameStatus('playing');
+                        }}
+                        className="btn"
+                        style={{
+                          fontSize: '0.85rem', padding: '0.5rem 1.5rem',
+                          background: 'rgba(255,80,80,0.12)',
+                          color: '#ff8080',
+                          border: '1px solid rgba(255,80,80,0.3)',
+                          minWidth: '220px',
+                        }}
+                      >
+                        🆕 Nuova partita
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => { if (isLegend) legendContinueRef.current = false; setGameStatus('playing'); }}
+                      className="btn btn-primary"
+                      style={{ fontSize: '1rem', padding: '0.75rem 2rem' }}
+                    >
+                      {gameMeta.emoji} Gioca!
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -602,10 +746,11 @@ export default function GamePage() {
               className="game-joystick"
               style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
             >
-              <div className="game-joystick-knob" style={{
-                transform: `translate(${joystickRef.current.dx * 28}px, ${joystickRef.current.dy * 28}px)`,
-                transition: joystickRef.current.active ? 'none' : 'transform 0.1s ease-out',
-              }} />
+              {/* Indicatori direzionali */}
+              <div className="game-joystick-dirs">
+                <span>▲</span><span>▶</span><span>▼</span><span>◀</span>
+              </div>
+              <div ref={joystickKnobRef} className="game-joystick-knob" />
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -618,12 +763,15 @@ export default function GamePage() {
               </button>
               <button
                 className="game-attack-btn"
-                onTouchStart={onActionBtn}
-                onTouchEnd={(e) => e.preventDefault()}
-                onPointerDown={onActionBtn}
+                onTouchStart={onActionBtnPress}
+                onTouchEnd={onActionBtnRelease}
+                onTouchCancel={onActionBtnRelease}
+                onPointerDown={onActionBtnPress}
+                onPointerUp={onActionBtnRelease}
                 style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
               >
-                {gameMeta.actionLabel}
+                <span className="game-attack-label">{gameMeta.actionLabel}</span>
+                <span className="game-attack-letter">A</span>
               </button>
             </div>
           </div>

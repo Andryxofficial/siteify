@@ -152,6 +152,7 @@ function AppLayout() {
               <Route path="/podcast" element={<PodcastPage />} />
               <Route path="/tiktok" element={<TikTokPage />} />
               <Route path="/gioco" element={<GamePage />} />
+              <Route path="/giochi" element={<GamePage />} />
               <Route path="/socialify" element={<CommunityPage />} />
               <Route path="/socialify/:postId" element={<ThreadView />} />
 
