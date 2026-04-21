@@ -412,7 +412,7 @@ export default function ModPanel() {
     : [];
 
   return (
-    <main className="mod-panel-shell" style={{ maxWidth: 1080, margin: '0 auto', padding: '0 0 4rem', width: '100%', boxSizing: 'border-box' }}>
+    <main className="mod-panel-shell">
       <SEO title="Pannello Mod" noindex />
 
       {/* ─── Header magico ─── */}

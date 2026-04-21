@@ -4942,13 +4942,19 @@ img.msg-avatar {
 /* ── Layout shell ── */
 .mod-panel-shell {
   width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 0 4rem;
+  box-sizing: border-box;
   /* Layout a colonna per header + griglia layout */
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  /* Impedisce qualsiasi overflow orizzontale causato da figli */
-  overflow-x: clip;
-  box-sizing: border-box;
+  /* Impedisce qualsiasi overflow orizzontale causato da figli.
+     overflow-x:hidden è il fallback; clip evita la creazione di un
+     scroll container (che rompeva position:sticky della sidebar). */
+  overflow-x: hidden;
+  overflow-x: clip; /* stylelint-disable-line */
 }
 
 .mod-panel-layout {
