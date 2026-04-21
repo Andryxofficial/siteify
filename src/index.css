@@ -1546,7 +1546,11 @@ nav.navbar-container.glass-panel {
 .game-canvas-wrapper {
   position: relative;
   aspect-ratio: 1 / 1;
-  max-height: 480px;
+  /* Il blob (glass-panel) puo` essere grande quanto vuole: il renderer 2D e`
+     smart e si adatta alla dimensione reale. Usiamo container queries cosi`
+     anche l'overlay React interno scala con la dimensione del blob. */
+  container-type: inline-size;
+  container-name: game-blob;
 }
 
 .game-canvas {
@@ -1583,10 +1587,30 @@ nav.navbar-container.glass-panel {
 
 .game-overlay-content {
   text-align: center;
-  padding: 2rem;
+  padding: clamp(1rem, 6cqi, 2.25rem);
   display: flex;
   flex-direction: column;
   align-items: center;
+  /* Scalatura "smart": quando il blob si restringe o si allarga, tutto il
+     contenuto dell'overlay si adatta proporzionalmente usando container
+     query inline-size units. Il fallback e` 16px per browser senza supporto. */
+  font-size: clamp(13px, 3.2cqi, 17px);
+  max-width: 92%;
+  gap: 0.1rem;
+}
+
+/* Scalatura "smart" delle dimensioni interne in funzione del blob. */
+@container game-blob (min-width: 0px) {
+  .game-overlay-content h2 {
+    font-size: clamp(1rem, 5.2cqi, 1.6rem);
+  }
+  .game-overlay-content p {
+    font-size: clamp(0.75rem, 3cqi, 0.95rem);
+  }
+  .game-overlay-content .btn {
+    font-size: clamp(0.85rem, 3.4cqi, 1.05rem);
+    padding: clamp(0.45rem, 2.2cqi, 0.85rem) clamp(1rem, 5cqi, 2.25rem);
+  }
 }
 
 .game-controls-hint {
@@ -1882,22 +1906,12 @@ nav.navbar-container.glass-panel {
     grid-template-columns: 1fr;
   }
 
-  .game-canvas-wrapper {
-    max-height: 420px;
-  }
-
   .game-touch-controls {
     display: flex;
   }
 
   .game-controls-hint {
     display: block;
-  }
-}
-
-@media (max-width: 640px) {
-  .game-canvas-wrapper {
-    max-height: 360px;
   }
 }
 
