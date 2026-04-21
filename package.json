@@ -22,7 +22,8 @@
     "react-helmet-async": "^3.0.0",
     "react-router-dom": "^7.14.0",
     "recharts": "^3.8.1",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "three": "^0.171.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

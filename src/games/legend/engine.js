@@ -15,12 +15,13 @@
  * ad ogni RAF (interpolazione visiva non necessaria a queste velocita`).
  */
 
-import { SPRITES, getPlayerSprite, drawSpriteScaled, preloadSprites } from './sprites.js';
-import { TILE_SIZE, TILES, getTile, getTileSprite } from './tiles.js';
+import { SPRITES, drawSpriteScaled, preloadSprites } from './sprites.js';
+import { TILE_SIZE, getTile } from './tiles.js';
 import { getZone, cloneZoneMap, ZONE_W, ZONE_H } from './world.js';
 import { getDialog, selectNpcDialog, calculateFinalScore } from './dialog.js';
 import { SFX, playMusic, stopMusic, ensureAudio } from './audio.js';
 import { C } from './palette.js';
+import { Renderer3D } from './renderer3d.js';
 
 const SCALE = 2;
 const VIEW_TILES = 15;            // 15×15 tile visibili
@@ -84,7 +85,35 @@ function makeInitialState(savedData) {
 export function startEngine(canvas, callbacks, options = {}) {
   preloadSprites();
 
-  const ctx = canvas.getContext('2d');
+  /* ─── Renderer 3D Three.js sul canvas WebGL principale ─── */
+  const renderer3d = new Renderer3D(canvas);
+
+  /* ─── Overlay 2D per HUD/dialog/minimap/overlay ───
+     Creato come sibling del canvas 3D, posizionato sopra in modo
+     assoluto, pointer-events:none cosi` non ruba i click. */
+  const overlayCanvas = document.createElement('canvas');
+  overlayCanvas.width = canvas.width;
+  overlayCanvas.height = canvas.height;
+  /* Posizionamento assoluto sopra il canvas 3D */
+  const parent = canvas.parentNode;
+  if (parent) {
+    /* Assicuriamoci che il parent abbia position:relative cosi`
+       l'overlay si sovrapponga correttamente al canvas. */
+    const cs = window.getComputedStyle(parent);
+    if (cs.position === 'static') parent.style.position = 'relative';
+    /* Anche il canvas 3D deve essere posizionato per allinearsi */
+    canvas.style.position = canvas.style.position || 'relative';
+    canvas.style.zIndex = canvas.style.zIndex || '0';
+    overlayCanvas.style.position = 'absolute';
+    overlayCanvas.style.left = '0';
+    overlayCanvas.style.top = '0';
+    overlayCanvas.style.width = '100%';
+    overlayCanvas.style.height = '100%';
+    overlayCanvas.style.pointerEvents = 'none';
+    overlayCanvas.style.zIndex = '2';
+    parent.appendChild(overlayCanvas);
+  }
+  const ctx = overlayCanvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
 
   const state = makeInitialState(options.savedData);
@@ -121,6 +150,8 @@ export function startEngine(canvas, callbacks, options = {}) {
     playMusic(z.music);
     dialogState = null;
     callbacks.onInfo?.(`📍 ${z.name}`);
+    /* Ricostruisci la scena 3D per la nuova zona */
+    renderer3d.setZone(state.zoneId, mutableMap);
   }
 
   function applyMutations(zoneId) {
@@ -135,6 +166,8 @@ export function startEngine(canvas, callbacks, options = {}) {
     if (!state.mapMutations[state.zoneId]) state.mapMutations[state.zoneId] = {};
     state.mapMutations[state.zoneId][`${x},${y}`] = ch;
     if (mutableMap[y]) mutableMap[y][x] = ch;
+    /* Aggiorna anche la mesh 3D del singolo tile */
+    renderer3d.updateMapTile(x, y, ch);
   }
 
   function evalRequires(req) {
@@ -933,127 +966,13 @@ export function startEngine(canvas, callbacks, options = {}) {
     }
   }
 
-  /* ─── Render ─── */
-  function clear() {
-    ctx.fillStyle = '#0a0e17';
-    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-  }
-
-  function renderTiles() {
-    /* Disegna solo i tile visibili attorno alla camera */
-    const x0 = Math.max(0, Math.floor(camera.x / TILE_SIZE));
-    const y0 = Math.max(0, Math.floor(camera.y / TILE_SIZE));
-    const x1 = Math.min(ZONE_W - 1, x0 + VIEW_TILES + 1);
-    const y1 = Math.min(ZONE_H - 1, y0 + VIEW_TILES + 1);
-    for (let y = y0; y <= y1; y++) {
-      for (let x = x0; x <= x1; x++) {
-        const ch = mutableMap[y][x];
-        const t = getTile(ch);
-        const sp = getTileSprite(t, tickCount);
-        if (sp) {
-          /* Erba di base sotto agli oggetti */
-          if (t.layer === 'object') {
-            const grass = getTileSprite(getTile('.'), tickCount);
-            blit(grass, x * TILE_SIZE, y * TILE_SIZE);
-          }
-          blit(sp, x * TILE_SIZE, y * TILE_SIZE);
-        }
-      }
-    }
-  }
-
-  /** Disegna uno sprite a coordinate logiche, applicando camera + scale. */
-  function blit(sprite, lx, ly) {
-    const sx = (lx - camera.x) * SCALE;
-    const sy = (ly - camera.y) * SCALE;
-    if (sx < -32 * SCALE || sy < -32 * SCALE || sx > CANVAS_SIZE || sy > CANVAS_SIZE) return;
-    drawSpriteScaled(ctx, sprite, sx, sy, sprite.w * SCALE, sprite.h * SCALE);
-  }
-
-  function renderEntities() {
-    /* Ordina per Y per profondità */
-    const sorted = [...entities].sort((a, b) => a.y - b.y);
-    for (const e of sorted) {
-      if (e.dead) continue;
-      let sp = null;
-      let offsetY = 0;
-      if (e.type === 'enemy') {
-        if (e.kind === 'slime')    sp = e.frame < 1 ? SPRITES.ENEMY_SLIME_0    : SPRITES.ENEMY_SLIME_1;
-        if (e.kind === 'bat')      sp = e.frame < 1 ? SPRITES.ENEMY_BAT_0      : SPRITES.ENEMY_BAT_1;
-        if (e.kind === 'skeleton') sp = e.frame < 1 ? SPRITES.ENEMY_SKELETON_0 : SPRITES.ENEMY_SKELETON_1;
-        if (e.kind === 'mage')     sp = SPRITES.ENEMY_MAGE_0;
-      } else if (e.type === 'boss') {
-        if (e.kind === 'guardian')    sp = SPRITES.BOSS_GUARDIAN;
-        if (e.kind === 'shadow_king') sp = SPRITES.BOSS_SHADOW_KING;
-      } else if (e.type === 'item') {
-        const map = {
-          heart: 'ITEM_HEART', rupee: 'ITEM_RUPEE', key: 'ITEM_KEY', house_key: 'ITEM_HOUSE_KEY',
-          bomb: 'ITEM_BOMB', potion: 'ITEM_POTION',
-          sword: 'ITEM_SWORD', shield: 'ITEM_SHIELD',
-          heart_container: 'ITEM_HEART_CONTAINER',
-          crystal_green: 'ITEM_CRYSTAL_GREEN',
-          crystal_blue: 'ITEM_CRYSTAL_BLUE',
-          crystal_red: 'ITEM_CRYSTAL_RED',
-        };
-        sp = SPRITES[map[e.kind]];
-        offsetY = Math.sin((tickCount + e.bobPhase * 60) * 0.08) * 1.5;
-      } else if (e.type === 'npc') {
-        const map = { king: 'NPC_KING', elder: 'NPC_ELDER', merchant: 'NPC_MERCHANT', child: 'NPC_CHILD' };
-        sp = SPRITES[map[e.kind]];
-      } else if (e.type === 'projectile') {
-        /* Disegnato come cerchio luminoso */
-        const sx = (e.x - camera.x) * SCALE;
-        const sy = (e.y - camera.y) * SCALE;
-        ctx.fillStyle = e.col;
-        ctx.beginPath();
-        ctx.arc(sx, sy, 4 * SCALE, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowColor = e.col;
-        ctx.shadowBlur = 8;
-        ctx.beginPath();
-        ctx.arc(sx, sy, 2 * SCALE, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        continue;
-      } else if (e.type === 'sign') {
-        /* Cartello: piccolo blocco marrone con punto giallo */
-        const sx = (e.x - camera.x - 6) * SCALE;
-        const sy = (e.y - camera.y - 6) * SCALE;
-        ctx.fillStyle = '#7a4a25';
-        ctx.fillRect(sx, sy, 12 * SCALE, 12 * SCALE);
-        ctx.fillStyle = '#f0c850';
-        ctx.fillRect(sx + 4 * SCALE, sy + 3 * SCALE, 4 * SCALE, 6 * SCALE);
-        continue;
-      }
-      if (!sp) continue;
-      /* Centra sprite sul punto x,y dell'entita` */
-      const drawX = e.x - sp.w / 2;
-      const drawY = e.y - sp.h / 2 + offsetY;
-      /* Lampeggio se iframes */
-      if (e.iframes && Math.floor(e.iframes / 3) % 2 === 0) continue;
-      blit(sp, drawX, drawY);
-    }
-  }
-
-  function renderPlayer() {
-    const p = state.player;
-    /* Lampeggio se iframes */
-    if (p.iframes && Math.floor(p.iframes / 4) % 2 === 0) return;
-    const sp = getPlayerSprite(p.dir, p.frame >= 1, !!attackState);
-    blit(sp, p.x - sp.w / 2, p.y - sp.h / 2);
-  }
-
-  function renderParticles() {
-    for (const pa of particles) {
-      const sx = (pa.x - camera.x) * SCALE;
-      const sy = (pa.y - camera.y) * SCALE;
-      ctx.fillStyle = pa.col;
-      ctx.globalAlpha = pa.life / pa.maxLife;
-      ctx.fillRect(sx, sy, 2 * SCALE, 2 * SCALE);
-    }
-    ctx.globalAlpha = 1;
-  }
+  /* ─── Render ───
+   * NOTE: tile/entita`/player/particelle sono renderizzati in 3D dal Renderer3D.
+   * Le vecchie funzioni 2D (clear/renderTiles/renderEntities/renderPlayer/renderParticles/blit)
+   * sono state rimosse: il loro lavoro e` ora svolto da renderer3d.setZone /
+   * setEntities / setPlayer / setParticles / render. L'HUD/dialog/overlay
+   * 2D sopravvive su `ctx` (canvas overlay).
+   */
 
   function renderHud() {
     /* Cuori in alto a sinistra */
@@ -1293,12 +1212,16 @@ export function startEngine(canvas, callbacks, options = {}) {
   }
 
   function render() {
-    clear();
+    /* Aggiorna scena 3D */
     updateCamera();
-    renderTiles();
-    renderEntities();
-    renderPlayer();
-    renderParticles();
+    renderer3d.setCamera(camera, state.player);
+    renderer3d.setPlayer(state.player, attackState);
+    renderer3d.setEntities(entities, tickCount);
+    renderer3d.setParticles(particles);
+    renderer3d.render();
+
+    /* HUD/Dialog/Overlay disegnati sopra in 2D */
+    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
     renderHud();
     renderDialog();
     renderOverlay();
@@ -1330,6 +1253,8 @@ export function startEngine(canvas, callbacks, options = {}) {
       runningRef.running = false;
       cancelAnimationFrame(rafId);
       stopMusic();
+      try { renderer3d.dispose(); } catch { /* ignored */ }
+      try { overlayCanvas.parentNode?.removeChild(overlayCanvas); } catch { /* ignored */ }
     },
     getState() { return state; },
     pause() { pausedRef.paused = true; },
