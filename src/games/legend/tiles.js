@@ -66,10 +66,7 @@ export function isSolid(ch) {
   return getTile(ch).solid === true;
 }
 
-/**
- * Restituisce lo sprite corrente (gestendo animazioni).
- * `tick` è un contatore globale di frame.
- */
+/* ─── Restituisce lo sprite corrente (gestendo animazioni). ─── */
 export function getTileSprite(tileDef, tick) {
   const sp = tileDef.sprite;
   if (Array.isArray(sp)) {
