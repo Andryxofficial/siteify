@@ -132,7 +132,7 @@ function AppLayout() {
   // sono già gestiti dallo script anti-FOUC in index.html)
   useEffect(() => {
     const accento = localStorage.getItem('andryxify_tema');
-    const colori = { magenta: '#ff4081', cyan: '#00e5ff', amber: '#ffb300', emerald: '#4ade80' };
+    const colori = { default: '#e040fb', magenta: '#ff4081', cyan: '#00e5ff', amber: '#ffb300', emerald: '#4ade80' };
     if (accento && colori[accento]) {
       document.documentElement.style.setProperty('--primary', colori[accento]);
     }
