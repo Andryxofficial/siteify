@@ -684,10 +684,13 @@ export class Renderer2D {
 
   /* ─── Layer: entita` (NPC, nemici, item, boss, projectile) + player ─── */
   _drawEntities() {
-    /* Ordina per Y per overlap "isometrico" leggero */
+    /* Ordina per Y per overlap "isometrico" leggero.
+       NPC, sign e item NON hanno hp (hp=0 di default), quindi escludiamo
+       il filtro hp<=0 per quei tipi: altrimenti NPC e signs sparirebbero. */
     const list = [];
     for (const e of this.entities) {
-      if (e.hp <= 0 && e.type !== 'item' && e.type !== 'projectile') continue;
+      const isMortal = e.type === 'enemy' || e.type === 'boss';
+      if (isMortal && e.hp <= 0) continue;
       list.push(e);
     }
     /* Player tra le entita` per ordering Y */

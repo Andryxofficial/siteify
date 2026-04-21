@@ -1649,24 +1649,42 @@ nav.navbar-container.glass-panel {
 }
 .game-fullscreen-btn:active { transform: scale(0.96); }
 
-/* Quando il wrapper e` in fullscreen esclusivo, fai fillare lo schermo
-   mantenendo l'aspect-ratio 1:1 al renderer (gestito dal renderer 2D). */
-.game-canvas-wrapper.is-fullscreen,
-.game-canvas-wrapper:fullscreen,
-.game-canvas-wrapper:-webkit-full-screen {
-  aspect-ratio: auto;
+/* Quando il game-area e` in fullscreen esclusivo: occupa tutto lo schermo,
+   sfondo nero, e centra il canvas-wrapper (il renderer 2D si adatta
+   automaticamente alle nuove dimensioni del wrapper grazie al ResizeObserver).
+   Le touch controls e l'hint tastiera restano visibili sotto, perche` la
+   richiesta fullscreen e` sull'intero `.game-area` e non solo sul wrapper. */
+.game-area.is-fullscreen,
+.game-area:fullscreen,
+.game-area:-webkit-full-screen {
   width: 100vw;
   height: 100vh;
-  border-radius: 0;
   background: #000;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   justify-content: center;
+  gap: 0.5rem;
+  overflow: hidden;
 }
-.game-canvas-wrapper.is-fullscreen .game-canvas,
-.game-canvas-wrapper:fullscreen .game-canvas,
-.game-canvas-wrapper:-webkit-full-screen .game-canvas {
+.game-area.is-fullscreen .game-canvas-wrapper,
+.game-area:fullscreen .game-canvas-wrapper,
+.game-area:-webkit-full-screen .game-canvas-wrapper {
+  flex: 1 1 auto;
+  aspect-ratio: auto;
+  min-height: 0;
   border-radius: 0;
+}
+.game-area.is-fullscreen .game-canvas,
+.game-area:fullscreen .game-canvas,
+.game-area:-webkit-full-screen .game-canvas {
+  border-radius: 0;
+}
+.game-area.is-fullscreen .game-touch-controls,
+.game-area:fullscreen .game-touch-controls,
+.game-area:-webkit-full-screen .game-touch-controls {
+  display: flex;
 }
 
 .game-touch-controls {

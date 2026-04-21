@@ -102,17 +102,129 @@ export const SFX = {
   },
 };
 
-/* ─── Musica di sottofondo (loop semplice per zona) ─── */
+/* ─── Musica di sottofondo (loop multistrato per zona) ───
+   Ogni traccia definisce:
+     - melody: sequenza note principale (semicrome)
+     - bass:   linea di basso (note lunghe sotto)
+     - mood:   forma d'onda della melodia (square/triangle/sine)
+     - bpm:    velocita` (battiti per minuto)
+     - swing:  frazione di swing (0 = retto, 0.2 = leggero swing)
+   Le note sono in Hz; `0` = pausa. Le tracce sono melodicamente piu` ricche
+   con variazioni di pattern A/B per evitare monotonia. */
+
+/* Note utility (frequenze A4-based) */
+const N = {
+  C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00, B4: 493.88,
+  C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00, B5: 987.77,
+  C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.00, A3: 220.00, B3: 246.94,
+  C2:  65.41, D2:  73.42, E2:  82.41, F2:  87.31, G2:  98.00, A2: 110.00, B2: 123.47,
+  R: 0,
+};
 
 const TRACKS = {
-  village: [392, 440, 494, 523, 587, 523, 494, 440],   // melodia serena
-  forest:  [330, 392, 440, 494, 392, 330, 294, 330],   // melodia misteriosa
-  cave:    [220, 247, 294, 330, 294, 247, 220, 196],   // melodia cupa
-  castle:  [196, 175, 165, 196, 220, 247, 220, 196],   // melodia tetra
+  /* Villaggio: melodia allegra in C maggiore con due varianti (A/B). */
+  village: {
+    bpm: 110,
+    mood: 'triangle',
+    bassMood: 'sine',
+    melody: [
+      // A
+      N.G4, N.A4, N.B4, N.C5,  N.D5, N.C5, N.B4, N.A4,
+      N.G4, N.E4, N.G4, N.A4,  N.B4, N.A4, N.G4, N.R,
+      // B
+      N.C5, N.B4, N.A4, N.G4,  N.E4, N.G4, N.A4, N.B4,
+      N.C5, N.D5, N.E5, N.D5,  N.C5, N.B4, N.A4, N.G4,
+    ],
+    bass: [
+      N.C3, N.R, N.G3, N.R,    N.A3, N.R, N.G3, N.R,
+      N.C3, N.R, N.E3, N.R,    N.G3, N.R, N.G3, N.R,
+      N.A3, N.R, N.E3, N.R,    N.C3, N.R, N.G3, N.R,
+      N.C3, N.R, N.G3, N.R,    N.C3, N.R, N.G3, N.R,
+    ],
+  },
+
+  /* Foresta: minore naturale, atmosfera misteriosa. */
+  forest: {
+    bpm: 96,
+    mood: 'triangle',
+    bassMood: 'sine',
+    melody: [
+      N.E4, N.G4, N.A4, N.B4,  N.A4, N.G4, N.E4, N.R,
+      N.D4, N.E4, N.G4, N.A4,  N.G4, N.E4, N.D4, N.R,
+      N.E4, N.G4, N.B4, N.D5,  N.B4, N.A4, N.G4, N.E4,
+      N.A4, N.G4, N.E4, N.D4,  N.E4, N.R,  N.E4, N.R,
+    ],
+    bass: [
+      N.E3, N.R, N.E3, N.R,    N.A3, N.R, N.A3, N.R,
+      N.D3, N.R, N.D3, N.R,    N.G3, N.R, N.G3, N.R,
+      N.E3, N.R, N.E3, N.R,    N.B2, N.R, N.B2, N.R,
+      N.A3, N.R, N.A3, N.R,    N.E3, N.R, N.E3, N.R,
+    ],
+  },
+
+  /* Caverna: cupa, ostinato di basso ripetitivo + melodia eolio. */
+  cave: {
+    bpm: 88,
+    mood: 'square',
+    bassMood: 'triangle',
+    melody: [
+      N.A3, N.C4, N.E4, N.A4,  N.G4, N.E4, N.C4, N.A3,
+      N.A3, N.B3, N.D4, N.F4,  N.E4, N.D4, N.C4, N.B3,
+      N.A3, N.E4, N.G4, N.A4,  N.B4, N.A4, N.G4, N.E4,
+      N.D4, N.C4, N.B3, N.A3,  N.G3, N.A3, N.R,  N.R,
+    ],
+    bass: [
+      N.A2, N.R, N.A2, N.R,    N.A2, N.R, N.E3, N.R,
+      N.D3, N.R, N.D3, N.R,    N.A2, N.R, N.E3, N.R,
+      N.A2, N.R, N.A2, N.R,    N.E3, N.R, N.E3, N.R,
+      N.D3, N.R, N.A2, N.R,    N.E3, N.R, N.A2, N.R,
+    ],
+  },
+
+  /* Castello: tetra, marcia in minore. */
+  castle: {
+    bpm: 80,
+    mood: 'sawtooth',
+    bassMood: 'triangle',
+    melody: [
+      N.D4, N.D4, N.F4, N.A4,  N.G4, N.F4, N.E4, N.D4,
+      N.C4, N.D4, N.F4, N.A4,  N.B4, N.A4, N.G4, N.F4,
+      N.D4, N.F4, N.A4, N.D5,  N.C5, N.B4, N.A4, N.G4,
+      N.F4, N.E4, N.D4, N.C4,  N.D4, N.R,  N.D4, N.R,
+    ],
+    bass: [
+      N.D2, N.R, N.A2, N.R,    N.D2, N.R, N.F2, N.R,
+      N.C2, N.R, N.G2, N.R,    N.D2, N.R, N.A2, N.R,
+      N.D2, N.R, N.A2, N.R,    N.F2, N.R, N.C2, N.R,
+      N.G2, N.R, N.D2, N.R,    N.A2, N.R, N.D2, N.R,
+    ],
+  },
 };
 
 let musicTimer = null;
 let currentTrack = null;
+let musicStep = 0;
+
+/** Riproduce una nota con envelope ADSR semplice per un suono piu` morbido. */
+function playMusicNote(freq, dur, type, vol) {
+  const ctx = getCtx();
+  if (!ctx || freq <= 0 || vol <= 0) return;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  const t = ctx.currentTime;
+  /* Envelope ADSR: attack rapido, decay corto, sustain medio, release lento */
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.012);          // A
+  g.gain.exponentialRampToValueAtTime(vol * 0.55, t + 0.06); // D
+  g.gain.setValueAtTime(vol * 0.55, t + Math.max(0.07, dur * 0.6)); // S
+  g.gain.exponentialRampToValueAtTime(0.0008, t + dur);    // R
+  o.connect(g);
+  g.connect(masterGain);
+  o.start(t);
+  o.stop(t + dur + 0.02);
+}
 
 export function playMusic(name) {
   const ctx = getCtx();
@@ -120,20 +232,35 @@ export function playMusic(name) {
   if (currentTrack === name) return;
   stopMusic();
   currentTrack = name;
-  const notes = TRACKS[name] || TRACKS.village;
-  let i = 0;
-  const step = 320;  // ms per nota
+  const track = TRACKS[name] || TRACKS.village;
+  const stepMs = 60000 / track.bpm / 2; // semicrome (16th note)
+  musicStep = 0;
   musicTimer = setInterval(() => {
     if (currentTrack !== name) return;
-    tone(notes[i % notes.length], 0.18, 'triangle', 0.07);
-    i++;
-  }, step);
+    const i = musicStep % track.melody.length;
+    /* Melodia (sopra) */
+    const mFreq = track.melody[i];
+    if (mFreq > 0) {
+      playMusicNote(mFreq, stepMs * 0.0018, track.mood || 'triangle', 0.05);
+    }
+    /* Basso (sotto) — meno frequente, durata piu` lunga */
+    const bFreq = track.bass[i % track.bass.length];
+    if (bFreq > 0) {
+      playMusicNote(bFreq, stepMs * 0.0036, track.bassMood || 'sine', 0.045);
+    }
+    /* Piccolo accento armonico ogni 8 step (terza sopra la melodia) */
+    if ((musicStep % 8) === 0 && mFreq > 0) {
+      playMusicNote(mFreq * 1.25, stepMs * 0.0014, 'sine', 0.022);
+    }
+    musicStep++;
+  }, stepMs);
 }
 
 export function stopMusic() {
   if (musicTimer) clearInterval(musicTimer);
   musicTimer = null;
   currentTrack = null;
+  musicStep = 0;
   if (musicNode) {
     try { musicNode.stop(); } catch { /* ignored */ }
     musicNode = null;

@@ -98,7 +98,7 @@ export default function GamePage() {
 
   /* ─── Refs for game engine communication ─── */
   const canvasRef = useRef(null);
-  const canvasWrapperRef = useRef(null);
+  const gameAreaRef = useRef(null);
   const keysRef = useRef({});
   const joystickRef = useRef({ active: false, dx: 0, dy: 0 });
   const joystickDivRef = useRef(null);
@@ -472,7 +472,7 @@ export default function GamePage() {
         non in fullscreen e Minimize altrimenti. Lo stato `isFullscreen`
         si sincronizza tramite l'evento `fullscreenchange`. */
   const toggleFullscreen = useCallback(() => {
-    const el = canvasWrapperRef.current;
+    const el = gameAreaRef.current;
     if (!el) return;
     const fsElement = document.fullscreenElement || document.webkitFullscreenElement;
     if (!fsElement) {
@@ -654,8 +654,8 @@ export default function GamePage() {
       )}
 
       <div className="game-layout">
-        <div className="game-area">
-          <div ref={canvasWrapperRef} className={`glass-panel game-canvas-wrapper${isFullscreen ? ' is-fullscreen' : ''}`} style={{ padding: 0, overflow: 'hidden' }}>
+        <div ref={gameAreaRef} className={`game-area${isFullscreen ? ' is-fullscreen' : ''}`}>
+          <div className="glass-panel game-canvas-wrapper" style={{ padding: 0, overflow: 'hidden' }}>
             <canvas
               ref={canvasRef}
               width={480}
