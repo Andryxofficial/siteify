@@ -337,6 +337,16 @@ body::before {
 .nav-link:hover { color: var(--text-main); }
 .nav-link.active { color: var(--text-main); }
 
+/* Pulsante toggle tema — eredita stile nav-link, nessun bordo nativo */
+button.nav-tema-toggle {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0.5rem 0.55rem;
+  min-height: 40px;
+  color: var(--text-muted);
+}
+
 .active-pill {
   position: absolute;
   inset: 0;

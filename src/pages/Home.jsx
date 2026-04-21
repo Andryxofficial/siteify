@@ -48,6 +48,11 @@ const PREMI = [
   },
 ];
 
+const STILE_PREMIO_CTA = {
+  fontSize: '0.76rem', padding: '0.3rem 0.85rem',
+  marginTop: 'auto', alignSelf: 'flex-start', minHeight: 'unset',
+};
+
 const MSG_FEATURES = [
   {
     icona: <Twitch size={22} />,
@@ -230,7 +235,7 @@ export default function Home() {
                 <Link
                   to={p.cta.to}
                   className="btn btn-ghost"
-                  style={{ fontSize: '0.76rem', padding: '0.3rem 0.85rem', marginTop: 'auto', alignSelf: 'flex-start', minHeight: 'unset' }}
+                  style={STILE_PREMIO_CTA}
                 >
                   {p.cta.label} →
                 </Link>
@@ -240,7 +245,7 @@ export default function Home() {
                   target="_blank"
                   rel="noreferrer"
                   className="btn btn-ghost"
-                  style={{ fontSize: '0.76rem', padding: '0.3rem 0.85rem', marginTop: 'auto', alignSelf: 'flex-start', minHeight: 'unset' }}
+                  style={STILE_PREMIO_CTA}
                 >
                   {p.cta.label} →
                 </a>
