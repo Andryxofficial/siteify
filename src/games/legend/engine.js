@@ -948,11 +948,9 @@ export function startEngine(canvas, callbacks, options = {}) {
   }
 
   /* ─── Render ───
-   * NOTE: tile/entita`/player/particelle sono renderizzati in 3D dal Renderer2D.
-   * Le vecchie funzioni 2D (clear/renderTiles/renderEntities/renderPlayer/renderParticles/blit)
-   * sono state rimosse: il loro lavoro e` ora svolto da renderer2d.setZone /
-   * setEntities / setPlayer / setParticles / render. L'HUD/dialog/overlay
-   * 2D sopravvive su `ctx` (canvas overlay).
+   * Tile/entita`/player/particelle sono renderizzati dal Renderer2D pixel-art.
+   * L'HUD/dialog/overlay vengono disegnati sullo STESSO canvas dopo il
+   * rendering del mondo, riutilizzando lo stesso `ctx` (nessun canvas overlay).
    */
 
   function renderHud() {
