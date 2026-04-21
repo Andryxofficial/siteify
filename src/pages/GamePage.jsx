@@ -6,6 +6,7 @@
  * and a season-based leaderboard with archive.
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Twitch, LogIn, RotateCcw, Trophy, Calendar, Crown, Award, Zap, Keyboard,
@@ -39,6 +40,8 @@ const C = {
 };
 
 export default function GamePage() {
+  const location = useLocation();
+
   /* ─── Current month & game module ─── */
   const now = new Date();
   const currentMonth = now.getUTCMonth() + 1; // 1-12
@@ -133,6 +136,13 @@ export default function GamePage() {
   }, []);
 
   useEffect(() => { fetchBoard(); }, [fetchBoard]);
+
+  /* ─── Scroll alla classifica se l'hash URL lo richiede ─── */
+  useEffect(() => {
+    if (!boardLoading && location.hash === '#classifica') {
+      document.getElementById('classifica')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [boardLoading, location.hash]);
 
   /* ─── Submit score ─── */
   const submitScore = useCallback(async (finalScore) => {
@@ -599,7 +609,7 @@ export default function GamePage() {
           />
 
           {/* Leaderboard */}
-          <div className="glass-panel" style={{ padding: '1.2rem' }}>
+          <div id="classifica" className="glass-panel" style={{ padding: '1.2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
               <Trophy size={18} color="#FFD700" />
               <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Classifica</h3>
