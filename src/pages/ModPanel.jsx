@@ -25,8 +25,10 @@ import SEO from '../components/SEO';
 import QuickActions from './mod/QuickActions';
 import CommandPalette from './mod/CommandPalette';
 
-// Scope minimi richiesti per il Pannello Mod
-// Se il token non li ha, l'utente deve ri-autenticarsi.
+// Scope minimi richiesti per il Pannello Mod.
+// ATTENZIONE: questa lista deve restare allineata con i `scope` nell'URL OAuth
+// definito in src/contexts/TwitchAuthContext.jsx → buildTwitchLoginUrl().
+// Se aggiungi/rimuovi scope dall'URL OAuth, aggiorna anche questa lista.
 const SCOPI_PANNELLO_MOD = [
   'moderation:read',
   'channel:manage:broadcast',
@@ -376,11 +378,13 @@ export default function ModPanel() {
     ? SCOPI_PANNELLO_MOD.filter(s => !twitchScopes.includes(s))
     : [];
 
-  // Handler ri-autenticazione: pulisce il token e reindirizza al login Twitch
+  // Handler ri-autenticazione: elimina il token da localStorage (sincrono)
+  // poi reindirizza — la rimozione è garantita prima del redirect poiché
+  // localStorage.removeItem() è un'operazione sincrona.
   const riautentica = useCallback(() => {
-    logout();
+    localStorage.removeItem('twitchGameToken');
     window.location.href = getTwitchLoginUrl('/mod-panel');
-  }, [logout, getTwitchLoginUrl]);
+  }, [getTwitchLoginUrl]);
 
   return (
     <main className="main-content mod-panel-shell" style={{ maxWidth: 1080, margin: '0 auto', padding: '0 0 4rem', width: '100%', boxSizing: 'border-box' }}>

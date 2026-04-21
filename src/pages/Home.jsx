@@ -51,6 +51,7 @@ export default function Home() {
             src="/Firma_Andryx.png"
             alt="ANDRYXify"
             className="logo-hero-flotta"
+            loading="eager"
             style={{ height: 'clamp(60px, 14vw, 110px)', width: 'auto', objectFit: 'contain' }}
           />
         </motion.div>

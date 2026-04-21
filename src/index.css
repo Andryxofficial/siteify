@@ -5580,7 +5580,8 @@ img.msg-avatar {
 
 .logo-hero-flotta {
   animation: logo-flotta 5s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-  will-change: transform;
+  /* will-change rimosso: il browser ottimizza già transform su GPU; mantenerlo
+     su un'animazione infinita causerebbe overhead di memoria permanente */
   filter: drop-shadow(0 8px 24px rgba(224,64,251,.22));
 }
 

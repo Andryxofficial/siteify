@@ -61,7 +61,10 @@ export default function CookieBanner() {
 
           <p className="cookie-testo">
             Usiamo cookie tecnici essenziali per far funzionare il sito.
-            Nessun dato venduto a terzi.
+            Nessun dato venduto a terzi.{' '}
+            <a href="/privacy" style={{ color: 'var(--secondary)', opacity: 0.8, fontSize: 'inherit' }}>
+              Maggiori info
+            </a>
           </p>
 
           <div className="cookie-azioni">
