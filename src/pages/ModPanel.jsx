@@ -311,6 +311,15 @@ export default function ModPanel() {
     gruppo: 'Sezione',
   })), []);
 
+  // Handler ri-autenticazione: elimina il token da localStorage (sincrono)
+  // poi reindirizza — la rimozione è garantita prima del redirect poiché
+  // localStorage.removeItem() è un'operazione sincrona.
+  // NOTA: deve stare PRIMA dei return condizionali per rispettare le Regole degli Hook.
+  const riautentica = useCallback(() => {
+    localStorage.removeItem('twitchGameToken');
+    window.location.href = getTwitchLoginUrl('/mod-panel');
+  }, [getTwitchLoginUrl]);
+
   // ─── Stato di caricamento ───
   if (loading) {
     return (
@@ -377,14 +386,6 @@ export default function ModPanel() {
   const scopiMancanti = twitchScopes.length > 0
     ? SCOPI_PANNELLO_MOD.filter(s => !twitchScopes.includes(s))
     : [];
-
-  // Handler ri-autenticazione: elimina il token da localStorage (sincrono)
-  // poi reindirizza — la rimozione è garantita prima del redirect poiché
-  // localStorage.removeItem() è un'operazione sincrona.
-  const riautentica = useCallback(() => {
-    localStorage.removeItem('twitchGameToken');
-    window.location.href = getTwitchLoginUrl('/mod-panel');
-  }, [getTwitchLoginUrl]);
 
   return (
     <main className="main-content mod-panel-shell" style={{ maxWidth: 1080, margin: '0 auto', padding: '0 0 4rem', width: '100%', boxSizing: 'border-box' }}>
