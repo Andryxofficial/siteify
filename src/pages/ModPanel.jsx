@@ -37,6 +37,8 @@ const SCOPI_PANNELLO_MOD = [
   'channel:manage:redemptions',
   'moderator:manage:banned_users',
   'moderator:manage:chat_settings',
+  'chat:read',
+  'chat:edit',
 ];
 
 // Sezioni lazy-loaded
@@ -142,10 +144,13 @@ function BannerScopiMancanti({ scopiMancanti, onRiautentica }) {
 function BotIndicator({ status, onToggle }) {
   const acceso     = status === 'connected';
   const inAttesa   = status === 'connecting';
+  const inErrore   = status === 'error';
   const Icon       = acceso ? Wifi : WifiOff;
-  const coloreIcona = acceso ? 'var(--accent-spotify)' : inAttesa ? 'var(--accent-warm)' : 'var(--text-faint)';
+  const coloreIcona = acceso ? 'var(--accent-spotify)' : inAttesa ? 'var(--accent-warm)' : inErrore ? '#ff6b6b' : 'var(--text-faint)';
   const titolo     = inAttesa
     ? 'Bot in connessione… clicca per annullare'
+    : inErrore
+    ? 'Errore autenticazione bot — clicca per riprovare (potrebbe servire ri-login)'
     : acceso ? 'Bot attivo — clicca per disattivare' : 'Bot disattivo — clicca per attivare';
   return (
     <div className="mod-bot-switch-wrap" title={titolo}>
@@ -155,10 +160,10 @@ function BotIndicator({ status, onToggle }) {
         type="button"
         role="switch"
         aria-checked={acceso}
-        aria-label={acceso ? 'Disattiva bot' : inAttesa ? 'Annulla connessione bot' : 'Attiva bot'}
+        aria-label={acceso ? 'Disattiva bot' : inAttesa ? 'Annulla connessione bot' : inErrore ? 'Ritenta connessione bot' : 'Attiva bot'}
         aria-busy={inAttesa}
         onClick={onToggle}
-        className={`mod-bot-switch${acceso ? ' is-on' : ''}${inAttesa ? ' is-loading' : ''}`}
+        className={`mod-bot-switch${acceso ? ' is-on' : ''}${inAttesa ? ' is-loading' : ''}${inErrore ? ' is-error' : ''}`}
         style={{ '--on': acceso ? 1 : 0 }}
       >
         <span className="mod-bot-switch-knob" />

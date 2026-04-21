@@ -2977,6 +2977,14 @@ body {
   opacity: 0.75;
   cursor: pointer; /* cliccabile per annullare la connessione */
 }
+.mod-bot-switch.is-error {
+  background: rgba(255, 107, 107, 0.25);
+  border-color: rgba(255, 107, 107, 0.5);
+  cursor: pointer;
+}
+.mod-bot-switch.is-error .mod-bot-switch-knob {
+  background: #ff6b6b;
+}
 .mod-bot-switch-knob {
   position: absolute;
   top: 50%;
