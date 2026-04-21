@@ -74,15 +74,22 @@ export class Renderer2D {
   constructor(canvas) {
     this.canvas = canvas;
     this.dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
-    /* Backing buffer scalato per crispness su HiDPI */
-    canvas.width = CANVAS_LOGICAL * this.dpr;
-    canvas.height = CANVAS_LOGICAL * this.dpr;
-    /* Lascia che il CSS dimensioni la canvas come gia` impostato dal layout */
+
+    /* Lascia che il CSS dimensioni la canvas come vuole il layout; il
+       backing buffer viene aggiornato dinamicamente in _resize(). */
     if (!canvas.style.width) canvas.style.width = '100%';
-    if (!canvas.style.height) canvas.style.height = 'auto';
+    if (!canvas.style.height) canvas.style.height = '100%';
+    canvas.style.display = 'block';
 
     this.ctx = canvas.getContext('2d', { alpha: false });
     this.ctx.imageSmoothingEnabled = false;
+
+    /* Dimensione CSS corrente + trasformazione "fit" calcolate in _resize(). */
+    this.cssW = CANVAS_LOGICAL;
+    this.cssH = CANVAS_LOGICAL;
+    this.fit = 1;
+    this.offX = 0;
+    this.offY = 0;
 
     /* Stato interno aggiornato dall'engine prima di ogni render. */
     this.zoneId = 'village';
@@ -98,6 +105,42 @@ export class Renderer2D {
     this.shakeAmt = 0;     // 0..1
     this.fadeAlpha = 0;    // 0..1
     this.fadeDir = 0;      // -1 fade-out, +1 fade-in, 0 idle
+
+    /* Prima misurazione + osservatore del container per rendering "smart". */
+    this._resize();
+    if (typeof ResizeObserver !== 'undefined') {
+      this._ro = new ResizeObserver(() => this._resize());
+      this._ro.observe(canvas);
+    }
+    this._onWinResize = () => this._resize();
+    window.addEventListener('resize', this._onWinResize, { passive: true });
+  }
+
+  /** Aggiorna backing buffer + fattore di scala alla dimensione CSS reale. */
+  _resize() {
+    const rect = this.canvas.getBoundingClientRect();
+    /* Fallback: se la canvas non e` ancora in layout, usa CANVAS_LOGICAL. */
+    const cssW = Math.max(1, Math.round(rect.width || CANVAS_LOGICAL));
+    const cssH = Math.max(1, Math.round(rect.height || CANVAS_LOGICAL));
+    this.cssW = cssW;
+    this.cssH = cssH;
+
+    const wantedW = Math.round(cssW * this.dpr);
+    const wantedH = Math.round(cssH * this.dpr);
+    if (this.canvas.width !== wantedW || this.canvas.height !== wantedH) {
+      this.canvas.width = wantedW;
+      this.canvas.height = wantedH;
+      /* imageSmoothingEnabled torna a true dopo resize su alcuni browser */
+      this.ctx.imageSmoothingEnabled = false;
+    }
+
+    /* Calcola "fit" per mostrare l'area logica 480x480 nel container reale,
+       mantenendo aspect ratio 1:1 e centrando con letterbox se il container
+       non e` quadrato. Cosi` TUTTO il codice di render continua a usare
+       coordinate logiche 480x480 e si adatta al "blob" in cui e` ospitato. */
+    this.fit = Math.min(cssW, cssH) / CANVAS_LOGICAL;
+    this.offX = (cssW - CANVAS_LOGICAL * this.fit) / 2;
+    this.offY = (cssH - CANVAS_LOGICAL * this.fit) / 2;
   }
 
   /* ─── API: aggiornamenti per frame ─── */
@@ -146,9 +189,17 @@ export class Renderer2D {
   render() {
     const ctx = this.ctx;
     const dpr = this.dpr;
+    const fit = this.fit;
 
-    /* Reset trasformazione + DPR scaling base */
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    /* 1) Pulizia dell'intera canvas in coord fisiche (letterbox nero). */
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    /* 2) Transform "fit": il codice di rendering continua a lavorare in
+          coordinate logiche 480x480; lo scaling si adatta al container reale. */
+    const s = dpr * fit;
+    ctx.setTransform(s, 0, 0, s, this.offX * dpr, this.offY * dpr);
     ctx.imageSmoothingEnabled = false;
 
     /* Sfondo zona (riempito sotto al mondo per coprire eventuali bordi) */
@@ -840,8 +891,12 @@ export class Renderer2D {
 
   /* ─── Teardown ─── */
   dispose() {
-    /* Ripristina default canvas */
     try {
+      if (this._ro) { this._ro.disconnect(); this._ro = null; }
+      if (this._onWinResize) {
+        window.removeEventListener('resize', this._onWinResize);
+        this._onWinResize = null;
+      }
       this.ctx.setTransform(1, 0, 0, 1, 0, 0);
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     } catch { /* ignored */ }
