@@ -42,7 +42,14 @@ export default function GamePage() {
   /* ─── Current month & game module ─── */
   const now = new Date();
   const currentMonth = now.getUTCMonth() + 1; // 1-12
-  const gameEntry = getGameForMonth(currentMonth);
+
+  /* ─── Mese selezionato per giocare (default = mese corrente).
+        I mesi diversi da quello corrente vengono giocati in
+        "Modalità Prova": niente invio in classifica. ─── */
+  const [meseSelezionato, setMeseSelezionato] = useState(currentMonth);
+  const isModalitaProva = meseSelezionato !== currentMonth;
+
+  const gameEntry = getGameForMonth(meseSelezionato);
   const gameMeta = gameEntry.meta;
 
   /* ─── Refs for game engine communication ─── */
@@ -130,6 +137,11 @@ export default function GamePage() {
   /* ─── Submit score ─── */
   const submitScore = useCallback(async (finalScore) => {
     if (!twitchToken || !twitchUser) return;
+    /* In Modalità Prova non inviamo il punteggio in classifica. */
+    if (isModalitaProva) {
+      setSubmitMsg('🎮 Modalità Prova — punteggio non registrato in classifica.');
+      return;
+    }
     setSubmitMsg('Invio punteggio…');
     try {
       const seasonKey = getSeasonKey();
@@ -147,7 +159,7 @@ export default function GamePage() {
     } catch {
       setSubmitMsg('Errore nell\'invio del punteggio.');
     }
-  }, [twitchToken, twitchUser, fetchBoard]);
+  }, [twitchToken, twitchUser, fetchBoard, isModalitaProva]);
 
   /* ─── Create game engine (caricamento dinamico) ─── */
   const gameModuleRef = useRef(null);
@@ -155,8 +167,11 @@ export default function GamePage() {
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    /* Pre-carica il modulo gioco del mese corrente */
-    loadGameModule(currentMonth)
+    /* Pre-carica il modulo gioco del mese selezionato.
+       Invalida il riferimento precedente: cambiando mese
+       dobbiamo caricare un modulo diverso. */
+    gameModuleRef.current = null;
+    loadGameModule(meseSelezionato)
       .then(mod => { gameModuleRef.current = mod; })
       .catch(() => { /* pre-caricamento fallito, verrà riprovato in startGame */ });
 
@@ -169,7 +184,7 @@ export default function GamePage() {
       /* Se non ancora caricato, carica ora */
       try {
         if (!gameModuleRef.current) {
-          gameModuleRef.current = await loadGameModule(currentMonth);
+          gameModuleRef.current = await loadGameModule(meseSelezionato);
         }
       } catch {
         setSubmitMsg('Errore nel caricamento del gioco. Controlla la connessione e riprova.');
@@ -192,7 +207,7 @@ export default function GamePage() {
       });
       return cleanup;
     };
-  }, [currentMonth, highScore, submitScore]);
+  }, [meseSelezionato, highScore, submitScore]);
 
   /* ─── Start/stop game on status change ─── */
   useEffect(() => {
@@ -355,6 +370,20 @@ export default function GamePage() {
     setTwitchToken(null);
   }
 
+  /* ─── Selezione mese da calendario.
+        Se è in corso una partita, la interrompe e torna allo stato idle. ─── */
+  const selezionaMese = useCallback((mese) => {
+    if (mese === meseSelezionato) return;
+    if (cleanupRef.current) {
+      cleanupRef.current();
+      cleanupRef.current = null;
+    }
+    setGameStatus('idle');
+    setScore(0);
+    setSubmitMsg('');
+    setMeseSelezionato(mese);
+  }, [meseSelezionato]);
+
   const themeColor = gameMeta.color || C.player;
 
   return (
@@ -375,6 +404,22 @@ export default function GamePage() {
         </h1>
         <p className="subtitle">{gameMeta.description}</p>
       </header>
+
+      {isModalitaProva && (
+        <div className="trial-banner" role="status">
+          <span className="trial-banner-pill">🎮 Modalità Prova</span>
+          <span className="trial-banner-text">
+            Stai provando un gioco di un altro mese — i punteggi <strong>non vengono registrati in classifica</strong>.
+          </span>
+          <button
+            type="button"
+            className="trial-banner-btn"
+            onClick={() => selezionaMese(currentMonth)}
+          >
+            Torna al gioco del mese →
+          </button>
+        </div>
+      )}
 
       <div className="game-layout">
         <div className="game-area">
@@ -397,6 +442,22 @@ export default function GamePage() {
                   <p style={{ color: C.textMuted, fontSize: '0.85rem', maxWidth: '320px', margin: '0 auto 0.75rem' }}>
                     {gameMeta.instructions}
                   </p>
+
+                  {isModalitaProva && (
+                    <p style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      background: 'rgba(255,184,108,0.12)',
+                      color: 'var(--accent-warm)',
+                      border: '1px solid rgba(255,184,108,0.28)',
+                      borderRadius: '999px',
+                      padding: '4px 12px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      marginBottom: '0.75rem',
+                    }}>
+                      🎮 Modalità Prova — punteggio non in classifica
+                    </p>
+                  )}
 
                   {!twitchUser && !CHIAVETWITCH && (
                     <p style={{ color: '#FF0050', fontSize: '0.8rem', marginBottom: '0.75rem', fontWeight: 600 }}>
@@ -530,7 +591,12 @@ export default function GamePage() {
           </div>
 
           {/* Calendario Giochi — 12 months with #1 player — ABOVE leaderboard */}
-          <GameCalendar archiveData={archiveData} monthlyBoard={monthlyBoard} />
+          <GameCalendar
+            archiveData={archiveData}
+            monthlyBoard={monthlyBoard}
+            meseSelezionato={meseSelezionato}
+            onSelezionaMese={selezionaMese}
+          />
 
           {/* Leaderboard */}
           <div className="glass-panel" style={{ padding: '1.2rem' }}>
@@ -627,7 +693,7 @@ function MonthlyTab({ monthlyBoard, archiveData, twitchUser }) {
   );
 }
 
-function GameCalendar({ archiveData, monthlyBoard }) {
+function GameCalendar({ archiveData, monthlyBoard, meseSelezionato, onSelezionaMese }) {
   const allMetas = getAllGameMetas();
   const currentMonth = new Date().getUTCMonth() + 1;
 
@@ -651,34 +717,59 @@ function GameCalendar({ archiveData, monthlyBoard }) {
         <Zap size={18} color="#FFD700" />
         <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Calendario Giochi</h3>
       </div>
-      <p style={{ fontSize: '0.72rem', color: C.textMuted, marginBottom: '0.75rem', opacity: 0.7 }}>
-        Un gioco nuovo ogni mese. Il 🥇 viene mostrato accanto a chi è primo!
+      <p style={{ fontSize: '0.72rem', color: C.textMuted, marginBottom: '0.75rem', opacity: 0.8, lineHeight: 1.5 }}>
+        Un gioco nuovo ogni mese. Clicca un titolo per <strong style={{ color: C.text }}>provarlo in Modalità Prova</strong> —
+        solo il gioco del mese corrente registra punteggi in classifica.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
         {allMetas.map((m) => {
           const isCurrent = m.month === currentMonth;
+          const isSelected = m.month === meseSelezionato;
           const isPast = m.month < currentMonth;
           const top1 = topByMonth[m.month];
+          /* Bordo: priorità al mese selezionato, poi al mese corrente. */
+          const coloreBordo = isSelected
+            ? m.color
+            : isCurrent
+              ? `${m.color}88`
+              : 'transparent';
+          const sfondo = isSelected
+            ? `${m.color}18`
+            : isCurrent
+              ? 'rgba(0,245,212,0.04)'
+              : 'transparent';
           return (
-            <div
+            <button
+              type="button"
               key={m.month}
               className="game-calendar-row"
+              onClick={() => onSelezionaMese && onSelezionaMese(m.month)}
+              title={isCurrent
+                ? `${m.name} — Gioco del mese, punteggi in classifica`
+                : `${m.name} — Modalità Prova (no classifica)`}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
                 padding: '6px 8px',
                 borderRadius: '8px',
-                background: isCurrent ? 'rgba(0,245,212,0.06)' : 'transparent',
-                borderLeft: isCurrent ? `3px solid ${m.color}` : '3px solid transparent',
-                opacity: isPast && !isCurrent ? 0.55 : 1,
+                background: sfondo,
+                opacity: isPast && !isCurrent && !isSelected ? 0.65 : 1,
+                /* reset stile bottone nativo */
+                border: 'none',
+                borderLeft: `3px solid ${coloreBordo}`,
+                color: 'inherit',
+                font: 'inherit',
+                textAlign: 'left',
+                cursor: 'pointer',
+                width: '100%',
               }}
             >
               <span style={{ fontSize: '1rem', width: '22px', textAlign: 'center', flexShrink: 0 }}>{m.emoji}</span>
               <span style={{
                 fontSize: '0.82rem',
-                fontWeight: isCurrent ? 800 : 600,
-                color: isCurrent ? C.player : C.text,
+                fontWeight: isSelected || isCurrent ? 800 : 600,
+                color: isSelected ? m.color : isCurrent ? C.player : C.text,
                 flex: 1,
                 minWidth: 0,
                 overflow: 'hidden',
@@ -713,10 +804,23 @@ function GameCalendar({ archiveData, monthlyBoard }) {
                 }}>
                   ORA
                 </span>
+              ) : isSelected ? (
+                <span style={{
+                  fontSize: '0.6rem',
+                  background: `${m.color}22`,
+                  color: m.color,
+                  padding: '2px 6px',
+                  borderRadius: '6px',
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  letterSpacing: '0.03em',
+                }}>
+                  PROVA
+                </span>
               ) : isPast ? (
                 <span style={{ fontSize: '0.68rem', color: C.textMuted, opacity: 0.5, flexShrink: 0 }}>—</span>
               ) : null}
-            </div>
+            </button>
           );
         })}
       </div>

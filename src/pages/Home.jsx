@@ -227,7 +227,11 @@ export default function Home() {
 
         <div className="premi-grid">
           {PREMI.map(p => (
-            <div key={p.titolo} className="premio-card">
+            <div
+              key={p.titolo}
+              className="premio-card"
+              style={{ '--accent-card': p.colore }}
+            >
               <div className="premio-emoji">{p.emoji}</div>
               <div className="premio-titolo" style={{ color: p.colore }}>{p.titolo}</div>
               <div className="premio-desc">{p.desc}</div>
@@ -274,8 +278,12 @@ export default function Home() {
 
         <div className="msg-features">
           {MSG_FEATURES.map(f => (
-            <div key={f.titolo} className="msg-feature">
-              <div style={{ color: f.colore }}>{f.icona}</div>
+            <div
+              key={f.titolo}
+              className="msg-feature"
+              style={{ '--accent-card': f.colore }}
+            >
+              <div className="msg-feature-icon" style={{ color: f.colore }}>{f.icona}</div>
               <div className="msg-feature-titolo">{f.titolo}</div>
               <div className="msg-feature-desc">{f.desc}</div>
             </div>
