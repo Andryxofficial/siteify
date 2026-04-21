@@ -6,11 +6,13 @@ import { SpeedInsights } from '@vercel/speed-insights/react';
 import { TwitchAuthProvider } from './contexts/TwitchAuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { TemaProvider } from './contexts/TemaContext';
+import { RetiProvider } from './contexts/RetiContext';
 import Navbar from './components/Navbar';
 import SchermataCampione from './components/SchermataCampione';
 import Footer from './components/Footer';
 import PageTransition from './components/PageTransition';
 import CookieBanner from './components/CookieBanner';
+import BannerOffline from './components/BannerOffline';
 import useStandalone from './hooks/useStandalone';
 import useScrollToTop from './hooks/useScrollToTop';
 import UpdateToast from './components/UpdateToast';
@@ -67,7 +69,7 @@ class ErrorBoundary extends Component {
         }}>
           <span style={{ fontSize: '2.5rem' }}>⚠️</span>
           <h2 style={{ color: '#f87171', margin: 0 }}>Qualcosa è andato storto</h2>
-          <p style={{ color: 'rgba(255,255,255,0.5)', maxWidth: 420, lineHeight: 1.5 }}>
+          <p style={{ color: 'var(--text-muted)', maxWidth: 420, lineHeight: 1.5 }}>
             {this.state.errore.message || 'Errore inaspettato. Ricarica la pagina per riprovare.'}
           </p>
           <button
@@ -172,6 +174,7 @@ function AppLayout() {
       </AnimatePresence>
       <Footer />
       <UpdateToast />
+      <BannerOffline />
       <CookieBanner />
     </div>
   );
@@ -181,18 +184,20 @@ function App() {
   return (
     <Router>
       <TemaProvider>
-        <TwitchAuthProvider>
-          <ToastProvider>
-            <TwitchOAuthRedirect />
-            {/* Layout overlay — no navbar/footer, sfondo trasparente */}
-            <Routes>
-              <Route path="/overlay/goals"  element={<Suspense fallback={null}><GoalsOverlay /></Suspense>} />
-              <Route path="/overlay/events" element={<Suspense fallback={null}><EventsOverlay /></Suspense>} />
-              <Route path="/overlay/alerts" element={<Suspense fallback={null}><AlertsOverlay /></Suspense>} />
-              <Route path="*" element={<AppLayout />} />
-            </Routes>
-          </ToastProvider>
-        </TwitchAuthProvider>
+        <RetiProvider>
+          <TwitchAuthProvider>
+            <ToastProvider>
+              <TwitchOAuthRedirect />
+              {/* Layout overlay — no navbar/footer, sfondo trasparente */}
+              <Routes>
+                <Route path="/overlay/goals"  element={<Suspense fallback={null}><GoalsOverlay /></Suspense>} />
+                <Route path="/overlay/events" element={<Suspense fallback={null}><EventsOverlay /></Suspense>} />
+                <Route path="/overlay/alerts" element={<Suspense fallback={null}><AlertsOverlay /></Suspense>} />
+                <Route path="*" element={<AppLayout />} />
+              </Routes>
+            </ToastProvider>
+          </TwitchAuthProvider>
+        </RetiProvider>
       </TemaProvider>
       <Analytics />
       <SpeedInsights />
