@@ -755,6 +755,24 @@ export default function GamePage() {
 
       <div className="game-layout">
         <div ref={gameAreaRef} className={`game-area${isFullscreen ? ' is-fullscreen' : ''}`}>
+          {/* Toolbar sopra il canvas (fuori dal wrapper di gioco) — contiene
+              il bottone schermo intero. Sta volutamente FUORI dal canvas-wrapper
+              cosi` non copre mai l'HUD del gioco ne` gli overlay idle/game-over. */}
+          <div className="game-toolbar">
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="game-fullscreen-btn"
+              aria-label={isFullscreen ? 'Esci da schermo intero' : 'Schermo intero'}
+              title={isFullscreen ? 'Esci da schermo intero' : 'Schermo intero'}
+            >
+              {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              <span className="game-fullscreen-btn-label">
+                {isFullscreen ? 'Esci' : 'Schermo intero'}
+              </span>
+            </button>
+          </div>
+
           <div className="glass-panel game-canvas-wrapper" style={{ padding: 0, overflow: 'hidden' }}>
             <canvas
               ref={canvasRef}
@@ -764,17 +782,6 @@ export default function GamePage() {
               onTouchStart={onCanvasTouch}
               style={{ touchAction: 'none' }}
             />
-
-            {/* Fullscreen toggle (top-right del canvas wrapper) */}
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="game-fullscreen-btn"
-              aria-label={isFullscreen ? 'Esci da schermo intero' : 'Schermo intero'}
-              title={isFullscreen ? 'Esci da schermo intero' : 'Schermo intero'}
-            >
-              {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-            </button>
 
             {/* Idle overlay */}
             {gameStatus === 'idle' && (
