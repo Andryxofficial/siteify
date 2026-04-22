@@ -2,7 +2,7 @@
  * Andryx Jump — engine SMB-accurate.
  *
  * Architettura:
- *  - Canvas 480x480 con DPR scaling per testo crisp
+ *  - Canvas 480x480 pixel-perfect (no DPR), upscale via CSS image-rendering: pixelated
  *  - Game loop a 60fps (requestAnimationFrame)
  *  - Tilemap a stringhe; tile 16x16
  *  - Player state machine: small | big | fire
