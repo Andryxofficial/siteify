@@ -121,10 +121,9 @@ export default function Emote({ token }) {
 
   const removeSeventvEmote = useCallback(async (emote) => {
     setSeventvActionLoading(emote.id);
-    const emoteId = emote.id.replace('7tv-', '');
     const r = await modPost('/api/mod-emotes', token, {
       action: 'seventv_remove',
-      emote_id: emoteId,
+      emote_id: emote.id,
     });
     if (r.ok) {
       toast.success(`Emote ${emote.nome} rimossa.`, { titolo: '🗑️ 7TV' });
@@ -138,10 +137,9 @@ export default function Emote({ token }) {
   const renameSeventvEmote = useCallback(async (emote) => {
     if (!renameValue.trim()) return;
     setRenameSaving(true);
-    const emoteId = emote.id.replace('7tv-', '');
     const r = await modPost('/api/mod-emotes', token, {
       action: 'seventv_rename',
-      emote_id: emoteId,
+      emote_id: emote.id,
       name: renameValue.trim(),
     });
     if (r.ok) {
@@ -400,15 +398,15 @@ export default function Emote({ token }) {
                     Emote 7TV Canale ({seventvEmoteList.length})
                   </h3>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '0.5rem' }}>
-                    {seventvEmoteList.map(e => {
-                      const isRenaming = renameId === e.id;
+                    {seventvEmoteList.map(emote => {
+                      const isRenaming = renameId === emote.id;
                       return (
-                        <div key={e.id} className="glass-card" style={{ padding: '0.5rem', textAlign: 'center', position: 'relative' }}>
+                        <div key={emote.id} className="glass-card" style={{ padding: '0.5rem', textAlign: 'center', position: 'relative' }}>
                           <img
-                            src={e.url}
-                            srcSet={`${e.url} 1x, ${e.url2x || e.url} 2x`}
-                            alt={e.nome}
-                            title={e.nome}
+                            src={emote.url2x || emote.url}
+                            srcSet={`${emote.url || emote.url2x} 1x, ${emote.url2x || emote.url} 2x`}
+                            alt={emote.nome}
+                            title={emote.nome}
                             loading="lazy"
                             decoding="async"
                             style={{ width: 48, height: 48, objectFit: 'contain', display: 'block', margin: '0 auto 0.3rem' }}
@@ -418,14 +416,14 @@ export default function Emote({ token }) {
                               <input
                                 className="mod-input"
                                 value={renameValue}
-                                onChange={e => setRenameValue(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && renameSeventvEmote(e)}
-                                placeholder={e.nome}
+                                onChange={ev => setRenameValue(ev.target.value)}
+                                onKeyDown={ev => ev.key === 'Enter' && renameSeventvEmote(emote)}
+                                placeholder={emote.nome}
                                 style={{ fontSize: '0.7rem', padding: '0.2rem 0.3rem', marginTop: 0 }}
                               />
                               <button
                                 className="mod-icon-btn"
-                                onClick={() => renameSeventvEmote(e)}
+                                onClick={() => renameSeventvEmote(emote)}
                                 disabled={renameSaving}
                                 style={{ padding: '0.2rem' }}
                               >
@@ -442,13 +440,13 @@ export default function Emote({ token }) {
                           ) : (
                             <>
                               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '0.3rem' }}>
-                                {e.nome}
+                                {emote.nome}
                               </div>
                               <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
                                 <button
                                   className="mod-icon-btn"
-                                  onClick={() => { setRenameId(e.id); setRenameValue(e.nome); }}
-                                  disabled={seventvActionLoading === e.id}
+                                  onClick={() => { setRenameId(emote.id); setRenameValue(emote.nome); }}
+                                  disabled={seventvActionLoading === emote.id}
                                   title="Rinomina"
                                   style={{ padding: '0.2rem' }}
                                 >
@@ -456,17 +454,17 @@ export default function Emote({ token }) {
                                 </button>
                                 <button
                                   className="mod-icon-btn mod-icon-btn-danger"
-                                  onClick={() => removeSeventvEmote(e)}
-                                  disabled={seventvActionLoading === e.id}
+                                  onClick={() => removeSeventvEmote(emote)}
+                                  disabled={seventvActionLoading === emote.id}
                                   title="Rimuovi"
                                   style={{ padding: '0.2rem' }}
                                 >
-                                  {seventvActionLoading === e.id ? <Loader size={10} className="spin" /> : <Trash2 size={10} />}
+                                  {seventvActionLoading === emote.id ? <Loader size={10} className="spin" /> : <Trash2 size={10} />}
                                 </button>
                               </div>
                             </>
                           )}
-                          {e.animata && (
+                          {emote.animata && (
                             <span
                               aria-hidden="true"
                               title="Animata"
@@ -518,7 +516,7 @@ export default function Emote({ token }) {
                           <img
                             src={e.preview || e.preview4x}
                             alt={e.name}
-                            title={`${e.name} by ${e.owner?.display_name || e.owner?.username || 'unknown'}`}
+                            title={e.owner ? `${e.name} by ${e.owner}` : e.name}
                             loading="lazy"
                             decoding="async"
                             style={{ width: 48, height: 48, objectFit: 'contain', display: 'block', margin: '0 auto 0.3rem' }}
