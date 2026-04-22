@@ -79,8 +79,45 @@ export default async function handler(req, res) {
       const data = await helixGet('goals', { broadcaster_id: broadcasterId }, auth.token, auth.clientId);
       payload = { goals: data.data || [] };
     } else if (type === 'hype_train') {
-      const data = await helixGet('hypetrain/events', { broadcaster_id: broadcasterId, first: 5 }, auth.token, auth.clientId);
-      payload = { events: data.data || [] };
+      // Endpoint legacy `hypetrain/events` rimosso da Twitch il 15/01/2026.
+      // Sostituto: `hype_train/status` (status del hype train corrente o ultimo).
+      // Per non rompere il frontend mappiamo la nuova risposta nello stesso
+      // shape `{ events: [{ event_type, event_data: { ... } }] }` che il
+      // componente `GoalsHype.jsx` consuma da sempre.
+      const data = await helixGet('hype_train/status', { broadcaster_id: broadcasterId }, auth.token, auth.clientId);
+      const items = Array.isArray(data?.data) ? data.data : [];
+      const events = items.map(ht => {
+        const isEnded   = !!ht.ended_at;
+        const isActive  = !isEnded && (!!ht.started_at && !ht.ended_at);
+        const eventType = isEnded ? 'hypetrain.end' : (isActive ? 'hypetrain.progress' : 'hypetrain.begin');
+        // Compat: il vecchio campo si chiamava `top_contributions`,
+        // quello nuovo `top_contributors` (entrambi accettati a valle).
+        const topContrib = ht.top_contributors || ht.top_contributions || [];
+        return {
+          id:               ht.id,
+          event_type:       eventType,
+          event_timestamp:  ht.started_at || null,
+          version:          '2.0',
+          event_data: {
+            id:                  ht.id,
+            broadcaster_id:      ht.broadcaster_id,
+            level:               ht.level,
+            total:               ht.total,
+            progress:            ht.progress,
+            goal:                ht.goal,
+            top_contributions:   topContrib,
+            started_at:          ht.started_at,
+            expires_at:          ht.expires_at,
+            ended_at:            ht.ended_at || null,
+            cooldown_ends_at:    ht.cooldown_ends_at || null,
+            // Campi nuovi opzionali (record all-time, hype train speciali):
+            all_time_high_level: ht.all_time_high_level ?? null,
+            all_time_high_total: ht.all_time_high_total ?? null,
+            type:                ht.type || ht.train_type || null,
+          },
+        };
+      });
+      payload = { events };
     } else if (type === 'charity') {
       // GET /helix/charity/campaigns ritorna 0 o 1 campagna attiva
       const camp = await helixGet('charity/campaigns', { broadcaster_id: broadcasterId }, auth.token, auth.clientId);
