@@ -226,11 +226,22 @@ export default async function handler(req, res) {
 
   const isMod = twitchUser ? await isUserMod(redis, twitchUser.login) : false;
 
+  // Stato del token broadcaster persistito in Redis (vedi api/_modAuth.js).
+  // Se il broadcaster non ha mai aperto il Mod Panel, le azioni di categoria A
+  // (cambio titolo, polls, predictions, rewards, schedule, raid, commercial,
+  // VIP, sub-list) falliranno con `broadcaster_token_missing`. Ritorniamo
+  // questo flag così il frontend può mostrare un banner informativo ai mod.
+  let broadcasterTokenAvailable = false;
+  try {
+    const t = await redis.get('mod:broadcaster:token');
+    broadcasterTokenAvailable = !!t;
+  } catch { /* ignore */ }
+
   /* ─── GET: list commands + timers ─── */
   if (req.method === 'GET') {
     // Check-only mode: just return isMod status without requiring mod access
     if (req.query?.check === 'true') {
-      return res.status(200).json({ isMod, user: twitchUser?.login || null });
+      return res.status(200).json({ isMod, user: twitchUser?.login || null, broadcasterTokenAvailable });
     }
 
     if (!twitchUser) {
@@ -292,7 +303,7 @@ export default async function handler(req, res) {
       }
       counters.sort((a, b) => a.name.localeCompare(b.name));
 
-      return res.status(200).json({ commands, timers, quotes, counters, isMod: true });
+      return res.status(200).json({ commands, timers, quotes, counters, isMod: true, broadcasterTokenAvailable });
     } catch (e) {
       console.error('ModCommands GET error:', e);
       return res.status(500).json({ error: 'Errore nel recupero dei dati.' });

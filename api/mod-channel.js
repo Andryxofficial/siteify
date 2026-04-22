@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
 import {
   corsHeaders, modAuthGate, getBroadcasterId, getBroadcasterUsername,
-  helixGet, helixRequest,
+  helixGet, helixRequest, pickHelixAuth, broadcasterTokenMissing,
 } from './_modAuth.js';
 
 /**
@@ -109,15 +109,19 @@ export default async function handler(req, res) {
       if (typeof body.game_id  === 'string') patchBody.game_id  = body.game_id;
       if (!Object.keys(patchBody).length)   return res.status(400).json({ error: 'Nessun campo da aggiornare.' });
 
+      // PATCH /channels richiede il token del broadcaster (channel:manage:broadcast).
+      const auth = await pickHelixAuth({ twitchUser, redis, requireBroadcaster: true });
+      if (!auth) return broadcasterTokenMissing(res);
+
       const url = `channels?broadcaster_id=${broadcasterId}`;
-      await helixRequest('PATCH', url, patchBody, twitchUser.token, twitchUser.clientId);
+      await helixRequest('PATCH', url, patchBody, auth.token, auth.clientId);
 
       // Invalida cache
       await redis.del(CACHE_KEY).catch(() => null);
       return res.status(200).json({ ok: true, updated: patchBody });
     } catch (e) {
       console.error('mod-channel PATCH error:', e);
-      return res.status(500).json({ error: e.message });
+      return res.status(e.status || 500).json({ error: e.message });
     }
   }
 

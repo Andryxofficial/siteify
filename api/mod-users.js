@@ -1,6 +1,7 @@
 import { Redis } from '@upstash/redis';
 import {
   corsHeaders, modAuthGate, getBroadcasterId, helixGet, helixRequest,
+  pickHelixAuth, broadcasterTokenMissing,
 } from './_modAuth.js';
 
 /**
@@ -46,16 +47,20 @@ export default async function handler(req, res) {
     const cached = await redis.get(cacheKey).catch(() => null);
     if (cached) return res.status(200).json(typeof cached === 'string' ? JSON.parse(cached) : cached);
 
+    // Liste mod/VIP/sub: tutte richiedono il token broadcaster.
+    const auth = await pickHelixAuth({ twitchUser, redis, requireBroadcaster: true });
+    if (!auth) return broadcasterTokenMissing(res);
+
     try {
       let users = [];
       if (type === 'mods') {
-        const data = await helixGet('moderation/moderators', { broadcaster_id: broadcasterId, first: 100 }, twitchUser.token, twitchUser.clientId);
+        const data = await helixGet('moderation/moderators', { broadcaster_id: broadcasterId, first: 100 }, auth.token, auth.clientId);
         users = (data.data || []).map(m => ({ user_id: m.user_id, user_name: m.user_name, user_login: m.user_login }));
       } else if (type === 'vips') {
-        const data = await helixGet('channels/vips', { broadcaster_id: broadcasterId, first: 100 }, twitchUser.token, twitchUser.clientId);
+        const data = await helixGet('channels/vips', { broadcaster_id: broadcasterId, first: 100 }, auth.token, auth.clientId);
         users = (data.data || []).map(v => ({ user_id: v.user_id, user_name: v.user_name, user_login: v.user_login }));
       } else if (type === 'subs') {
-        const data = await helixGet('subscriptions', { broadcaster_id: broadcasterId, first: 100 }, twitchUser.token, twitchUser.clientId);
+        const data = await helixGet('subscriptions', { broadcaster_id: broadcasterId, first: 100 }, auth.token, auth.clientId);
         users = (data.data || []).map(s => ({
           user_id:   s.user_id,
           user_name: s.user_name,
@@ -70,7 +75,7 @@ export default async function handler(req, res) {
       return res.status(200).json(result);
     } catch (e) {
       console.error('mod-users GET error:', e);
-      return res.status(500).json({ error: e.message });
+      return res.status(e.status || 500).json({ error: e.message });
     }
   }
 
@@ -82,7 +87,7 @@ export default async function handler(req, res) {
     if (!['mod', 'vip'].includes(role))      return res.status(400).json({ error: 'role deve essere mod o vip.' });
 
     try {
-      // Risolvi l'user_id dal login se necessario
+      // Risolvi l'user_id dal login se necessario (GET /users è pubblico).
       let userId = body.user_id;
       if (!userId && body.login) {
         const data = await helixGet('users', { login: String(body.login).toLowerCase() }, twitchUser.token, twitchUser.clientId);
@@ -91,11 +96,16 @@ export default async function handler(req, res) {
       }
       if (!userId) return res.status(400).json({ error: 'login o user_id obbligatorio.' });
 
+      // Add/remove mod o VIP richiede il token broadcaster
+      // (channel:manage:moderators / channel:manage:vips).
+      const auth = await pickHelixAuth({ twitchUser, redis, requireBroadcaster: true });
+      if (!auth) return broadcasterTokenMissing(res);
+
       const path = role === 'mod' ? 'moderation/moderators' : 'channels/vips';
       const method = action === 'add' ? 'POST' : 'DELETE';
       await helixRequest(method,
         `${path}?broadcaster_id=${broadcasterId}&user_id=${userId}`,
-        null, twitchUser.token, twitchUser.clientId);
+        null, auth.token, auth.clientId);
 
       // Invalida le cache rilevanti
       const tipoCache = role === 'mod' ? 'mods' : 'vips';
@@ -104,7 +114,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, action, role, user_id: userId });
     } catch (e) {
       console.error('mod-users POST error:', e);
-      return res.status(500).json({ error: e.message });
+      return res.status(e.status || 500).json({ error: e.message });
     }
   }
 

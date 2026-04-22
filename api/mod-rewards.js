@@ -1,6 +1,7 @@
 import { Redis } from '@upstash/redis';
 import {
   corsHeaders, modAuthGate, getBroadcasterId, helixGet, helixRequest,
+  pickHelixAuth, broadcasterTokenMissing,
 } from './_modAuth.js';
 
 /**
@@ -34,12 +35,17 @@ export default async function handler(req, res) {
   const broadcasterId = await getBroadcasterId(redis);
   if (!broadcasterId) return res.status(400).json({ error: 'Broadcaster ID non disponibile.' });
 
+  // Channel Points custom rewards: tutte le chiamate Helix richiedono il
+  // token del broadcaster (channel:read/manage:redemptions).
+  const auth = await pickHelixAuth({ twitchUser, redis, requireBroadcaster: true });
+  if (!auth) return broadcasterTokenMissing(res);
+
   try {
     /* ─── GET: lista ─── */
     if (req.method === 'GET') {
       const data = await helixGet('channel_points/custom_rewards',
         { broadcaster_id: broadcasterId, only_manageable_rewards: false },
-        twitchUser.token, twitchUser.clientId);
+        auth.token, auth.clientId);
       const rewards = (data.data || []).map(r => ({
         id:    r.id,
         title: r.title,
@@ -70,7 +76,7 @@ export default async function handler(req, res) {
       if (body.background_color) payload.background_color = String(body.background_color);
       const data = await helixRequest('POST',
         `channel_points/custom_rewards?broadcaster_id=${broadcasterId}`,
-        payload, twitchUser.token, twitchUser.clientId);
+        payload, auth.token, auth.clientId);
       return res.status(200).json({ ok: true, reward: data?.data?.[0] || null });
     }
 
@@ -93,7 +99,7 @@ export default async function handler(req, res) {
       if (!Object.keys(patch).length) return res.status(400).json({ error: 'Nessun campo da aggiornare.' });
       const data = await helixRequest('PATCH',
         `channel_points/custom_rewards?broadcaster_id=${broadcasterId}&id=${id}`,
-        patch, twitchUser.token, twitchUser.clientId);
+        patch, auth.token, auth.clientId);
       return res.status(200).json({ ok: true, reward: data?.data?.[0] || null });
     }
 
@@ -104,13 +110,13 @@ export default async function handler(req, res) {
       if (!id) return res.status(400).json({ error: 'id obbligatorio.' });
       await helixRequest('DELETE',
         `channel_points/custom_rewards?broadcaster_id=${broadcasterId}&id=${id}`,
-        null, twitchUser.token, twitchUser.clientId);
+        null, auth.token, auth.clientId);
       return res.status(200).json({ ok: true, id });
     }
 
     return res.status(405).json({ error: 'Metodo non supportato.' });
   } catch (e) {
     console.error('mod-rewards error:', e);
-    return res.status(500).json({ error: e.message });
+    return res.status(e.status || 500).json({ error: e.message });
   }
 }

@@ -1,6 +1,7 @@
 import { Redis } from '@upstash/redis';
 import {
   corsHeaders, modAuthGate, getBroadcasterId, helixGet,
+  pickHelixAuth,
 } from './_modAuth.js';
 
 /**
@@ -38,11 +39,22 @@ export default async function handler(req, res) {
     const broadcasterId = await getBroadcasterId(redis);
     if (!broadcasterId) return res.status(200).json({ followers: [], subscriptions: [] });
 
+    // /channels/followers funziona col token del moderatore se gli passiamo
+    // moderator_id (scope moderator:read:followers, di norma incluso nel
+    // login mod-panel). Le subscriptions invece richiedono il token del
+    // broadcaster (channel:read:subscriptions).
+    const broadcasterAuth = await pickHelixAuth({ twitchUser, redis, requireBroadcaster: true });
+
+    const followersParams = { broadcaster_id: broadcasterId, first: 20 };
+    if (twitchUser.userId) followersParams.moderator_id = twitchUser.userId;
+
     const [followersRes, subsRes] = await Promise.allSettled([
-      // Ultimi 20 follower (scope moderator:read:followers)
-      helixGet('channels/followers', { broadcaster_id: broadcasterId, first: 20 }, twitchUser.token, twitchUser.clientId),
-      // Ultimi 10 sub (scope channel:read:subscriptions)
-      helixGet('subscriptions', { broadcaster_id: broadcasterId, first: 10 }, twitchUser.token, twitchUser.clientId),
+      helixGet('channels/followers', followersParams, twitchUser.token, twitchUser.clientId),
+      // Se il token broadcaster non è ancora persistito, saltiamo le sub:
+      // ritorniamo lista vuota ma la pagina continua a funzionare.
+      broadcasterAuth
+        ? helixGet('subscriptions', { broadcaster_id: broadcasterId, first: 10 }, broadcasterAuth.token, broadcasterAuth.clientId)
+        : Promise.resolve(null),
     ]);
 
     const followers = followersRes.status === 'fulfilled'
@@ -55,7 +67,7 @@ export default async function handler(req, res) {
         }))
       : [];
 
-    const subscriptions = subsRes.status === 'fulfilled'
+    const subscriptions = subsRes.status === 'fulfilled' && subsRes.value
       ? (subsRes.value?.data || []).map(s => ({
           user_id:    s.user_id,
           user_name:  s.user_name,
@@ -70,7 +82,7 @@ export default async function handler(req, res) {
     const totalFollowers = followersRes.status === 'fulfilled'
       ? (followersRes.value?.total ?? 0)
       : null;
-    const totalSubs = subsRes.status === 'fulfilled'
+    const totalSubs = subsRes.status === 'fulfilled' && subsRes.value
       ? (subsRes.value?.total ?? 0)
       : null;
 

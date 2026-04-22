@@ -141,6 +141,44 @@ function BannerScopiMancanti({ scopiMancanti, onRiautentica }) {
   );
 }
 
+/**
+ * Banner: token broadcaster non disponibile in Redis.
+ * Mostrato ai mod (non al broadcaster) quando il broadcaster non ha mai aperto
+ * il pannello — alcune azioni falliranno finché Andryx non rinfresca il token.
+ */
+function BannerBroadcasterToken({ broadcasterUsername }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass-card"
+      style={{
+        padding: '1rem 1.1rem',
+        marginBottom: '1rem',
+        borderColor: 'rgba(255,184,108,0.35)',
+        background: 'linear-gradient(135deg, rgba(255,184,108,0.10), rgba(255,107,107,0.05) 60%, transparent)',
+        display: 'flex',
+        gap: '0.75rem',
+        alignItems: 'flex-start',
+        flexWrap: 'wrap',
+      }}
+    >
+      <AlertTriangle size={18} style={{ color: 'var(--accent-warm)', flexShrink: 0, marginTop: 1 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.25rem', color: 'var(--accent-warm)' }}>
+          Autorizzazione broadcaster mancante
+        </div>
+        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          {broadcasterUsername ? <><strong>{broadcasterUsername}</strong> deve</> : 'Il broadcaster (Andryx) deve'} aprire
+          una volta il Mod Panel per autorizzare le azioni broadcaster (cambio titolo, sondaggi,
+          predictions, rewards, schedule, raid, pubblicità, gestione VIP / sub).
+          Le azioni di moderazione (ban, timeout, chat-settings, shoutout) continuano a funzionare normalmente.
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 function BotIndicator({ status, onToggle }) {
   const acceso     = status === 'connected';
   const inAttesa   = status === 'connecting';
@@ -247,6 +285,7 @@ export default function ModPanel() {
     return (s && SEZIONI.find(x => x.id === s)) ? s : 'overview';
   });
   const [isMod,      setIsMod]      = useState(null); // null=loading, true/false
+  const [broadcasterTokenOk, setBroadcasterTokenOk] = useState(true);
   const [botStatus,  setBotStatus]  = useState('disconnected');
   const [broadcaster, setBroadcaster] = useState('');
   const [paletteAperta, setPaletteAperta] = useState(false);
@@ -254,12 +293,19 @@ export default function ModPanel() {
   const mobileTabsRef = useRef(null);
 
   // Controlla se l'utente è mod facendo una richiesta al backend.
+  // La risposta include anche `broadcasterTokenAvailable`: se false, alcune
+  // azioni (cambio titolo, polls, rewards, schedule, raid…) falliranno finché
+  // il broadcaster non aprirà una volta il pannello.
   useEffect(() => {
     if (!isLoggedIn || !twitchToken) return;
     let attivo = true;
     fetch('/api/mod-commands', { headers: { Authorization: `Bearer ${twitchToken}` } })
       .then(r => r.json())
-      .then(d => { if (attivo) setIsMod(!!d.isMod); })
+      .then(d => {
+        if (!attivo) return;
+        setIsMod(!!d.isMod);
+        setBroadcasterTokenOk(d.broadcasterTokenAvailable !== false);
+      })
       .catch(() => { if (attivo) setIsMod(false); });
     return () => { attivo = false; };
   }, [isLoggedIn, twitchToken]);
@@ -498,6 +544,14 @@ export default function ModPanel() {
           {/* ── Banner scope mancanti: visibile se il token non ha i permessi necessari ── */}
           {scopiMancanti.length > 0 && (
             <BannerScopiMancanti scopiMancanti={scopiMancanti} onRiautentica={riautentica} />
+          )}
+
+          {/* ── Banner: il broadcaster non ha ancora autorizzato il pannello ──
+              Mostrato solo ai mod che non sono il broadcaster stesso (per Andryx
+              il problema si risolve da solo aprendo il pannello, e il flag
+              `broadcasterTokenOk` diventerà `true` al prossimo refresh). */}
+          {!broadcasterTokenOk && twitchUser && broadcaster && twitchUser !== broadcaster && (
+            <BannerBroadcasterToken broadcasterUsername={broadcaster} />
           )}
 
           {/* Titolo sezione */}
