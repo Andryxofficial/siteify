@@ -2,9 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Award, Clock } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
+import { useLingua } from '../contexts/LinguaContext';
 
 export default function SchermataCampione() {
   const { twitchUser, twitchToken } = useTwitchAuth();
+  const { t } = useLingua();
   const [stato, setStato] = useState(null);
   const [visibile, setVisibile] = useState(false);
   const [target, setTarget] = useState('');
@@ -97,16 +99,16 @@ export default function SchermataCampione() {
                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', delay: 0.1 }}>
                   <span style={{ fontSize: '4rem' }}>🎉</span>
                 </motion.div>
-                <h2 style={{ marginTop: '1rem' }}>VIP assegnato a <span className="text-gradient">@{target}</span>!</h2>
-                <p style={{ opacity: 0.7, marginTop: '0.5rem' }}>Congratulazioni per la vittoria!</p>
-                <button className="btn btn-primary" style={{ marginTop: '1.5rem' }} onClick={() => setVisibile(false)}>Chiudi</button>
+                <h2 style={{ marginTop: '1rem' }}>{t('campione.successo.titolo')} <span className="text-gradient">@{target}</span>!</h2>
+                <p style={{ opacity: 0.7, marginTop: '0.5rem' }}>{t('campione.successo.desc')}</p>
+                <button className="btn btn-primary" style={{ marginTop: '1.5rem' }} onClick={() => setVisibile(false)}>{t('campione.chiudi')}</button>
               </>
             ) : stato?.alreadyGranted ? (
               <>
                 <span style={{ fontSize: '3rem' }}>🏆</span>
-                <h2 style={{ marginTop: '0.5rem' }}>Hai già assegnato il VIP</h2>
-                <p style={{ opacity: 0.7 }}>VIP assegnato a <strong>@{stato.grantee}</strong> questa settimana ✓</p>
-                <button className="btn btn-ghost" style={{ marginTop: '1rem' }} onClick={() => setVisibile(false)}>Chiudi</button>
+                <h2 style={{ marginTop: '0.5rem' }}>{t('campione.gia.titolo')}</h2>
+                <p style={{ opacity: 0.7 }}>{t('campione.gia.desc')} <strong>@{stato.grantee}</strong> {t('campione.gia.settimana')}</p>
+                <button className="btn btn-ghost" style={{ marginTop: '1rem' }} onClick={() => setVisibile(false)}>{t('campione.chiudi')}</button>
               </>
             ) : (
               <>
@@ -114,10 +116,10 @@ export default function SchermataCampione() {
                   <span style={{ fontSize: '4rem' }}>🏆</span>
                 </motion.div>
                 <h2 className="text-gradient" style={{ marginTop: '0.75rem', fontSize: '1.4rem' }}>
-                  Complimenti, hai vinto il primo premio della settimana!
+                  {t('campione.congrats')}
                 </h2>
                 <p style={{ opacity: 0.7, margin: '0.5rem 0' }}>
-                  Hai tempo fino alle 10:00 di lunedì per assegnare il VIP a un utente a tua scelta
+                  {t('campione.tempo_rimasto')}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center', margin: '0.5rem 0', color: 'var(--accent-warm)' }}>
                   <Clock size={16} />
@@ -126,7 +128,7 @@ export default function SchermataCampione() {
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                   <input
                     className="glass-card"
-                    placeholder="Nome utente Twitch"
+                    placeholder={t('campione.placeholder')}
                     value={target}
                     onChange={e => { setTarget(e.target.value); setConferma(false); setErrore(''); }}
                     style={{ flex: 1, padding: '0.6rem 0.8rem', border: '1px solid rgba(130,170,240,0.14)', borderRadius: 12, background: 'rgba(255,255,255,0.04)', outline: 'none', color: 'inherit', fontSize: '0.9rem' }}
@@ -138,18 +140,18 @@ export default function SchermataCampione() {
                     {!conferma ? (
                       <button className="btn btn-primary" style={{ width: '100%' }}
                         onClick={() => setConferma(true)} disabled={invio}>
-                        <Award size={16} /> Dai il VIP a @{target.trim()}
+                        <Award size={16} /> {t('campione.dai_vip')} @{target.trim()}
                       </button>
                     ) : (
                       <button className="btn" style={{ width: '100%', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.4)', color: '#fca5a5' }}
                         onClick={assegnaVIP} disabled={invio}>
-                        {invio ? 'Invio in corso…' : 'Sei sicuro? Puoi farlo solo una volta'}
+                        {invio ? t('campione.invio') : t('campione.conferma')}
                       </button>
                     )}
                   </motion.div>
                 )}
                 <button className="btn btn-ghost" style={{ marginTop: '0.75rem', width: '100%', fontSize: '0.85rem' }} onClick={chiudi}>
-                  Decidi dopo
+                  {t('campione.decidi_dopo')}
                 </button>
               </>
             )}

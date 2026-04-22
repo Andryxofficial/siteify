@@ -1,8 +1,11 @@
 import { motion } from 'framer-motion';
 import { Mic } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useLingua } from '../contexts/LinguaContext';
 
 export default function PodcastPromo() {
+  const { t } = useLingua();
+
   return (
     <motion.section
       className="glass-panel"
@@ -20,21 +23,21 @@ export default function PodcastPromo() {
       }}>
         <Mic size={20} color="var(--secondary)" />
         <h2 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>
-          <span className="text-gradient-cyan">Umanità o IA?</span> — Podcast
+          <span className="text-gradient-cyan">{t('podcastpromo.titolo')}</span> {t('podcastpromo.subtitle')}
         </h2>
         <Link
           to="/podcast"
           className="btn btn-ghost"
           style={{ marginLeft: 'auto', padding: '0.35rem 0.9rem', fontSize: '0.8rem' }}
         >
-          Tutti gli episodi →
+          {t('podcastpromo.cta.tutti')}
         </Link>
       </div>
 
       {/* Real Spotify embed */}
       <div style={{ padding: '1rem 1rem 0' }}>
         <iframe
-          title="Umanità o IA? – Spotify Podcast"
+          title={t('podcastpromo.iframe.title')}
           src="https://open.spotify.com/embed/show/1wtbUNmK9cWJXum02QsxW9?utm_source=generator&theme=0"
           width="100%"
           height="232"
@@ -54,7 +57,7 @@ export default function PodcastPromo() {
           className="btn"
           style={{ background: 'var(--accent-spotify)', color: '#fff', fontSize: '0.82rem', padding: '0.45rem 1.1rem' }}
         >
-          Ascolta su Spotify
+          {t('podcastpromo.cta.spotify')}
         </a>
         <a
           href="https://podcasts.apple.com/it/podcast/umanit%C3%A0-o-ia/id1869893930"
@@ -63,7 +66,7 @@ export default function PodcastPromo() {
           className="btn btn-ghost"
           style={{ fontSize: '0.82rem', padding: '0.45rem 1.1rem' }}
         >
-          Apple Podcast
+          {t('podcastpromo.cta.apple')}
         </a>
       </div>
     </motion.section>

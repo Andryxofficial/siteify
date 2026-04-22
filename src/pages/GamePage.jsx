@@ -73,7 +73,7 @@ const C = {
 export default function GamePage() {
   const location = useLocation();
   const { online } = useReti();
-  const { lingua } = useLingua();
+  const { lingua, t } = useLingua();
 
   /* Sincronizza la lingua dei motori Andryx Legend e Andryx Jump con
      quella del sito. I motori sono JS puri e non usano i contesti React:
@@ -239,7 +239,7 @@ export default function GamePage() {
     if (!twitchToken || !twitchUser) return;
     /* In Modalità Prova non inviamo il punteggio in classifica. */
     if (isModalitaProva) {
-      setSubmitMsg('🎮 Modalità Prova — punteggio non registrato in classifica.');
+      setSubmitMsg(t('game.submit.prova'));
       return;
     }
     const seasonKey = getSeasonKey();
@@ -247,10 +247,10 @@ export default function GamePage() {
     /* Offline: accoda il punteggio per inviarlo al ritorno della rete. */
     if (!online) {
       aggiungiACoda({ score: finalScore, season: seasonKey, game: gameParam, token: twitchToken, ts: Date.now() });
-      setSubmitMsg('📡 Offline — punteggio salvato, verrà inviato al ritorno della rete.');
+      setSubmitMsg(t('game.submit.offline'));
       return;
     }
-    setSubmitMsg('Invio punteggio…');
+    setSubmitMsg(t('game.submit.invio'));
     try {
       const r = await fetch('/api/leaderboard', {
         method: 'POST',
@@ -266,9 +266,9 @@ export default function GamePage() {
     } catch {
       /* Fallita per qualunque motivo (DNS, fetch abort) → accoda anche qui */
       aggiungiACoda({ score: finalScore, season: seasonKey, game: gameParam, token: twitchToken, ts: Date.now() });
-      setSubmitMsg('Errore rete — punteggio salvato, verrà inviato più tardi.');
+      setSubmitMsg(t('game.submit.errore_rete'));
     }
-  }, [twitchToken, twitchUser, fetchBoard, isModalitaProva, online, isLegend, isPlatform]);
+  }, [twitchToken, twitchUser, fetchBoard, isModalitaProva, online, isLegend, isPlatform, t]);
 
   /* ─── Sync coda offline al ritorno della rete ─── */
   useEffect(() => {
@@ -668,11 +668,11 @@ export default function GamePage() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <span style={{ fontSize: '1.4rem' }}>🗓️</span>
-            <strong style={{ fontSize: '0.95rem', color: C.text }}>Gioco del Mese</strong>
-            {modalitaGioco === 'monthly' && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: monthlyEntry.meta.color || C.player, fontWeight: 700 }}>● ATTIVO</span>}
+            <strong style={{ fontSize: '0.95rem', color: C.text }}>{t('game.mensile.nome')}</strong>
+            {modalitaGioco === 'monthly' && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: monthlyEntry.meta.color || C.player, fontWeight: 700 }}>{t('game.attivo')}</span>}
           </div>
           <div style={{ fontSize: '0.75rem', color: C.textMuted, lineHeight: 1.4 }}>
-            {monthlyEntry.meta.emoji} {monthlyEntry.meta.name} — cambia ogni mese, classifica competitiva
+            {monthlyEntry.meta.emoji} {monthlyEntry.meta.name} — {t('game.mensile.desc')}
           </div>
         </button>
         <button
@@ -698,8 +698,8 @@ export default function GamePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <span style={{ fontSize: '1.4rem' }}>{legendMeta.emoji}</span>
             <strong style={{ fontSize: '0.95rem', color: C.text }}>{legendMeta.name}</strong>
-            {isLegend && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: legendMeta.color, fontWeight: 700 }}>● ATTIVO</span>}
-            {legendSaveAvailable && !isLegend && <span style={{ marginLeft: 'auto', fontSize: '0.65rem', color: 'var(--accent-warm, #ffb86c)', fontWeight: 700 }}>⏵ SAVE</span>}
+            {isLegend && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: legendMeta.color, fontWeight: 700 }}>{t('game.attivo')}</span>}
+            {legendSaveAvailable && !isLegend && <span style={{ marginLeft: 'auto', fontSize: '0.65rem', color: 'var(--accent-warm, #ffb86c)', fontWeight: 700 }}>{t('game.save')}</span>}
           </div>
           <div style={{ fontSize: '0.75rem', color: C.textMuted, lineHeight: 1.4 }}>
             {legendMetaTradotta.hubDescription}
@@ -728,8 +728,8 @@ export default function GamePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <span style={{ fontSize: '1.4rem' }}>{platformMeta.emoji}</span>
             <strong style={{ fontSize: '0.95rem', color: C.text }}>{platformMeta.name}</strong>
-            {isPlatform && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: platformMeta.color, fontWeight: 700 }}>● ATTIVO</span>}
-            {platformSaveAvailable && !isPlatform && <span style={{ marginLeft: 'auto', fontSize: '0.65rem', color: 'var(--accent-warm, #ffb86c)', fontWeight: 700 }}>⏵ SAVE</span>}
+            {isPlatform && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: platformMeta.color, fontWeight: 700 }}>{t('game.attivo')}</span>}
+            {platformSaveAvailable && !isPlatform && <span style={{ marginLeft: 'auto', fontSize: '0.65rem', color: 'var(--accent-warm, #ffb86c)', fontWeight: 700 }}>{t('game.save')}</span>}
           </div>
           <div style={{ fontSize: '0.75rem', color: C.textMuted, lineHeight: 1.4 }}>
             {platformMetaTradotta.hubDescription}
@@ -739,16 +739,16 @@ export default function GamePage() {
 
       {isModalitaProva && (
         <div className="trial-banner" role="status">
-          <span className="trial-banner-pill">🎮 Modalità Prova</span>
+          <span className="trial-banner-pill">{t('game.prova.pill')}</span>
           <span className="trial-banner-text">
-            Stai provando un gioco di un altro mese — i punteggi <strong>non vengono registrati in classifica</strong>.
+            {t('game.prova.testo')}
           </span>
           <button
             type="button"
             className="trial-banner-btn"
             onClick={() => selezionaMese(currentMonth)}
           >
-            Torna al gioco del mese →
+            {t('game.prova.torna')}
           </button>
         </div>
       )}
@@ -763,12 +763,12 @@ export default function GamePage() {
               type="button"
               onClick={toggleFullscreen}
               className="game-fullscreen-btn"
-              aria-label={isFullscreen ? 'Esci da schermo intero' : 'Schermo intero'}
-              title={isFullscreen ? 'Esci da schermo intero' : 'Schermo intero'}
+              aria-label={isFullscreen ? t('game.aria.esci_fs') : t('game.aria.schermo_intero')}
+              title={isFullscreen ? t('game.aria.esci_fs') : t('game.aria.schermo_intero')}
             >
               {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
               <span className="game-fullscreen-btn-label">
-                {isFullscreen ? 'Esci' : 'Schermo intero'}
+                {isFullscreen ? t('game.esci_fs') : t('game.schermo_intero')}
               </span>
             </button>
           </div>
@@ -805,13 +805,13 @@ export default function GamePage() {
                       fontWeight: 700,
                       marginBottom: '0.75rem',
                     }}>
-                      🎮 Modalità Prova — punteggio non in classifica
+                      {t('game.prova.badge')}
                     </p>
                   )}
 
                   {!twitchUser && !CHIAVETWITCH && (
                     <p style={{ color: '#FF0050', fontSize: '0.8rem', marginBottom: '0.75rem', fontWeight: 600 }}>
-                      ⚠️ Login Twitch non disponibile — VITE_CHIAVETWITCH non configurata.
+                      {t('game.login.non_config')}
                     </p>
                   )}
                   {!twitchUser && CHIAVETWITCH && (
@@ -820,12 +820,12 @@ export default function GamePage() {
                       color: '#fff', marginBottom: '0.75rem',
                       boxShadow: '0 5px 20px rgba(145,70,255,.4)',
                     }}>
-                      <Twitch size={16} /> Login con Twitch
+                      <Twitch size={16} /> {t('game.login.cta')}
                     </a>
                   )}
                   {twitchUser && (
                     <p style={{ color: themeColor, fontSize: '0.9rem', marginBottom: '0.75rem', fontWeight: 700 }}>
-                      🎮 Loggato come <strong>{twitchUser}</strong>
+                      {t('game.loggato_come')} <strong>{twitchUser}</strong>
                     </p>
                   )}
 
@@ -836,11 +836,11 @@ export default function GamePage() {
                         className="btn btn-primary"
                         style={{ fontSize: '1rem', padding: '0.75rem 2rem', minWidth: '220px' }}
                       >
-                        ⏵ Continua avventura
+                        {t('game.continua')}
                       </button>
                       <button
                         onClick={() => {
-                          if (!confirm('Iniziare una nuova partita? Il salvataggio attuale verra` cancellato.')) return;
+                          if (!confirm(t('game.conferma_nuova'))) return;
                           try { clearLegendSave(); } catch { /* ignored */ }
                           legendContinueRef.current = false;
                           setLegendSaveAvailable(false);
@@ -855,7 +855,7 @@ export default function GamePage() {
                           minWidth: '220px',
                         }}
                       >
-                        🆕 Nuova partita
+                        {t('game.nuova_partita')}
                       </button>
                     </div>
                   ) : isPlatform && platformSaveAvailable ? (
@@ -865,11 +865,11 @@ export default function GamePage() {
                         className="btn btn-primary"
                         style={{ fontSize: '1rem', padding: '0.75rem 2rem', minWidth: '220px' }}
                       >
-                        ⏵ Continua avventura
+                        {t('game.continua')}
                       </button>
                       <button
                         onClick={() => {
-                          if (!confirm('Iniziare una nuova partita? Il salvataggio attuale verra` cancellato.')) return;
+                          if (!confirm(t('game.conferma_nuova'))) return;
                           try { clearPlatformSave(); } catch { /* ignored */ }
                           platformContinueRef.current = false;
                           setPlatformSaveAvailable(false);
@@ -884,7 +884,7 @@ export default function GamePage() {
                           minWidth: '220px',
                         }}
                       >
-                        🆕 Nuova partita
+                        {t('game.nuova_partita')}
                       </button>
                     </div>
                   ) : (
@@ -897,7 +897,7 @@ export default function GamePage() {
                       className="btn btn-primary"
                       style={{ fontSize: '1rem', padding: '0.75rem 2rem' }}
                     >
-                      {gameMeta.emoji} Gioca!
+                      {gameMeta.emoji} {t('game.gioca')}
                     </button>
                   )}
                 </div>
@@ -911,7 +911,7 @@ export default function GamePage() {
                   <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: C.heart }}>{gameMeta.gameOverTitle}</h2>
                   <p style={{ fontSize: '1.8rem', fontWeight: 800, margin: '0.5rem 0' }}>✦ {score}</p>
                   {highScore > 0 && (
-                    <p style={{ fontSize: '0.8rem', color: C.textMuted }}>Record personale: {highScore}</p>
+                    <p style={{ fontSize: '0.8rem', color: C.textMuted }}>{t('game.record')} {highScore}</p>
                   )}
                   {submitMsg && (
                     <p style={{ fontSize: '0.82rem', color: themeColor, marginTop: '0.5rem' }}>{submitMsg}</p>
@@ -922,11 +922,11 @@ export default function GamePage() {
                       color: '#fff', margin: '0.75rem 0',
                       boxShadow: '0 5px 20px rgba(145,70,255,.4)',
                     }}>
-                      <LogIn size={16} /> Login per salvare il punteggio
+                      <LogIn size={16} /> {t('game.login.per_salvare')}
                     </a>
                   )}
                   <button onClick={() => setGameStatus('playing')} className="btn btn-primary" style={{ marginTop: '0.75rem' }}>
-                    <RotateCcw size={16} /> Riprova
+                    <RotateCcw size={16} /> {t('game.riprova')}
                   </button>
                 </div>
               </div>
@@ -1017,7 +1017,7 @@ export default function GamePage() {
             }}>
               <WifiOff size={14} style={{ color: '#ff6b6b', flexShrink: 0 }} />
               <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                Modalità offline — i punteggi verranno sincronizzati al ritorno della rete.
+                {t('game.offline.msg')}
               </span>
             </div>
           )}
@@ -1033,7 +1033,7 @@ export default function GamePage() {
                   </span>
                 </div>
                 <button onClick={handleLogout} className="btn btn-ghost" style={{ fontSize: '0.72rem', padding: '0.25rem 0.6rem' }}>
-                  Logout
+                  {t('game.logout')}
                 </button>
               </div>
             ) : (
@@ -1046,10 +1046,10 @@ export default function GamePage() {
                     boxShadow: '0 4px 16px rgba(145,70,255,.3)',
                     flex: 1, justifyContent: 'center',
                   }}>
-                    <LogIn size={13} /> Login con Twitch
+                    <LogIn size={13} /> {t('game.login.cta')}
                   </a>
                 ) : (
-                  <span style={{ fontSize: '0.78rem', color: C.textMuted }}>Login non disponibile</span>
+                  <span style={{ fontSize: '0.78rem', color: C.textMuted }}>{t('game.login.non_disponibile')}</span>
                 )}
               </div>
             )}
@@ -1067,23 +1067,23 @@ export default function GamePage() {
           <div id="classifica" className="glass-panel" style={{ padding: '1.2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
               <Trophy size={18} color="#FFD700" />
-              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Classifica</h3>
+              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>{t('game.classifica')}</h3>
             </div>
 
             <div className="leaderboard-tabs">
               <button className={`leaderboard-tab${boardTab === 'weekly' ? ' active' : ''}`} onClick={() => setBoardTab('weekly')}>
-                <Calendar size={13} /> Sett.
+                <Calendar size={13} /> {t('game.lb.sett')}
               </button>
               <button className={`leaderboard-tab${boardTab === 'monthly' ? ' active' : ''}`} onClick={() => setBoardTab('monthly')}>
-                <Award size={13} /> Mensile
+                <Award size={13} /> {t('game.lb.mensile')}
               </button>
               <button className={`leaderboard-tab${boardTab === 'general' ? ' active' : ''}`} onClick={() => setBoardTab('general')}>
-                <Crown size={13} /> Generale
+                <Crown size={13} /> {t('game.lb.generale')}
               </button>
             </div>
 
             {boardLoading ? (
-              <p style={{ fontSize: '0.82rem', color: C.textMuted, textAlign: 'center', padding: '1rem 0' }}>Caricamento…</p>
+              <p style={{ fontSize: '0.82rem', color: C.textMuted, textAlign: 'center', padding: '1rem 0' }}>{t('game.lb.caricamento')}</p>
             ) : boardError ? (
               <p style={{ fontSize: '0.82rem', color: C.heart, textAlign: 'center', padding: '1rem 0' }}>{boardError}</p>
             ) : boardTab === 'monthly' ? (
@@ -1091,8 +1091,8 @@ export default function GamePage() {
             ) : (boardTab === 'weekly' ? weeklyBoard : generalBoard).length === 0 ? (
               <p style={{ fontSize: '0.82rem', color: C.textMuted }}>
                 {boardTab === 'weekly'
-                  ? 'Nessun punteggio questa settimana. Sii il primo!'
-                  : 'Classifica generale vuota. Gioca per entrare!'}
+                  ? t('game.lb.vuoto.sett')
+                  : t('game.lb.vuoto.generale')}
               </p>
             ) : (
               <div className="leaderboard-list">
@@ -1127,12 +1127,13 @@ function LeaderboardEntry({ entry, rank, twitchUser }) {
 }
 
 function MonthlyTab({ monthlyBoard, archiveData, twitchUser }) {
+  const { t } = useLingua();
   const now = new Date();
   const currentLabel = `${['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'][now.getUTCMonth()]} ${now.getUTCFullYear()}`;
   const hasCurrent = monthlyBoard && monthlyBoard.length > 0;
   const hasHistory = archiveData && archiveData.length > 0;
   if (!hasCurrent && !hasHistory) {
-    return <p style={{ fontSize: '0.82rem', color: C.textMuted }}>Nessun punteggio mensile ancora. Sii il primo!</p>;
+    return <p style={{ fontSize: '0.82rem', color: C.textMuted }}>{t('game.lb.vuoto.mensile')}</p>;
   }
   return (
     <div className="leaderboard-list">
@@ -1159,6 +1160,7 @@ function MonthlyTab({ monthlyBoard, archiveData, twitchUser }) {
 }
 
 function GameCalendar({ archiveData, monthlyBoard, meseSelezionato, onSelezionaMese }) {
+  const { t } = useLingua();
   const allMetas = getAllGameMetas();
   const currentMonth = new Date().getUTCMonth() + 1;
 
@@ -1183,8 +1185,7 @@ function GameCalendar({ archiveData, monthlyBoard, meseSelezionato, onSelezionaM
         <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Calendario Giochi</h3>
       </div>
       <p style={{ fontSize: '0.72rem', color: C.textMuted, marginBottom: '0.75rem', opacity: 0.8, lineHeight: 1.5 }}>
-        Un gioco nuovo ogni mese. Clicca un titolo per <strong style={{ color: C.text }}>provarlo in Modalità Prova</strong> —
-        solo il gioco del mese corrente registra punteggi in classifica.
+        {t('game.calendario.desc')}
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
         {allMetas.map((m) => {
@@ -1211,7 +1212,7 @@ function GameCalendar({ archiveData, monthlyBoard, meseSelezionato, onSelezionaM
               onClick={() => onSelezionaMese && onSelezionaMese(m.month)}
               title={isCurrent
                 ? `${m.name} — Gioco del mese, punteggi in classifica`
-                : `${m.name} — Modalità Prova (no classifica)`}
+                : `${m.name} — ${t('game.calendario.prova')}`}
               style={{
                 display: 'flex',
                 alignItems: 'center',
