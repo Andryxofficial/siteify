@@ -315,6 +315,10 @@ const IT = {
     game_over: 'SEI CADUTO',
     victory: 'VITTORIA!',
     victory_sub: 'Twitchia è salva',
+    boss_awakens: '⚠ Il Custode si risveglia!',
+    puzzle_solved: '✅ Puzzle risolto! La porta si apre!',
+    chest_open: '📦 Hai trovato qualcosa!',
+    key_used: '🗝️ Porta aperta!',
   },
   meta: {
     description: 'Avventura epica top-down stile Zelda: recupera i 3 Cristalli del Pixel e sconfiggi il Re Ombra.',
@@ -605,6 +609,10 @@ const EN = {
     game_over: 'YOU FELL',
     victory: 'VICTORY!',
     victory_sub: 'Twitchia is saved',
+    boss_awakens: '⚠ The Guardian awakens!',
+    puzzle_solved: '✅ Puzzle solved! The door opens!',
+    chest_open: '📦 You found something!',
+    key_used: '🗝️ Door opened!',
   },
   meta: {
     description: 'Epic top-down Zelda-style adventure: recover the 3 Pixel Crystals and defeat the Shadow King.',
@@ -895,6 +903,10 @@ const ES = {
     game_over: 'HAS CAÍDO',
     victory: '¡VICTORIA!',
     victory_sub: 'Twitchia está a salvo',
+    boss_awakens: '⚠ ¡El Guardián despierta!',
+    puzzle_solved: '✅ ¡Puzzle resuelto! ¡La puerta se abre!',
+    chest_open: '📦 ¡Has encontrado algo!',
+    key_used: '🗝️ ¡Puerta abierta!',
   },
   meta: {
     description: 'Aventura épica top-down estilo Zelda: recupera los 3 Cristales del Píxel y derrota al Rey Sombra.',

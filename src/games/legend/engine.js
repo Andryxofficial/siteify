@@ -571,7 +571,7 @@ export function startEngine(canvas, callbacks, options = {}) {
     if (litCount >= 2 && !state.flags.cave_torches_lit) {
       state.flags.cave_torches_lit = true;
       SFX.door();
-      showSystemMessage(getLegendEngineText('boss_awakens') || '⚠ Il Custode si risveglia!');
+      showSystemMessage(getLegendEngineText('boss_awakens'));
       const z = getZone(state.zoneId);
       const newEnts = z.entities.filter(e => e.requires === 'cave_torches');
       for (const ne of newEnts) {
@@ -597,7 +597,7 @@ export function startEngine(canvas, callbacks, options = {}) {
         }
       }
       SFX.door();
-      showSystemMessage('✅ Puzzle risolto! La porta si apre!');
+      showSystemMessage(getLegendEngineText('puzzle_solved'));
     }
   }
 
@@ -701,7 +701,7 @@ export function startEngine(canvas, callbacks, options = {}) {
     if (e.def.contains) {
       spawnItem(e.x, e.y - TILE_SIZE, e.def.contains);
     }
-    showSystemMessage('📦 Hai trovato qualcosa!');
+    showSystemMessage(getLegendEngineText('chest_open'));
     callbacks.onScore?.(calculateFinalScore({ ...state, maxHp: state.player.maxHp }));
   }
 
@@ -995,7 +995,7 @@ export function startEngine(canvas, callbacks, options = {}) {
             if (!entities.find(ex => ex.def === ne)) entities.push(instantiateEntity(ne));
           }
         }
-        showSystemMessage('🗝️ Porta aperta!');
+        showSystemMessage(getLegendEngineText('key_used'));
         return;
       }
     }

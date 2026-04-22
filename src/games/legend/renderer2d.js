@@ -43,7 +43,7 @@ const ENEMY_SPRITE = {
   bat: ['ENEMY_BAT_0', 'ENEMY_BAT_1'],
   skeleton: ['ENEMY_SKELETON_0', 'ENEMY_SKELETON_1'],
   mage: ['ENEMY_MAGE_0'],
-  goblin: ['ENEMY_SKELETON_0', 'ENEMY_SKELETON_1'],  /* usa sprite skeleton con tinta verde */
+  goblin: ['ENEMY_SKELETON_0', 'ENEMY_SKELETON_1'],  /* usa sprite skeleton come fallback visivo */
   guardian: ['BOSS_GUARDIAN'],
   shadow_king: ['BOSS_SHADOW_KING'],
   forest_troll: ['BOSS_GUARDIAN'],  /* mini-boss: usa sprite guardiano ma scalato */
