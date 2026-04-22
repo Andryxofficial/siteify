@@ -30,17 +30,22 @@ const MAX_ENTRIES = 50;
 const WEEKLY_TTL_SECONDS = 8 * 24 * 60 * 60; // 8 days
 
 /* Giochi supportati. 'monthly' = gioco del mese (key prefix 'lb');
-   'legend' = Andryx Legend (key prefix 'lb:legend'). */
-const SUPPORTED_GAMES = new Set(['monthly', 'legend']);
+   'legend' = Andryx Legend (key prefix 'lb:legend');
+   'platform' = Andryx Jump (key prefix 'lb:platform'). */
+const SUPPORTED_GAMES = new Set(['monthly', 'legend', 'platform']);
 
 /** Prefisso Redis per il gioco (default = monthly per retrocompatibilita`). */
 function gamePrefix(game) {
-  return game === 'legend' ? 'lb:legend' : 'lb';
+  if (game === 'legend') return 'lb:legend';
+  if (game === 'platform') return 'lb:platform';
+  return 'lb';
 }
 
 /** Chiave generale per il gioco. */
 function generalKeyFor(game) {
-  return game === 'legend' ? 'lb:legend:general' : GENERAL_KEY;
+  if (game === 'legend') return 'lb:legend:general';
+  if (game === 'platform') return 'lb:platform:general';
+  return GENERAL_KEY;
 }
 
 const MONTH_NAMES = [
@@ -160,9 +165,10 @@ export default async function handler(req, res) {
   const currentSeason = getCurrentSeason(now);
   const requestedSeason = (req.query?.season || currentSeason).replace(/[^0-9-]/g, '');
 
-  /* Gioco richiesto: 'monthly' (default, gioco del mese) o 'legend' (Andryx Legend).
-     Sanificato in modo strict: qualsiasi valore non riconosciuto cade su 'monthly'
-     per non perdere punteggi inviati con valori malformati. */
+  /* Gioco richiesto: 'monthly' (default, gioco del mese), 'legend' (Andryx Legend)
+     o 'platform' (Andryx Jump). Sanificato in modo strict: qualsiasi valore
+     non riconosciuto cade su 'monthly' per non perdere punteggi inviati con
+     valori malformati. */
   const requestedGame = SUPPORTED_GAMES.has(req.query?.game) ? req.query.game : 'monthly';
   const GENERAL = generalKeyFor(requestedGame);
 

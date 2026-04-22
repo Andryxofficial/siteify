@@ -213,7 +213,7 @@ export default function EmotePicker({
         style={{
           background: 'transparent',
           border: 'none',
-          color: aperto ? 'var(--accent, #a78bfa)' : 'inherit',
+          color: aperto ? 'var(--primary)' : 'inherit',
           cursor: disabled ? 'not-allowed' : 'pointer',
           padding: '0.4rem',
           display: 'flex',
@@ -258,7 +258,7 @@ export default function EmotePicker({
               alignItems: 'center',
               gap: '0.4rem',
               padding: '0.5rem 0.6rem',
-              borderBottom: '1px solid rgba(130,170,240,0.1)',
+              borderBottom: '1px solid var(--vetro-bordo-colore)',
               flexShrink: 0,
             }}>
               <Search size={14} style={{ opacity: 0.5, flexShrink: 0 }} />

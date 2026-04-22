@@ -59,13 +59,17 @@ import { Redis } from '@upstash/redis';
  */
 
 const GENERAL_KEY = 'lb:general';
-const SUPPORTED_GAMES = new Set(['monthly', 'legend']);
+const SUPPORTED_GAMES = new Set(['monthly', 'legend', 'platform']);
 
 function gamePrefix(game) {
-  return game === 'legend' ? 'lb:legend' : 'lb';
+  if (game === 'legend') return 'lb:legend';
+  if (game === 'platform') return 'lb:platform';
+  return 'lb';
 }
 function generalKeyFor(game) {
-  return game === 'legend' ? 'lb:legend:general' : GENERAL_KEY;
+  if (game === 'legend') return 'lb:legend:general';
+  if (game === 'platform') return 'lb:platform:general';
+  return GENERAL_KEY;
 }
 
 function getCurrentSeason(now = new Date()) {

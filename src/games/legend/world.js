@@ -74,8 +74,7 @@ const VILLAGE_ENTITIES = [
   { type: 'npc', kind: 'merchant', x: 19, y: 8, dialog: 'merchant' },
   { type: 'npc', kind: 'child', x: 13, y: 9, dialog: 'child' },
   /* Vaso speciale 'q' — gestito come tile, non entità (vedi engine trySmashTile) */
-  /* La spada di papà Andryx — appare DAVANTI casa appena la porta si apre */
-  { type: 'item', kind: 'sword', x: 2, y: 13, requires: 'house_key' },
+  /* La spada di papà Andryx — rimossa dal villaggio, ora nella Grotta del Saggio */
   /* Cartello al centro: indica le 4 direzioni */
   { type: 'sign', x: 16, y: 11, textKey: 'village_main', text: 'Crocevia del Villaggio.\nN: Castello (Cristallo Blu)\nS: Caverna delle Gemme\nE: Foresta Sussurrante\nO: Pianura dell\'Ovest' },
   /* Cartello fontana */
@@ -142,99 +141,128 @@ const FOREST_ENTITIES = [
   { type: 'sign', x: 18, y: 14, textKey: 'forest_troll_hint', text: 'Attenzione!\nSi sente un rumore pesante\nnella foresta profonda...' },
 ];
 
-/* ─── ZONA 2: Caverna delle Gemme — dungeon con puzzle e mini-boss ───
-   Apertura sul bordo NORD (cols 14-15) per arrivo dal Villaggio. */
+/* ─── ZONA 2: Caverna delle Gemme — dungeon a 3 stanze con puzzle e boss ───
+   Apertura sul bordo NORD (cols 14-15) per arrivo dal Villaggio.
+   Struttura: Room 1 (rows 1-7) → porta D a col14 row8 → Room 2 (rows 9-13)
+   → porta D a col8 row14 (aperta da puzzle blocchi) → Boss Room (rows 15-18). */
 const CAVE_MAP = [
-  'WWWWWWWWWWWWWWFFWWWWWWWWWWWWWW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFpFFFFFFFFFFFFFFFFFFFFFFFFpFW',
-  'WFFFFFFBFFFFFFFFFFFFFFBFFFFFFW',
-  'WFFFFFFFFDFFFFFFFFFFDFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFPFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFPFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFlFFFFFFFFFFFFFFFFFFFFFFFFlFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFtFFFFFFFFFFFFFFtFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFqFFFFFFFFFFFFFFW',
-  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+  'WWWWWWWWWWWWWWFFWWWWWWWWWWWWWW',  // 0: ingresso nord, porta a col14-15
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 1: Room 1 aperta
+  'WFtFFFFFFFFFFFFFFFFFFFFFFFtFFW',  // 2: torce spente a col2 e col26
+  'WFFFFpFFFFFFFFFFFFFFFFFpFFFFFW',  // 3: vasi a col5 e col22
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 4
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 5
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 6
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 7: fine Room 1
+  'WWWWWWWWWWWWWWDWWWWWWWWWWWWWWW',  // 8: PORTA BLOCCATA D a col14 (Room 1→2)
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 9: Room 2 inizio
+  'WFFFFBFFFFFFFFFFFFFFFFBFFFFFFW',  // 10: blocchi spingibili B a col5 e col22
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 11
+  'WFFFFPFFFFFFFFFtFFFFFFFPFFFFFW',  // 12: piastre P a col5 e col23, torcia t a col15
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 13: fine Room 2
+  'WWWWWWWWDWWWWWWWWWWWWWWWWWWWWW',  // 14: SECONDA PORTA D a col8 (Room 2→Boss)
+  'WLFFFFFFFFFFFFFFFFFFFFFFFFFFLW',  // 15: Boss Room con lava perimetro
+  'WLFFFFFFFFFFFFFFFFFFFFFFFFFFLW',  // 16
+  'WLFFFFFFFFFFFFFFFFFFFFFFFFFFLW',  // 17
+  'WLFFFFFFFFFFFFFFFFFFFFFFFFFFLW',  // 18
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',  // 19: fondo
 ];
 
 const CAVE_ENTITIES = [
-  /* Nemici distribuiti per la grotta */
-  { type: 'enemy', kind: 'skeleton', x: 5, y: 8 },
-  { type: 'enemy', kind: 'skeleton', x: 24, y: 4 },
-  { type: 'enemy', kind: 'skeleton', x: 26, y: 14 },
-  { type: 'enemy', kind: 'bat', x: 14, y: 6 },
-  { type: 'enemy', kind: 'bat', x: 20, y: 12 },
-  { type: 'enemy', kind: 'bat', x: 4, y: 15 },
-  { type: 'enemy', kind: 'mage', x: 22, y: 9, requires: 'cave_door1' },
-  { type: 'enemy', kind: 'mage', x: 8, y: 14, requires: 'cave_door1' },
-  /* Boss Custode: appare solo dopo aver acceso le 2 torce */
-  { type: 'boss', kind: 'guardian', x: 14, y: 16, requires: 'cave_torches' },
-  /* Oggetti: scudo nella prima stanza, pozione e rupie sparse, heart container dopo boss */
-  { type: 'item', kind: 'shield', x: 3, y: 3, requires: 'has_shield:false' },
-  { type: 'item', kind: 'potion', x: 3, y: 10 },
-  { type: 'item', kind: 'rupee', x: 27, y: 3 },
-  { type: 'item', kind: 'key', x: 27, y: 10 },
-  { type: 'item', kind: 'heart_container', x: 3, y: 15, requires: 'guardian_defeated' },
-  { type: 'item', kind: 'crystal_blue', x: 14, y: 16, requires: 'guardian_defeated' },
-  { type: 'sign', x: 14, y: 2, textKey: 'cave_main', text: 'Caverna delle Gemme.\nAccendi le 2 torce per\nrisvegliare il Custode.\nLa chiave apre la porta.' },
-  { type: 'sign', x: 2, y: 17, textKey: 'cave_deep', text: 'Sento passi pesanti\nprovenire dal fondo...\nSii prudente, viandante.' },
+  /* ─── Room 1 (rows 1-7) ─── */
+  { type: 'enemy', kind: 'skeleton', x: 6, y: 3 },
+  { type: 'enemy', kind: 'skeleton', x: 22, y: 3 },
+  { type: 'enemy', kind: 'bat', x: 14, y: 5 },
+  { type: 'enemy', kind: 'goblin', x: 8, y: 6 },
+  { type: 'enemy', kind: 'goblin', x: 20, y: 5 },
+  /* Chest con chiave in Room 1 */
+  { type: 'chest', contains: 'key', x: 26, y: 5 },
+  /* Oggetti Room 1 */
+  { type: 'item', kind: 'rupee', x: 4, y: 2 },
+  { type: 'item', kind: 'rupee', x: 25, y: 2 },
+  { type: 'item', kind: 'potion', x: 3, y: 6 },
+
+  /* ─── Room 2 (rows 9-13) — si popola dopo cave_door1 ─── */
+  { type: 'enemy', kind: 'skeleton', x: 14, y: 10, requires: 'cave_door1' },
+  { type: 'enemy', kind: 'mage', x: 8, y: 11, requires: 'cave_door1' },
+  { type: 'enemy', kind: 'mage', x: 21, y: 11, requires: 'cave_door1' },
+  /* Chest con heart container in Room 2 */
+  { type: 'chest', contains: 'heart_container', x: 14, y: 12, requires: 'cave_door1' },
+  /* Chiave extra per seconda porta */
+  { type: 'item', kind: 'key', x: 26, y: 12, requires: 'cave_door1' },
+
+  /* ─── Boss Room (rows 15-18) — si attiva con cave_torches ─── */
+  { type: 'boss', kind: 'guardian', x: 14, y: 17, requires: 'cave_torches' },
+  /* Ricompense post-boss */
+  { type: 'item', kind: 'crystal_blue', x: 14, y: 15, requires: 'guardian_defeated' },
+  { type: 'item', kind: 'heart_container', x: 4, y: 15, requires: 'guardian_defeated' },
+
+  /* ─── Cartelli ─── */
+  { type: 'sign', x: 14, y: 2, textKey: 'cave_main', text: 'Caverna delle Gemme.\nUsa le chiavi per aprire\nle porte. Accendi le torce\nper risvegliare il Custode.' },
+  { type: 'sign', x: 2, y: 17, textKey: 'cave_deep', text: 'Sento passi pesanti...\nSii prudente, viandante.' },
 ];
 
 /* ─── ZONA 3: Castello del Re Ombra — boss finale ───
    Apertura sul bordo SUD (cols 14-15) per arrivo dal Villaggio. */
 const CASTLE_MAP = [
-  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFLLFFFFFFFFFFFFFFFFFFFFFFLLFW',
-  'WFLLLFFFFFFFFFppFFFFFFFFFLLLFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFLLFFFFFFFFFFFFFFFFFFLLFFFW',
-  'WFFFLLLFFFFFFFFFFFFFFFFLLLFFFW',
-  'WFFFFLFFFFFFFFFFFFFFFFFFLFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',
-  'WWWWWWWWWWWWWWFFWWWWWWWWWWWWWW',
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',  // 0: muro nord
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 1
+  'WFLLFFFFFFFFFFFFFFFFFFFFFLLFFW',  // 2: lava agli angoli interni
+  'WFLLFFFFFFFFFFFFFFFFFFFFLLFFFW',  // 3
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 4
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 5
+  'WFWWWFFFFFFFFFFFFFFFFFFFFWWWFW',  // 6: muri sala trono (ovest/est)
+  'WFWFFFFFFFFFFFFFFFFFFFFFFFFWFW',  // 7: corridoi laterali
+  'WFWFFFFFFFFFFFFFFFFFFFFFFFFWFW',  // 8
+  'WFWFFFFFFFFFFFFFFFFFFFFFFFFWFW',  // 9
+  'WFWWWFFFFFFFFFFFFFFFFFFFFWWWFW',  // 10
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 11: cortile interno
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 12
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 13
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',  // 14: muro divisorio
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 15: cortile esterno
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 16
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 17
+  'WFFFFFFFFFFFFFFFFFFFFFFFFFFFFW',  // 18
+  'WWWWWWWWWWWWWWFFWWWWWWWWWWWWWW',  // 19: ingresso dal basso
 ];
 
 const CASTLE_ENTITIES = [
-  /* Guardie: scheletri e maghi distribuiti per la sala */
-  { type: 'enemy', kind: 'skeleton', x: 6, y: 8 },
-  { type: 'enemy', kind: 'skeleton', x: 23, y: 8 },
-  { type: 'enemy', kind: 'skeleton', x: 4, y: 4 },
-  { type: 'enemy', kind: 'skeleton', x: 25, y: 4 },
+  /* ─── Cortile esterno (rows 15-18) ─── */
+  { type: 'enemy', kind: 'skeleton', x: 7, y: 16 },
+  { type: 'enemy', kind: 'skeleton', x: 22, y: 16 },
+  { type: 'enemy', kind: 'goblin', x: 14, y: 15 },
+  { type: 'enemy', kind: 'goblin', x: 6, y: 17 },
+  { type: 'enemy', kind: 'goblin', x: 23, y: 17 },
+  /* Chest nel cortile esterno */
+  { type: 'chest', contains: 'key', x: 26, y: 16 },
+  { type: 'chest', contains: 'potion', x: 3, y: 16 },
+
+  /* ─── Corridoi interni (rows 11-13) ─── */
+  { type: 'enemy', kind: 'mage', x: 5, y: 12 },
+  { type: 'enemy', kind: 'mage', x: 24, y: 12 },
   { type: 'enemy', kind: 'skeleton', x: 14, y: 11 },
-  { type: 'enemy', kind: 'mage', x: 8, y: 14 },
-  { type: 'enemy', kind: 'mage', x: 21, y: 14 },
-  { type: 'enemy', kind: 'mage', x: 4, y: 16 },
-  { type: 'enemy', kind: 'mage', x: 25, y: 16 },
-  /* Boss Re Ombra: appare solo dopo aver sconfitto tutte le guardie */
+  { type: 'enemy', kind: 'skeleton', x: 8, y: 13 },
+  { type: 'enemy', kind: 'skeleton', x: 20, y: 13 },
+
+  /* ─── Anticamera trono (rows 4-5) ─── */
+  { type: 'enemy', kind: 'mage', x: 8, y: 5 },
+  { type: 'enemy', kind: 'mage', x: 21, y: 5 },
+  { type: 'enemy', kind: 'skeleton', x: 3, y: 4 },
+  { type: 'enemy', kind: 'skeleton', x: 26, y: 4 },
+
+  /* ─── Boss: Re Ombra ─── */
   { type: 'boss', kind: 'shadow_king', x: 14, y: 7, requires: 'castle_clear' },
-  /* Cristallo rosso appare dopo la sconfitta del boss */
+
+  /* ─── Loot ─── */
   { type: 'item', kind: 'crystal_red', x: 14, y: 5, requires: 'shadow_king_defeated' },
-  /* Pozione e rupee nascosti */
   { type: 'item', kind: 'potion', x: 2, y: 9, requires: 'has_crystal_red:false' },
   { type: 'item', kind: 'rupee', x: 27, y: 9, requires: 'has_crystal_red:false' },
-  { type: 'sign', x: 14, y: 17, textKey: 'castle_main', text: 'Castello del Re Ombra.\nIl tuo destino ti attende.\nSconfiggi tutte le guardie\nper risvegliare il Re.' },
-  { type: 'sign', x: 2, y: 2, textKey: 'castle_lava', text: 'Attento alle piastrelle\nincandescenti di lava!' },
+  { type: 'item', kind: 'heart_container', x: 2, y: 3, requires: 'shadow_king_defeated' },
+
+  /* ─── Cartelli ─── */
+  { type: 'sign', x: 14, y: 17, textKey: 'castle_main', text: 'Castello del Re Ombra.\nSconfiggi le guardie per\nrisvegliare il Re.' },
+  { type: 'sign', x: 2, y: 2, textKey: 'castle_lava', text: 'Attento alla lava!' },
 ];
 
 /* ─── ZONA 4: Pianura dell'Ovest — overworld breve, presto un nuovo dungeon ───
@@ -304,6 +332,8 @@ const ELDER_CAVE_MAP = [
 const ELDER_CAVE_ENTITIES = [
   /* L'Anziano siede al centro della grotta con la spada di papà Andryx */
   { type: 'npc', kind: 'elder', x: 14, y: 10, dialog: 'elder_intro' },
+  /* La spada del padre — raccolta solo se non già posseduta */
+  { type: 'item', kind: 'sword', x: 13, y: 10, requires: 'has_sword:false' },
   /* Piccola ricompensa nascosta nella grotta */
   { type: 'item', kind: 'rupee', x: 8, y: 9, requires: 'has_sword:false' },
   { type: 'item', kind: 'rupee', x: 20, y: 11, requires: 'has_sword:false' },

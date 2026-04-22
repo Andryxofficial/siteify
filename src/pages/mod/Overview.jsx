@@ -115,7 +115,7 @@ export default function Overview({ token, clientId }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
               {data?.live ? (
                 <>
-                  <span className="chip" style={{ background: 'rgba(255,0,60,0.18)', color: '#ff4060', border: '1px solid rgba(255,0,60,0.3)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem' }}>
+                  <span className="chip chip-live" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem' }}>
                     <Radio size={10} /> LIVE
                   </span>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{formatDuration(data.startedAt)}</span>
@@ -158,7 +158,7 @@ export default function Overview({ token, clientId }) {
                   )}
                 </div>
                 {gameName && gameId && (
-                  <span style={{ fontSize: '0.8rem', color: 'var(--accent-spotify)' }}>✓ {gameName}</span>
+                  <span className="text-tonal-success" style={{ fontSize: '0.8rem' }}>✓ {gameName}</span>
                 )}
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button className="btn-primary" style={{ fontSize: '0.8rem' }} onClick={salva} disabled={saving}>

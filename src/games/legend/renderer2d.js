@@ -43,6 +43,7 @@ const ENEMY_SPRITE = {
   bat: ['ENEMY_BAT_0', 'ENEMY_BAT_1'],
   skeleton: ['ENEMY_SKELETON_0', 'ENEMY_SKELETON_1'],
   mage: ['ENEMY_MAGE_0'],
+  goblin: ['ENEMY_SKELETON_0', 'ENEMY_SKELETON_1'],  /* usa sprite skeleton come fallback visivo */
   guardian: ['BOSS_GUARDIAN'],
   shadow_king: ['BOSS_SHADOW_KING'],
   forest_troll: ['BOSS_GUARDIAN'],  /* mini-boss: usa sprite guardiano ma scalato */
@@ -724,6 +725,41 @@ export class Renderer2D {
     const cx = e.x;
     const cy = e.y;
     const half = TILE_SIZE / 2;
+
+    if (e.type === 'chest') {
+      /* Scrigno del tesoro stile Zelda */
+      const open = e.opened;
+      this._drawEntityShadow(cx, cy + half - 1);
+      /* Corpo cassa */
+      ctx.fillStyle = open ? '#5a3010' : '#8B4513';
+      ctx.fillRect(cx - 9, cy - 6, 18, 12);
+      /* Coperchio */
+      ctx.fillStyle = open ? '#3a2010' : '#6B3010';
+      ctx.fillRect(cx - 9, cy - 8, 18, open ? 3 : 6);
+      /* Bordo oro */
+      ctx.strokeStyle = '#f0c850';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(cx - 9, cy - 8, 18, open ? 14 : 12);
+      /* Serratura (quando chiuso) */
+      if (!open) {
+        ctx.fillStyle = '#f0c850';
+        ctx.fillRect(cx - 2, cy - 2, 4, 4);
+        ctx.fillStyle = '#503000';
+        ctx.fillRect(cx - 1, cy - 1, 2, 2);
+      }
+      /* Testo promemoria azione */
+      if (!open) {
+        const t = this.tickCount * 0.12;
+        const yo = Math.sin(t) * 1.2;
+        ctx.fillStyle = '#fff5b0';
+        ctx.font = '8px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('▲', cx, cy - 10 + yo);
+        ctx.textAlign = 'left';
+        ctx.font = '16px monospace';
+      }
+      return;
+    }
 
     if (e.type === 'item') {
       /* Bobbing leggero */

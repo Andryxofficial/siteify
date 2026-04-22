@@ -477,7 +477,7 @@ export default function Chat({ token }) {
                     <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--primary)' }}>{c.value}</span>
                     <div className="mod-item-actions">
                       <button className="mod-icon-btn" title="-1" onClick={() => patchCounter(c.name, -1)} style={{ fontSize: '1rem', fontWeight: 700 }}>−</button>
-                      <button className="mod-icon-btn" title="+1" onClick={() => patchCounter(c.name, 1)} style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent-spotify)' }}>+</button>
+                      <button className="mod-icon-btn text-tonal-success" title="+1" onClick={() => patchCounter(c.name, 1)} style={{ fontSize: '1rem', fontWeight: 700 }}>+</button>
                       <button className="mod-icon-btn" title="Reset a 0" onClick={() => post({ type: 'counter', name: c.name, label: c.label, value: 0 })}>↺</button>
                       <button className="mod-icon-btn mod-icon-btn-danger" onClick={() => { if (confirm(`Eliminare contatore "${c.name}"?`)) del({ type: 'counter', key: c.name }); }}><Trash2 size={13} /></button>
                     </div>
