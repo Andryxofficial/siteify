@@ -57,8 +57,8 @@ const VILLAGE_MAP = [
   '______________________________',
   'T.b..b......,.__...,...,b,..,T',
   'T.123,...,,..,__.,.,....123..T',
-  'T,709.....,.,.__....,...789..T',
-  'T..q...,,,..,,__.....,.......T',
+  'T,789.....,.,.__....,...789..T',
+  'T..p...,,,..,,__.....,.......T',
   'T..b.....,.,.,__......b...,..T',
   'T,.....b......__..,,.,....b.,T',
   'T.....,..,....__....b.,,....,T',
@@ -68,13 +68,11 @@ const VILLAGE_MAP = [
 const VILLAGE_ENTITIES = [
   /* Re davanti alla sua casa (in alto a destra) */
   { type: 'npc', kind: 'king', x: 20, y: 4, dialog: 'king_intro' },
-  /* Anziano davanti casa propria (in alto a sinistra) */
+  /* Anziano davanti casa propria (in alto a sinistra) — dà la spada */
   { type: 'npc', kind: 'elder', x: 10, y: 4, dialog: 'elder_intro' },
   /* Mercante e bambino vicino alla fontana (NE della croce) */
   { type: 'npc', kind: 'merchant', x: 19, y: 8, dialog: 'merchant' },
   { type: 'npc', kind: 'child', x: 13, y: 9, dialog: 'child' },
-  /* La spada di papa` Andryx — appare DAVANTI casa appena la porta si apre */
-  { type: 'item', kind: 'sword', x: 3, y: 12, requires: 'house_key' },
   /* Cartello al centro: indica le 4 direzioni */
   { type: 'sign', x: 16, y: 11, text: 'Crocevia del Villaggio.\nN: Castello (Cristallo Blu)\nS: Caverna delle Gemme\nE: Foresta Sussurrante\nO: Pianura dell\'Ovest' },
   /* Cartello fontana */
@@ -256,6 +254,7 @@ export const ZONES = {
     entities: FOREST_ENTITIES,
     spawn: { x: 1, y: 10 },
     music: 'forest',
+    firstEntryDialog: 'forest_enter',
     transitions: [
       { trigger: 'edge', side: 'west', toZone: 'village', spawn: { x: 28, y: 10 } },
     ],
@@ -267,6 +266,7 @@ export const ZONES = {
     entities: CAVE_ENTITIES,
     spawn: { x: 14, y: 1 },
     music: 'cave',
+    firstEntryDialog: 'cave_enter',
     transitions: [
       { trigger: 'edge', side: 'north', toZone: 'village', spawn: { x: 14, y: 18 } },
     ],
@@ -278,6 +278,7 @@ export const ZONES = {
     entities: CASTLE_ENTITIES,
     spawn: { x: 14, y: 18 },
     music: 'castle',
+    firstEntryDialog: 'castle_enter',
     transitions: [
       { trigger: 'edge', side: 'south', toZone: 'village', spawn: { x: 14, y: 1 } },
     ],

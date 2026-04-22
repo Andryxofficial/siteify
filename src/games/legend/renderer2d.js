@@ -685,8 +685,8 @@ export class Renderer2D {
   /* ─── Layer: entita` (NPC, nemici, item, boss, projectile) + player ─── */
   _drawEntities() {
     /* Ordina per Y per overlap "isometrico" leggero.
-       NPC, sign e item NON hanno hp (hp=0 di default), quindi escludiamo
-       il filtro hp<=0 per quei tipi: altrimenti NPC e signs sparirebbero. */
+       NPC, cartelli e item NON hanno hp (hp=0 di default), quindi escludiamo
+       il filtro hp<=0 per quei tipi: altrimenti NPC e cartelli sparirebbero. */
     const list = [];
     for (const e of this.entities) {
       const isMortal = e.type === 'enemy' || e.type === 'boss';
@@ -829,35 +829,128 @@ export class Renderer2D {
     ctx.globalAlpha = 1;
   }
 
-  /* ─── Slash arc spada ─── */
+  /* ─── Slash spada (stile Zelda: lama che ruota, scia, scintilla) ─── */
   _drawAttack() {
     const a = this.attackState;
     if (!a || !this.player) return;
     const ctx = this.ctx;
     const p = this.player;
-    const t = a.frame / 14; // 0..1
-    if (t > 1) return;
+    /* ATTACK_FRAMES = 14 → t va da 0 a 1 */
+    const t = a.frame / 14;
+    if (t >= 1) return;
 
-    /* Origine al centro player, leggermente avanti nella direzione */
-    let ox = p.x, oy = p.y;
+    /* Angolo base della direzione di attacco */
     let baseAng;
-    if (p.dir === 'up')    { oy -= 10; baseAng = -Math.PI / 2; }
-    else if (p.dir === 'down')  { oy += 10; baseAng =  Math.PI / 2; }
-    else if (p.dir === 'left')  { ox -= 10; baseAng =  Math.PI; }
-    else                        { ox += 10; baseAng =  0; }
+    if      (p.dir === 'up')   baseAng = -Math.PI / 2;
+    else if (p.dir === 'down') baseAng =  Math.PI / 2;
+    else if (p.dir === 'left') baseAng =  Math.PI;
+    else                       baseAng =  0;
 
-    /* Arco di 110° che spazza */
-    const sweep = (Math.PI / 180) * 110;
-    const startA = baseAng - sweep / 2 + sweep * t;
-    const grad = ctx.createRadialGradient(ox, oy, 2, ox, oy, 14);
-    grad.addColorStop(0, 'rgba(255,255,255,0.9)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = grad;
+    /* L'angolo di swing parte da -60° rispetto al centro e spazza 120°.
+       L'easing accelera nella prima meta` e rallenta alla fine (ease-out). */
+    const sweepRad = (Math.PI / 180) * 120;
+    const ease = t < 0.75 ? 1 - Math.pow(1 - t / 0.75, 2) : 1;
+    const startAng = baseAng - sweepRad / 2;
+    const curAng   = startAng + sweepRad * ease;
+    const bladeLen = 20;   // lunghezza lama in pixel logici
+    const bladeBase = 6;   // distanza dal centro player alla guardia
+
+    const cx = p.x, cy = p.y;
+
+    /* 1. Scia curva (trail): arco che mostra il percorso già spazzato */
+    const trailAlpha = (1 - Math.pow(t, 1.4)) * 0.55;
+    if (ease > 0.04 && trailAlpha > 0) {
+      const trailGrad = ctx.createLinearGradient(
+        cx + Math.cos(startAng) * bladeLen,
+        cy + Math.sin(startAng) * bladeLen,
+        cx + Math.cos(curAng) * bladeLen,
+        cy + Math.sin(curAng) * bladeLen,
+      );
+      trailGrad.addColorStop(0, `rgba(160,220,255,0)`);
+      trailGrad.addColorStop(0.6, `rgba(200,240,255,${trailAlpha * 0.7})`);
+      trailGrad.addColorStop(1, `rgba(255,255,255,${trailAlpha})`);
+      ctx.strokeStyle = trailGrad;
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(cx, cy, bladeLen * 0.82, startAng, curAng, false);
+      ctx.stroke();
+
+      /* Scia sottile interna (accentua il taglio) */
+      ctx.strokeStyle = `rgba(255,255,255,${trailAlpha * 0.5})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, bladeLen * 0.62, startAng, curAng, false);
+      ctx.stroke();
+    }
+
+    /* 2. Linee ghost trail (4 istantanee precedenti in dissolvenza) */
+    for (let i = 1; i <= 4; i++) {
+      const ghostEase = Math.max(0, ease - i * 0.13);
+      if (ghostEase <= 0) continue;
+      const ghostAng = startAng + sweepRad * ghostEase;
+      const ghostAlpha = (1 - i / 5) * 0.28 * (1 - t);
+      const gTipX = cx + Math.cos(ghostAng) * bladeLen;
+      const gTipY = cy + Math.sin(ghostAng) * bladeLen;
+      const gBaseX = cx + Math.cos(ghostAng) * bladeBase;
+      const gBaseY = cy + Math.sin(ghostAng) * bladeBase;
+      ctx.strokeStyle = `rgba(180,230,255,${ghostAlpha})`;
+      ctx.lineWidth = 1.5 - i * 0.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(gBaseX, gBaseY);
+      ctx.lineTo(gTipX, gTipY);
+      ctx.stroke();
+    }
+
+    /* 3. Lama principale: linea bianca spessa con highlight azzurro */
+    const bladeAlpha = t < 0.88 ? 1 : (1 - t) / 0.12;
+    const tipX  = cx + Math.cos(curAng) * bladeLen;
+    const tipY  = cy + Math.sin(curAng) * bladeLen;
+    const baseX = cx + Math.cos(curAng) * bladeBase;
+    const baseY = cy + Math.sin(curAng) * bladeBase;
+
+    /* Corpo lama (bianco, arrotondato) */
+    ctx.strokeStyle = `rgba(255,255,255,${bladeAlpha})`;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(ox, oy);
-    ctx.arc(ox, oy, 14, startA - 0.18, startA + 0.18);
-    ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(baseX, baseY);
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+
+    /* Riflesso laterale (azzurro chiaro, 1px sfasato perpendicolarmente) */
+    const perpX = Math.cos(curAng + Math.PI / 2);
+    const perpY = Math.sin(curAng + Math.PI / 2);
+    ctx.strokeStyle = `rgba(180,230,255,${bladeAlpha * 0.75})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(baseX + perpX, baseY + perpY);
+    ctx.lineTo(tipX + perpX, tipY + perpY);
+    ctx.stroke();
+
+    /* 4. Scintilla alla punta (glow radiale) — scompare a fine swing */
+    if (t < 0.72) {
+      const sparkAlpha = bladeAlpha * (1 - t / 0.72) * 0.95;
+      const sparkR = 3.5 + ease * 1.5;
+      const sparkGrad = ctx.createRadialGradient(tipX, tipY, 0, tipX, tipY, sparkR);
+      sparkGrad.addColorStop(0, `rgba(255,255,255,${sparkAlpha})`);
+      sparkGrad.addColorStop(0.4, `rgba(200,240,255,${sparkAlpha * 0.6})`);
+      sparkGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = sparkGrad;
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, sparkR, 0, Math.PI * 2);
+      ctx.fill();
+
+      /* Piccola croce di luce (pixel-art sparkle) */
+      ctx.fillStyle = `rgba(255,255,255,${sparkAlpha * 0.9})`;
+      ctx.fillRect(Math.round(tipX) - 1, Math.round(tipY) - 3, 2, 6);
+      ctx.fillRect(Math.round(tipX) - 3, Math.round(tipY) - 1, 6, 2);
+    }
+
+    /* Reset stato ctx */
+    ctx.lineCap = 'butt';
+    ctx.lineWidth = 1;
   }
 
   /* ─── Particelle ─── */

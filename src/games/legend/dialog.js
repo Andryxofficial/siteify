@@ -69,24 +69,17 @@ export const DIALOGS = {
     speaker: 'Anziano',
     portrait: 'NPC_ELDER',
     lines: [
-      'Andryx... finalmente sei qui.',
-      'Tuo padre, eroe del passato,',
-      'nascose la sua spada nella tua casa,',
-      'quella con la porta chiusa a ovest.',
-      'La chiave e` in uno dei vasi del villaggio.',
-      'Cercala: rompi i vasi premendo SPAZIO.',
-      'Solo allora potrai sfidare il Re Ombra.',
+      'Andryx... ti stavo aspettando.',
+      'Il Re Ombra ha mosso guerra a Twitchia.',
+      'Non puoi affrontarlo a mani nude.',
+      'Prendi questa.',
+      /* Omaggio a The Legend of Zelda (1986): "It's dangerous to go alone! Take this."
+         — il vecchietto nella caverna che dona la spada all'eroe. */
+      '— È pericoloso andare da solo. —',
+      'Era la spada di tuo padre.',
+      'Ora è tua. Usala bene, eroe.',
     ],
-  },
-
-  elder_after_key: {
-    speaker: 'Anziano',
-    portrait: 'NPC_ELDER',
-    lines: [
-      'Hai trovato la chiave! Bene.',
-      'Vai a recuperare la spada in casa,',
-      'la porta e` ora aperta per te.',
-    ],
+    onComplete: { setFlag: 'has_sword', setQuest: 'has_sword', playSfx: 'pickup' },
   },
 
   elder_after_sword: {
@@ -95,8 +88,8 @@ export const DIALOGS = {
     lines: [
       'La spada di tuo padre risplende ancora.',
       'Sii degno del suo nome, eroe.',
-      'Nella Caverna trovai uno scudo:',
-      'cercalo, ti proteggera` dalle frecce.',
+      'Parti da est: la Foresta Sussurrante',
+      'nasconde il primo Cristallo.',
     ],
   },
 
@@ -240,6 +233,43 @@ export const DIALOGS = {
       'Twitchia è salva!',
     ],
   },
+
+  /* ─── Prima visita ai dungeon ─── */
+  forest_enter: {
+    speaker: 'Narratore',
+    portrait: 'NPC_ELDER',
+    lines: [
+      'Foresta Sussurrante.',
+      'Il vento porta con sé un odore di muschio',
+      'e qualcosa di più oscuro...',
+      'I nemici del Re Ombra pattugliano questi boschi.',
+      'Elimina tutti i mostri per far apparire il Cristallo.',
+    ],
+  },
+
+  cave_enter: {
+    speaker: 'Narratore',
+    portrait: 'NPC_ELDER',
+    lines: [
+      'Caverna delle Gemme.',
+      'Il freddo ti avvolge come un mantello di pietra.',
+      'Echi di battaglie lontane risuonano nelle gallerie.',
+      'Accendi le due torce per risvegliare il Custode.',
+      'Solo sconfiggendolo otterrai il Cristallo Blu.',
+    ],
+  },
+
+  castle_enter: {
+    speaker: 'Re Ombra',
+    portrait: 'BOSS_SHADOW_KING',
+    lines: [
+      '...',
+      'Sei arrivato fin qui, piccolo eroe.',
+      'Twitchia ti ha cresciuto bene.',
+      'Peccato che morirai qui.',
+      'I miei servitori ti aspettano.',
+    ],
+  },
 };
 
 /** Ritorna il dialogo per id, sostituendo eventuali placeholder. */
@@ -273,7 +303,6 @@ export function selectNpcDialog(npcId, state) {
   }
   if (npcId === 'elder_intro') {
     if (flags.has_sword) return 'elder_after_sword';
-    if (flags.house_key) return 'elder_after_key';
     return 'elder_intro';
   }
   return npcId;

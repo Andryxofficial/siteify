@@ -33,6 +33,7 @@ const ATTACK_FRAMES = 14;         // durata animazione attacco
 const ATTACK_RANGE = 14;          // raggio hit della spada (oltre il player)
 const ATTACK_HIT_FRAMES = [4, 10]; // frame in cui la spada infligge danno
 const IFRAMES = 60;               // invulnerabilita` post-hit (frame)
+const TRANSITION_IFRAMES = IFRAMES * 3; // protezione spawn al cambio zona (~3s)
 const KNOCKBACK = 6;
 const TEXT_SPEED = 1.5;           // caratteri per frame nel typewriter
 
@@ -112,8 +113,12 @@ export function startEngine(canvas, callbacks, options = {}) {
   let lastTimestamp = 0;
   let rafId = 0;
 
+  /* ─── Banner nome zona (stile Zelda: Link's Awakening) ───
+     Compare al centro-basso dello schermo al cambio zona, poi svanisce. */
+  let zoneBanner = { name: '', timer: 0 };
+
   /* Carica entita` zona */
-  function loadZone() {
+  function loadZone(isInit = false) {
     const z = getZone(state.zoneId);
     mutableMap = cloneZoneMap(state.zoneId);
     applyMutations(state.zoneId);
@@ -130,6 +135,22 @@ export function startEngine(canvas, callbacks, options = {}) {
     callbacks.onInfo?.(`📍 ${z.name}`);
     /* Aggiorna il renderer 2D per la nuova zona */
     renderer2d.setZone(state.zoneId, mutableMap);
+
+    /* Mostra il banner del nome zona (180 frame = ~3 secondi) */
+    if (!isInit) {
+      zoneBanner.name = z.name;
+      zoneBanner.timer = 180;
+    }
+
+    /* Dialogo di prima visita ai dungeon */
+    const dungeonFirst = z.firstEntryDialog;
+    if (dungeonFirst && !state.flags[`visited_${state.zoneId}`]) {
+      state.flags[`visited_${state.zoneId}`] = true;
+      /* Piccolo delay per far vedere il banner prima del dialogo */
+      setTimeout(() => {
+        if (!dialogState) openDialogById(dungeonFirst);
+      }, 900);
+    }
   }
 
   function applyMutations(zoneId) {
@@ -847,6 +868,9 @@ export function startEngine(canvas, callbacks, options = {}) {
     state.zoneId = zoneId;
     state.player.x = (spawn?.x ?? 4) * TILE_SIZE + 8;
     state.player.y = (spawn?.y ?? 4) * TILE_SIZE + 8;
+    /* Iframes di protezione: evita danno istantaneo quando si spawna
+       vicino a un nemico. Dura TRANSITION_IFRAMES frame (~3s a 60fps). */
+    state.player.iframes = TRANSITION_IFRAMES;
     loadZone();
     /* Auto-save al cambio zona */
     if (options.onAutoSave) options.onAutoSave(state);
@@ -937,6 +961,7 @@ export function startEngine(canvas, callbacks, options = {}) {
     const oc = d.onComplete;
     if (oc.setQuest) state.quest = oc.setQuest;
     if (oc.setFlag) state.flags[oc.setFlag] = true;
+    if (oc.playSfx) SFX[oc.playSfx]?.();
     if (oc.addMaxHp) {
       state.player.maxHp += oc.addMaxHp;
       state.player.hp = state.player.maxHp;
@@ -1038,93 +1063,63 @@ export function startEngine(canvas, callbacks, options = {}) {
       ctx.fillText(`x${state.keys}`, padding + 26, ky + 17);
     }
 
-    /* Mini-mappa in basso a destra */
-    renderMiniMap();
-
     /* Reset */
     ctx.shadowBlur = 0;
     ctx.textAlign = 'left';
   }
 
-  function renderMiniMap() {
-    const mmSize = 130;
-    const mmX = CANVAS_SIZE - mmSize - 10;
-    const mmY = CANVAS_SIZE - mmSize - 14;
+  /* ─── Banner nome zona (stile Zelda: Link's Awakening) ───
+     Compare al centro dello schermo al cambio zona, poi svanisce lentamente.
+     Usa la variabile `zoneBanner` aggiornata in loadZone().
+     Timer: 180 frame (~3s) — fade-in 30f, pieno 120f, fade-out 30f. */
+  function renderZoneBanner() {
+    if (!zoneBanner || zoneBanner.timer <= 0) return;
+    zoneBanner.timer--;
+    const t = zoneBanner.timer;
+    /* Calcolo alpha: fade-in nei primi 30f, fade-out negli ultimi 30f */
+    let alpha;
+    if (t > 150)      alpha = (180 - t) / 30;   // fade-in  (150..180 → 0..1)
+    else if (t > 30)  alpha = 1;                 // pieno    (30..150)
+    else              alpha = t / 30;            // fade-out (0..30  → 0..1)
+    alpha = Math.max(0, Math.min(1, alpha));
+    if (alpha <= 0) return;
 
-    /* Etichetta zona sopra */
-    const z = getZone(state.zoneId);
-    ctx.shadowColor = 'rgba(0,0,0,0.95)';
-    ctx.shadowBlur = 4;
-    ctx.fillStyle = '#fff5b0';
-    ctx.font = 'bold 16px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(z.name, mmX + mmSize / 2, mmY - 6);
-    ctx.shadowBlur = 0;
+    const name = zoneBanner.name;
+    const cy = CANVAS_SIZE * 0.72;  // posizionato a 72% dall'alto (centro-basso)
+    const font = 'bold 20px ui-sans-serif, system-ui, sans-serif';
+    ctx.font = font;
+    const tw = ctx.measureText(name).width;
+    const padX = 20, padY = 8;
+    const bw = tw + padX * 2;
+    const bh = 36;
+    const bx = (CANVAS_SIZE - bw) / 2;
+    const by = cy - bh / 2;
 
-    /* Pannello sfondo + doppio bordo oro Minish */
-    ctx.fillStyle = 'rgba(8,12,40,0.78)';
-    ctx.fillRect(mmX, mmY, mmSize, mmSize);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    /* Pannello semi-trasparente stile Zelda (blu scuro, bordo oro) */
+    ctx.fillStyle = 'rgba(8,12,50,0.82)';
+    ctx.fillRect(bx, by, bw, bh);
     ctx.strokeStyle = '#f0c850';
-    ctx.lineWidth = 2.5;
-    ctx.strokeRect(mmX + 1.5, mmY + 1.5, mmSize - 3, mmSize - 3);
-    ctx.strokeStyle = 'rgba(240,200,80,0.55)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(bx + 1, by + 1, bw - 2, bh - 2);
+    ctx.strokeStyle = 'rgba(240,200,80,0.45)';
     ctx.lineWidth = 1;
-    ctx.strokeRect(mmX + 5, mmY + 5, mmSize - 10, mmSize - 10);
+    ctx.strokeRect(bx + 4, by + 4, bw - 8, bh - 8);
 
-    /* Tile colorati */
-    const sx = (mmSize - 10) / ZONE_W;
-    const sy = (mmSize - 10) / ZONE_H;
-    const ox = mmX + 5;
-    const oy = mmY + 5;
-    for (let y = 0; y < ZONE_H; y++) {
-      const row = mutableMap[y];
-      if (!row) continue;
-      for (let x = 0; x < ZONE_W; x++) {
-        const ch = row[x];
-        const t = getTile(ch);
-        let col = null;
-        if (t.solid) col = '#3a3a48';
-        if (t.id === '.' || t.id === ',' || t.id === '_') col = '#5fb33a';
-        if (t.id === '~') col = '#3a72c8';
-        if (t.id === 'F') col = '#9090a0';
-        if (t.id === '*') col = '#ff5af0';
-        if (t.id === 'L') col = '#e85030';
-        if (t.id === 'T') col = '#266b26';
-        if (t.id === '1' || t.id === '2' || t.id === '3') col = '#8e1818';
-        if (t.id === '7' || t.id === '8' || t.id === '9') col = '#e8d8b0';
-        if (col) {
-          ctx.fillStyle = col;
-          ctx.fillRect(ox + x * sx, oy + y * sy, sx + 0.5, sy + 0.5);
-        }
-      }
-    }
-    /* Player con pulse */
-    const pulse = 0.7 + Math.sin(tickCount * 0.18) * 0.3;
-    ctx.fillStyle = '#00f5d4';
-    const pmx = ox + (state.player.x / TILE_SIZE) * sx;
-    const pmy = oy + (state.player.y / TILE_SIZE) * sy;
-    const ps = 4 + pulse * 2;
-    ctx.fillRect(pmx - ps / 2, pmy - ps / 2, ps, ps);
-    /* Nemici */
-    ctx.fillStyle = '#ff4040';
-    for (const e of entities) {
-      if ((e.type === 'enemy' || e.type === 'boss') && e.hp > 0) {
-        const ex = ox + (e.x / TILE_SIZE) * sx;
-        const ey = oy + (e.y / TILE_SIZE) * sy;
-        const sz = e.type === 'boss' ? 6 : 3;
-        ctx.fillRect(ex - sz / 2, ey - sz / 2, sz, sz);
-      }
-    }
-    /* NPC dorati */
-    ctx.fillStyle = '#f0c850';
-    for (const e of entities) {
-      if (e.type === 'npc') {
-        const ex = ox + (e.x / TILE_SIZE) * sx;
-        const ey = oy + (e.y / TILE_SIZE) * sy;
-        ctx.fillRect(ex - 1.5, ey - 1.5, 3, 3);
-      }
-    }
+    /* Testo con ombra */
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 5;
+    ctx.fillStyle = '#fff5b0';
+    ctx.font = font;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name, CANVAS_SIZE / 2, cy);
+
+    ctx.restore();
     ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
   }
 
   /* Word-wrap helper: spezza `text` in righe che entrano in maxW. */
@@ -1323,8 +1318,9 @@ export function startEngine(canvas, callbacks, options = {}) {
     /* Render mondo (clear + scene). Lascia il ctx in scala DPR. */
     renderer2d.render();
 
-    /* HUD / Dialog / Overlay disegnati sullo stesso canvas, sopra il mondo */
+    /* HUD / Dialog / Overlay / Banner disegnati sullo stesso canvas, sopra il mondo */
     renderHud();
+    renderZoneBanner();
     renderDialog();
     renderOverlay();
   }
@@ -1343,7 +1339,7 @@ export function startEngine(canvas, callbacks, options = {}) {
   }
 
   /* Init */
-  loadZone();
+  loadZone(true);
   callbacks.onHpChange?.(state.player.hp, state.player.maxHp);
   callbacks.onScore?.(0);
   ensureAudio();
