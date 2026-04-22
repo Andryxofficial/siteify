@@ -35,10 +35,13 @@ export const DIALOGS = {
       'Andryx, mio coraggioso campione...',
       'Il Re Ombra ha rubato i 3 Cristalli del Pixel.',
       'Senza di essi, Twitchia svanirà nell\'oblio.',
-      'Recupera il Cristallo Verde nella Foresta,',
-      'il Cristallo Blu nella Caverna delle Gemme,',
-      'e il Cristallo Rosso nel suo Castello.',
-      'Solo tu puoi salvarci. Buona fortuna!',
+      'Prima di partire, vai nella tua casa.',
+      'Un vaso dorato nasconde la chiave di casa.',
+      'Dentro troverai lo scudo di tua madre.',
+      'Poi vai dal saggio nella grotta a nord-ovest:',
+      'ti darà la spada di tuo padre.',
+      'Solo con entrambi potrai avventurarti fuori.',
+      'Buona fortuna, eroe!',
     ],
     onComplete: { setQuest: 'talked_to_king' },
   },
@@ -78,6 +81,9 @@ export const DIALOGS = {
       '— È pericoloso andare da solo. —',
       'Era la spada di tuo padre.',
       'Ora è tua. Usala bene, eroe.',
+      'Ricorda: avrai bisogno anche dello scudo',
+      'prima di avventurarti fuori dal villaggio.',
+      'Lo trovi nella tua casa — usa il vaso dorato.',
     ],
     onComplete: { setFlag: 'has_sword', setQuest: 'has_sword', playSfx: 'pickup' },
   },
@@ -88,20 +94,44 @@ export const DIALOGS = {
     lines: [
       'La spada di tuo padre risplende ancora.',
       'Sii degno del suo nome, eroe.',
-      'Parti da est: la Foresta Sussurrante',
-      'nasconde il primo Cristallo.',
+      'Recupera lo scudo a casa tua,',
+      'poi parti per la Foresta a est.',
+    ],
+  },
+
+  elder_village: {
+    speaker: 'Anziano del Villaggio',
+    portrait: 'NPC_ELDER',
+    lines: [
+      'Ah, finalmente sei tornato figlio mio.',
+      'La grotta a nord-ovest nasconde un vecchio saggio.',
+      'Entra tra le rocce — ti aspetta con la spada.',
+      'E ricorda: nella tua casa c\'è lo scudo.',
+      'Il vaso dorato accanto all\'ingresso ne ha la chiave.',
     ],
   },
 
   house_key_pickup: {
     speaker: 'Sistema',
-    portrait: 'ITEM_HOUSE_KEY',
+    portrait: null,
     lines: [
       'Hai trovato la CHIAVE DI CASA!',
       'La porta della tua dimora si apre.',
-      'Recupera la spada di tuo padre dentro.',
+      'Dentro troverai lo scudo di tua madre.',
     ],
     onComplete: { setFlag: 'house_key' },
+  },
+
+  andryx_house_enter: {
+    speaker: 'Narratore',
+    portrait: 'NPC_ELDER',
+    lines: [
+      'Casa di Andryx.',
+      'L\'odore di legno antico e cera di candela',
+      'ti avvolge come un ricordo lontano.',
+      'Tuo padre partì da qui per sempre.',
+      'Ciò che lasciò è ancora qui ad aspettarti.',
+    ],
   },
 
   merchant: {
@@ -124,6 +154,7 @@ export const DIALOGS = {
       'a volte ci sono cuori e rupie!',
       'Uno luccica di oro pero`...',
       'forse nasconde qualcosa di speciale!',
+      'È vicino alla porta della tua casa!',
     ],
   },
 
@@ -135,7 +166,7 @@ export const DIALOGS = {
       'L\'eredita` di tuo padre brilla nella tua mano.',
       'Premi SPAZIO per attaccare nella',
       'direzione in cui guardi.',
-      'Ora puoi sfidare i mostri della Foresta!',
+      'Ora recupera lo scudo a casa tua!',
     ],
     onComplete: { setQuest: 'has_sword', setFlag: 'has_sword' },
   },
@@ -144,8 +175,11 @@ export const DIALOGS = {
     speaker: 'Sistema',
     portrait: 'ITEM_SHIELD',
     lines: [
-      'Hai trovato lo SCUDO DI BRONZO!',
-      'Riduce a meta` i danni dei nemici.',
+      'Hai trovato lo SCUDO DI TUA MADRE!',
+      'Riduce a metà i danni dei nemici.',
+      'Con spada e scudo puoi avventurarti',
+      'fuori dal Villaggio dei Pixel.',
+      'Parti per la Foresta a est!',
     ],
     onComplete: { setFlag: 'has_shield' },
   },
@@ -156,8 +190,8 @@ export const DIALOGS = {
     lines: [
       'Hai recuperato il CRISTALLO VERDE!',
       'Uno dei tre Cristalli del Pixel.',
-      'Tornato al Villaggio, esplora',
-      'la Caverna a sud per il prossimo.',
+      'Torna al Villaggio e imbocca',
+      'la strada a sud per la Caverna.',
     ],
     onComplete: { setQuest: 'has_crystal_green', setFlag: 'has_crystal_green' },
   },
@@ -169,7 +203,7 @@ export const DIALOGS = {
       'Hai recuperato il CRISTALLO BLU!',
       'Il potere dell\'acqua fluisce in te.',
       'La strada a NORD del Villaggio',
-      'verso il Castello e\` ora aperta.',
+      'verso il Castello è ora aperta.',
     ],
     onComplete: { setQuest: 'has_crystal_blue', setFlag: 'has_crystal_blue' },
   },
@@ -199,7 +233,9 @@ export const DIALOGS = {
     speaker: 'Custode',
     portrait: 'BOSS_GUARDIAN',
     lines: [
+      'GRAAAARGH!',
       'CHI OSA RISVEGLIARE IL CUSTODE?',
+      'Le torce bruciano... il patto è sigillato.',
       'NESSUNO PASSA SENZA SUPERARE LA PROVA!',
     ],
   },
@@ -208,10 +244,42 @@ export const DIALOGS = {
     speaker: 'Re Ombra',
     portrait: 'BOSS_SHADOW_KING',
     lines: [
-      'Cosi`, l\'eroe di Twitchia osa sfidarmi.',
-      'I tuoi cristalli non basteranno.',
-      'Ti annienteranno le mie ombre!',
-      'PREPARATI A MORIRE!',
+      'Così... l\'eroe di Twitchia osa sfidarmi.',
+      'Ho visto cadere eroi più forti di te.',
+      'I Cristalli del Pixel appartengono a ME.',
+      'I tuoi compagni moriranno tutti.',
+      'PREPARATI A SPROFONDARE NELL\'OMBRA!',
+    ],
+  },
+
+  forest_troll_intro: {
+    speaker: 'Troll della Foresta',
+    portrait: 'NPC_ELDER',
+    lines: [
+      'UGRRRRH!',
+      'Piccolo umano entrare nel mio bosco...',
+      'Troll schiacciare umano come mosca!',
+      'NESSUNO PASSA DAL TROLL!',
+    ],
+  },
+
+  forest_troll_victory: {
+    speaker: 'Sistema',
+    portrait: null,
+    lines: [
+      'Il Troll della Foresta è sconfitto!',
+      'La foresta profonda è ora esplorablie.',
+      'Il Cristallo Verde si sta materializzando...',
+    ],
+  },
+
+  castle_boss_awakens: {
+    speaker: 'Re Ombra',
+    portrait: 'BOSS_SHADOW_KING',
+    lines: [
+      '...le mie guardie... cadute!',
+      'Bene, allora... affrontami tu stesso.',
+      'Mostrerò al mondo la fine di Andryx!',
     ],
   },
 
@@ -221,6 +289,7 @@ export const DIALOGS = {
     lines: [
       'Custode sconfitto!',
       'Il Cristallo Blu si materializza.',
+      'Un contenitore di cuore appare nella stanza.',
     ],
   },
 
@@ -235,6 +304,18 @@ export const DIALOGS = {
   },
 
   /* ─── Prima visita ai dungeon ─── */
+  village_intro: {
+    speaker: 'Narratore',
+    portrait: 'NPC_ELDER',
+    lines: [
+      'Villaggio dei Pixel. La tua casa.',
+      'Il Re Andryx ti ha convocato.',
+      'Parla con lui: porta la tua spada e scudo.',
+      '[ WASD / Frecce → movimento ]',
+      '[ SPAZIO / Tasto azione → attacco / interazione ]',
+    ],
+  },
+
   forest_enter: {
     speaker: 'Narratore',
     portrait: 'NPC_ELDER',
@@ -243,6 +324,7 @@ export const DIALOGS = {
       'Il vento porta con sé un odore di muschio',
       'e qualcosa di più oscuro...',
       'I nemici del Re Ombra pattugliano questi boschi.',
+      'Una presenza enorme si muove nella foresta profonda.',
       'Elimina tutti i mostri per far apparire il Cristallo.',
     ],
   },
@@ -254,7 +336,8 @@ export const DIALOGS = {
       'Caverna delle Gemme.',
       'Il freddo ti avvolge come un mantello di pietra.',
       'Echi di battaglie lontane risuonano nelle gallerie.',
-      'Accendi le due torce per risvegliare il Custode.',
+      'Sposta i blocchi sulle piastre per aprire le porte.',
+      'Poi accendi le due torce per risvegliare il Custode.',
       'Solo sconfiggendolo otterrai il Cristallo Blu.',
     ],
   },
@@ -267,7 +350,8 @@ export const DIALOGS = {
       'Sei arrivato fin qui, piccolo eroe.',
       'Twitchia ti ha cresciuto bene.',
       'Peccato che morirai qui.',
-      'I miei servitori ti aspettano.',
+      'Sconfiggi tutte le mie guardie se ci riesci.',
+      'Solo allora mi degnerò di affrontarti di persona.',
     ],
   },
 };
@@ -304,6 +388,9 @@ export function selectNpcDialog(npcId, state) {
   if (npcId === 'elder_intro') {
     if (flags.has_sword) return 'elder_after_sword';
     return 'elder_intro';
+  }
+  if (npcId === 'elder_village') {
+    return 'elder_village';
   }
   return npcId;
 }

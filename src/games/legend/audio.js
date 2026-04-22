@@ -122,55 +122,85 @@ const N = {
 };
 
 const TRACKS = {
-  /* Villaggio: melodia allegra in C maggiore con due varianti (A/B). */
+  /* Villaggio: melodia allegra in C maggiore con quattro varianti (A/B/C/D). */
   village: {
     bpm: 110,
     mood: 'triangle',
     bassMood: 'sine',
     melody: [
-      // A
+      // A — tema principale
       N.G4, N.A4, N.B4, N.C5,  N.D5, N.C5, N.B4, N.A4,
       N.G4, N.E4, N.G4, N.A4,  N.B4, N.A4, N.G4, N.R,
-      // B
+      // B — risposta
       N.C5, N.B4, N.A4, N.G4,  N.E4, N.G4, N.A4, N.B4,
       N.C5, N.D5, N.E5, N.D5,  N.C5, N.B4, N.A4, N.G4,
+      // C — sotto-dominante (F, Am)
+      N.F4, N.A4, N.C5, N.A4,  N.F4, N.G4, N.A4, N.R,
+      N.A4, N.C5, N.E5, N.C5,  N.A4, N.G4, N.F4, N.E4,
+      // D — ritorno al tema + chiusura
+      N.G4, N.B4, N.D5, N.G5,  N.F5, N.E5, N.D5, N.C5,
+      N.B4, N.A4, N.G4, N.E4,  N.G4, N.R,  N.G4, N.R,
     ],
     bass: [
       N.C3, N.R, N.G3, N.R,    N.A3, N.R, N.G3, N.R,
       N.C3, N.R, N.E3, N.R,    N.G3, N.R, N.G3, N.R,
       N.A3, N.R, N.E3, N.R,    N.C3, N.R, N.G3, N.R,
       N.C3, N.R, N.G3, N.R,    N.C3, N.R, N.G3, N.R,
+      N.F3, N.R, N.C3, N.R,    N.F3, N.R, N.E3, N.R,
+      N.A3, N.R, N.A3, N.R,    N.F3, N.R, N.C3, N.R,
+      N.G3, N.R, N.D3, N.R,    N.G3, N.R, N.C3, N.R,
+      N.G3, N.R, N.E3, N.R,    N.C3, N.R, N.G3, N.R,
     ],
   },
 
-  /* Foresta: minore naturale, atmosfera misteriosa. */
+  /* Foresta: minore naturale A, atmosfera misteriosa (A/B/C/D). */
   forest: {
     bpm: 96,
     mood: 'triangle',
     bassMood: 'sine',
     melody: [
+      // A — tema E minore
       N.E4, N.G4, N.A4, N.B4,  N.A4, N.G4, N.E4, N.R,
       N.D4, N.E4, N.G4, N.A4,  N.G4, N.E4, N.D4, N.R,
+      // B — ascesa e discesa
       N.E4, N.G4, N.B4, N.D5,  N.B4, N.A4, N.G4, N.E4,
       N.A4, N.G4, N.E4, N.D4,  N.E4, N.R,  N.E4, N.R,
+      // C — relativo maggiore G
+      N.G4, N.A4, N.B4, N.D5,  N.B4, N.G4, N.E4, N.D4,
+      N.G4, N.B4, N.D5, N.G5,  N.D5, N.B4, N.A4, N.G4,
+      // D — ritorno oscuro al minore
+      N.E4, N.D4, N.C4, N.B3,  N.A3, N.B3, N.D4, N.E4,
+      N.G4, N.A4, N.B4, N.A4,  N.G4, N.R,  N.E4, N.R,
     ],
     bass: [
       N.E3, N.R, N.E3, N.R,    N.A3, N.R, N.A3, N.R,
       N.D3, N.R, N.D3, N.R,    N.G3, N.R, N.G3, N.R,
       N.E3, N.R, N.E3, N.R,    N.B2, N.R, N.B2, N.R,
       N.A3, N.R, N.A3, N.R,    N.E3, N.R, N.E3, N.R,
+      N.G3, N.R, N.G3, N.R,    N.D3, N.R, N.G3, N.R,
+      N.G3, N.R, N.D3, N.R,    N.G3, N.R, N.E3, N.R,
+      N.E3, N.R, N.B2, N.R,    N.A2, N.R, N.E3, N.R,
+      N.E3, N.R, N.A3, N.R,    N.E3, N.R, N.E3, N.R,
     ],
   },
 
-  /* Caverna: cupa, ostinato di basso ripetitivo + melodia eolio. */
+  /* Caverna: cupa, ostinato di basso ripetitivo + melodia eolio (A/B/C/D). */
   cave: {
     bpm: 88,
     mood: 'square',
     bassMood: 'triangle',
     melody: [
+      // A — tema A eolio basso
       N.A3, N.C4, N.E4, N.A4,  N.G4, N.E4, N.C4, N.A3,
       N.A3, N.B3, N.D4, N.F4,  N.E4, N.D4, N.C4, N.B3,
+      // B — tensione ascendente
       N.A3, N.E4, N.G4, N.A4,  N.B4, N.A4, N.G4, N.E4,
+      N.D4, N.C4, N.B3, N.A3,  N.G3, N.A3, N.R,  N.R,
+      // C — discesa cromatica (tensione max)
+      N.A4, N.G4, N.F4, N.E4,  N.D4, N.C4, N.B3, N.A3,
+      N.B3, N.C4, N.D4, N.E4,  N.F4, N.E4, N.D4, N.C4,
+      // D — eco + silenzio
+      N.A3, N.R,  N.E4, N.R,   N.A4, N.R,  N.E4, N.R,
       N.D4, N.C4, N.B3, N.A3,  N.G3, N.A3, N.R,  N.R,
     ],
     bass: [
@@ -178,25 +208,41 @@ const TRACKS = {
       N.D3, N.R, N.D3, N.R,    N.A2, N.R, N.E3, N.R,
       N.A2, N.R, N.A2, N.R,    N.E3, N.R, N.E3, N.R,
       N.D3, N.R, N.A2, N.R,    N.E3, N.R, N.A2, N.R,
+      N.A2, N.R, N.G2, N.R,    N.F2, N.R, N.E2, N.R,
+      N.D2, N.R, N.E2, N.R,    N.A2, N.R, N.E2, N.R,
+      N.A2, N.R, N.A2, N.R,    N.A2, N.R, N.E3, N.R,
+      N.D3, N.R, N.A2, N.R,    N.E2, N.R, N.A2, N.R,
     ],
   },
 
-  /* Castello: tetra, marcia in minore. */
+  /* Castello: tetra, marcia in D minore (A/B/C/D). */
   castle: {
     bpm: 80,
     mood: 'sawtooth',
     bassMood: 'triangle',
     melody: [
+      // A — marcia principale
       N.D4, N.D4, N.F4, N.A4,  N.G4, N.F4, N.E4, N.D4,
       N.C4, N.D4, N.F4, N.A4,  N.B4, N.A4, N.G4, N.F4,
+      // B — ascesa drammatica
       N.D4, N.F4, N.A4, N.D5,  N.C5, N.B4, N.A4, N.G4,
       N.F4, N.E4, N.D4, N.C4,  N.D4, N.R,  N.D4, N.R,
+      // C — minore con sesta (Bb) — suona quasi sinistro
+      N.D4, N.F4, N.G4, N.A4,  N.B4, N.A4, N.G4, N.F4,
+      N.E4, N.D4, N.C4, N.B3,  N.A3, N.B3, N.C4, N.D4,
+      // D — climax + risoluzione (fallace) sul VI grado
+      N.D5, N.C5, N.B4, N.A4,  N.G4, N.A4, N.B4, N.G4,
+      N.F4, N.E4, N.D4, N.R,   N.D4, N.R,  N.D4, N.R,
     ],
     bass: [
       N.D2, N.R, N.A2, N.R,    N.D2, N.R, N.F2, N.R,
       N.C2, N.R, N.G2, N.R,    N.D2, N.R, N.A2, N.R,
       N.D2, N.R, N.A2, N.R,    N.F2, N.R, N.C2, N.R,
       N.G2, N.R, N.D2, N.R,    N.A2, N.R, N.D2, N.R,
+      N.D2, N.R, N.F2, N.R,    N.G2, N.R, N.F2, N.R,
+      N.E2, N.R, N.D2, N.R,    N.A2, N.R, N.E2, N.R,
+      N.D2, N.R, N.A2, N.R,    N.G2, N.R, N.D2, N.R,
+      N.F2, N.R, N.E2, N.R,    N.D2, N.R, N.D2, N.R,
     ],
   },
 };
@@ -226,6 +272,40 @@ function playMusicNote(freq, dur, type, vol) {
   o.stop(t + dur + 0.02);
 }
 
+/** Percussione sintetizzata — hi-hat (rumore breve filtrato) e kick (boom breve). */
+function playHihat(vol = 0.018) {
+  const ctx = getCtx();
+  if (!ctx) return;
+  const bufSize = Math.floor(ctx.sampleRate * 0.04);
+  const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+  const src = ctx.createBufferSource();
+  const hpf = ctx.createBiquadFilter();
+  hpf.type = 'highpass';
+  hpf.frequency.value = 7000;
+  const g = ctx.createGain();
+  g.gain.value = vol;
+  src.buffer = buf;
+  src.connect(hpf); hpf.connect(g); g.connect(masterGain);
+  src.start();
+}
+
+function playKick(vol = 0.06) {
+  const ctx = getCtx();
+  if (!ctx) return;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = 'sine';
+  o.frequency.value = 100;
+  o.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.14);
+  g.gain.setValueAtTime(vol, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14);
+  o.connect(g); g.connect(masterGain);
+  o.start(ctx.currentTime);
+  o.stop(ctx.currentTime + 0.16);
+}
+
 export function playMusic(name) {
   const ctx = getCtx();
   if (!ctx) return;
@@ -238,20 +318,28 @@ export function playMusic(name) {
   musicTimer = setInterval(() => {
     if (currentTrack !== name) return;
     const i = musicStep % track.melody.length;
-    /* Melodia (sopra) */
+    const beat = musicStep % 8; // posizione dentro una misura di 4/4 (8 semicrome)
+
+    /* Melodia (sopra) — volume leggermente più alto per chiarezza */
     const mFreq = track.melody[i];
     if (mFreq > 0) {
-      playMusicNote(mFreq, stepMs * 0.0018, track.mood || 'triangle', 0.05);
+      playMusicNote(mFreq, stepMs * 0.0018, track.mood || 'triangle', 0.065);
     }
-    /* Basso (sotto) — meno frequente, durata piu` lunga */
+    /* Basso (sotto) — meno frequente, durata più lunga */
     const bFreq = track.bass[i % track.bass.length];
     if (bFreq > 0) {
-      playMusicNote(bFreq, stepMs * 0.0036, track.bassMood || 'sine', 0.045);
+      playMusicNote(bFreq, stepMs * 0.004, track.bassMood || 'sine', 0.048);
     }
     /* Piccolo accento armonico ogni 8 step (terza sopra la melodia) */
     if ((musicStep % 8) === 0 && mFreq > 0) {
-      playMusicNote(mFreq * 1.25, stepMs * 0.0014, 'sine', 0.022);
+      playMusicNote(mFreq * 1.25, stepMs * 0.0014, 'sine', 0.025);
     }
+    /* Percussione: hi-hat ogni semibattuta, kick sulla 1 e 5 */
+    playHihat(0.018);
+    if (beat === 0 || beat === 4) {
+      playKick(track.bpm >= 100 ? 0.055 : 0.045);
+    }
+
     musicStep++;
   }, stepMs);
 }

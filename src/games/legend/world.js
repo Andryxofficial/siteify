@@ -57,8 +57,8 @@ const VILLAGE_MAP = [
   '______________________________',
   'T.b..b......,.__...,...,b,..,T',
   'T.123,...,,..,__.,.,....123..T',
-  'T,789.....,.,.__....,...789..T',
-  'T..p...,,,..,,__.....,.......T',
+  'T,709.....,.,.__....,...789..T',
+  'T..q...,,,..,,__.....,.......T',
   'T..b.....,.,.,__......b...,..T',
   'T,.....b......__..,,.,....b.,T',
   'T.....,..,....__....b.,,....,T',
@@ -68,6 +68,8 @@ const VILLAGE_MAP = [
 const VILLAGE_ENTITIES = [
   /* Re davanti alla sua casa (in alto a destra) */
   { type: 'npc', kind: 'king', x: 20, y: 4, dialog: 'king_intro' },
+  /* Anziano del villaggio — indica la via della grotta */
+  { type: 'npc', kind: 'elder', x: 8, y: 12, dialog: 'elder_village' },
   /* Mercante e bambino vicino alla fontana (NE della croce) */
   { type: 'npc', kind: 'merchant', x: 19, y: 8, dialog: 'merchant' },
   { type: 'npc', kind: 'child', x: 13, y: 9, dialog: 'child' },
@@ -79,6 +81,12 @@ const VILLAGE_ENTITIES = [
   { type: 'sign', x: 13, y: 1, text: 'Strada per il Castello.\nRichiede il Cristallo Blu.' },
   /* Cartello vicino all'ingresso della grotta */
   { type: 'sign', x: 6, y: 4, text: 'Una vecchia grotta...\nSi dice che un saggio\nviva in queste rocce.' },
+  /* Cartello vicino alla casa di Andryx (hint sul vaso dorato) */
+  { type: 'sign', x: 6, y: 15, text: 'Casa di Andryx.\nI vasi dorati\nnascondono segreti preziosi...' },
+  /* Cartello est: richiede spada e scudo per avventurarsi */
+  { type: 'sign', x: 28, y: 10, text: 'Foresta Sussurrante.\nPericoloso! Servono\nspada e scudo.' },
+  /* Cartello sud: caverna */
+  { type: 'sign', x: 14, y: 18, text: 'Caverna delle Gemme.\nPorta spada e scudo\nper sopravvivere!' },
 ];
 
 /* ─── ZONA 1: Foresta Sussurrante — primo dungeon all'aperto ─── */
@@ -106,16 +114,29 @@ const FOREST_MAP = [
 ];
 
 const FOREST_ENTITIES = [
+  /* Nemici nella prima area della foresta */
   { type: 'enemy', kind: 'slime', x: 8, y: 6 },
   { type: 'enemy', kind: 'slime', x: 18, y: 8 },
   { type: 'enemy', kind: 'slime', x: 12, y: 14 },
+  { type: 'enemy', kind: 'slime', x: 25, y: 3 },
   { type: 'enemy', kind: 'bat', x: 22, y: 5 },
+  { type: 'enemy', kind: 'bat', x: 10, y: 3 },
   { type: 'enemy', kind: 'bat', x: 6, y: 15 },
   { type: 'enemy', kind: 'skeleton', x: 24, y: 13 },
+  { type: 'enemy', kind: 'skeleton', x: 16, y: 12 },
+  { type: 'enemy', kind: 'skeleton', x: 20, y: 17 },
+  { type: 'enemy', kind: 'mage', x: 26, y: 10 },
+  /* Mini-boss: Troll della Foresta (zona profonda est-sud) */
+  { type: 'enemy', kind: 'forest_troll', x: 24, y: 16 },
+  /* Oggetti: heart container a destra profonda + bomba come ricompensa troll */
   { type: 'item', kind: 'heart_container', x: 26, y: 17, requires: 'has_crystal_green:false' },
+  { type: 'item', kind: 'bomb', x: 28, y: 5, requires: 'forest_troll_defeated' },
+  { type: 'item', kind: 'rupee', x: 5, y: 2 },
+  { type: 'item', kind: 'potion', x: 14, y: 16, requires: 'forest_troll_defeated' },
   /* Cristallo verde appare dopo aver ripulito la zona (vedi engine) */
   { type: 'item', kind: 'crystal_green', x: 14, y: 2, requires: 'forest_clear' },
-  { type: 'sign', x: 2, y: 17, text: 'Foresta Sussurrante.\nElimina i nemici per\nfar apparire il Cristallo.' },
+  { type: 'sign', x: 2, y: 17, text: 'Foresta Sussurrante.\nElimina tutti i nemici,\nincluso il Troll, per\nfar apparire il Cristallo.' },
+  { type: 'sign', x: 18, y: 14, text: 'Attenzione!\nSi sente un rumore pesante\nnella foresta profonda...' },
 ];
 
 /* ─── ZONA 2: Caverna delle Gemme — dungeon con puzzle e mini-boss ───
@@ -144,16 +165,25 @@ const CAVE_MAP = [
 ];
 
 const CAVE_ENTITIES = [
+  /* Nemici distribuiti per la grotta */
   { type: 'enemy', kind: 'skeleton', x: 5, y: 8 },
   { type: 'enemy', kind: 'skeleton', x: 24, y: 4 },
+  { type: 'enemy', kind: 'skeleton', x: 26, y: 14 },
   { type: 'enemy', kind: 'bat', x: 14, y: 6 },
   { type: 'enemy', kind: 'bat', x: 20, y: 12 },
+  { type: 'enemy', kind: 'bat', x: 4, y: 15 },
   { type: 'enemy', kind: 'mage', x: 22, y: 9, requires: 'cave_door1' },
+  { type: 'enemy', kind: 'mage', x: 8, y: 14, requires: 'cave_door1' },
+  /* Boss Custode: appare solo dopo aver acceso le 2 torce */
   { type: 'boss', kind: 'guardian', x: 14, y: 16, requires: 'cave_torches' },
-  { type: 'item', kind: 'shield', x: 3, y: 3, requires: 'has_shield:false' },
-  { type: 'item', kind: 'key', x: 27, y: 3 },
+  /* Oggetti: pozione nelle stanze iniziali, heart container dopo boss */
+  { type: 'item', kind: 'potion', x: 3, y: 3 },
+  { type: 'item', kind: 'rupee', x: 27, y: 3 },
+  { type: 'item', kind: 'key', x: 27, y: 10 },
+  { type: 'item', kind: 'heart_container', x: 3, y: 15, requires: 'guardian_defeated' },
   { type: 'item', kind: 'crystal_blue', x: 14, y: 16, requires: 'guardian_defeated' },
-  { type: 'sign', x: 14, y: 2, text: 'Caverna delle Gemme.\nAccendi le 2 torce per\nrisvegliare il Custode.' },
+  { type: 'sign', x: 14, y: 2, text: 'Caverna delle Gemme.\nAccendi le 2 torce per\nrisvegliare il Custode.\nLa chiave apre la porta.' },
+  { type: 'sign', x: 2, y: 17, text: 'Sento passi pesanti\nprovenire dal fondo...\nSii prudente, viandante.' },
 ];
 
 /* ─── ZONA 3: Castello del Re Ombra — boss finale ───
@@ -182,13 +212,25 @@ const CASTLE_MAP = [
 ];
 
 const CASTLE_ENTITIES = [
+  /* Guardie: scheletri e maghi distribuiti per la sala */
   { type: 'enemy', kind: 'skeleton', x: 6, y: 8 },
   { type: 'enemy', kind: 'skeleton', x: 23, y: 8 },
+  { type: 'enemy', kind: 'skeleton', x: 4, y: 4 },
+  { type: 'enemy', kind: 'skeleton', x: 25, y: 4 },
+  { type: 'enemy', kind: 'skeleton', x: 14, y: 11 },
   { type: 'enemy', kind: 'mage', x: 8, y: 14 },
   { type: 'enemy', kind: 'mage', x: 21, y: 14 },
+  { type: 'enemy', kind: 'mage', x: 4, y: 16 },
+  { type: 'enemy', kind: 'mage', x: 25, y: 16 },
+  /* Boss Re Ombra: appare solo dopo aver sconfitto tutte le guardie */
   { type: 'boss', kind: 'shadow_king', x: 14, y: 7, requires: 'castle_clear' },
+  /* Cristallo rosso appare dopo la sconfitta del boss */
   { type: 'item', kind: 'crystal_red', x: 14, y: 5, requires: 'shadow_king_defeated' },
-  { type: 'sign', x: 14, y: 17, text: 'Castello del Re Ombra.\nIl tuo destino ti attende.' },
+  /* Pozione e rupee nascosti */
+  { type: 'item', kind: 'potion', x: 2, y: 9, requires: 'has_crystal_red:false' },
+  { type: 'item', kind: 'rupee', x: 27, y: 9, requires: 'has_crystal_red:false' },
+  { type: 'sign', x: 14, y: 17, text: 'Castello del Re Ombra.\nIl tuo destino ti attende.\nSconfiggi tutte le guardie\nper risvegliare il Re.' },
+  { type: 'sign', x: 2, y: 2, text: 'Attento alle piastrelle\nincandescenti di lava!' },
 ];
 
 /* ─── ZONA 4: Pianura dell'Ovest — overworld breve, presto un nuovo dungeon ───
@@ -264,7 +306,43 @@ const ELDER_CAVE_ENTITIES = [
 ];
 
 
-/* ─── Definizioni zone ─── */
+/* ─── ZONA 6: Casa di Andryx — interno cozy con scudo e storia ───
+   Ingresso dal Villaggio via portal trigger al tile (3,14) — porta sbloccata
+   con house_key. Uscita: bordo sud (col 14, row 19) → Villaggio spawn (3,15).
+   Layout: stanza centrale 15×7 (cols 8-22, rows 7-13) con torce, vasi,
+   scudo del padre. Corridoio di uscita su col 14, rows 14-19. */
+const ANDRYX_HOUSE_MAP = [
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',  // 0
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',  // 1
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',  // 2
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',  // 3
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',  // 4
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',  // 5
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',  // 6
+  'WWWWWWWWlFFFFFFFFFFFFFlWWWWWWW',  // 7: torce(8,22), stanza(9-21)
+  'WWWWWWWWFpFFFFFFFFFFFpFWWWWWWW',  // 8: vasi(9,21)
+  'WWWWWWWWFFFFFFFFFFFFFFFWWWWWWW',  // 9: (Fix a uppercase sotto)
+  'WWWWWWWWFFFFFFFFFFFFFFFWWWWWWW',  // 10
+  'WWWWWWWWFFFFFFFFFFFFFFFWWWWWWW',  // 11: scudo a (14,11)
+  'WWWWWWWWFFFFFFFFFFFFFFFWWWWWWW',  // 12
+  'WWWWWWWWlFFFFFFFFFFFFFlWWWWWWW',  // 13: torce basse(8,22)
+  'WWWWWWWWWWWWWWFWWWWWWWWWWWWWWW',  // 14: corridoio (col 14)
+  'WWWWWWWWWWWWWWFWWWWWWWWWWWWWWW',  // 15
+  'WWWWWWWWWWWWWWFWWWWWWWWWWWWWWW',  // 16
+  'WWWWWWWWWWWWWWFWWWWWWWWWWWWWWW',  // 17: spaWn player
+  'WWWWWWWWWWWWWWFWWWWWWWWWWWWWWW',  // 18
+  'WWWWWWWWWWWWWWFWWWWWWWWWWWWWWW',  // 19: uscita (south edge)
+];
+
+const ANDRYX_HOUSE_ENTITIES = [
+  /* Lo scudo del padre — oggetto principale della stanza */
+  { type: 'item', kind: 'shield', x: 14, y: 11, requires: 'has_shield:false' },
+  /* Rupie nei vasi decorativi (loot) */
+  { type: 'item', kind: 'rupee', x: 12, y: 9 },
+  { type: 'item', kind: 'heart', x: 16, y: 9 },
+  /* Nota del padre: racconta la storia */
+  { type: 'sign', x: 10, y: 10, text: 'Caro figlio mio,\nse stai leggendo questo,\nil regno è in pericolo.\nPrendi la mia spada\ne lo scudo di tua madre.\nProteggi Twitchia.\n— Tuo padre, Andryx Senior' },
+];
 
 export const ZONES = {
   village: {
@@ -277,14 +355,26 @@ export const ZONES = {
     /* Transizioni a EDGE: il player esce dal lato cardinale corrispondente
        e arriva nella zona di destinazione. Niente piu` portali magici. */
     transitions: [
-      { trigger: 'edge', side: 'east',  toZone: 'forest', spawn: { x: 1, y: 10 } },
-      { trigger: 'edge', side: 'south', toZone: 'cave',   spawn: { x: 14, y: 1 } },
-      { trigger: 'edge', side: 'west',  toZone: 'plains', spawn: { x: 28, y: 10 } },
+      /* Foresta e Caverna: richiedono spada + scudo */
+      { trigger: 'edge', side: 'east',  toZone: 'forest', spawn: { x: 1, y: 10 },
+        requires: 'has_sword&has_shield',
+        blockedMsg: 'Troppo pericoloso! Hai bisogno di spada e scudo.\nLo scudo è nella tua casa.' },
+      { trigger: 'edge', side: 'south', toZone: 'cave',   spawn: { x: 14, y: 1 },
+        requires: 'has_sword&has_shield',
+        blockedMsg: 'Troppo pericoloso! Hai bisogno di spada e scudo.\nLo scudo è nella tua casa.' },
+      /* Pianura: basta la spada */
+      { trigger: 'edge', side: 'west',  toZone: 'plains', spawn: { x: 28, y: 10 },
+        requires: 'has_sword',
+        blockedMsg: 'Hai bisogno almeno della spada.\nParla con il saggio nella grotta.' },
       /* Nord → Castello: gated dal Cristallo Blu (devi prima battere il Custode) */
-      { trigger: 'edge', side: 'north', toZone: 'castle', spawn: { x: 14, y: 18 }, requires: 'has_crystal_blue' },
+      { trigger: 'edge', side: 'north', toZone: 'castle', spawn: { x: 14, y: 18 }, requires: 'has_crystal_blue',
+        blockedMsg: 'La strada per il Castello è sbarrata.\nPorta il Cristallo Blu!' },
       /* Ingresso alla Grotta del Saggio — tile (3,4) è l'apertura nella roccia */
       { trigger: 'portal', x: 3, y: 4, toZone: 'elder_cave', spawn: { x: 14, y: 17 } },
+      /* Ingresso alla Casa di Andryx — porta si apre con la chiave di casa */
+      { trigger: 'portal', x: 3, y: 14, toZone: 'andryx_house', spawn: { x: 14, y: 17 }, requires: 'house_key' },
     ],
+    firstEntryDialog: 'village_intro',
   },
   forest: {
     id: 'forest',
@@ -343,6 +433,19 @@ export const ZONES = {
     /* Uscita: bordo sud → torna nel villaggio appena fuori dall'ingresso */
     transitions: [
       { trigger: 'edge', side: 'south', toZone: 'village', spawn: { x: 3, y: 6 } },
+    ],
+  },
+  andryx_house: {
+    id: 'andryx_house',
+    name: 'Casa di Andryx',
+    map: ANDRYX_HOUSE_MAP,
+    entities: ANDRYX_HOUSE_ENTITIES,
+    spawn: { x: 14, y: 17 },
+    music: 'village',
+    firstEntryDialog: 'andryx_house_enter',
+    /* Uscita: bordo sud → torna nel villaggio appena fuori dalla porta */
+    transitions: [
+      { trigger: 'edge', side: 'south', toZone: 'village', spawn: { x: 4, y: 15 } },
     ],
   },
 };

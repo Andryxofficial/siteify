@@ -174,8 +174,12 @@ export function startEngine(canvas, callbacks, options = {}) {
     /* Sintassi:
        'has_sword:false'           → richiede flag === false
        'has_sword'                 → richiede flag === true
+       'has_sword&has_shield'      → AND: entrambe le condizioni vere
        'forest_clear'              → richiede clearedZones.has('forest')
        'guardian_defeated'         → richiede defeatedBosses.has('guardian')  */
+    if (req.includes('&')) {
+      return req.split('&').every(r => evalRequires(r.trim()));
+    }
     if (req.includes(':')) {
       const [k, v] = req.split(':');
       const want = v === 'true';
@@ -649,14 +653,30 @@ export function startEngine(canvas, callbacks, options = {}) {
     }
     /* Drop occasionale */
     if (Math.random() < 0.4) spawnDrop(e.x, e.y);
+
+    /* Troll della Foresta sconfitto: flag speciale */
+    if (e.kind === 'forest_troll') {
+      state.flags.forest_troll_defeated = true;
+      /* Spawna oggetti ricompensa */
+      const cz = getZone(state.zoneId);
+      for (const ent of cz.entities) {
+        if (ent.requires === 'forest_troll_defeated') {
+          entities.push(instantiateEntity(ent));
+        }
+      }
+      setTimeout(() => { if (!dialogState) openDialogById('forest_troll_victory'); }, 400);
+    }
+
     if (e.type === 'boss') {
       state.defeatedBosses.add(e.kind);
       if (e.kind === 'guardian') {
         openDialogById('victory_guardian');
-        /* Spawna cristallo blu */
+        /* Spawna cristallo blu + heart_container */
         const cz = getZone(state.zoneId);
         for (const ent of cz.entities) {
-          if (ent.kind === 'crystal_blue') entities.push(instantiateEntity(ent));
+          if (ent.kind === 'crystal_blue' || ent.requires === 'guardian_defeated') {
+            entities.push(instantiateEntity(ent));
+          }
         }
       } else if (e.kind === 'shadow_king') {
         openDialogById('victory_shadow_king');
@@ -670,12 +690,20 @@ export function startEngine(canvas, callbacks, options = {}) {
     const remaining = entities.filter(en => en.type === 'enemy' && en.hp > 0);
     if (remaining.length === 0 && !state.clearedZones.has(state.zoneId)) {
       state.clearedZones.add(state.zoneId);
-      /* Spawna eventuale cristallo green nella foresta */
+      /* Spawna eventuale cristallo green nella foresta (boss forest_troll già gestito sopra) */
       if (state.zoneId === 'forest') {
         const cz = getZone('forest');
         for (const ent of cz.entities) {
           if (ent.kind === 'crystal_green') entities.push(instantiateEntity(ent));
         }
+      }
+      /* Nel castello: tutti i nemici sconfitti → spawna shadow_king */
+      if (state.zoneId === 'castle') {
+        const cz = getZone('castle');
+        for (const ent of cz.entities) {
+          if (ent.kind === 'shadow_king') entities.push(instantiateEntity(ent));
+        }
+        setTimeout(() => { if (!dialogState) openDialogById('castle_boss_awakens'); }, 600);
       }
     }
     callbacks.onScore?.(calculateFinalScore({ ...state, maxHp: state.player.maxHp }));
@@ -697,6 +725,19 @@ export function startEngine(canvas, callbacks, options = {}) {
     const p = state.player;
     const dx = p.x - e.x, dy = p.y - e.y;
     const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+
+    /* Dialogo intro boss (prima volta che il player si avvicina) */
+    if (e.type === 'boss' && !e.introTriggered && dist < 130) {
+      e.introTriggered = true;
+      if (e.kind === 'guardian') openDialogById('guardian_intro');
+      else if (e.kind === 'shadow_king') openDialogById('shadow_king_intro');
+    }
+
+    /* Dialogo intro troll (prima volta) */
+    if (e.kind === 'forest_troll' && !e.introTriggered && dist < 90) {
+      e.introTriggered = true;
+      openDialogById('forest_troll_intro');
+    }
 
     if (e.type === 'boss' && e.kind === 'shadow_king') {
       bossShadowKing(e, dx, dy, dist);
@@ -747,6 +788,23 @@ export function startEngine(canvas, callbacks, options = {}) {
       if (e.cooldown <= 0 && dist < 140) {
         e.cooldown = 100;
         spawnProjectile(e.x, e.y, dx / dist, dy / dist, '#b870d0', 1, 200);
+      }
+    } else if (e.kind === 'forest_troll') {
+      /* Troll della Foresta (mini-boss): carica veloce da vicino,
+         lancia pietre ai 4 angoli da lontano */
+      const sp = dist < 70 ? 1.4 : 0.5;
+      tryMoveEntity(e, (dx / dist) * sp, (dy / dist) * sp);
+      e.frame = (e.frame + 0.1) % 2;
+      if (Math.abs(dx) > Math.abs(dy)) e.dir = dx > 0 ? 'right' : 'left';
+      else e.dir = dy > 0 ? 'down' : 'up';
+      e.cooldown--;
+      if (e.cooldown <= 0 && dist < 160) {
+        e.cooldown = 130;
+        /* Pietre in 4 direzioni */
+        for (let i = 0; i < 4; i++) {
+          const angle = (i / 4) * Math.PI * 2;
+          spawnProjectile(e.x, e.y, Math.cos(angle), Math.sin(angle), '#8a6040', 1, 180);
+        }
       }
     }
   }
@@ -844,7 +902,25 @@ export function startEngine(canvas, callbacks, options = {}) {
     const tx = Math.floor(state.player.x / TILE_SIZE);
     const ty = Math.floor(state.player.y / TILE_SIZE);
     for (const t of z.transitions || []) {
-      if (t.requires && !evalRequires(t.requires)) continue;
+      if (t.requires && !evalRequires(t.requires)) {
+        /* Se bloccato sull'edge, mostra messaggio (max ogni 3 secondi) */
+        if (t.trigger === 'edge' && t.blockedMsg) {
+          const atEdge =
+            (t.side === 'east'  && tx >= ZONE_W - 1) ||
+            (t.side === 'west'  && tx <= 0)          ||
+            (t.side === 'north' && ty <= 0)          ||
+            (t.side === 'south' && ty >= ZONE_H - 1);
+          if (atEdge && !dialogState) {
+            if (!state._lastBlockedTick || (tickCount - state._lastBlockedTick) > 180) {
+              state._lastBlockedTick = tickCount;
+              const lines = t.blockedMsg.split('\n');
+              dialogState = { dialogId: 'blocked', lineIdx: 0, charIdx: 0,
+                lines, speaker: '!', portrait: null };
+            }
+          }
+        }
+        continue;
+      }
       if (t.trigger === 'edge') {
         if ((t.side === 'east' && tx >= ZONE_W - 1) ||
             (t.side === 'west' && tx <= 0) ||
@@ -1089,7 +1165,7 @@ export function startEngine(canvas, callbacks, options = {}) {
     const font = 'bold 20px ui-sans-serif, system-ui, sans-serif';
     ctx.font = font;
     const tw = ctx.measureText(name).width;
-    const padX = 20, padY = 8;
+    const padX = 20;
     const bw = tw + padX * 2;
     const bh = 36;
     const bx = (CANVAS_SIZE - bw) / 2;
@@ -1361,10 +1437,11 @@ export function startEngine(canvas, callbacks, options = {}) {
 
 /* ─── Stats nemici / bosses ─── */
 const ENEMY_STATS = {
-  slime:    { hp: 1, speed: 0.5, damage: 1, points: 10 },
-  bat:      { hp: 1, speed: 1.0, damage: 1, points: 20 },
-  skeleton: { hp: 2, speed: 0.7, damage: 1, points: 30 },
-  mage:     { hp: 3, speed: 0.4, damage: 1, points: 50 },
+  slime:        { hp: 1,  speed: 0.5, damage: 1, points: 10 },
+  bat:          { hp: 1,  speed: 1.0, damage: 1, points: 20 },
+  skeleton:     { hp: 2,  speed: 0.7, damage: 1, points: 30 },
+  mage:         { hp: 3,  speed: 0.4, damage: 1, points: 50 },
+  forest_troll: { hp: 12, speed: 0.8, damage: 2, points: 200 }, /* mini-boss */
 };
 const BOSS_STATS = {
   guardian:    { hp: 12, speed: 0.4, damage: 2, points: 500 },

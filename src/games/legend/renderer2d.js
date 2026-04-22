@@ -45,6 +45,7 @@ const ENEMY_SPRITE = {
   mage: ['ENEMY_MAGE_0'],
   guardian: ['BOSS_GUARDIAN'],
   shadow_king: ['BOSS_SHADOW_KING'],
+  forest_troll: ['BOSS_GUARDIAN'],  /* mini-boss: usa sprite guardiano ma scalato */
 };
 
 const ITEM_SPRITE = {
@@ -68,6 +69,7 @@ const ZONE_TINT = {
   forest: 'rgba(40, 90, 30, 0.06)',
   cave: 'rgba(20, 10, 40, 0.32)',
   castle: 'rgba(40, 0, 60, 0.22)',
+  andryx_house: 'rgba(80, 50, 10, 0.18)',  /* caldo, candela */
 };
 
 export class Renderer2D {
@@ -250,6 +252,7 @@ export class Renderer2D {
       case 'elder_cave': return '#1a1424';
       case 'castle': return '#1c1030';
       case 'forest': return '#1f3a1a';
+      case 'andryx_house': return '#2a1a08';  /* legno scuro caldo */
       default:       return '#3a8c3a'; // erba villaggio
     }
   }
@@ -775,8 +778,9 @@ export class Renderer2D {
 
     if (e.type === 'enemy' || e.type === 'boss') {
       const isBoss = e.type === 'boss';
-      const w = isBoss ? TILE_SIZE * 1.6 : TILE_SIZE - 2;
-      this._drawEntityShadow(cx, cy + half - 1, w);
+      const isMiniboss = e.kind === 'forest_troll';
+      const shadowW = isBoss ? TILE_SIZE * 1.6 : isMiniboss ? TILE_SIZE * 1.2 : TILE_SIZE - 2;
+      this._drawEntityShadow(cx, cy + half - 1, shadowW);
 
       /* Lampeggio durante iframes */
       if (e.iframes > 0 && (e.iframes % 6) < 3) {
@@ -787,23 +791,35 @@ export class Renderer2D {
       if (sprites) {
         const f = sprites[Math.floor(this.tickCount / 12) % sprites.length];
         const sp = SPRITES[f];
-        const size = isBoss ? TILE_SIZE * 2 : TILE_SIZE;
-        if (sp) drawSpriteScaled(ctx, sp, cx - size / 2, cy - size / 2, size, size);
+        const size = isBoss ? TILE_SIZE * 2 : isMiniboss ? Math.round(TILE_SIZE * 1.5) : TILE_SIZE;
+        if (sp) {
+          /* Troll: tinta verde applicata come filtro saturazione */
+          if (isMiniboss) {
+            ctx.globalCompositeOperation = 'source-over';
+          }
+          drawSpriteScaled(ctx, sp, cx - size / 2, cy - size / 2, size, size);
+          /* Overlay verde leggero per il troll */
+          if (isMiniboss) {
+            ctx.globalAlpha = (e.iframes > 0 && (e.iframes % 6) < 3) ? 0 : 0.35;
+            ctx.fillStyle = '#204a10';
+            ctx.fillRect(cx - size / 2, cy - size / 2, size, size);
+          }
+        }
       } else {
         ctx.fillStyle = '#d23a3a';
         ctx.fillRect(cx - 4, cy - 4, 8, 8);
       }
       ctx.globalAlpha = 1;
 
-      /* Barra HP per boss e nemici medi */
-      if (e.maxHp > 1 && (isBoss || e.maxHp > 2)) {
-        const w2 = isBoss ? 30 : 16;
+      /* Barra HP per boss, mini-boss e nemici con hp > 2 */
+      if (e.maxHp > 1 && (isBoss || isMiniboss || e.maxHp > 2)) {
+        const w2 = isBoss ? 30 : isMiniboss ? 24 : 16;
         const h2 = isBoss ? 3 : 2;
         const hpx = cx - w2 / 2;
-        const hpy = cy - half - (isBoss ? 14 : 8);
+        const hpy = cy - half - (isBoss || isMiniboss ? 14 : 8);
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.fillRect(hpx - 1, hpy - 1, w2 + 2, h2 + 2);
-        ctx.fillStyle = '#3a8c3a';
+        ctx.fillStyle = isMiniboss ? '#4a8c20' : '#3a8c3a';
         ctx.fillRect(hpx, hpy, Math.max(0, w2 * (e.hp / e.maxHp)), h2);
       }
     }
