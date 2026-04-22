@@ -15,7 +15,7 @@ import {
 import SEO from '../components/SEO';
 import { getGameForMonth, loadGameModule, getAllGameMetas } from '../games/registry';
 import { meta as legendMeta, hasSave as hasLegendSave, clearSave as clearLegendSave, setLegendLang, getTranslatedMeta as getLegendTranslatedMeta } from '../games/legend/index.js';
-import { meta as hourglassMeta, hasSave as hasHourglassSave, clearSave as clearHourglassSave, setHourglassLang, getTranslatedMeta as getHourglassTranslatedMeta } from '../games/hourglass/index.js';
+import { meta as platformMeta, hasSave as hasPlatformSave, clearSave as clearPlatformSave, setPlatformLang, getTranslatedMeta as getPlatformTranslatedMeta } from '../games/platform/index.js';
 import { useReti } from '../contexts/RetiContext';
 import { useLingua } from '../contexts/LinguaContext';
 
@@ -74,7 +74,7 @@ export default function GamePage() {
   const { online } = useReti();
   const { lingua } = useLingua();
 
-  /* Sincronizza la lingua dei motori Andryx Legend e Andryx Hourglass con
+  /* Sincronizza la lingua dei motori Andryx Legend e Andryx Jump con
      quella del sito. I motori sono JS puri e non usano i contesti React:
      leggiamo `lingua` da useLingua e lo propaghiamo ai moduli ogni volta
      che cambia (es. utente cambia lingua dalle Impostazioni). I dialoghi
@@ -82,7 +82,7 @@ export default function GamePage() {
      corso restano nella lingua in cui sono stati aperti. */
   useEffect(() => {
     try { setLegendLang(lingua); } catch { /* no-op */ }
-    try { setHourglassLang(lingua); } catch { /* no-op */ }
+    try { setPlatformLang(lingua); } catch { /* no-op */ }
   }, [lingua]);
 
   /* ─── Current month & game module ─── */
@@ -90,17 +90,17 @@ export default function GamePage() {
   const currentMonth = now.getUTCMonth() + 1; // 1-12
 
   /* ─── Modalita` di gioco: 'monthly' (gioco del mese), 'legend' (Andryx Legend),
-        'hourglass' (Andryx Hourglass — avventura marinaresca ispirata a Phantom
-        Hourglass). Ognuno ha la sua classifica server-side dedicata. ─── */
+        'platform' (Andryx Jump — platformer 2D originale a scorrimento laterale,
+        10 mondi a tema Andryx). Ognuno ha la sua classifica server-side dedicata. ─── */
   const [modalitaGioco, setModalitaGioco] = useState('monthly');
   const isLegend = modalitaGioco === 'legend';
-  const isHourglass = modalitaGioco === 'hourglass';
-  const isStandalone = isLegend || isHourglass;
+  const isPlatform = modalitaGioco === 'platform';
+  const isStandalone = isLegend || isPlatform;
 
   /* ─── Mese selezionato per giocare (default = mese corrente).
         I mesi diversi da quello corrente vengono giocati in
         "Modalità Prova": niente invio in classifica.
-        Nei giochi standalone (Legend/Hourglass) questa scelta non e` rilevante. ─── */
+        Nei giochi standalone (Legend/Platform) questa scelta non e` rilevante. ─── */
   const [meseSelezionato, setMeseSelezionato] = useState(currentMonth);
   const isModalitaProva = !isStandalone && meseSelezionato !== currentMonth;
 
@@ -115,21 +115,21 @@ export default function GamePage() {
     try { setLegendLang(lingua); return getLegendTranslatedMeta(); }
     catch { return legendMeta; }
   })();
-  /* Meta di Hourglass tradotta — stesso pattern di Legend. */
-  const hourglassMetaTradotta = (() => {
-    try { setHourglassLang(lingua); return getHourglassTranslatedMeta(); }
-    catch { return hourglassMeta; }
+  /* Meta di Platform tradotta — stesso pattern di Legend. */
+  const platformMetaTradotta = (() => {
+    try { setPlatformLang(lingua); return getPlatformTranslatedMeta(); }
+    catch { return platformMeta; }
   })();
   const gameMeta = isLegend ? legendMetaTradotta
-                : isHourglass ? hourglassMetaTradotta
+                : isPlatform ? platformMetaTradotta
                 : monthlyEntry.meta;
 
   /* Stato "ho un salvataggio?" — uno per ciascun gioco standalone. */
   const [legendSaveAvailable, setLegendSaveAvailable] = useState(() => {
     try { return hasLegendSave(); } catch { return false; }
   });
-  const [hourglassSaveAvailable, setHourglassSaveAvailable] = useState(() => {
-    try { return hasHourglassSave(); } catch { return false; }
+  const [platformSaveAvailable, setPlatformSaveAvailable] = useState(() => {
+    try { return hasPlatformSave(); } catch { return false; }
   });
 
   /* ─── Refs for game engine communication ─── */
@@ -204,7 +204,7 @@ export default function GamePage() {
     try {
       const seasonKey = getSeasonKey();
       const gameParam = isLegend ? '&game=legend'
-                       : isHourglass ? '&game=hourglass'
+                       : isPlatform ? '&game=platform'
                        : '';
       const r = await fetch(`/api/leaderboard?season=${seasonKey}${gameParam}`);
       if (!r.ok) throw new Error('Fetch failed');
@@ -218,7 +218,7 @@ export default function GamePage() {
     } finally {
       setBoardLoading(false);
     }
-  }, [isLegend, isHourglass]);
+  }, [isLegend, isPlatform]);
 
   useEffect(() => { fetchBoard(); }, [fetchBoard]);
 
@@ -238,7 +238,7 @@ export default function GamePage() {
       return;
     }
     const seasonKey = getSeasonKey();
-    const gameParam = isLegend ? 'legend' : isHourglass ? 'hourglass' : 'monthly';
+    const gameParam = isLegend ? 'legend' : isPlatform ? 'platform' : 'monthly';
     /* Offline: accoda il punteggio per inviarlo al ritorno della rete. */
     if (!online) {
       aggiungiACoda({ score: finalScore, season: seasonKey, game: gameParam, token: twitchToken, ts: Date.now() });
@@ -263,7 +263,7 @@ export default function GamePage() {
       aggiungiACoda({ score: finalScore, season: seasonKey, game: gameParam, token: twitchToken, ts: Date.now() });
       setSubmitMsg('Errore rete — punteggio salvato, verrà inviato più tardi.');
     }
-  }, [twitchToken, twitchUser, fetchBoard, isModalitaProva, online, isLegend, isHourglass]);
+  }, [twitchToken, twitchUser, fetchBoard, isModalitaProva, online, isLegend, isPlatform]);
 
   /* ─── Sync coda offline al ritorno della rete ─── */
   useEffect(() => {
@@ -304,21 +304,21 @@ export default function GamePage() {
   const gameModuleRef = useRef(null);
   /* Quando si avvia un gioco standalone con save, l'utente puo` scegliere "continua partita". */
   const legendContinueRef = useRef(false);
-  const hourglassContinueRef = useRef(false);
+  const platformContinueRef = useRef(false);
 
   useEffect(() => {
     if (!canvasRef.current) return;
 
     /* Pre-carica il modulo gioco appropriato (standalone o mese selezionato).
        Invalida il riferimento precedente per forzare ricaricamento al cambio modalita`.
-       NB: il chunk `hourglass` viene scaricato SOLO quando l'utente seleziona
-       Hourglass (e il primo `import()` accade qui). All'apertura della pagina
-       /gioco l'utente vede solo l'hub: nessun chunk hourglass viene scaricato. */
+       NB: il chunk `platform` viene scaricato SOLO quando l'utente seleziona
+       Andryx Jump (e il primo `import()` accade qui). All'apertura della pagina
+       /gioco l'utente vede solo l'hub: nessun chunk platform viene scaricato. */
     gameModuleRef.current = null;
     const loader = isLegend
       ? import('../games/legend/index.js').then(m => ({ createGame: m.createGame, meta: m.meta }))
-      : isHourglass
-      ? import('../games/hourglass/index.js').then(m => ({ createGame: m.createGame, meta: m.meta }))
+      : isPlatform
+      ? import('../games/platform/index.js').then(m => ({ createGame: m.createGame, meta: m.meta }))
       : loadGameModule(meseSelezionato);
     loader
       .then(mod => { gameModuleRef.current = mod; })
@@ -335,8 +335,8 @@ export default function GamePage() {
         if (!gameModuleRef.current) {
           gameModuleRef.current = isLegend
             ? await import('../games/legend/index.js').then(m => ({ createGame: m.createGame, meta: m.meta }))
-            : isHourglass
-            ? await import('../games/hourglass/index.js').then(m => ({ createGame: m.createGame, meta: m.meta }))
+            : isPlatform
+            ? await import('../games/platform/index.js').then(m => ({ createGame: m.createGame, meta: m.meta }))
             : await loadGameModule(meseSelezionato);
         }
       } catch {
@@ -347,8 +347,8 @@ export default function GamePage() {
       /* Opzioni extra per giochi standalone (ignorate dai giochi mensili). */
       const extraOpts = isLegend
         ? { continueSave: legendContinueRef.current, fresh: !legendContinueRef.current }
-        : isHourglass
-        ? { continueSave: hourglassContinueRef.current, fresh: !hourglassContinueRef.current }
+        : isPlatform
+        ? { continueSave: platformContinueRef.current, fresh: !platformContinueRef.current }
         : undefined;
 
       const cleanup = gameModuleRef.current.createGame(canvasRef.current, {
@@ -368,15 +368,15 @@ export default function GamePage() {
           /* Aggiorna lo stato di "save disponibile" — i giochi standalone cancellano il save su game-over */
           if (isLegend) {
             try { setLegendSaveAvailable(hasLegendSave()); } catch { /* ignored */ }
-          } else if (isHourglass) {
-            try { setHourglassSaveAvailable(hasHourglassSave()); } catch { /* ignored */ }
+          } else if (isPlatform) {
+            try { setPlatformSaveAvailable(hasPlatformSave()); } catch { /* ignored */ }
           }
         },
         onInfo: () => {},
       }, extraOpts);
       return cleanup;
     };
-  }, [meseSelezionato, highScore, submitScore, isLegend, isHourglass]);
+  }, [meseSelezionato, highScore, submitScore, isLegend, isPlatform]);
 
   /* ─── Start/stop game on status change ─── */
   useEffect(() => {
@@ -438,7 +438,7 @@ export default function GamePage() {
           actionBtnRef.current = true;
         }
         prev.action = actionPressed;
-        // Bottone B (1) e Y (3) → azione secondaria (oggetto equipaggiato in Hourglass)
+        // Bottone B (1) e Y (3) → azione secondaria
         const secondaryPressed = gp.buttons[1]?.pressed || gp.buttons[3]?.pressed;
         if (secondaryPressed && !prev.secondary) {
           secondaryBtnRef.current = true;
@@ -635,7 +635,7 @@ export default function GamePage() {
         <p className="subtitle">{gameMeta.description}</p>
       </header>
 
-      {/* ─── Hub modalita`: gioco del mese vs Andryx Legend vs Andryx Hourglass ─── */}
+      {/* ─── Hub modalita`: gioco del mese vs Andryx Legend vs Andryx Jump ─── */}
       <div className="game-mode-hub" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -704,30 +704,30 @@ export default function GamePage() {
           type="button"
           onClick={() => {
             if (gameStatus === 'playing') return;
-            setModalitaGioco('hourglass');
+            setModalitaGioco('platform');
             setGameStatus('idle');
             setSubmitMsg('');
-            try { setHourglassSaveAvailable(hasHourglassSave()); } catch { /* ignored */ }
+            try { setPlatformSaveAvailable(hasPlatformSave()); } catch { /* ignored */ }
           }}
           className="glass-card"
-          aria-pressed={isHourglass}
+          aria-pressed={isPlatform}
           style={{
             cursor: gameStatus === 'playing' ? 'not-allowed' : 'pointer',
             padding: '0.75rem',
             textAlign: 'left',
-            border: isHourglass ? `1.5px solid ${hourglassMeta.color}` : '1.5px solid var(--vetro-bordo-color, rgba(130,170,240,0.14))',
-            opacity: gameStatus === 'playing' && !isHourglass ? 0.5 : 1,
+            border: isPlatform ? `1.5px solid ${platformMeta.color}` : '1.5px solid var(--vetro-bordo-color, rgba(130,170,240,0.14))',
+            opacity: gameStatus === 'playing' && !isPlatform ? 0.5 : 1,
             transition: 'opacity 0.2s, border 0.2s',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '1.4rem' }}>{hourglassMeta.emoji}</span>
-            <strong style={{ fontSize: '0.95rem', color: C.text }}>{hourglassMeta.name}</strong>
-            {isHourglass && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: hourglassMeta.color, fontWeight: 700 }}>● ATTIVO</span>}
-            {hourglassSaveAvailable && !isHourglass && <span style={{ marginLeft: 'auto', fontSize: '0.65rem', color: 'var(--accent-warm, #ffb86c)', fontWeight: 700 }}>⏵ SAVE</span>}
+            <span style={{ fontSize: '1.4rem' }}>{platformMeta.emoji}</span>
+            <strong style={{ fontSize: '0.95rem', color: C.text }}>{platformMeta.name}</strong>
+            {isPlatform && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: platformMeta.color, fontWeight: 700 }}>● ATTIVO</span>}
+            {platformSaveAvailable && !isPlatform && <span style={{ marginLeft: 'auto', fontSize: '0.65rem', color: 'var(--accent-warm, #ffb86c)', fontWeight: 700 }}>⏵ SAVE</span>}
           </div>
           <div style={{ fontSize: '0.75rem', color: C.textMuted, lineHeight: 1.4 }}>
-            {hourglassMetaTradotta.hubDescription}
+            {platformMetaTradotta.hubDescription}
           </div>
         </button>
       </div>
@@ -846,10 +846,10 @@ export default function GamePage() {
                         🆕 Nuova partita
                       </button>
                     </div>
-                  ) : isHourglass && hourglassSaveAvailable ? (
+                  ) : isPlatform && platformSaveAvailable ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center' }}>
                       <button
-                        onClick={() => { hourglassContinueRef.current = true; setGameStatus('playing'); }}
+                        onClick={() => { platformContinueRef.current = true; setGameStatus('playing'); }}
                         className="btn btn-primary"
                         style={{ fontSize: '1rem', padding: '0.75rem 2rem', minWidth: '220px' }}
                       >
@@ -858,9 +858,9 @@ export default function GamePage() {
                       <button
                         onClick={() => {
                           if (!confirm('Iniziare una nuova partita? Il salvataggio attuale verra` cancellato.')) return;
-                          try { clearHourglassSave(); } catch { /* ignored */ }
-                          hourglassContinueRef.current = false;
-                          setHourglassSaveAvailable(false);
+                          try { clearPlatformSave(); } catch { /* ignored */ }
+                          platformContinueRef.current = false;
+                          setPlatformSaveAvailable(false);
                           setGameStatus('playing');
                         }}
                         className="btn"
@@ -879,7 +879,7 @@ export default function GamePage() {
                     <button
                       onClick={() => {
                         if (isLegend) legendContinueRef.current = false;
-                        if (isHourglass) hourglassContinueRef.current = false;
+                        if (isPlatform) platformContinueRef.current = false;
                         setGameStatus('playing');
                       }}
                       className="btn btn-primary"
@@ -961,12 +961,12 @@ export default function GamePage() {
                   >
                     <FlaskConical size={18} />
                   </button>
-                  {isHourglass && (
+                  {isPlatform && (
                     <button
                       className="game-kb-toggle"
                       onClick={() => { secondaryBtnRef.current = true; }}
-                      title="Oggetto secondario (B)"
-                      aria-label="Oggetto secondario"
+                      title="Corsa (Shift)"
+                      aria-label="Corsa"
                     >
                       <Wand2 size={18} />
                     </button>

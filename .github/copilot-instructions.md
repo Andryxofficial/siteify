@@ -12,8 +12,8 @@ siteify/
 ├── .github/
 │   └── copilot-instructions.md   ← questo file
 ├── api/                          ← Serverless functions (Vercel)
-│   ├── leaderboard.js            ← GET/POST classifica weekly/monthly/general (param `?game=monthly|legend`)
-│   ├── reset-leaderboard.js      ← GET status + POST admin (param `?game=monthly|legend`)
+│   ├── leaderboard.js            ← GET/POST classifica weekly/monthly/general (param `?game=monthly|legend|platform`)
+│   ├── reset-leaderboard.js      ← GET status + POST admin (param `?game=monthly|legend|platform`)
 │   └── ikigai-bridge.js
 ├── public/                       ← Asset statici serviti direttamente
 │   ├── andryx-logo.svg           ← Logo Andryx SVG (navbar & footer)
@@ -55,8 +55,18 @@ siteify/
 │   │       ├── tiles.js          ← Costanti tile + collisioni + proprieta` 2D (`TILES`, `TILE_SIZE`, `getTile`, `isSolid`, `getTileSprite`)
 │   │       ├── world.js          ← 4 zone (Foresta, Villaggio, Caverna, Castello), tilemap + entita` + connessioni
 │   │       ├── dialog.js         ← Sistema dialoghi (typewriter, scelte, ritratti NPC)
-│   │       ├── audio.js          ← SFX Web Audio API (no asset esterni)
-│   │       └── save.js           ← localStorage versionato (zona, posizione, inventario, quest, HP, cristalli)
+│   │   │   ├── audio.js          ← SFX Web Audio API (no asset esterni)
+│   │   │   └── save.js           ← localStorage versionato (zona, posizione, inventario, quest, HP, cristalli)
+│   │   └── platform/             ← 🦘 Andryx Jump (terza modalita`, sempre disponibile) — platformer 2D originale a scorrimento laterale, 10 mondi a tema
+│   │       ├── index.js          ← Entry: meta + createGame, helpers save (hasSave/clearSave), setPlatformLang
+│   │       ├── engine.js         ← Game loop completo: gravita`, salto variabile, coyote/jump-buffer, run/walk con accel/friction, fall-through one-way, AABB collision X poi Y, AI nemici (Sloimo/Pipistrellix/Spinazzo), power-up (cristallo/stella/piuma), camera dead-zone+clamp+parallax 2 layer, HUD, pause, level-complete, fade transizioni
+│   │       ├── physics.js        ← Costanti fisica (PHYS) + helpers AABB
+│   │       ├── tiles.js          ← Costanti tile (TILES, TILE_SIZE) + helpers (isSolid, isOneWay, isLava, isWater, isIce, isPickup, getSpawnType, getTile)
+│   │       ├── world.js          ← Definizione 10 mondi tematici (Foresta di Twitchia, Pianure di Pixel, Caverna delle Gemme, Deserto del Lag, Palude del Buffer, Vetta del Ping, Tundra del Frame, Inferno del Crash, Notte Stellare, Castello del Re Ombra). Mondo 1: 3 livelli disegnati a mano. Mondi 2-10: 1 livello procedurale ciascuno (stub, da espandere in PR successive)
+│   │       ├── sprites.js        ← Pixel art procedurale (Andryx 4 stati big/small, Sloimo, Pipistrellix, Spinazzo, coin, crystal/star/feather, bandiere)
+│   │       ├── audio.js          ← Web Audio sintetizzato: jump/doubleJump/coin/stomp/hit/powerup/death/levelClear/oneup + 10 brani musicali procedurali (uno per mondo, scala/tempo/timbro distinti)
+│   │       ├── save.js           ← localStorage versionato `andryxify_platform_save_v1` (worldsUnlocked, completedLevels, totalCoins, lives, bestTimes, bestScores, sessione corrente)
+│   │       └── i18n.js           ← Traduzioni IT/EN/ES per meta + UI
 │   └── pages/
 │       ├── Home.jsx              ← Homepage: hero, live preview Twitch, SocialHub, PodcastPromo
 │       ├── TwitchPage.jsx        ← Embed stream Twitch + chat
@@ -149,6 +159,7 @@ Il parametro `game` (default `monthly` per retrocompatibilita`) determina il pre
 |---|---|
 | `monthly` (default) | `lb:` |
 | `legend` | `lb:legend:` |
+| `platform` | `lb:platform:` |
 
 | Board | Logica | Chiave Redis (monthly) | Chiave Redis (legend) | TTL |
 |---|---|---|---|---|
@@ -292,10 +303,13 @@ npm run lint      # ESLint (flat config)
 | 2026-04-21 | **🎮 Andryx Legend → ritorno al 2D pixel-art (Minish Cap "vero")**: il renderer 3D Three.js era illeggibile e fragile (mappa rotta, texture rotte, scritte minuscole). Sostituito con `renderer2d.js`: canvas 2D con scaling per `devicePixelRatio` (testo crisp), tile vettoriali stile *The Minish Cap* (alberi tondi con highlight, sassi, cespugli, vasi, tetti rossi a listelli, finestre azzurre, fontana, torce con glow, portale pulsante), erba con variazione deterministica + filo d'erba, acqua animata, lava pulsante, ombre ovali sotto entità + Y-sort, slash arc spada, vignettatura, tinte zona, fade transizioni, camera shake. HUD molto più grande sul medesimo canvas (overlay rimosso): bar oro Minish con cuori 26px / rupie 22px / cristalli 24px, **mini-mappa 130×130** con doppio bordo oro e etichetta zona 16px, **dialog 168px** con font sans 22/20px e word-wrap automatico via `measureText`. **Eliminati** `renderer3d.js`, `models3d.js`, dipendenza `three`, chunk `vendor-three`. Esportazioni 3D rimosse anche da `tiles.js`. Chunk `legend-*.js` 72kB / 21kB gz (era 78kB+121kB Three → **-100kB+ gzipped**). | `src/games/legend/renderer2d.js` (nuovo), `src/games/legend/engine.js`, `src/games/legend/tiles.js`, `package.json`, `vite.config.js`, `.github/copilot-instructions.md`; eliminati: `renderer3d.js`, `models3d.js` |
 | 2026-04-21 | **🛣️ Andryx Legend → strade al posto dei portali + fullscreen**: rimossi tutti i tile portale `*` dalle mappe; il Villaggio dei Pixel ha ora una croce di strade `_` (cols 14-15 verticali, rows 10-11 orizzontali) che collega i 4 confini cardinali alle dungeon: **N→Castello** (gated da `has_crystal_blue`), **S→Caverna**, **E→Foresta**, **O→Pianura dell'Ovest** (zona nuova, overworld con heart container e cartello "presto un nuovo dungeon"). Tutte le `transitions` sono ora `trigger:'edge'` (niente piu` `trigger:'portal'`). Mappe Foresta/Caverna/Castello aggiornate per avere l'apertura sul lato corretto + spawn allineati. Case del villaggio spostate per fare spazio alle aperture (Anziano cols 9-11, Re cols 19-21, Andryx cols 2-4 rows 13-14). Aggiunto bottone fullscreen (Maximize2/Minimize2 lucide) in alto a destra del `game-canvas-wrapper` che usa Fullscreen API + sync via `fullscreenchange`; CSS `.is-fullscreen` / `:fullscreen` scala il wrapper a 100vw/100vh con sfondo nero. Aggiornati dialoghi `crystal_green_pickup` (no piu` "portale a est") e `crystal_blue_pickup` (annuncia apertura strada nord). | `src/games/legend/world.js`, `src/games/legend/dialog.js`, `src/pages/GamePage.jsx`, `src/index.css`, `.github/copilot-instructions.md` |
 | 2026-04-21 | **🐛 Andryx Legend bugfix**: 1) **NPC invisibili** — `_drawEntities` filtrava `e.hp <= 0` con eccezione solo per `item`/`projectile`; gli NPC non hanno hp (tipo non-mortale) quindi sparivano dal render. Ora il filtro hp si applica solo a `enemy`/`boss`. 2) **Musica monotona** — riscritto `playMusic` con tracce multistrato (melodia in `triangle/square` + linea di basso in `sine/triangle` + accento armonico ogni 8 step), pattern A/B di 32 step, BPM per zona (110/96/88/80), envelope ADSR per note morbide. Costruite quattro tracce vere: villaggio C-maggiore allegro, foresta minore misterioso, caverna eolio cupo, castello marcia tetra. 3) **GUI in fullscreen** — il fullscreen ora viene chiesto su `.game-area` invece che sul solo `.game-canvas-wrapper`, cosi` joystick/attack-button/keyboard-hint restano visibili anche a schermo intero su mobile. CSS aggiornato con `safe-area-inset-*` e flex layout in `.game-area.is-fullscreen`. | `src/games/legend/renderer2d.js`, `src/games/legend/audio.js`, `src/pages/GamePage.jsx`, `src/index.css` |
+| 2026-04-22 | **🗑️ Rimozione Andryx Hourglass + 🦘 nuovo Andryx Jump (platformer)**: cancellata cartella `src/games/hourglass/` (19 file), rimosso chunk `hourglass` da `vite.config.js`, rimosso `'hourglass'` da `SUPPORTED_GAMES` in `api/leaderboard.js` e `api/reset-leaderboard.js`, rimosso hub-modalità Hourglass da `GamePage.jsx` (stato/import/UI/save overlay). Creato nuovo gioco `src/games/platform/` (Andryx Jump): platformer 2D originale a scorrimento laterale come terza modalità nell'hub accanto a Mese e Legend. Engine completo (gravità, salto variabile, coyote-time, jump-buffer, run/walk con accel/friction, fall-through one-way, AABB collision separata X/Y), 3 nemici (Sloimo cammina+gravità+inverte su muri/burroni, Pipistrellix vola sinusoide e segue player, Spinazzo statico), 3 power-up (Cristallo cresci 2-hit, Stella invuln 8s, Piuma doppio salto 12s), camera con dead-zone+clamp+parallax 2 layer, sprite Andryx pixel-art 4 stati big/small, HUD (mondo X-Y, monete, vite, tempo, score), pause/game-over/level-complete con fade, checkpoint, bandiera fine livello, lava/acqua/ghiaccio. 10 mondi tematici definiti: Mondo 1 (Foresta di Twitchia) con 3 livelli disegnati a mano, mondi 2-10 con 1 livello procedurale ciascuno (stub). Audio Web Audio sintetizzato: 9 SFX + 10 brani musicali procedurali (uno per mondo, scala/tempo/timbro distinti). Save localStorage `andryxify_platform_save_v1` con sblocco mondi, livelli completati, record. i18n IT/EN/ES. Leaderboard backend estesa con `'platform'` in `SUPPORTED_GAMES` (prefisso Redis `lb:platform:*`). Chunk Vite separato `platform-*.js` ~48kB / 15kB gz. Lint + build verde. | `src/games/hourglass/` (eliminata, 19 file), `src/games/platform/` (creata: index, engine, physics, tiles, world, sprites, audio, save, i18n), `vite.config.js`, `api/leaderboard.js`, `api/reset-leaderboard.js`, `src/pages/GamePage.jsx`, `.github/copilot-instructions.md` |
 
 ---
 
 ## 💡 Idee di miglioramento e feature future
+
+---
 
 ### 🎮 Gioco
 - [ ] **Più tipi di nemici** per le stanze avanzate (boss room ogni 5 stanze, range attacker, ecc.)
