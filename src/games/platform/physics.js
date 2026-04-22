@@ -4,36 +4,40 @@
  */
 
 export const PHYS = {
-  /* Gravita per fase del salto */
-  GRAVITY_RISE: 0.42,           // salendo senza tenere il tasto
-  GRAVITY_FALL: 0.78,           // cadendo
-  GRAVITY_FAST_FALL: 1.2,       // tieni giu
-  MAX_FALL: 10,
+  /* Gravita per fase del salto - tarate per feel "SMB classico" */
+  GRAVITY_RISE: 0.40,           // salendo senza tenere il tasto
+  GRAVITY_FALL: 0.85,           // cadendo (più reattivo)
+  GRAVITY_FAST_FALL: 1.30,      // tieni giu
+  MAX_FALL: 11,
 
   /* Salto variabile */
-  JUMP_VEL: -9.0,
-  JUMP_HOLD_FRAMES: 14,         // frame max in cui il tasto allunga il salto
-  JUMP_HOLD_GRAVITY_FACTOR: 0.35, // gravity_rise * questo = 0.147 durante hold
+  JUMP_VEL: -9.6,               // salto base ~ 7 tile
+  JUMP_VEL_RUN_BONUS: -1.2,     // se sta correndo, salto +X (Mario-style)
+  JUMP_HOLD_FRAMES: 17,         // frame max in cui il tasto allunga il salto
+  JUMP_HOLD_GRAVITY_FACTOR: 0.30, // gravity_rise * questo durante hold
 
-  /* Coyote time + buffer */
-  COYOTE_FRAMES: 6,
-  JUMP_BUFFER_FRAMES: 8,
+  /* Coyote time + buffer (qualita di vita) */
+  COYOTE_FRAMES: 7,
+  JUMP_BUFFER_FRAMES: 10,
 
   /* Doppio salto (piuma) */
-  DOUBLE_JUMP_VEL: -7.4,
+  DOUBLE_JUMP_VEL: -8.2,
 
-  /* Movimento orizzontale */
-  WALK_SPEED: 2.4,
-  RUN_SPEED: 4.4,
-  ACCEL_GROUND: 0.20,
-  ACCEL_RUN: 0.28,
-  FRICTION_GROUND: 0.78,
-  FRICTION_AIR: 0.92,
-  FRICTION_ICE: 0.985,
+  /* Movimento orizzontale - SMB-like (ma in pixel/frame, non subpixel) */
+  WALK_SPEED: 2.6,
+  RUN_SPEED: 5.2,
+  ACCEL_GROUND: 0.24,
+  ACCEL_RUN: 0.32,
+  /* Friction "skid": meno sticky → vera scivolata Mario quando rilasci tasto */
+  FRICTION_GROUND: 0.86,
+  FRICTION_AIR: 0.97,           // quasi inerzia totale in aria
+  FRICTION_ICE: 0.992,
+  /* Skid forte se freni nel verso opposto al moto */
+  SKID_DECEL: 0.35,
 
   /* Stomp rimbalzo */
-  STOMP_BOUNCE: -4.5,
-  STOMP_BOUNCE_HOLD: -8.0,
+  STOMP_BOUNCE: -5.0,
+  STOMP_BOUNCE_HOLD: -9.0,
 
   /* Fall-through one-way platforms */
   FALL_THROUGH_FRAMES: 8,

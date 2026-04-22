@@ -31,75 +31,104 @@ const ANDRYX_PALETTE = {
 function drawAndryxBody(ctx, form, animFrame) {
   const HAT    = '#e63946';
   const HAT_SH = '#a01020';
+  const HAT_HI = '#ff6680';
   const FACE   = '#fde0c8';
+  const FACE_SH = '#e8b89a';
   const HAIR   = '#1a1a1a';
   const SKIN   = '#fde0c8';
   const SHOE   = '#5a3a1e';
+  const SHOE_SH = '#3a2010';
+  const BELT   = '#ffd040';
   const pal    = ANDRYX_PALETTE[form] || ANDRYX_PALETTE.small;
   const TUNIC  = pal.tunic;
   const TUNIC_SH = pal.tunicSh;
   const PANT   = pal.pant;
 
-  /* cappello */
-  px(ctx, 4, 0, HAT, 5, 2);
-  px(ctx, 3, 2, HAT, 7, 2);
-  px(ctx, 2, 4, HAT_SH, 9, 2);
-  /* capelli ai lati */
-  px(ctx, 2, 6, HAIR, 1, 2);
+  /* cappello con visiera */
+  px(ctx, 4, 0, HAT, 5, 1);          // cima
+  px(ctx, 3, 1, HAT, 7, 2);          // corpo
+  px(ctx, 4, 1, HAT_HI, 2, 1);       // highlight
+  px(ctx, 2, 3, HAT_SH, 9, 1);       // banda scura
+  px(ctx, 1, 4, HAT_SH, 10, 1);      // visiera estesa
+  /* capelli ai lati e dietro */
+  px(ctx, 1, 5, HAIR, 1, 2);
+  px(ctx, 10, 5, HAIR, 1, 2);
+  px(ctx, 2, 5, HAIR, 1, 1);
   /* viso */
-  px(ctx, 3, 6, FACE, 6, 5);
-  /* occhio */
-  px(ctx, 7, 7, '#000', 2, 1);
+  px(ctx, 3, 5, FACE, 7, 1);
+  px(ctx, 2, 6, FACE, 8, 4);
+  px(ctx, 3, 10, FACE_SH, 6, 1);     // mento ombrato
+  /* occhi (uno grande Mario-style) */
+  px(ctx, 6, 6, '#fff', 2, 2);
+  px(ctx, 7, 7, '#000', 1, 1);
+  /* naso */
+  px(ctx, 4, 8, FACE_SH, 2, 1);
   /* bocca */
   px(ctx, 5, 9, HAT_SH, 3, 1);
   /* collo */
   px(ctx, 4, 11, SKIN, 4, 1);
   /* tunica */
   px(ctx, 2, 12, TUNIC, 8, 4);
-  px(ctx, 3, 16, TUNIC_SH, 6, 2);
+  px(ctx, 2, 12, TUNIC_SH, 1, 4);    // ombra sx
+  px(ctx, 9, 12, TUNIC_SH, 1, 4);    // ombra dx
+  px(ctx, 3, 13, '#fff', 1, 1);      // bottone bianco
+  px(ctx, 6, 14, BELT, 1, 1);        // bottone giallo
+  px(ctx, 2, 16, BELT, 8, 1);        // cintura gialla
+  px(ctx, 2, 17, TUNIC_SH, 8, 1);    // ombra sotto cintura
   /* braccia in base all'animFrame (0=idle, 1=walk1, 2=walk2, 3=jump) */
   if (animFrame === 1) {
-    px(ctx, 1, 12, SKIN, 1, 2);
-    px(ctx, 10, 13, SKIN, 1, 2);
+    px(ctx, 1, 12, TUNIC, 1, 2); px(ctx, 1, 14, SKIN, 1, 1);
+    px(ctx, 10, 13, TUNIC, 1, 2); px(ctx, 10, 15, SKIN, 1, 1);
   } else if (animFrame === 2) {
-    px(ctx, 1, 13, SKIN, 1, 2);
-    px(ctx, 10, 12, SKIN, 1, 2);
+    px(ctx, 1, 13, TUNIC, 1, 2); px(ctx, 1, 15, SKIN, 1, 1);
+    px(ctx, 10, 12, TUNIC, 1, 2); px(ctx, 10, 14, SKIN, 1, 1);
   } else if (animFrame === 3) {
-    px(ctx, 1, 11, SKIN, 1, 2);
-    px(ctx, 10, 11, SKIN, 1, 2);
+    /* salto: braccia su */
+    px(ctx, 1, 11, TUNIC, 1, 2); px(ctx, 1, 10, SKIN, 1, 1);
+    px(ctx, 10, 11, TUNIC, 1, 2); px(ctx, 10, 10, SKIN, 1, 1);
   } else {
-    px(ctx, 1, 12, SKIN, 1, 2);
-    px(ctx, 10, 12, SKIN, 1, 2);
+    px(ctx, 1, 12, TUNIC, 1, 2); px(ctx, 1, 14, SKIN, 1, 1);
+    px(ctx, 10, 12, TUNIC, 1, 2); px(ctx, 10, 14, SKIN, 1, 1);
   }
   /* pantaloni e gambe */
   if (animFrame === 1) {
     px(ctx, 2, 18, PANT, 4, 4);
     px(ctx, 6, 18, PANT, 4, 4);
-    px(ctx, 2, 20, SHOE, 5, 2);
-    px(ctx, 7, 21, SHOE, 4, 1);
+    px(ctx, 1, 21, SHOE, 5, 2);
+    px(ctx, 7, 21, SHOE, 4, 2);
+    px(ctx, 1, 22, SHOE_SH, 5, 1);
+    px(ctx, 7, 22, SHOE_SH, 4, 1);
   } else if (animFrame === 2) {
     px(ctx, 2, 18, PANT, 4, 4);
     px(ctx, 6, 18, PANT, 4, 4);
-    px(ctx, 3, 21, SHOE, 4, 1);
-    px(ctx, 7, 20, SHOE, 4, 2);
+    px(ctx, 2, 21, SHOE, 4, 2);
+    px(ctx, 6, 21, SHOE, 5, 2);
+    px(ctx, 2, 22, SHOE_SH, 4, 1);
+    px(ctx, 6, 22, SHOE_SH, 5, 1);
   } else if (animFrame === 3) {
-    px(ctx, 3, 18, PANT, 6, 4);
-    px(ctx, 2, 20, SHOE, 4, 2);
-    px(ctx, 7, 20, SHOE, 4, 2);
+    /* gambe piegate */
+    px(ctx, 3, 18, PANT, 6, 3);
+    px(ctx, 2, 20, PANT, 3, 2);
+    px(ctx, 7, 20, PANT, 3, 2);
+    px(ctx, 1, 22, SHOE, 4, 1);
+    px(ctx, 7, 22, SHOE, 4, 1);
   } else {
     px(ctx, 3, 18, PANT, 3, 4);
     px(ctx, 6, 18, PANT, 3, 4);
-    px(ctx, 2, 21, SHOE, 4, 1);
-    px(ctx, 7, 21, SHOE, 4, 1);
+    px(ctx, 1, 22, SHOE, 4, 1);
+    px(ctx, 7, 22, SHOE, 4, 1);
   }
+  /* ombra interna pantaloni */
+  px(ctx, 5, 19, '#000', 2, 3);
   /* fire flower dot sul cappello */
   if (form === 'fire') {
-    px(ctx, 6, 0, '#ff8800', 2, 2);
+    px(ctx, 5, 0, '#ff8800', 3, 1);
+    px(ctx, 5, 1, '#ffd040', 3, 1);
   }
-  /* big: aggiungi stivali grandi */
+  /* big: capi piu lussuosi */
   if (form === 'big' || form === 'fire') {
-    px(ctx, 1, 22, SHOE, 5, 2);
-    px(ctx, 6, 22, SHOE, 5, 2);
+    px(ctx, 0, 22, SHOE_SH, 6, 2);   // stivali allargati
+    px(ctx, 6, 22, SHOE_SH, 6, 2);
   }
 }
 
