@@ -8,5 +8,6 @@ Disallow: /amici
 Disallow: /impostazioni
 Disallow: /overlay/
 Disallow: /profilo/
+Disallow: /chat
 
 Sitemap: https://andryxify.it/sitemap.xml

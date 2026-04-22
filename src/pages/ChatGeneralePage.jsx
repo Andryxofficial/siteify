@@ -140,6 +140,7 @@ export default function ChatGeneralePage() {
         title="Chat"
         description="Chat generale della community ANDRYXify — Twitch chat e chat sito."
         path="/chat"
+        noindex
       />
 
       <motion.h1

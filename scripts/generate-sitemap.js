@@ -15,8 +15,12 @@ const BASE_URL = 'https://andryxify.it';
 
 // Pagine pubbliche con priority + changefreq.
 // L'ordine determina l'ordine nella sitemap.
+// /chat NON è inclusa: è una pagina interattiva con contenuto dinamico generato
+// dagli utenti, marcata noindex per evitare che competa con la homepage nei
+// risultati di ricerca per query come "andryxify".
 const PAGES = [
   { loc: '/',          priority: '1.0', changefreq: 'daily'   },
+  { loc: '/chi-sono',  priority: '0.9', changefreq: 'monthly' },
   { loc: '/twitch',    priority: '0.9', changefreq: 'daily'   },
   { loc: '/youtube',   priority: '0.8', changefreq: 'weekly'  },
   { loc: '/podcast',   priority: '0.8', changefreq: 'weekly'  },
@@ -24,7 +28,6 @@ const PAGES = [
   { loc: '/tiktok',    priority: '0.7', changefreq: 'weekly'  },
   { loc: '/gioco',     priority: '0.8', changefreq: 'monthly' },
   { loc: '/socialify', priority: '0.8', changefreq: 'daily'   },
-  { loc: '/chat',      priority: '0.6', changefreq: 'daily'   },
   { loc: '/app',       priority: '0.5', changefreq: 'monthly' },
 ];
 

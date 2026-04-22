@@ -41,9 +41,16 @@
     <link rel="alternate" hreflang="it" href="https://andryxify.it/" />
     <link rel="alternate" hreflang="x-default" href="https://andryxify.it/" />
 
-    <!-- Favicon & Icons -->
-    <link rel="icon" type="image/png" href="/logo.png" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Favicon & Icons — ordinato per priorità Google/browser:
+         1) SVG (browser moderni + Google search) per nitidezza a ogni risoluzione
+         2) PNG 192×192 — dimensione consigliata da Google per i preview di ricerca
+         3) PNG 512×512 — alta densità (4K, retina)
+         4) Apple touch icon 180×180 -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/pwa-512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="mask-icon" href="/favicon.svg" color="#863bff" />
     <link rel="manifest" href="/manifest.webmanifest" />
 
     <!-- Open Graph -->
@@ -54,8 +61,9 @@
     <meta property="og:title" content="ANDRYXify — Streamer Twitch, Gaming, IA & Intrattenimento | Andrea Taliento" />
     <meta property="og:description" content="ANDRYXify (Andrea Taliento) — Streamer Twitch, gamer e content creator italiano. Live streaming di videogiochi, podcast su IA, video YouTube e minigioco esclusivo con classifica." />
     <meta property="og:image" content="https://andryxify.it/logo.png" />
-    <meta property="og:image:width" content="512" />
-    <meta property="og:image:height" content="512" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1024" />
+    <meta property="og:image:height" content="1024" />
     <meta property="og:image:alt" content="ANDRYXify Logo — Streamer Twitch e Content Creator Italiano" />
 
     <!-- Twitter Card -->
@@ -124,7 +132,7 @@
       "url": "https://andryxify.it",
       "description": "Sito ufficiale di ANDRYXify — Streamer Twitch, gaming, Intelligenza Artificiale, podcast e minigioco esclusivo con classifica.",
       "inLanguage": "it",
-      "publisher": { "@id": "https://andryxify.it/#persona" },
+      "publisher": { "@id": "https://andryxify.it/#organizzazione" },
       "potentialAction": {
         "@type": "SearchAction",
         "target": {
@@ -174,31 +182,42 @@
         { "@type": "SiteNavigationElement", "position": 6, "name": "Podcast", "url": "https://andryxify.it/podcast" },
         { "@type": "SiteNavigationElement", "position": 7, "name": "TikTok", "url": "https://andryxify.it/tiktok" },
         { "@type": "SiteNavigationElement", "position": 8, "name": "Gioco del Mese", "url": "https://andryxify.it/gioco" },
-        { "@type": "SiteNavigationElement", "position": 9, "name": "SOCIALify Community", "url": "https://andryxify.it/socialify" },
-        { "@type": "SiteNavigationElement", "position": 10, "name": "Chat Pubblica", "url": "https://andryxify.it/chat" }
+        { "@type": "SiteNavigationElement", "position": 9, "name": "SOCIALify Community", "url": "https://andryxify.it/socialify" }
       ]
     }
     </script>
 
-    <!-- JSON-LD: BreadcrumbList -->
+    <!-- JSON-LD: Organization
+         Google usa il campo `logo` dell'Organization per associare il logo
+         del brand al sito nei risultati di ricerca (knowledge panel + favicon).
+         Logo deve essere ≥112px e accessibile pubblicamente. -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://andryxify.it/" },
-        { "@type": "ListItem", "position": 2, "name": "Chi Sono", "item": "https://andryxify.it/chi-sono" },
-        { "@type": "ListItem", "position": 3, "name": "Twitch", "item": "https://andryxify.it/twitch" },
-        { "@type": "ListItem", "position": 4, "name": "YouTube", "item": "https://andryxify.it/youtube" },
-        { "@type": "ListItem", "position": 5, "name": "Instagram", "item": "https://andryxify.it/instagram" },
-        { "@type": "ListItem", "position": 6, "name": "Podcast", "item": "https://andryxify.it/podcast" },
-        { "@type": "ListItem", "position": 7, "name": "TikTok", "item": "https://andryxify.it/tiktok" },
-        { "@type": "ListItem", "position": 8, "name": "Gioco", "item": "https://andryxify.it/gioco" },
-        { "@type": "ListItem", "position": 9, "name": "SOCIALify", "item": "https://andryxify.it/socialify" },
-        { "@type": "ListItem", "position": 10, "name": "Chat", "item": "https://andryxify.it/chat" }
+      "@type": "Organization",
+      "@id": "https://andryxify.it/#organizzazione",
+      "name": "ANDRYXify",
+      "alternateName": ["Andryx", "Andrea Taliento"],
+      "url": "https://andryxify.it/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://andryxify.it/pwa-512.png",
+        "width": 512,
+        "height": 512,
+        "contentUrl": "https://andryxify.it/pwa-512.png"
+      },
+      "image": "https://andryxify.it/logo.png",
+      "founder": { "@id": "https://andryxify.it/#persona" },
+      "sameAs": [
+        "https://twitch.tv/andryxify",
+        "https://youtube.com/@ANDRYXify",
+        "https://instagram.com/andryxify",
+        "https://tiktok.com/@andryxify",
+        "https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9"
       ]
     }
     </script>
+
     <!-- Anti-FOUC: applica tema, dimensione font e lingua prima che React carichi -->
     <script>
     (function(){
@@ -300,7 +319,6 @@
           <li><a href="/tiktok" style="color:#e8e9ee;">TikTok</a> — clip e momenti dei live.</li>
           <li><a href="/gioco" style="color:#e8e9ee;">Giochi</a> — Andryx Legend (avventura pixel-art), Andryx Jump (platformer) e gioco del mese con classifica Twitch.</li>
           <li><a href="/socialify" style="color:#e8e9ee;">SOCIALify</a> — community e thread tra utenti.</li>
-          <li><a href="/chat" style="color:#e8e9ee;">Chat</a> — chat pubblica del sito + chat Twitch.</li>
           <li><a href="/app" style="color:#e8e9ee;">App</a> — installa ANDRYXify come web app sul telefono.</li>
         </ul>
 
