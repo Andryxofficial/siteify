@@ -9,6 +9,8 @@ import {
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
 import useIsMod from '../hooks/useIsMod';
+import { useEmoteTwitch } from '../hooks/useEmoteTwitch';
+import EmotePicker from '../components/EmotePicker';
 import BottoneAggiungiAmico from '../components/BottoneAggiungiAmico';
 import SEO from '../components/SEO';
 import { useLingua } from '../contexts/LinguaContext';
@@ -69,6 +71,7 @@ const entrata = (ritardo = 0) => ({
    SCHEDA POST
    ═══════════════════════════════════════ */
 function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
+  const { renderTestoConEmote } = useEmoteTwitch(twitchToken);
   const { t, lingua } = useLingua();
   const CATEGORIE = useMemo(() => getCATEGORIE(t), [t]);
   const cat = infoCategoria(post.tag, CATEGORIE);
@@ -144,10 +147,10 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
             </div>
 
             {/* Titolo */}
-            <h3 className="social-titolo-post">{post.title}</h3>
+            <h3 className="social-titolo-post">{renderTestoConEmote(post.title)}</h3>
 
             {/* Anteprima testo */}
-            <p className="social-anteprima-testo">{post.body}</p>
+            <p className="social-anteprima-testo">{renderTestoConEmote(post.body)}</p>
 
             {/* Media preview */}
             {post.mediaUrl && post.mediaType === 'video' && (
@@ -209,6 +212,7 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
 function EditorPost({ onChiudi, onCreato }) {
   const { twitchToken } = useTwitchAuth();
   const { t } = useLingua();
+  const { emoteCanale, emoteGlobali, seventvCanale, seventvGlobali } = useEmoteTwitch(twitchToken);
   const CATEGORIE = useMemo(() => getCATEGORIE(t), [t]);
 
   // Ripristina bozza da localStorage
@@ -322,25 +326,46 @@ function EditorPost({ onChiudi, onCreato }) {
           ))}
         </div>
 
-        <input
-          type="text"
-          placeholder={t('community.editor.titolo_ph')}
-          value={titolo}
-          onChange={(e) => setTitolo(e.target.value)}
-          maxLength={120}
-          className="social-campo"
-          required
-        />
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
+          <input
+            type="text"
+            placeholder={t('community.editor.titolo_ph')}
+            value={titolo}
+            onChange={(e) => setTitolo(e.target.value)}
+            maxLength={120}
+            className="social-campo"
+            style={{ flex: 1 }}
+            required
+          />
+          <EmotePicker
+            emoteCanale={emoteCanale}
+            emoteGlobali={emoteGlobali}
+            seventvCanale={seventvCanale}
+            seventvGlobali={seventvGlobali}
+            onSelect={(nome) => setTitolo(prev => (prev ? `${prev} ${nome}` : nome))}
+          />
+        </div>
 
-        <textarea
-          placeholder={t('community.editor.testo_ph')}
-          value={testo}
-          onChange={(e) => setTesto(e.target.value)}
-          maxLength={2000}
-          rows={5}
-          className="social-campo social-area-testo"
-          required
-        />
+        <div style={{ position: 'relative' }}>
+          <textarea
+            placeholder={t('community.editor.testo_ph')}
+            value={testo}
+            onChange={(e) => setTesto(e.target.value)}
+            maxLength={2000}
+            rows={5}
+            className="social-campo social-area-testo"
+            required
+          />
+          <div style={{ position: 'absolute', right: '0.5rem', bottom: '0.5rem' }}>
+            <EmotePicker
+              emoteCanale={emoteCanale}
+              emoteGlobali={emoteGlobali}
+              seventvCanale={seventvCanale}
+              seventvGlobali={seventvGlobali}
+              onSelect={(nome) => setTesto(prev => (prev ? `${prev} ${nome}` : nome))}
+            />
+          </div>
+        </div>
 
         {/* Contatore caratteri + toggle anteprima */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.3rem', marginBottom: '0.4rem' }}>

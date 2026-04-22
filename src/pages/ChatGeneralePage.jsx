@@ -293,6 +293,16 @@ export default function ChatGeneralePage() {
                   padding: '0.8rem 1rem',
                   borderTop: '1px solid rgba(130,170,240,0.1)',
                   alignItems: 'center',
+                  /* z-index difensivo: assicura che il form di scrittura resti
+                     sempre sopra eventuali overlay flottanti (banner offline,
+                     toast, prompt installa PWA) che potrebbero coprirlo. */
+                  position: 'relative',
+                  zIndex: 5,
+                  /* Non si deve schiacciare se il flex container ha poco spazio. */
+                  flexShrink: 0,
+                  /* Lascia respiro per il safe-area-inset (iPhone, gestures). */
+                  paddingBottom: 'max(0.8rem, env(safe-area-inset-bottom, 0.8rem))',
+                  background: 'rgba(0,0,0,0.18)',
                 }}
               >
                 <EmotePicker

@@ -1,13 +1,22 @@
 /**
  * _botHelix.js — Helper per invio messaggi via Twitch Helix API e gestione token bot.
  *
+ * Strategia di invio messaggi (ordine di priorità):
+ *   1. Se in Redis è presente il token OAuth del broadcaster (mod:broadcaster:token,
+ *      persistito da api/_modAuth.js) E quel token include lo scope user:write:chat,
+ *      il messaggio viene inviato come BROADCASTER (sender_id = broadcaster_id).
+ *      Questa è la modalità raccomandata: nessun account bot separato necessario.
+ *   2. Altrimenti, fallback sul vecchio account bot dedicato (bot:token:access).
+ *
  * Funzioni esportate:
- *   refreshBotToken(redis)         → rinnova access token con il refresh token
- *   ottieniTokenBot(redis)         → legge il token (rinnova automaticamente se in scadenza)
+ *   refreshBotToken(redis)         → rinnova access token del bot dedicato
+ *   ottieniTokenBot(redis)         → token bot dedicato (rinnova se in scadenza)
  *   ottieniAppToken(redis)         → app access token (client credentials) per EventSub
- *   inviaMessaggioChat(redis, broadcasterId, testo) → POST Helix con auto-refresh su 401
+ *   inviaMessaggioChat(redis, broadcasterId, testo) → POST Helix con fallback auto
  *   aggiungiLog(redis, tipo, msg)  → appende voce al log bot (ultimi 50)
  */
+
+import { getBroadcasterToken } from './_modAuth.js';
 
 const HELIX_CHAT_URL = 'https://api.twitch.tv/helix/chat/messages';
 const HELIX_TOKEN_URL = 'https://id.twitch.tv/oauth2/token';
@@ -131,7 +140,15 @@ export async function ottieniAppToken(redis) {
 
 /**
  * Invia un messaggio nella chat Twitch tramite Helix API.
- * Auto-rinnova il token bot se riceve 401.
+ *
+ * Modalità:
+ *   A. BROADCASTER (preferita): se in Redis è presente il token OAuth del broadcaster
+ *      con scope `user:write:chat`, viene usato quello e il messaggio appare scritto
+ *      direttamente dall'account dello streamer. Nessun account bot separato richiesto.
+ *   B. BOT DEDICATO (fallback): se manca il token broadcaster o lo scope, ripiega
+ *      sul vecchio flow `bot:token:access` (account bot autorizzato dal Mod Panel).
+ *
+ * Auto-rinnova il token bot se riceve 401 (in modalità B).
  *
  * @param {object} redis          - istanza @upstash/redis
  * @param {string} broadcasterId  - user_id del broadcaster (canale destinazione)
@@ -141,8 +158,50 @@ export async function inviaMessaggioChat(redis, broadcasterId, testo) {
   const clientId = process.env.CHIAVETWITCH_CLIENT_ID;
   if (!clientId) throw new Error('CHIAVETWITCH_CLIENT_ID non configurato.');
 
+  /* ─── A. Tenta invio come BROADCASTER (preferito) ─── */
+  // Il token broadcaster è persistito in Redis ogni volta che lo streamer apre
+  // il Mod Panel (api/_modAuth.js → maybePersistBroadcasterToken).
+  try {
+    const broadcaster = await getBroadcasterToken(redis);
+    if (broadcaster?.token && Array.isArray(broadcaster.scopes) &&
+        broadcaster.scopes.includes('user:write:chat')) {
+      const senderId = broadcaster.userId || String(broadcasterId);
+      const r = await fetch(HELIX_CHAT_URL, {
+        method: 'POST',
+        headers: {
+          Authorization:  `Bearer ${broadcaster.token}`,
+          'Client-Id':    broadcaster.clientId || clientId,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          broadcaster_id: String(broadcasterId),
+          sender_id:      String(senderId),
+          message:        testo.slice(0, 500),
+        }),
+      });
+      if (r.ok) return r.json();
+      // 401 con broadcaster token: lascia che il fallback gestisca o termina.
+      // Se non c'è bot dedicato, alza l'errore originale.
+      if (r.status !== 401) {
+        const errText = await r.text();
+        // Non c'è retry su altri errori — ritorna l'errore "broadcaster"
+        // tranne quando un bot dedicato è disponibile, sotto.
+        const botEsiste = await redis.exists('bot:token:access');
+        if (!botEsiste) {
+          throw new Error(`Invio messaggio (broadcaster) fallito: ${r.status} — ${errText}`);
+        }
+      }
+    }
+  } catch (e) {
+    // Errore lettura broadcaster token o invio: prosegui con fallback bot.
+    if (e?.message?.startsWith('Invio messaggio (broadcaster) fallito')) throw e;
+  }
+
+  /* ─── B. Fallback: invio come ACCOUNT BOT DEDICATO ─── */
   const botUserId = await redis.get(BOT_USER_ID_KEY);
-  if (!botUserId) throw new Error('ID utente bot non trovato. Autorizza il bot dal Mod Panel.');
+  if (!botUserId) {
+    throw new Error('Nessun token broadcaster con scope user:write:chat e nessun account bot configurato. Riautentica dal Mod Panel per concedere il permesso "Scrivere in chat".');
+  }
 
   async function tentaInvio(token) {
     return fetch(HELIX_CHAT_URL, {

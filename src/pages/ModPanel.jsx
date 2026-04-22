@@ -18,12 +18,14 @@ import {
   TrendingUp, Monitor, Calendar, Twitch, Loader,
   ChevronRight, Wifi, WifiOff, Users as UsersIcon,
   Film, Award, Command, Radio, AlertTriangle, RefreshCw,
+  ShieldCheck, Target, Heart, Smile, Bell,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { createTwitchBot } from '../utils/twitchBot';
 import SEO from '../components/SEO';
 import QuickActions from './mod/QuickActions';
 import CommandPalette from './mod/CommandPalette';
+import MiniPlayerLive from '../components/MiniPlayerLive';
 
 // Scope minimi richiesti per il Pannello Mod.
 // ATTENZIONE: questa lista deve restare allineata con i `scope` nell'URL OAuth
@@ -35,8 +37,20 @@ const SCOPI_PANNELLO_MOD = [
   'channel:read:subscriptions',
   'channel:read:vips',
   'channel:manage:redemptions',
+  'channel:read:goals',
+  'channel:read:hype_train',
+  'channel:read:charity',
   'moderator:manage:banned_users',
   'moderator:manage:chat_settings',
+  'moderator:manage:announcements',
+  'moderator:manage:warnings',
+  'moderator:manage:shield_mode',
+  'moderator:manage:blocked_terms',
+  'moderator:manage:unban_requests',
+  'moderator:manage:automod_settings',
+  'moderator:read:chatters',
+  'moderator:read:followers',
+  'user:write:chat',
   'chat:read',
   'chat:edit',
 ];
@@ -54,35 +68,56 @@ const SecBot24h      = lazy(() => import('./mod/Bot24h'));
 const SecUsers       = lazy(() => import('./mod/Users'));
 const SecClips       = lazy(() => import('./mod/Clips'));
 const SecRewards     = lazy(() => import('./mod/Rewards'));
+const SecSecurity    = lazy(() => import('./mod/Security'));
+const SecChatters    = lazy(() => import('./mod/Chatters'));
+const SecGoalsHype   = lazy(() => import('./mod/GoalsHype'));
+const SecSubCharity  = lazy(() => import('./mod/SubCharity'));
+const SecEventSub    = lazy(() => import('./mod/EventSubConsole'));
+const SecEmote       = lazy(() => import('./mod/Emote'));
+const SecLivePlayer  = lazy(() => import('./mod/LivePlayer'));
 
 const SEZIONI = [
   { id: 'overview',    label: 'Overview',     icon: LayoutDashboard, color: 'var(--primary)',         descrizione: 'Stato live, titolo, gioco' },
+  { id: 'live',        label: 'Live',         icon: Radio,           color: 'var(--accent-twitch)',   descrizione: 'Player + chat embed' },
   { id: 'activity',    label: 'Attività',     icon: Activity,        color: 'var(--secondary)',       descrizione: 'Follower e sub recenti' },
+  { id: 'chatters',    label: 'Chatters',     icon: UsersIcon,       color: 'var(--accent-twitch)',   descrizione: 'Spettatori in chat' },
   { id: 'chat',        label: 'Chat',         icon: Terminal,        color: 'var(--accent-warm)',     descrizione: 'Comandi, timer, citazioni' },
   { id: 'moderation',  label: 'Moderazione',  icon: Shield,          color: 'var(--accent)',          descrizione: 'Ban, timeout, chat settings' },
+  { id: 'sicurezza',   label: 'Sicurezza',    icon: ShieldCheck,     color: 'var(--accent)',          descrizione: 'Shield Mode, AutoMod, termini bloccati' },
   { id: 'engagement',  label: 'Engagement',   icon: Zap,             color: 'var(--accent-twitch)',   descrizione: 'Sondaggi e predizioni' },
   { id: 'users',       label: 'Utenti',       icon: UsersIcon,       color: 'var(--accent-twitch)',   descrizione: 'Mod, VIP, sub, bannati' },
   { id: 'rewards',     label: 'Premi',        icon: Award,           color: 'var(--accent-warm)',     descrizione: 'Channel Points custom' },
+  { id: 'goalsHype',   label: 'Goal & Hype',  icon: Target,          color: 'var(--accent-warm)',     descrizione: 'Goal e Hype Train' },
+  { id: 'subCharity',  label: 'Sub & Charity',icon: Heart,           color: 'var(--accent-twitch)',   descrizione: 'Abbonati e charity' },
   { id: 'clips',       label: 'Clip',         icon: Film,            color: 'var(--primary)',         descrizione: 'Clip recenti del canale' },
   { id: 'stats',       label: 'Statistiche',  icon: TrendingUp,      color: 'var(--accent-spotify)',  descrizione: 'Andamento viewer e follower' },
   { id: 'overlays',    label: 'Overlay OBS',  icon: Monitor,         color: 'var(--secondary)',       descrizione: 'Goal, eventi, alert per OBS' },
+  { id: 'emote',       label: 'Emote',        icon: Smile,           color: 'var(--primary)',         descrizione: 'Gestione emote Twitch + 7TV' },
   { id: 'schedule',    label: 'Schedule',     icon: Calendar,        color: 'var(--primary)',         descrizione: 'Programmazione settimanale' },
   { id: 'bot24h',      label: 'Bot 24/7',     icon: Wifi,            color: 'var(--accent-spotify)',  descrizione: 'Bot serverless sempre attivo' },
+  { id: 'eventSubConsole', label: 'EventSub', icon: Bell,            color: 'var(--accent-warm)',     descrizione: 'Console EventSub subscriptions + log' },
 ];
 
 const COMPONENTI = {
   overview:   SecOverview,
+  live:       SecLivePlayer,
   activity:   SecActivity,
+  chatters:   SecChatters,
   chat:       SecChat,
   moderation: SecModeration,
+  sicurezza:  SecSecurity,
   engagement: SecEngagement,
   users:      SecUsers,
   rewards:    SecRewards,
+  goalsHype:  SecGoalsHype,
+  subCharity: SecSubCharity,
   clips:      SecClips,
   stats:      SecStats,
   overlays:   SecOverlays,
+  emote:      SecEmote,
   schedule:   SecSchedule,
   bot24h:     SecBot24h,
+  eventSubConsole: SecEventSub,
 };
 
 function SkeletonSezione() {
@@ -277,7 +312,7 @@ function LiveIndicator({ token }) {
 }
 
 export default function ModPanel() {
-  const { twitchToken, twitchUser, twitchDisplay, twitchAvatar, twitchScopes, isLoggedIn, loading, getTwitchLoginUrl, logout } = useTwitchAuth();
+  const { twitchToken, twitchUser, twitchDisplay, twitchAvatar, twitchScopes, isLoggedIn, loading, getTwitchLoginUrl } = useTwitchAuth();
   const [sezione,    setSezione]    = useState(() => {
     // Leggi ?sezione= dalla callback OAuth del bot
     const params = new URLSearchParams(window.location.search);
@@ -586,6 +621,15 @@ export default function ModPanel() {
         voci={vociPalette}
         onScegli={(v) => setSezione(v.id)}
       />
+
+      {/* Mini player live floating (desktop only, si nasconde quando sezione='live') */}
+      {broadcaster && (
+        <MiniPlayerLive
+          broadcaster={broadcaster}
+          onExpand={() => setSezione('live')}
+          sezioneAttiva={sezione}
+        />
+      )}
     </main>
   );
 }

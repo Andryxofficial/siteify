@@ -175,8 +175,12 @@ export async function syncModsFromTwitch(redis, twitchUser) {
  *
  * Salva: token, scope concessi, timestamp. Aggiorna anche broadcaster
  * username/id se non ancora presenti.
+ *
+ * Esportato perché viene chiamato sia da modAuthGate sia da mod-commands.js
+ * (che è il primo endpoint hit dal Pannello Mod e quindi spesso il primo
+ * trigger della persistenza del token broadcaster).
  */
-async function maybePersistBroadcasterToken(redis, twitchUser) {
+export async function maybePersistBroadcasterToken(redis, twitchUser) {
   const stored = await getBroadcasterUsername(redis);
   if (stored) {
     if (twitchUser.login !== stored) return;
@@ -207,10 +211,15 @@ async function maybePersistBroadcasterToken(redis, twitchUser) {
 /**
  * Recupera il token OAuth del broadcaster persistito in Redis.
  * Validato contro Twitch a ogni chiamata: se invalido viene cancellato e
- * la funzione ritorna `null`.
+ * la funzione ritorna `null`. Usa una mini-cache in-memory di 60s per
+ * evitare di hitting `/oauth2/validate` ad ogni chiamata Helix dello
+ * stesso cold start (Vercel mantiene il modulo caldo per qualche minuto).
  *
  * @returns {Promise<{token:string, clientId:string, scopes:string[], userId:string|null, login:string|null}|null>}
  */
+let _broadcasterTokenCache = null; // { token, info, validatedAt }
+const BROADCASTER_TOKEN_VALIDATE_TTL_MS = 60_000;
+
 export async function getBroadcasterToken(redis) {
   let token = null;
   try {
@@ -218,29 +227,50 @@ export async function getBroadcasterToken(redis) {
   } catch {
     return null;
   }
-  if (!token) return null;
+  if (!token) {
+    _broadcasterTokenCache = null;
+    return null;
+  }
   token = String(token);
+
+  // Mini-cache: se abbiamo validato lo stesso token negli ultimi 60s, riusa.
+  if (
+    _broadcasterTokenCache &&
+    _broadcasterTokenCache.token === token &&
+    (Date.now() - _broadcasterTokenCache.validatedAt) < BROADCASTER_TOKEN_VALIDATE_TTL_MS
+  ) {
+    return _broadcasterTokenCache.info;
+  }
 
   try {
     const valRes = await fetch('https://id.twitch.tv/oauth2/validate', {
       headers: { Authorization: `OAuth ${token}` },
     });
-    if (!valRes.ok) {
+    if (valRes.status === 401) {
+      // Token genuinamente invalido: cancella tutto.
       await Promise.allSettled([
         redis.del(MOD_BROADCASTER_TOKEN_KEY),
         redis.del(MOD_BROADCASTER_SCOPES_KEY),
         redis.del(MOD_BROADCASTER_TOKEN_TS_KEY),
       ]);
+      _broadcasterTokenCache = null;
+      return null;
+    }
+    if (!valRes.ok) {
+      // Errore transiente Twitch (5xx/429): non cancellare, ritorna null
+      // senza cachare → al prossimo tentativo riprovamiamo.
       return null;
     }
     const data = await valRes.json();
-    return {
+    const info = {
       token,
       clientId: data.client_id,
       scopes:   data.scopes || [],
       userId:   data.user_id || null,
       login:    data.login?.toLowerCase() || null,
     };
+    _broadcasterTokenCache = { token, info, validatedAt: Date.now() };
+    return info;
   } catch {
     // Errore di rete: meglio non cancellare il token.
     return null;
@@ -250,28 +280,77 @@ export async function getBroadcasterToken(redis) {
 /**
  * Sceglie il token + clientId da usare per una chiamata Helix.
  *
- * - Se `requireBroadcaster` è true: ritorna le credenziali del broadcaster
- *   persistite in Redis. Se non disponibili o scadute → ritorna `null`
- *   (il chiamante deve rispondere con `broadcasterTokenMissing(res)`).
- * - Altrimenti: ritorna le credenziali del moderatore loggato.
+ * Parametri:
+ *   - `requireBroadcaster`: se true, ritorna le credenziali del broadcaster
+ *     persistite in Redis. Se non disponibili o scadute → ritorna `null`
+ *     (il chiamante deve rispondere con `broadcasterTokenMissing(res)`).
+ *   - `requireScopes`: lista di scope richiesti per l'azione. Se almeno uno
+ *     manca dal token scelto, viene ritornato `{missingScopes:[...], source}`.
+ *     Il chiamante deve passarlo a `scopeMissing(res, missingScopes)`.
  *
- * @returns {Promise<{token:string, clientId:string, source:'broadcaster'|'mod'}|null>}
+ * @returns {Promise<
+ *   |{token:string, clientId:string, source:'broadcaster'|'mod'}
+ *   |{missingScopes:string[], source:'broadcaster'|'mod'}
+ *   |null
+ * >}
  */
-export async function pickHelixAuth({ twitchUser, redis, requireBroadcaster }) {
+export async function pickHelixAuth({ twitchUser, redis, requireBroadcaster, requireScopes }) {
+  let auth;
+  let availableScopes;
   if (requireBroadcaster) {
     const broadcaster = await getBroadcasterToken(redis);
     if (!broadcaster) return null;
-    return {
+    auth = {
       token:    broadcaster.token,
       clientId: broadcaster.clientId || twitchUser?.clientId,
       source:   'broadcaster',
     };
+    availableScopes = broadcaster.scopes || [];
+  } else {
+    auth = {
+      token:    twitchUser.token,
+      clientId: twitchUser.clientId,
+      source:   'mod',
+    };
+    availableScopes = twitchUser.scopes || [];
   }
-  return {
-    token:    twitchUser.token,
-    clientId: twitchUser.clientId,
-    source:   'mod',
-  };
+
+  if (Array.isArray(requireScopes) && requireScopes.length) {
+    const missing = requireScopes.filter(s => !availableScopes.includes(s));
+    if (missing.length) {
+      return { missingScopes: missing, source: auth.source };
+    }
+  }
+
+  return auth;
+}
+
+/**
+ * Predicate: true se l'utente ha TUTTI gli scope richiesti.
+ */
+export function hasScopes(twitchUser, scopes) {
+  if (!twitchUser?.scopes || !Array.isArray(scopes)) return false;
+  return scopes.every(s => twitchUser.scopes.includes(s));
+}
+
+/**
+ * Risposta standard quando il token (mod o broadcaster) non ha gli scope
+ * necessari per l'azione. HTTP 403 + `code:'scope_missing'` +
+ * `requiredScopes` + `tokenSource` ('mod'|'broadcaster') così il frontend
+ * può chiedere la riautenticazione corretta.
+ */
+export function scopeMissing(res, missingScopes, tokenSource = 'mod') {
+  const list = Array.isArray(missingScopes) ? missingScopes : [missingScopes];
+  const human = tokenSource === 'broadcaster'
+    ? 'Andryx deve riautenticarsi al Mod Panel concedendo i permessi mancanti.'
+    : 'Devi riautenticarti con Twitch concedendo i permessi mancanti.';
+  return res.status(403).json({
+    code:           'scope_missing',
+    error:          `${human} (mancano: ${list.join(', ')})`,
+    message:        `${human} (mancano: ${list.join(', ')})`,
+    requiredScopes: list,
+    tokenSource,
+  });
 }
 
 /**
@@ -394,5 +473,173 @@ export async function modAuthGate(req, redis) {
     try { await syncModsFromTwitch(redis, twitchUser); } catch { /* non bloccante */ }
   }
   const isMod = twitchUser ? await isUserMod(redis, twitchUser.login) : false;
-  return { twitchUser, isMod };
+  // Stabilisce se l'utente coincide col broadcaster: utile agli endpoint
+  // che gating azioni "broadcaster only" (es. set token 7TV).
+  let isBroadcaster = false;
+  if (twitchUser) {
+    try {
+      const broadcasterLogin = await getBroadcasterUsername(redis);
+      if (broadcasterLogin && twitchUser.login === broadcasterLogin) isBroadcaster = true;
+    } catch { /* ignore */ }
+  }
+  return { twitchUser, isMod, isBroadcaster };
+}
+
+/**
+ * Gate "tutto-in-uno" usato dagli endpoint mod-*.js per ridurre il boilerplate
+ * e garantire che ogni endpoint applichi i controlli di permessi corretti.
+ *
+ * Esegue:
+ *   1. modAuthGate (valida token, sync mod, persisti broadcaster token)
+ *   2. risposta 401 se token mancante/invalido
+ *   3. risposta 403 se utente non è mod
+ *   4. opzionalmente: ritorna `auth` (mod o broadcaster) se `requireBroadcaster`
+ *      o `requireScopes` sono specificati.
+ *      - Se broadcaster token non disponibile → 503 broadcaster_token_missing
+ *      - Se mancano scope sul token scelto → 403 scope_missing
+ *
+ * Ritorna:
+ *   - `null` se la risposta è già stata inviata (errore / accesso negato).
+ *     Il chiamante deve fare `if (!gated) return;`.
+ *   - `{twitchUser, isMod, broadcasterId, auth}` in caso di successo.
+ *
+ * @example
+ *   const g = await ensureModAccess(req, res, redis, {
+ *     requireBroadcaster: true,
+ *     requireScopes: ['channel:manage:broadcast'],
+ *   });
+ *   if (!g) return;
+ *   const { auth, broadcasterId } = g;
+ *   await helixRequest('PATCH', `channels?broadcaster_id=${broadcasterId}`, body, auth.token, auth.clientId);
+ */
+export async function ensureModAccess(req, res, redis, opts = {}) {
+  const { requireBroadcaster = false, requireScopes = null, requireBroadcasterId = true } = opts;
+  const { twitchUser, isMod } = await modAuthGate(req, redis);
+
+  if (!twitchUser) {
+    res.status(401).json({ code: 'unauthenticated', error: 'Token Twitch mancante o non valido.' });
+    return null;
+  }
+  if (!isMod) {
+    res.status(403).json({ code: 'not_mod', error: 'Accesso riservato ai moderatori.' });
+    return null;
+  }
+
+  let broadcasterId = null;
+  if (requireBroadcasterId) {
+    broadcasterId = await getBroadcasterId(redis);
+    if (!broadcasterId) {
+      res.status(503).json({
+        code: 'broadcaster_id_missing',
+        error: 'Broadcaster ID non disponibile. Andryx deve aprire una volta il Mod Panel.',
+      });
+      return null;
+    }
+  }
+
+  let auth = null;
+  if (requireBroadcaster || (requireScopes && requireScopes.length)) {
+    auth = await pickHelixAuth({ twitchUser, redis, requireBroadcaster, requireScopes });
+    if (!auth) {
+      broadcasterTokenMissing(res);
+      return null;
+    }
+    if (auth.missingScopes) {
+      scopeMissing(res, auth.missingScopes, auth.source);
+      return null;
+    }
+  }
+
+  return { twitchUser, isMod, broadcasterId, auth };
+}
+
+/**
+ * Convertitore standard di un errore Helix (lanciato da helixGet/helixRequest)
+ * in una risposta HTTP coerente. Propaga lo stato originale (401/403/429/422)
+ * con un payload utile al frontend invece di restituire sempre 500.
+ *
+ * Particolarmente utile per intercettare 401/403 da Twitch e farli risalire
+ * come "scope_missing" o "broadcaster_token_invalid" invece di un opaco 500.
+ *
+ * @example
+ *   try {
+ *     await helixRequest(...);
+ *   } catch (e) {
+ *     return sendHelixError(res, e, 'cambiare il titolo');
+ *   }
+ */
+export function sendHelixError(res, e, azione = 'eseguire l\'azione') {
+  const status   = e?.status || 500;
+  const helix    = e?.helix || null;
+  const path     = e?.path || null;
+  const baseBody = { error: e?.message || `Errore durante: ${azione}.`, helix, path, twitchStatus: status };
+
+  if (status === 401) {
+    return res.status(401).json({ ...baseBody, code: 'twitch_unauthorized' });
+  }
+  if (status === 403) {
+    // 403 da Twitch può significare: scope mancanti, mod non autorizzato,
+    // azione non consentita per questo utente sul canale.
+    return res.status(403).json({ ...baseBody, code: 'twitch_forbidden' });
+  }
+  if (status === 429) {
+    return res.status(429).json({ ...baseBody, code: 'twitch_rate_limited' });
+  }
+  if (status === 422) {
+    return res.status(422).json({ ...baseBody, code: 'twitch_unprocessable' });
+  }
+  if (status >= 500) {
+    return res.status(502).json({ ...baseBody, code: 'twitch_upstream_error' });
+  }
+  return res.status(status).json({ ...baseBody, code: 'twitch_error' });
+}
+
+/**
+ * Forza il refresh della whitelist dei moderatori da Twitch.
+ * Cancella il TTL e richiama syncModsFromTwitch; usato dal pulsante
+ * "Aggiorna lista mod" della Diagnostica.
+ */
+export async function forceSyncMods(redis, twitchUser) {
+  try { await redis.del(MOD_SYNC_TS_KEY); } catch { /* ignore */ }
+  await syncModsFromTwitch(redis, twitchUser);
+}
+
+/**
+ * Diagnostica completa dello stato auth, usata da /api/mod-commands per
+ * popolare la card "Diagnostica" del Pannello Mod. Consente al mod di
+ * capire al volo perché un'azione fallisce.
+ */
+export async function getAuthDiagnostics(redis, twitchUser) {
+  const broadcaster = await getBroadcasterToken(redis);
+  const broadcasterUsername = await getBroadcasterUsername(redis);
+  const broadcasterId       = await getBroadcasterId(redis);
+  let lastSync = null;
+  try { lastSync = Number(await redis.get(MOD_SYNC_TS_KEY)) || null; } catch { /* */ }
+  let modCount = 0;
+  try { modCount = (await redis.scard(MOD_WHITELIST_KEY)) || 0; } catch { /* */ }
+  let broadcasterTokenAgeMs = null;
+  try {
+    const ts = await redis.get(MOD_BROADCASTER_TOKEN_TS_KEY);
+    if (ts) broadcasterTokenAgeMs = Date.now() - Number(ts);
+  } catch { /* */ }
+
+  return {
+    me: twitchUser ? {
+      login:  twitchUser.login,
+      userId: twitchUser.userId,
+      scopes: twitchUser.scopes || [],
+    } : null,
+    broadcaster: {
+      username:   broadcasterUsername,
+      userId:     broadcasterId,
+      tokenStored: !!broadcaster,
+      tokenScopes: broadcaster?.scopes || [],
+      tokenLogin:  broadcaster?.login || null,
+      tokenAgeMs:  broadcasterTokenAgeMs,
+    },
+    modWhitelist: {
+      count:    modCount,
+      lastSyncTs: lastSync,
+    },
+  };
 }

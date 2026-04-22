@@ -10,11 +10,16 @@ import {
   Coins, Sparkles,
 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
+import { useTwitchAuth } from '../../contexts/TwitchAuthContext';
+import { useEmoteTwitch } from '../../hooks/useEmoteTwitch';
+import EmotePicker from '../../components/EmotePicker';
 
 const API = '/api/mod-rewards';
 
 export default function Rewards({ token }) {
   const toast = useToast();
+  const { twitchToken } = useTwitchAuth();
+  const { emoteCanale, emoteGlobali, seventvCanale, seventvGlobali, renderTestoConEmote } = useEmoteTwitch(twitchToken);
   const [rewards,    setRewards]    = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [showForm,   setShowForm]   = useState(false);
@@ -125,8 +130,19 @@ export default function Rewards({ token }) {
                   style={{ width: 40, height: 32, border: 'none', background: 'none', cursor: 'pointer', borderRadius: 6, marginTop: '0.2rem' }} />
               </label>
             </div>
-            <textarea className="mod-input mod-textarea" value={prompt} onChange={e => setPrompt(e.target.value)}
-              placeholder="Descrizione (opzionale, max 200 caratteri)" maxLength={200} style={{ marginBottom: '0.75rem' }} />
+            <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
+              <textarea className="mod-input mod-textarea" value={prompt} onChange={e => setPrompt(e.target.value)}
+                placeholder="Descrizione (opzionale, max 200 caratteri)" maxLength={200} />
+              <div style={{ position: 'absolute', right: '0.4rem', bottom: '0.4rem' }}>
+                <EmotePicker
+                  emoteCanale={emoteCanale}
+                  emoteGlobali={emoteGlobali}
+                  seventvCanale={seventvCanale}
+                  seventvGlobali={seventvGlobali}
+                  onSelect={(nome) => setPrompt(prev => (prev ? `${prev} ${nome}` : nome).slice(0, 200))}
+                />
+              </div>
+            </div>
             <button className="btn-primary" onClick={crea} disabled={creando || !titolo.trim()}
               style={{ fontSize: '0.85rem' }}>
               {creando ? <Loader size={13} className="spin" /> : <Check size={13} />} Crea premio
@@ -178,7 +194,7 @@ export default function Rewards({ token }) {
                 {r.prompt && (
                   <div style={{ fontSize: '0.74rem', color: 'var(--text-faint)', lineHeight: 1.35,
                     display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {r.prompt}
+                    {renderTestoConEmote(r.prompt)}
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: '0.25rem', marginTop: 'auto' }}>

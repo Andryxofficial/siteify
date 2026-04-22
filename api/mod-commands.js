@@ -1,4 +1,5 @@
 import { Redis } from '@upstash/redis';
+import { maybePersistBroadcasterToken, getAuthDiagnostics } from './_modAuth.js';
 
 /**
  * Mod Commands & Timers API
@@ -221,7 +222,12 @@ export default async function handler(req, res) {
 
   // Try to auto-sync mod list from Twitch when the broadcaster visits
   if (twitchUser) {
-    await syncModsFromTwitch(redis, twitchUser);
+    // Persisti il token del broadcaster: questo endpoint è il PRIMO hit
+    // dal Pannello Mod, quindi è cruciale che la persistenza avvenga qui
+    // perché tutte le azioni di categoria A (cambio titolo, polls, rewards,
+    // raid, schedule, sub-list, ecc.) ne dipendono.
+    try { await maybePersistBroadcasterToken(redis, twitchUser); } catch { /* non bloccante */ }
+    try { await syncModsFromTwitch(redis, twitchUser); } catch { /* non bloccante */ }
   }
 
   const isMod = twitchUser ? await isUserMod(redis, twitchUser.login) : false;
@@ -236,6 +242,25 @@ export default async function handler(req, res) {
     const t = await redis.get('mod:broadcaster:token');
     broadcasterTokenAvailable = !!t;
   } catch { /* ignore */ }
+
+  /* ─── Endpoint diagnostico: ?diagnostics=true ───
+   * Espone tutto lo stato auth corrente al frontend (Mod Panel).
+   * Utile per capire ESATTAMENTE perché un'azione fallisce: scope mancanti,
+   * token broadcaster scaduto, mod non sincronizzato, ecc.
+   * Accessibile a chiunque sia loggato (anche non-mod) per non bloccare
+   * la diagnosi quando è proprio il "isMod" a non funzionare.
+   */
+  if (req.method === 'GET' && req.query?.diagnostics === 'true') {
+    if (!twitchUser) {
+      return res.status(401).json({ code: 'unauthenticated', error: 'Token Twitch mancante o non valido.' });
+    }
+    try {
+      const diag = await getAuthDiagnostics(redis, twitchUser);
+      return res.status(200).json({ ...diag, isMod, broadcasterTokenAvailable });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
 
   /* ─── GET: list commands + timers ─── */
   if (req.method === 'GET') {

@@ -22,6 +22,24 @@ import { hapticLight, hapticSuccess } from '../utils/haptics';
 
 const MOSTRA_DOPO_MS = 8000;
 
+/**
+ * Rotte dove PromptInstalla NON deve apparire perché ha un input/form
+ * fissato in basso che verrebbe coperto dal bottom-sheet (z-index 1050).
+ * Tipico problema su mobile dove il prompt copre l'input di scrittura
+ * della chat e l'utente non riesce più a digitare.
+ */
+const ROUTE_SENZA_PROMPT = [
+  '/chat',
+  '/messaggi',
+  '/community',
+  '/mod-panel',
+];
+
+function rotteEscluse(pathname) {
+  if (!pathname) return false;
+  return ROUTE_SENZA_PROMPT.some(p => pathname === p || pathname.startsWith(p + '/'));
+}
+
 export default function PromptInstalla() {
   const { t } = useLingua();
   const {
@@ -32,16 +50,50 @@ export default function PromptInstalla() {
     rifiuta,
   } = useStatoInstallazione();
   const [visibile, setVisibile] = useState(false);
+  const [pathname, setPathname] = useState(() => (typeof window !== 'undefined' ? window.location.pathname : '/'));
 
-  /* Mostra dopo un piccolo delay, solo se davvero possiamo proporlo. */
+  /* Tieni traccia della rotta corrente: nascondi sulle pagine con input
+   * fissato in basso (chat, messaggi, community, mod-panel). React Router v7
+   * non emette `popstate` sulle navigazioni interne, quindi monitoriamo sia
+   * `popstate` (back/forward) sia patchando pushState/replaceState in modo
+   * non invasivo: emettiamo un evento custom che ascoltiamo qui. */
   useEffect(() => {
-    if (!puoMostrareCard) {
-      const id = setTimeout(() => setVisibile(false), 0);
-      return () => clearTimeout(id);
+    if (typeof window === 'undefined') return;
+    const aggiorna = () => setPathname(window.location.pathname);
+    window.addEventListener('popstate', aggiorna);
+
+    // Wrap pushState/replaceState una volta sola (idempotente via flag globale).
+    if (!window.__andryxNavWrapped) {
+      window.__andryxNavWrapped = true;
+      const orig = { push: history.pushState, replace: history.replaceState };
+      history.pushState = function (...args) {
+        const r = orig.push.apply(this, args);
+        window.dispatchEvent(new Event('locationchange'));
+        return r;
+      };
+      history.replaceState = function (...args) {
+        const r = orig.replace.apply(this, args);
+        window.dispatchEvent(new Event('locationchange'));
+        return r;
+      };
+    }
+    window.addEventListener('locationchange', aggiorna);
+    return () => {
+      window.removeEventListener('popstate', aggiorna);
+      window.removeEventListener('locationchange', aggiorna);
+    };
+  }, []);
+
+  /* Mostra dopo un piccolo delay, solo se davvero possiamo proporlo
+   * E non siamo su una rotta esclusa (pagine con input fissato in basso). */
+  useEffect(() => {
+    if (!puoMostrareCard || rotteEscluse(pathname)) {
+      setVisibile(false);
+      return;
     }
     const id = setTimeout(() => setVisibile(true), MOSTRA_DOPO_MS);
     return () => clearTimeout(id);
-  }, [puoMostrareCard]);
+  }, [puoMostrareCard, pathname]);
 
   const onInstalla = async () => {
     hapticLight();
