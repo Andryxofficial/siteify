@@ -1,24 +1,57 @@
 /**
  * QuickActions.jsx — Pulsanti azioni rapide nell'header del Mod Panel.
  *
- * Mostra tre azioni "magiche":
+ * Mostra 6 azioni "magiche":
  *   • Raid       → manda il canale in raid su un altro streamer
  *   • Commercial → fa partire una pubblicità (durata configurabile)
  *   • Marker     → crea uno stream marker per ritrovare un momento
+ *   • Annuncio   → invia annuncio rapido in chat con color selector + EmotePicker
+ *   • Shield     → toggle Shield Mode ON/OFF con stato pulsante + polling 30s
+ *   • Snippet    → dropdown snippets salvati localstorage + copy + manage
  *
  * Ogni azione apre un modale glass con conferma + descrizione.
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Rocket, Megaphone, Bookmark, X, Loader, Play, Search, Sparkles,
+  ShieldCheck, ShieldX, MessageCircle, FileText, Plus, Trash2, Edit2, Check, Copy,
 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
+import { useTwitchAuth } from '../../contexts/TwitchAuthContext';
+import { useEmoteTwitch } from '../../hooks/useEmoteTwitch';
+import EmotePicker from '../../components/EmotePicker';
+import { modPost, modGet } from '../../utils/modApi';
 
 const API = '/api/mod-actions';
 const MOD_API = '/api/mod-moderation';
 
 const DURATE_COMMERCIAL = [30, 60, 90, 120, 150, 180];
+const ANNOUNCEMENT_COLORS = [
+  { value: 'blue', label: 'Blu' },
+  { value: 'green', label: 'Verde' },
+  { value: 'orange', label: 'Arancione' },
+  { value: 'purple', label: 'Viola' },
+  { value: 'primary', label: 'Primario' },
+];
+
+const SNIPPETS_KEY = 'andryxify_mod_snippets';
+
+function loadSnippets() {
+  try {
+    const raw = localStorage.getItem(SNIPPETS_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+function saveSnippets(arr) {
+  try {
+    localStorage.setItem(SNIPPETS_KEY, JSON.stringify(arr));
+  } catch { /* noop */ }
+}
 
 function ModaleGlass({ onClose, children, titolo, icona: Icona, accento }) {
   return (
@@ -223,14 +256,168 @@ function ModaleMarker({ token, onClose }) {
   );
 }
 
+/* ─── ANNUNCIO RAPIDO ─── */
+function ModaleAnnuncio({ token, onClose, emoteCanale, emoteGlobali, seventvCanale, seventvGlobali }) {
+  const toast = useToast();
+  const [message, setMessage] = useState('');
+  const [color, setColor] = useState('blue');
+  const [inviando, setInviando] = useState(false);
+
+  const invia = async () => {
+    if (!message.trim()) return;
+    setInviando(true);
+    try {
+      const r = await modPost(MOD_API, token, {
+        action: 'announcement',
+        message: message.trim(),
+        color,
+      });
+      if (!r.ok) throw new Error(r.error);
+      toast.success('Annuncio inviato!', { titolo: '📣 Annuncio' });
+      onClose();
+    } catch (e) { toast.error(e.message, { titolo: 'Annuncio fallito' }); }
+    finally    { setInviando(false); }
+  };
+
+  return (
+    <ModaleGlass titolo="Annuncio Rapido" icona={MessageCircle} accento="var(--accent-twitch)" onClose={onClose}>
+      <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.85rem' }}>
+        Invia un annuncio colorato in chat. Usa le emote per renderlo più accattivante!
+      </p>
+      <div style={{ marginBottom: '0.85rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <label style={{ flex: 1, fontSize: '0.82rem', fontWeight: 500 }}>Messaggio</label>
+          <EmotePicker
+            emoteCanale={emoteCanale}
+            emoteGlobali={emoteGlobali}
+            seventvCanale={seventvCanale}
+            seventvGlobali={seventvGlobali}
+            onSelect={(nome) => setMessage(prev => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + nome + ' ')}
+          />
+        </div>
+        <textarea
+          className="mod-input mod-textarea"
+          value={message}
+          onChange={e => setMessage(e.target.value)}
+          placeholder="Scrivi qui l'annuncio..."
+          maxLength={500}
+          rows={3}
+          autoFocus
+          style={{ marginTop: 0 }}
+        />
+      </div>
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 500, marginBottom: '0.5rem' }}>Colore</label>
+        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+          {ANNOUNCEMENT_COLORS.map(c => (
+            <button key={c.value}
+              onClick={() => setColor(c.value)}
+              className={`mod-permission-btn${color === c.value ? ' mod-permission-btn-active' : ''}`}
+              style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem' }}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <button className="btn-primary" disabled={inviando || !message.trim()} onClick={invia}
+        style={{ width: '100%', fontSize: '0.9rem', padding: '0.6rem' }}>
+        {inviando ? <Loader size={14} className="spin" /> : <MessageCircle size={14} />}
+        Invia annuncio
+      </button>
+    </ModaleGlass>
+  );
+}
+
 /* ─── COMPONENT ROOT ─── */
 export default function QuickActions({ token, isLive }) {
-  const [aperta, setAperta] = useState(null); // 'raid' | 'commercial' | 'marker' | null
+  const toast = useToast();
+  const { twitchToken } = useTwitchAuth();
+  const { emoteCanale, emoteGlobali, seventvCanale, seventvGlobali } = useEmoteTwitch(twitchToken);
+
+  const [aperta, setAperta] = useState(null); // 'raid' | 'commercial' | 'marker' | 'annuncio' | 'snippet' | null
+  const [shieldActive, setShieldActive] = useState(false);
+  const [shieldLoading, setShieldLoading] = useState(false);
+
+  // Snippet management
+  const [snippets, setSnippets] = useState(loadSnippets);
+  const [snippetEditing, setSnippetEditing] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [editLabel, setEditLabel] = useState('');
+  const [editText, setEditText] = useState('');
+
+  // Polling shield mode ogni 30s
+  useEffect(() => {
+    (async () => {
+      const r = await modGet(MOD_API + '?action=shield_mode', token);
+      if (r.ok) setShieldActive(r.data?.status?.is_active || false);
+    })();
+    const interval = setInterval(async () => {
+      const r = await modGet(MOD_API + '?action=shield_mode', token);
+      if (r.ok) setShieldActive(r.data?.status?.is_active || false);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [token]);
+
+  const toggleShield = useCallback(async () => {
+    const nuovoStato = !shieldActive;
+    setShieldLoading(true);
+    const r = await modPost(MOD_API, token, {
+      action: 'shield_mode',
+      active: nuovoStato,
+    });
+    if (r.ok) {
+      setShieldActive(nuovoStato);
+      toast.success(nuovoStato ? 'Shield Mode attivato!' : 'Shield Mode disattivato.', {
+        titolo: '🛡️ Shield Mode',
+      });
+    } else {
+      toast.error(r.error, { titolo: 'Shield Mode' });
+    }
+    setShieldLoading(false);
+  }, [token, toast, shieldActive]);
+
+  const addSnippet = useCallback(() => {
+    if (!editLabel.trim() || !editText.trim()) return;
+    const newSnippet = { id: Date.now(), label: editLabel.trim(), text: editText.trim() };
+    const updated = editId ? snippets.map(s => s.id === editId ? { ...s, label: editLabel.trim(), text: editText.trim() } : s) : [...snippets, newSnippet];
+    setSnippets(updated);
+    saveSnippets(updated);
+    setEditId(null);
+    setEditLabel('');
+    setEditText('');
+    setSnippetEditing(false);
+  }, [editLabel, editText, editId, snippets]);
+
+  const deleteSnippet = useCallback((id) => {
+    const updated = snippets.filter(s => s.id !== id);
+    setSnippets(updated);
+    saveSnippets(updated);
+  }, [snippets]);
+
+  const openSnippetForEdit = useCallback((s) => {
+    setEditId(s.id);
+    setEditLabel(s.label);
+    setEditText(s.text);
+    setSnippetEditing(true);
+  }, []);
 
   const azioni = [
-    { id: 'raid',       label: 'Raid',       icon: Rocket,     color: 'var(--primary)',       desc: 'Manda gli spettatori in raid' },
-    { id: 'commercial', label: 'Pubblicità', icon: Megaphone,  color: 'var(--accent-warm)',   desc: 'Lancia una pubblicità' },
-    { id: 'marker',     label: 'Marker',     icon: Bookmark,   color: 'var(--accent-spotify)', desc: 'Salva questo momento' },
+    { id: 'raid',       label: 'Raid',       icon: Rocket,         color: 'var(--primary)',       desc: 'Manda gli spettatori in raid' },
+    { id: 'commercial', label: 'Pubblicità', icon: Megaphone,      color: 'var(--accent-warm)',   desc: 'Lancia una pubblicità' },
+    { id: 'marker',     label: 'Marker',     icon: Bookmark,       color: 'var(--accent-spotify)', desc: 'Salva questo momento' },
+    { id: 'annuncio',   label: 'Annuncio',   icon: MessageCircle,  color: 'var(--accent-twitch)', desc: 'Invia annuncio colorato' },
+    {
+      id: 'shield',
+      label: shieldActive ? 'Shield ON' : 'Shield OFF',
+      icon: shieldActive ? ShieldCheck : ShieldX,
+      color: shieldActive ? 'var(--accent)' : 'var(--text-muted)',
+      desc: 'Toggle Shield Mode',
+      onClick: toggleShield,
+      loading: shieldLoading,
+      pulse: shieldActive,
+    },
+    { id: 'snippet',    label: 'Snippet',    icon: FileText,       color: 'var(--secondary)',     desc: 'Snippet salvati' },
   ];
 
   return (
@@ -238,15 +425,16 @@ export default function QuickActions({ token, isLive }) {
       <div className="quick-actions">
         {azioni.map(a => {
           const Icon = a.icon;
+          const disabled = (!isLive && a.id !== 'raid' && a.id !== 'snippet') || a.loading;
           return (
             <button key={a.id}
-              className="quick-action-btn"
-              onClick={() => setAperta(a.id)}
-              title={a.desc + (isLive ? '' : ' (canale offline)')}
-              disabled={!isLive && a.id !== 'raid'}
+              className={`quick-action-btn${a.pulse ? ' quick-action-btn-pulse' : ''}`}
+              onClick={a.onClick || (() => setAperta(a.id))}
+              title={a.desc + (isLive || a.id === 'raid' || a.id === 'snippet' ? '' : ' (canale offline)')}
+              disabled={disabled}
               style={{ '--accent-azione': a.color }}
             >
-              <Icon size={14} />
+              {a.loading ? <Loader size={14} className="spin" /> : <Icon size={14} />}
               <span>{a.label}</span>
             </button>
           );
@@ -256,6 +444,90 @@ export default function QuickActions({ token, isLive }) {
         {aperta === 'raid'       && <ModaleRaid       token={token} onClose={() => setAperta(null)} />}
         {aperta === 'commercial' && <ModaleCommercial token={token} onClose={() => setAperta(null)} />}
         {aperta === 'marker'     && <ModaleMarker     token={token} onClose={() => setAperta(null)} />}
+        {aperta === 'annuncio'   && <ModaleAnnuncio   token={token} onClose={() => setAperta(null)}
+          emoteCanale={emoteCanale} emoteGlobali={emoteGlobali} seventvCanale={seventvCanale} seventvGlobali={seventvGlobali} />}
+        {aperta === 'snippet' && (
+          <ModaleGlass titolo="Snippet Rapidi" icona={FileText} accento="var(--secondary)" onClose={() => { setAperta(null); setSnippetEditing(false); }}>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.85rem' }}>
+              Salva frasi ricorrenti per usarle rapidamente negli annunci.
+            </p>
+            {snippetEditing ? (
+              <div>
+                <input
+                  className="mod-input"
+                  value={editLabel}
+                  onChange={e => setEditLabel(e.target.value)}
+                  placeholder="Etichetta (es. Benvenuto)"
+                  maxLength={30}
+                  style={{ marginTop: 0, marginBottom: '0.5rem' }}
+                />
+                <textarea
+                  className="mod-input mod-textarea"
+                  value={editText}
+                  onChange={e => setEditText(e.target.value)}
+                  placeholder="Testo dello snippet..."
+                  maxLength={500}
+                  rows={3}
+                  style={{ marginTop: 0, marginBottom: '0.75rem' }}
+                />
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    className="btn-primary"
+                    onClick={addSnippet}
+                    disabled={!editLabel.trim() || !editText.trim()}
+                    style={{ flex: 1, fontSize: '0.82rem', padding: '0.45rem' }}
+                  >
+                    <Check size={13} /> Salva
+                  </button>
+                  <button
+                    className="btn-primary btn-tonal-danger"
+                    onClick={() => { setSnippetEditing(false); setEditId(null); setEditLabel(''); setEditText(''); }}
+                    style={{ fontSize: '0.82rem', padding: '0.45rem' }}
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {snippets.length === 0 ? (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1.5rem 0' }}>
+                    Nessuno snippet salvato.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.75rem', maxHeight: 300, overflowY: 'auto' }}>
+                    {snippets.map(s => (
+                      <div key={s.id} className="glass-card" style={{ padding: '0.6rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{s.label}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {s.text}
+                          </div>
+                        </div>
+                        <button className="mod-icon-btn" onClick={() => { navigator.clipboard.writeText(s.text); toast.success('Snippet copiato!'); }} title="Copia">
+                          <Copy size={12} />
+                        </button>
+                        <button className="mod-icon-btn" onClick={() => openSnippetForEdit(s)} title="Modifica">
+                          <Edit2 size={12} />
+                        </button>
+                        <button className="mod-icon-btn mod-icon-btn-danger" onClick={() => deleteSnippet(s.id)} title="Elimina">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button
+                  className="btn-primary"
+                  onClick={() => { setSnippetEditing(true); setEditId(null); setEditLabel(''); setEditText(''); }}
+                  style={{ width: '100%', fontSize: '0.82rem', padding: '0.5rem' }}
+                >
+                  <Plus size={13} /> Aggiungi snippet
+                </button>
+              </>
+            )}
+          </ModaleGlass>
+        )}
       </AnimatePresence>
     </>
   );

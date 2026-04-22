@@ -1,25 +1,30 @@
 /**
- * Moderation.jsx — Azioni di moderazione: ban, timeout, unban, shoutout, clear chat
+ * Moderation.jsx — Azioni di moderazione: ban, timeout, unban, warning, shoutout, clear chat
  * + impostazioni live della chat (slow/sub-only/follower/emote/unique).
  */
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Ban, Clock, UserCheck, Trash2, Zap, Loader, Search, AlertTriangle, X, Check } from 'lucide-react';
 import ChatSettings from './ChatSettings';
+import { useTwitchAuth } from '../../contexts/TwitchAuthContext';
+import { useEmoteTwitch } from '../../hooks/useEmoteTwitch';
+import EmotePicker from '../../components/EmotePicker';
 
 const API = '/api/mod-moderation';
 
 function punisciLabel(action) {
-  return action === 'ban' ? 'Bannato' : action === 'timeout' ? 'Timeout' : 'Graziato';
+  return action === 'ban' ? 'Bannato' : action === 'timeout' ? 'Timeout' : action === 'warning' ? 'Avvisato' : 'Graziato';
 }
 
 export default function Moderation({ token }) {
+  const { twitchToken } = useTwitchAuth();
+  const { emoteCanale, emoteGlobali, seventvCanale, seventvGlobali } = useEmoteTwitch(twitchToken);
   const [targetLogin, setTargetLogin] = useState('');
   const [targetUser,  setTargetUser]  = useState(null);
   const [searching,   setSearching]   = useState(false);
   const [reason,      setReason]      = useState('');
   const [duration,    setDuration]    = useState(600);
-  const [actionType,  setActionType]  = useState('timeout'); // 'ban' | 'timeout' | 'unban'
+  const [actionType,  setActionType]  = useState('timeout'); // 'ban' | 'timeout' | 'unban' | 'warning'
   const [loading,     setLoading]     = useState(false);
   const [feedback,    setFeedback]    = useState(null); // { ok, message }
   const [shoutoutLogin, setShoutoutLogin] = useState('');
@@ -45,12 +50,17 @@ export default function Moderation({ token }) {
 
   const eseguiAzione = useCallback(async () => {
     if (!targetUser) return;
+    if (actionType === 'warning' && !reason.trim()) {
+      setFeedback({ ok: false, message: 'L\'azione "Avvisa" richiede una motivazione.' });
+      return;
+    }
     setLoading(true);
     setFeedback(null);
     try {
       const body = {
         action: actionType,
         target_user_id: targetUser.id,
+        target_login:   targetUser.login,
         reason: reason || undefined,
         duration: actionType === 'timeout' ? duration : undefined,
       };
@@ -60,7 +70,13 @@ export default function Moderation({ token }) {
         body: JSON.stringify(body),
       });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error);
+      if (!r.ok) {
+        // Errore strutturato: scope_missing, broadcaster_token_missing, ecc.
+        const msg = d.code === 'scope_missing'
+          ? `Permesso mancante: ${(d.requiredScopes || []).join(', ')}. Riautentica con i permessi richiesti.`
+          : (d.error || 'Errore sconosciuto');
+        throw new Error(msg);
+      }
       setFeedback({ ok: true, message: `${punisciLabel(actionType)} ${targetUser.display_name} con successo.` });
       setTargetUser(null); setTargetLogin(''); setReason('');
     } catch (e) { setFeedback({ ok: false, message: e.message }); }
@@ -138,9 +154,10 @@ export default function Moderation({ token }) {
         {/* Tipo azione */}
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           {[
-            { k: 'ban',     label: 'Ban',     icon: Ban,       color: 'var(--accent)' },
-            { k: 'timeout', label: 'Timeout', icon: Clock,     color: 'var(--accent-warm)' },
-            { k: 'unban',   label: 'Grazia',  icon: UserCheck, color: 'var(--accent-spotify)' },
+            { k: 'ban',     label: 'Ban',     icon: Ban,            color: 'var(--accent)' },
+            { k: 'timeout', label: 'Timeout', icon: Clock,          color: 'var(--accent-warm)' },
+            { k: 'warning', label: 'Avvisa',  icon: AlertTriangle,  color: 'var(--accent-twitch)' },
+            { k: 'unban',   label: 'Grazia',  icon: UserCheck,      color: 'var(--accent-spotify)' },
           ].map(({ k, label, icon: Icon, color }) => (
             <button key={k}
               onClick={() => setActionType(k)}
@@ -179,10 +196,21 @@ export default function Moderation({ token }) {
         )}
 
         {actionType !== 'unban' && (
-          <div className="mod-form-row" style={{ marginBottom: '0.75rem' }}>
+          <div className="mod-form-row" style={{ marginBottom: '0.75rem', alignItems: 'flex-end' }}>
             <label style={{ flex: 2 }}>
-              Motivazione
-              <input className="mod-input" value={reason} onChange={e => setReason(e.target.value)} placeholder="es. spam" maxLength={500} />
+              {actionType === 'warning' ? 'Motivazione (obbligatoria)' : 'Motivazione'}
+              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                <input className="mod-input" value={reason} onChange={e => setReason(e.target.value)}
+                  placeholder={actionType === 'warning' ? 'es. linguaggio inappropriato' : 'es. spam'}
+                  maxLength={500} style={{ flex: 1 }} />
+                <EmotePicker
+                  emoteCanale={emoteCanale}
+                  emoteGlobali={emoteGlobali}
+                  seventvCanale={seventvCanale}
+                  seventvGlobali={seventvGlobali}
+                  onSelect={(nome) => setReason(prev => (prev ? `${prev} ${nome}` : nome).slice(0, 500))}
+                />
+              </div>
             </label>
             {actionType === 'timeout' && (
               <label>
@@ -196,8 +224,11 @@ export default function Moderation({ token }) {
 
         <button className="btn-primary" disabled={!targetUser || loading} onClick={eseguiAzione}
           style={{ fontSize: '0.85rem' }}>
-          {loading ? <Loader size={13} className="spin" /> : <Ban size={13} />}
-          {actionType === 'ban' ? 'Banna' : actionType === 'timeout' ? 'Timeout' : 'Grazia'}
+          {loading ? <Loader size={13} className="spin" /> :
+            actionType === 'warning' ? <AlertTriangle size={13} /> : <Ban size={13} />}
+          {actionType === 'ban' ? 'Banna' :
+           actionType === 'timeout' ? 'Timeout' :
+           actionType === 'warning' ? 'Invia avviso' : 'Grazia'}
         </button>
       </div>
 

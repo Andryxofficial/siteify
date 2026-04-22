@@ -7260,3 +7260,58 @@ html[data-tema="chiaro"] .app-feature-icon {
   background: rgba(0, 0, 0, 0.04);
   border-color: rgba(0, 0, 0, 0.08);
 }
+
+/* ═══════════════════════════════════════════════════
+   LIVE PLAYER GRID (MOD PANEL)
+   ═══════════════════════════════════════════════════ */
+.live-player-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .live-player-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   MINI PLAYER LIVE (FLOATING)
+   ═══════════════════════════════════════════════════ */
+.mini-player-live {
+  /* Hidden su mobile per non occludere la visuale */
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .mini-player-live {
+    display: none !important;
+  }
+}
+
+/* Animazione pulse per Shield Mode ATTIVO */
+@keyframes pulse-red {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.15);
+  }
+}
+
+/* Quick action button pulse (Shield Mode ON) */
+.quick-action-btn-pulse {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(255, 107, 107, 0);
+  }
+}

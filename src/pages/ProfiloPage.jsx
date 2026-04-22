@@ -10,6 +10,8 @@ import {
   Instagram, Youtube, Twitch, Globe, Loader,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
+import { useEmoteTwitch } from '../hooks/useEmoteTwitch';
+import EmotePicker from '../components/EmotePicker';
 import BottoneAggiungiAmico from '../components/BottoneAggiungiAmico';
 import TikTokIcon from '../components/TikTokIcon';
 import DiscordIcon from '../components/DiscordIcon';
@@ -30,19 +32,10 @@ const SOCIAL_ICONS = {
   website: Globe,
 };
 
-function renderMarkdownSemplice(testo) {
-  if (!testo) return '';
-  return testo
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-    .replace(/\n/g, '<br/>');
-}
-
 export default function ProfiloPage() {
   const { username } = useParams();
   const { isLoggedIn, twitchUser, twitchToken } = useTwitchAuth();
+  const { emoteCanale, emoteGlobali, seventvCanale, seventvGlobali, renderTestoConEmote } = useEmoteTwitch(twitchToken);
 
   const [profilo, setProfilo] = useState(null);
   const [caricamento, setCaricamento] = useState(true);
@@ -174,9 +167,9 @@ export default function ProfiloPage() {
 
         {/* Bio */}
         {profilo?.bio && !modifica && (
-          <p style={{ fontSize: '0.9rem', marginBottom: '0.8rem', lineHeight: 1.5 }}
-            dangerouslySetInnerHTML={{ __html: renderMarkdownSemplice(profilo.bio) }}
-          />
+          <p style={{ fontSize: '0.9rem', marginBottom: '0.8rem', lineHeight: 1.5 }}>
+            {renderTestoConEmote(profilo.bio)}
+          </p>
         )}
 
         {/* Social links */}
@@ -226,8 +219,17 @@ export default function ProfiloPage() {
               rows={3}
               className="social-campo social-area-testo"
               placeholder="Scrivi qualcosa su di te…"
-              style={{ marginBottom: '0.8rem' }}
+              style={{ marginBottom: '0.5rem' }}
             />
+            <div style={{ marginBottom: '0.8rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <EmotePicker
+                emoteCanale={emoteCanale}
+                emoteGlobali={emoteGlobali}
+                seventvCanale={seventvCanale}
+                seventvGlobali={seventvGlobali}
+                onSelect={(nome) => setBio(prev => (prev ? `${prev} ${nome}` : nome).slice(0, 300))}
+              />
+            </div>
 
             <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Link social:</p>
             {['twitch', 'youtube', 'instagram', 'tiktok', 'discord', 'website'].map(piattaforma => (

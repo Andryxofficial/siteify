@@ -110,7 +110,7 @@ export default async function handler(req, res) {
           }
         } catch { /* */ }
       }
-      return res.status(200).json({ tokenPresent, setId, set: setInfo });
+      return res.status(200).json({ tokenPresent, setId, set: setInfo, isBroadcaster });
     }
 
     if (action === 'seventv_search') {
