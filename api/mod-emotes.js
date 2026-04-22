@@ -96,52 +96,78 @@ export default async function handler(req, res) {
       const setId = await getChannelSetId();
       const tokenPresent = !!(await getStoredToken());
       let setInfo = null;
+      let emotes = [];
       if (setId) {
         try {
           const r = await fetch(`${SEVENTV_REST}/emote-sets/${setId}`, { headers: { Accept: 'application/json' } });
           if (r.ok) {
             const j = await r.json();
+            const rawEmotes = Array.isArray(j.emotes) ? j.emotes : [];
             setInfo = {
               id: j.id,
               name: j.name,
               capacity: j.capacity,
-              count:    (j.emotes || []).length,
+              count:    rawEmotes.length,
             };
+            emotes = rawEmotes.map(en => {
+              const data = en.data || {};
+              const host = data.host || {};
+              const baseUrl = host.url ? `https:${host.url}` : '';
+              return {
+                id:       en.id,                                // emote_id (riferimento al set)
+                nome:     en.name || data.name || '',           // alias usato nel canale
+                originalName: data.name || '',
+                animata:  !!data.animated,
+                url:      baseUrl ? `${baseUrl}/1x.webp` : null,
+                url2x:    baseUrl ? `${baseUrl}/2x.webp` : null,
+                url4x:    baseUrl ? `${baseUrl}/4x.webp` : null,
+                owner:    data.owner?.display_name || data.owner?.username || '',
+              };
+            });
           }
-        } catch { /* */ }
+        } catch { /* tolleriamo: setInfo resta null, emotes resta [] */ }
       }
-      return res.status(200).json({ tokenPresent, setId, set: setInfo, isBroadcaster });
+      return res.status(200).json({ tokenPresent, setId, set: setInfo, emotes, isBroadcaster });
     }
 
     if (action === 'seventv_search') {
       const q = String(req.query?.q || '').trim();
       if (!q) return res.status(200).json({ emotes: [] });
       const limit = Math.min(50, Math.max(1, parseInt(req.query?.limit) || 24));
-      // Usiamo il REST endpoint /v3/emotes che è più stabile della GQL
+      // Il REST /v3/emotes non supporta la ricerca testuale: usiamo GraphQL.
+      const query = `
+        query SearchEmotes($query: String!, $page: Int, $limit: Int) {
+          emotes(query: $query, page: $page, limit: $limit) {
+            items {
+              id
+              name
+              animated
+              owner { id username display_name }
+              host { url }
+            }
+          }
+        }
+      `;
       try {
-        const params = new URLSearchParams({
-          query: q,
-          limit: String(limit),
-          page:  '1',
-        });
-        const r = await fetch(`${SEVENTV_REST}/emotes?${params.toString()}`, { headers: { Accept: 'application/json' } });
-        if (!r.ok) return res.status(502).json({ error: '7TV search non disponibile.' });
-        const j = await r.json();
-        const items = (j.items || j || []).slice(0, limit).map(e => {
+        const data = await gqlCall(query, { query: q, page: 1, limit }, null);
+        const items = (data?.emotes?.items || []).slice(0, limit).map(e => {
           const host = e.host || {};
           const baseUrl = host.url ? `https:${host.url}` : '';
           return {
-            id:       e.id,
-            name:     e.name,
-            owner:    e.owner?.display_name || e.owner?.username || '',
-            animated: !!e.animated,
-            preview:  baseUrl ? `${baseUrl}/2x.webp` : null,
+            id:        e.id,
+            name:      e.name,
+            owner:     e.owner?.display_name || e.owner?.username || '',
+            animated:  !!e.animated,
+            preview:   baseUrl ? `${baseUrl}/2x.webp` : null,
             preview4x: baseUrl ? `${baseUrl}/4x.webp` : null,
           };
         });
         return res.status(200).json({ emotes: items });
       } catch (e) {
-        return res.status(500).json({ error: e.message });
+        return res.status(e.status && e.status !== 200 ? e.status : 502).json({
+          code: 'seventv_search_failed',
+          error: `Ricerca 7TV non disponibile: ${e.message}`,
+        });
       }
     }
 
