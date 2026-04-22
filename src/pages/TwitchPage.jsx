@@ -48,7 +48,7 @@ export default function TwitchPage() {
             width="100%"
             allowFullScreen
             style={{ border: 'none', display: 'block', minHeight: 350 }}
-            title="Twitch stream di andryxify"
+            title={t('twitch.iframe.stream.title')}
           />
         </div>
         <div className="chat-side">
@@ -70,7 +70,7 @@ export default function TwitchPage() {
             height="100%"
             width="100%"
             style={{ flex: 1, border: 'none', display: 'block' }}
-            title="Chat Twitch di andryxify"
+            title={t('twitch.iframe.chat.title')}
           />
         </div>
       </div>

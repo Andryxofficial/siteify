@@ -7,6 +7,8 @@ import {
 import SEO from '../components/SEO';
 import { useLingua } from '../contexts/LinguaContext';
 
+const LOGO_URL = '/logo.png';
+
 const su = (delay = 0) => ({
   initial:    { opacity: 0, y: 22 },
   animate:    { opacity: 1, y: 0 },
@@ -44,7 +46,11 @@ const JSON_LD_PERSON = {
 };
 
 export default function ChiSonoPage() {
-  const { t } = useLingua();
+  const { t, lingua } = useLingua();
+
+  const DATA_NASCITA = new Intl.DateTimeFormat(lingua === 'en' ? 'en-GB' : lingua === 'es' ? 'es-ES' : 'it-IT', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  }).format(new Date('1998-03-05'));
 
   const INTERESSI = [
     { icon: <Gamepad2 size={22} />, label: t('chi-sono.interessi.gaming'), color: 'var(--accent-twitch)' },
@@ -55,9 +61,9 @@ export default function ChiSonoPage() {
   ];
 
   const FATTI = [
-    { icona: <Cake   size={16} />, label: t('chi-sono.fatti.nato'),  valore: '5 Marzo 1998' },
-    { icona: <MapPin size={16} />, label: t('chi-sono.fatti.citta'), valore: 'Genova 🇮🇹'    },
-    { icona: <Heart  size={16} />, label: t('chi-sono.fatti.anime'), valore: 'One Piece'    },
+    { icona: <Cake   size={16} />, label: t('chi-sono.fatti.nato'),  valore: DATA_NASCITA },
+    { icona: <MapPin size={16} />, label: t('chi-sono.fatti.citta'), valore: 'Genova 🇮🇹'  },
+    { icona: <Heart  size={16} />, label: t('chi-sono.fatti.anime'), valore: 'One Piece'   },
     { icona: <Star   size={16} />, label: t('chi-sono.fatti.tipo'),  valore: t('chi-sono.fatti.tipo_val') },
   ];
 
@@ -88,7 +94,7 @@ export default function ChiSonoPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <img
-              src="/logo.png"
+              src={LOGO_URL}
               alt="ANDRYXify — Andrea Taliento"
               style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'contain', background: 'var(--bg-dark)', padding: 8 }}
             />
@@ -223,7 +229,7 @@ export default function ChiSonoPage() {
             height="100%" width="100%" allowFullScreen
             loading="lazy"
             style={{ border: 'none', display: 'block' }}
-            title="Twitch stream di andryxify"
+            title={t('chi-sono.twitch.iframe.title')}
           />
         </div>
         <Link

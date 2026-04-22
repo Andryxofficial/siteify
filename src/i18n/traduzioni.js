@@ -280,6 +280,11 @@ export const TRADUZIONI = {
     'social.podcast.desc':      'Umanità o IA? — Ascolta ora',
     'social.discord.desc':      'Chat vocale e community',
 
+    /* ── iframe titles ── */
+    'twitch.iframe.stream.title':   'Stream Twitch di andryxify',
+    'twitch.iframe.chat.title':     'Chat Twitch di andryxify',
+    'chi-sono.twitch.iframe.title': 'Anteprima stream di andryxify',
+
     /* ── Navbar: nuova voce ── */
     'nav.chi-sono':             'Chi sono',
   },
@@ -539,6 +544,11 @@ export const TRADUZIONI = {
     'social.podcast.desc':      'Humanity or AI? — Listen now',
     'social.discord.desc':      'Voice chat and community',
 
+    /* ── iframe titles ── */
+    'twitch.iframe.stream.title':   'andryxify Twitch stream',
+    'twitch.iframe.chat.title':     'andryxify Twitch chat',
+    'chi-sono.twitch.iframe.title': 'andryxify stream preview',
+
     /* ── Navbar ── */
     'nav.chi-sono':             'About me',
   },
@@ -797,6 +807,11 @@ export const TRADUZIONI = {
     'social.tiktok.desc':       'Clips divertidos y píldoras de IA',
     'social.podcast.desc':      '¿Humanidad o IA? — Escucha ahora',
     'social.discord.desc':      'Chat de voz y comunidad',
+
+    /* ── iframe titles ── */
+    'twitch.iframe.stream.title':   'Stream de Twitch de andryxify',
+    'twitch.iframe.chat.title':     'Chat de Twitch de andryxify',
+    'chi-sono.twitch.iframe.title': 'Vista previa del stream de andryxify',
 
     /* ── Navbar ── */
     'nav.chi-sono':             'Quién soy',
