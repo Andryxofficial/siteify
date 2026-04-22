@@ -1,6 +1,7 @@
 import { Redis } from '@upstash/redis';
 import {
   corsHeaders, modAuthGate, getBroadcasterId, helixGet, helixRequest,
+  pickHelixAuth, broadcasterTokenMissing,
 } from './_modAuth.js';
 
 /**
@@ -37,13 +38,16 @@ export default async function handler(req, res) {
     const action = req.query?.action;
     try {
       if (action === 'ad_schedule') {
+        // /channels/ads richiede channel:read:ads (broadcaster only).
+        const auth = await pickHelixAuth({ twitchUser, redis, requireBroadcaster: true });
+        if (!auth) return broadcasterTokenMissing(res);
         const data = await helixGet('channels/ads', { broadcaster_id: broadcasterId },
-          twitchUser.token, twitchUser.clientId);
+          auth.token, auth.clientId);
         return res.status(200).json({ schedule: data.data?.[0] || null });
       }
       return res.status(400).json({ error: 'Azione GET non riconosciuta.' });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(e.status || 500).json({ error: e.message });
     }
   }
 
@@ -56,7 +60,7 @@ export default async function handler(req, res) {
     /* ─── RAID ─── */
     if (action === 'raid') {
       let toId = body.to_id;
-      // Se ci passano un login, risolviamo prima
+      // Se ci passano un login, risolviamo prima (GET /users è pubblico → mod token va bene).
       if (!toId && body.to_login) {
         const data = await helixGet('users', { login: String(body.to_login).toLowerCase() },
           twitchUser.token, twitchUser.clientId);
@@ -64,16 +68,21 @@ export default async function handler(req, res) {
         if (!toId) return res.status(404).json({ error: 'Canale destinazione non trovato.' });
       }
       if (!toId) return res.status(400).json({ error: 'to_login o to_id obbligatorio.' });
+      // POST /raids richiede channel:manage:raids del broadcaster.
+      const auth = await pickHelixAuth({ twitchUser, redis, requireBroadcaster: true });
+      if (!auth) return broadcasterTokenMissing(res);
       const data = await helixRequest('POST',
         `raids?from_broadcaster_id=${broadcasterId}&to_broadcaster_id=${toId}`,
-        null, twitchUser.token, twitchUser.clientId);
+        null, auth.token, auth.clientId);
       return res.status(200).json({ ok: true, raid: data?.data?.[0] || null });
     }
 
     if (action === 'cancel_raid') {
+      const auth = await pickHelixAuth({ twitchUser, redis, requireBroadcaster: true });
+      if (!auth) return broadcasterTokenMissing(res);
       await helixRequest('DELETE',
         `raids?broadcaster_id=${broadcasterId}`,
-        null, twitchUser.token, twitchUser.clientId);
+        null, auth.token, auth.clientId);
       return res.status(200).json({ ok: true });
     }
 
@@ -84,9 +93,12 @@ export default async function handler(req, res) {
       const valido = [30, 60, 90, 120, 150, 180];
       const lenOk = valido.includes(length) ? length
         : valido.reduce((p, c) => Math.abs(c - length) < Math.abs(p - length) ? c : p, 60);
+      // /channels/commercial richiede channel:edit:commercial (broadcaster only).
+      const auth = await pickHelixAuth({ twitchUser, redis, requireBroadcaster: true });
+      if (!auth) return broadcasterTokenMissing(res);
       const data = await helixRequest('POST', 'channels/commercial',
         { broadcaster_id: broadcasterId, length: lenOk },
-        twitchUser.token, twitchUser.clientId);
+        auth.token, auth.clientId);
       return res.status(200).json({ ok: true, commercial: data?.data?.[0] || null });
     }
 
@@ -95,14 +107,17 @@ export default async function handler(req, res) {
       const description = (body.description || '').toString().trim().slice(0, 140);
       const payload = { user_id: broadcasterId };
       if (description) payload.description = description;
+      // /streams/markers richiede channel:manage:broadcast del broadcaster.
+      const auth = await pickHelixAuth({ twitchUser, redis, requireBroadcaster: true });
+      if (!auth) return broadcasterTokenMissing(res);
       const data = await helixRequest('POST', 'streams/markers', payload,
-        twitchUser.token, twitchUser.clientId);
+        auth.token, auth.clientId);
       return res.status(200).json({ ok: true, marker: data?.data?.[0] || null });
     }
 
     return res.status(400).json({ error: `Azione non riconosciuta: ${action}` });
   } catch (e) {
     console.error('mod-actions error:', e);
-    return res.status(500).json({ error: e.message });
+    return res.status(e.status || 500).json({ error: e.message });
   }
 }

@@ -1,6 +1,7 @@
 import { Redis } from '@upstash/redis';
 import {
   corsHeaders, modAuthGate, getBroadcasterId, helixGet, helixRequest,
+  pickHelixAuth, broadcasterTokenMissing,
 } from './_modAuth.js';
 
 /**
@@ -28,21 +29,25 @@ export default async function handler(req, res) {
   const broadcasterId = await getBroadcasterId(redis);
   if (!broadcasterId) return res.status(400).json({ error: 'Broadcaster ID non disponibile.' });
 
+  // Polls/predictions: tutte le chiamate Helix richiedono il token del broadcaster.
+  const auth = await pickHelixAuth({ twitchUser, redis, requireBroadcaster: true });
+  if (!auth) return broadcasterTokenMissing(res);
+
   /* ─── GET ─── */
   if (req.method === 'GET') {
     const type = req.query?.type || 'poll';
     try {
       if (type === 'poll') {
-        const data = await helixGet('polls', { broadcaster_id: broadcasterId, first: 5 }, twitchUser.token, twitchUser.clientId);
+        const data = await helixGet('polls', { broadcaster_id: broadcasterId, first: 5 }, auth.token, auth.clientId);
         return res.status(200).json({ polls: data.data || [] });
       }
       if (type === 'prediction') {
-        const data = await helixGet('predictions', { broadcaster_id: broadcasterId, first: 5 }, twitchUser.token, twitchUser.clientId);
+        const data = await helixGet('predictions', { broadcaster_id: broadcasterId, first: 5 }, auth.token, auth.clientId);
         return res.status(200).json({ predictions: data.data || [] });
       }
       return res.status(400).json({ error: 'type non valido (poll|prediction).' });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(e.status || 500).json({ error: e.message });
     }
   }
 
@@ -61,7 +66,7 @@ export default async function handler(req, res) {
           channel_points_voting_enabled: !!channel_points_voting_enabled,
           channel_points_per_vote: channel_points_voting_enabled ? Math.max(1, parseInt(channel_points_per_vote) || 100) : undefined,
         };
-        const data = await helixRequest('POST', 'polls', payload, twitchUser.token, twitchUser.clientId);
+        const data = await helixRequest('POST', 'polls', payload, auth.token, auth.clientId);
         return res.status(200).json({ ok: true, poll: data.data?.[0] || null });
       }
 
@@ -74,13 +79,13 @@ export default async function handler(req, res) {
           outcomes: outcomes.slice(0, 10).map(o => ({ title: String(o).slice(0, 25) })),
           prediction_window: Math.max(30, Math.min(1800, parseInt(prediction_window) || 300)),
         };
-        const data = await helixRequest('POST', 'predictions', payload, twitchUser.token, twitchUser.clientId);
+        const data = await helixRequest('POST', 'predictions', payload, auth.token, auth.clientId);
         return res.status(200).json({ ok: true, prediction: data.data?.[0] || null });
       }
 
       return res.status(400).json({ error: 'type non valido (poll|prediction).' });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(e.status || 500).json({ error: e.message });
     }
   }
 
@@ -93,7 +98,7 @@ export default async function handler(req, res) {
         if (!poll_id) return res.status(400).json({ error: 'poll_id obbligatorio.' });
         const data = await helixRequest('PATCH', 'polls',
           { broadcaster_id: broadcasterId, id: poll_id, status: status || 'TERMINATED' },
-          twitchUser.token, twitchUser.clientId);
+          auth.token, auth.clientId);
         return res.status(200).json({ ok: true, poll: data.data?.[0] || null });
       }
 
@@ -102,13 +107,13 @@ export default async function handler(req, res) {
         if (!prediction_id) return res.status(400).json({ error: 'prediction_id obbligatorio.' });
         const payload = { broadcaster_id: broadcasterId, id: prediction_id, status: status || 'CANCELED' };
         if (winning_outcome_id) payload.winning_outcome_id = winning_outcome_id;
-        const data = await helixRequest('PATCH', 'predictions', payload, twitchUser.token, twitchUser.clientId);
+        const data = await helixRequest('PATCH', 'predictions', payload, auth.token, auth.clientId);
         return res.status(200).json({ ok: true, prediction: data.data?.[0] || null });
       }
 
       return res.status(400).json({ error: 'type non valido (poll|prediction).' });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(e.status || 500).json({ error: e.message });
     }
   }
 
