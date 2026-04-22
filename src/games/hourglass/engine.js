@@ -14,7 +14,7 @@
  */
 import { makeInitialState, heal } from './state.js';
 import { InputAdapter } from './input.js';
-import { Renderer } from './render.js';
+import { Renderer3D } from './renderer3d.js';
 import { setMuted, ensureAudio, stopMusic, SFX } from './audio.js';
 import { t } from './i18n.js';
 
@@ -39,7 +39,7 @@ async function loadSceneFactory(id) {
 
 export function startEngine(canvas, callbacks, opts = {}) {
   const state = makeInitialState(opts.savedData);
-  const renderer = new Renderer(canvas);
+  const renderer = new Renderer3D(canvas);
   const input = new InputAdapter(callbacks);
 
   let currentScene = null;
@@ -85,6 +85,8 @@ export function startEngine(canvas, callbacks, opts = {}) {
       currentSceneId = sceneId;
       state.sceneId = sceneId;
       state.nextSceneId = null;
+      /* Inizializza la scena 3D (aggiunge mesh alla scena Three.js) */
+      if (currentScene.setup3D) currentScene.setup3D(renderer);
       /* Auto-save su transizione */
       if (opts.onAutoSave) {
         try { opts.onAutoSave({ ...state }); } catch { /* ignored */ }
@@ -176,21 +178,26 @@ export function startEngine(canvas, callbacks, opts = {}) {
       }
     }
 
-    /* Render */
-    renderer.clear('#000');
-    if (currentScene) {
-      const { ox, oy } = renderer.applyShakeOffset();
-      const c = renderer.ctx;
-      if (ox || oy) c.save();
-      if (ox || oy) c.translate(ox, oy);
-      try {
-        currentScene.render(renderer, state);
-      } catch (err) {
-        console.error('[hourglass] scene.render error:', err);
+    /* Render 3D */
+    if (currentScene && currentScene.syncMeshes) {
+      try { currentScene.syncMeshes(state); } catch (err) {
+        console.error('[hourglass] scene.syncMeshes error:', err);
       }
-      if (ox || oy) c.restore();
     }
-    /* HUD sempre sopra */
+    /* Camera shake tramite offset temporaneo sulla posizione */
+    const { ox, oy } = renderer.applyShakeOffset();
+    if (ox || oy) {
+      renderer.camera.position.x += ox * 0.05;
+      renderer.camera.position.z += oy * 0.05;
+    }
+    renderer.render();
+    if (ox || oy) {
+      renderer.camera.position.x -= ox * 0.05;
+      renderer.camera.position.z -= oy * 0.05;
+    }
+
+    /* HUD 2D overlay sopra il canvas WebGL */
+    renderer.clearHud();
     renderer.drawHud(state);
     /* Dialog se la scena ne ha uno */
     if (currentScene && currentScene.getDialog) {
@@ -229,6 +236,7 @@ export function startEngine(canvas, callbacks, opts = {}) {
       if (rafId) cancelAnimationFrame(rafId);
       if (currentScene && currentScene.dispose) currentScene.dispose();
       stopMusic();
+      renderer.dispose();
     },
     getState() { return { ...state }; },
     setMuted(m) { setMuted(m); },
