@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Youtube, ExternalLink, Play } from 'lucide-react';
 import SEO from '../components/SEO';
+import { useLingua } from '../contexts/LinguaContext';
 
 const CHANNEL_ID = 'UCt_i4p3p-5_pB_7d9D0yTqQ';
 const CHANNEL_URL = 'https://youtube.com/@ANDRYXify';
@@ -9,6 +10,7 @@ const CHANNEL_URL = 'https://youtube.com/@ANDRYXify';
 export default function YouTubePage() {
   const [videos,  setVideos]  = useState([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useLingua();
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -33,11 +35,11 @@ export default function YouTubePage() {
         title="YouTube — Video, Highlights & Approfondimenti"
         description="Guarda i video di ANDRYXify su YouTube: gameplay, highlights, approfondimenti su intelligenza artificiale e gaming. Iscriviti al canale YouTube di Andrea Taliento!"
         path="/youtube"
-        keywords="youtube andryxify, video gaming, highlights gameplay, intelligenza artificiale video"
+        keywords="youtube andryxify, video gaming, highlights gameplay, intelligenza artificiale video, andrea taliento youtube"
       />
       <header style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 className="title"><span style={{ color: '#FF0000' }}>YouTube</span> Hub</h1>
-        <p className="subtitle">Riflessioni, approfondimenti e highlights sul futuro digitale.</p>
+        <p className="subtitle">{t('youtube.sottotitolo')}</p>
       </header>
 
       {/* Channel card */}
@@ -86,7 +88,7 @@ export default function YouTubePage() {
           />
           <h2 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: '0.4rem', fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>ANDRYXify</h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', maxWidth: 480, fontSize: '0.92rem', lineHeight: 1.6 }}>
-            Live, estratti, approfondimenti sull'intelligenza artificiale, reaction e gaming. Esplora tutti i contenuti originali e unisciti alla community!
+            {t('youtube.desc')}
           </p>
           <motion.a
             href={CHANNEL_URL}
@@ -97,7 +99,7 @@ export default function YouTubePage() {
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
           >
-            <Youtube size={18} /> Iscriviti al Canale
+            <Youtube size={18} /> {t('youtube.iscriviti')}
           </motion.a>
         </div>
       </motion.div>
@@ -105,7 +107,7 @@ export default function YouTubePage() {
       {/* Latest videos */}
       <div>
         <h2 className="section-title">
-          <span style={{ color: '#FF0000' }}>▶</span> Ultimi Video
+          <span style={{ color: '#FF0000' }}>▶</span> {t('youtube.ultimi_video')}
         </h2>
         <div
           className="links-grid"
@@ -159,7 +161,7 @@ export default function YouTubePage() {
                     <h4 style={{ margin: 0, fontSize: '0.92rem', lineHeight: 1.35, fontWeight: 700 }}>{video.title}</h4>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
                       <ExternalLink size={12} color="var(--text-faint)" />
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Guarda su YouTube</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>{t('youtube.guarda')}</span>
                     </div>
                   </div>
                 </motion.a>

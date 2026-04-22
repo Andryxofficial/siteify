@@ -26,7 +26,7 @@ import {
   TwitchPage, YouTubePage, InstagramPage, PodcastPage, TikTokPage,
   GamePage, CommunityPage, ThreadView, Scoiattoli, ModPanel,
   FriendsPage, MessagesPage, ChatGeneralePage, SettingsPage, ProfiloPage,
-  AppPage,
+  AppPage, ChiSonoPage,
   prefetchPagineMain,
 } from './lazyPages';
 import './index.css';
@@ -199,6 +199,7 @@ function AppLayout() {
               <Route path="/impostazioni" element={<SettingsPage />} />
               <Route path="/profilo/:username" element={<ProfiloPage />} />
               <Route path="/app" element={<AppPage />} />
+              <Route path="/chi-sono" element={<ChiSonoPage />} />
             </Routes>
           </Suspense>
           </ErrorBoundary>

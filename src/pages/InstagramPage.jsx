@@ -1,21 +1,23 @@
 import { motion } from 'framer-motion';
 import { Instagram, ExternalLink } from 'lucide-react';
 import SEO from '../components/SEO';
+import { useLingua } from '../contexts/LinguaContext';
 
 export default function InstagramPage() {
+  const { t } = useLingua();
   return (
     <div className="main-content">
       <SEO
         title="Instagram — Dietro le Quinte & Aggiornamenti"
         description="Segui ANDRYXify (Andrea Taliento) su Instagram: dietro le quinte delle live, storie quotidiane e aggiornamenti dal mondo gaming e IA."
         path="/instagram"
-        keywords="instagram andryxify, dietro le quinte streamer, storie gaming, content creator instagram"
+        keywords="instagram andryxify, dietro le quinte streamer, storie gaming, content creator instagram, andrea taliento instagram"
       />
       <header style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 className="title">
           <span style={{ color: '#E1306C' }}>Instagram</span> Feed
         </h1>
-        <p className="subtitle">Dietro le quinte, storie quotidiane e istanti catturati.</p>
+        <p className="subtitle">{t('instagram.sottotitolo')}</p>
       </header>
 
       {/* Profile card */}
@@ -58,7 +60,7 @@ export default function InstagramPage() {
           </div>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.25rem', fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>@andryxify</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem', maxWidth: 420, lineHeight: 1.6 }}>
-            Dietro le quinte delle live, pillole di IA, gaming moments e contenuti esclusivi. Seguimi per non perderti nulla!
+            {t('instagram.desc')}
           </p>
           <motion.a
             href="https://instagram.com/andryxify"
@@ -73,7 +75,7 @@ export default function InstagramPage() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <Instagram size={18} /> Segui su Instagram
+            <Instagram size={18} /> {t('instagram.segui')}
           </motion.a>
         </div>
       </motion.div>
@@ -87,7 +89,7 @@ export default function InstagramPage() {
         transition={{ delay: 0.6 }}
       >
         <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem', fontSize: '0.95rem' }}>
-          Le Stories di Instagram sono il posto migliore per seguire i miei aggiornamenti quotidiani in tempo reale.
+          {t('instagram.stories.desc')}
         </p>
         <motion.a
           href="https://instagram.com/stories/andryxify"
@@ -96,7 +98,7 @@ export default function InstagramPage() {
           className="btn btn-ghost"
           whileHover={{ scale: 1.04 }}
         >
-          <ExternalLink size={16} /> Apri le Stories
+          <ExternalLink size={16} /> {t('instagram.stories.apri')}
         </motion.a>
       </motion.div>
     </div>
