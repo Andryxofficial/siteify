@@ -28,27 +28,27 @@ const inView = (delay = 0) => ({
   transition: { delay, type: 'spring', stiffness: 200, damping: 26 },
 });
 
-const PREMI = [
+const PREMI = (t) => [
   {
     emoji: '🏆',
     colore: 'var(--accent-twitch)',
-    titolo: 'VIP Settimanale',
-    desc: 'Il punteggio più alto della settimana vince il ruolo VIP su Twitch per un mese intero.',
-    cta: { label: 'Gioca ora', to: '/gioco', ext: null },
+    titolo: t('home.premi.vip.titolo'),
+    desc: t('home.premi.vip.desc'),
+    cta: { label: t('home.premi.gioca_ora'), to: '/gioco', ext: null },
   },
   {
     emoji: '👑',
     colore: 'var(--accent-warm)',
-    titolo: 'Campione Mensile',
-    desc: 'Il punteggio più alto del mese riceve un premio speciale rivelato in live da Andryx.',
-    cta: { label: 'Classifica', to: '/gioco#classifica', ext: null },
+    titolo: t('home.premi.campione.titolo'),
+    desc: t('home.premi.campione.desc'),
+    cta: { label: t('home.premi.classifica'), to: '/gioco#classifica', ext: null },
   },
   {
     emoji: '⭐',
     colore: 'var(--primary)',
-    titolo: 'Social Star',
-    desc: 'Il membro più attivo e costruttivo della community ogni mese ottiene un riconoscimento speciale.',
-    cta: { label: 'Community', to: '/socialify', ext: null },
+    titolo: t('home.premi.star.titolo'),
+    desc: t('home.premi.star.desc'),
+    cta: { label: t('home.premi.community'), to: '/socialify', ext: null },
   },
 ];
 
@@ -57,24 +57,24 @@ const STILE_PREMIO_CTA = {
   marginTop: 'auto', alignSelf: 'flex-start', minHeight: 'unset',
 };
 
-const MSG_FEATURES = [
+const MSG_FEATURES = (t) => [
   {
     icona: <Twitch size={22} />,
     colore: 'var(--accent-twitch)',
-    titolo: 'Login con Twitch',
-    desc: 'Accedi con il tuo account Twitch in un click, nessuna registrazione extra.',
+    titolo: t('home.msg.login.titolo'),
+    desc: t('home.msg.login.desc'),
   },
   {
     icona: <Lock size={22} />,
     colore: 'var(--secondary)',
-    titolo: 'Cifrati End‑to‑End',
-    desc: 'I messaggi sono leggibili solo da te e dal destinatario. Nemmeno il server può leggerli.',
+    titolo: t('home.msg.e2e.titolo'),
+    desc: t('home.msg.e2e.desc'),
   },
   {
     icona: <Fingerprint size={22} />,
     colore: 'var(--primary)',
-    titolo: 'Passkey',
-    desc: 'Proteggi le tue chiavi con Face ID, impronta digitale o PIN del dispositivo.',
+    titolo: t('home.msg.passkey.titolo'),
+    desc: t('home.msg.passkey.desc'),
   },
 ];
 
@@ -82,6 +82,9 @@ export default function Home() {
   const [liveState, setLiveState] = useState(0); // 0=offline 1=twitch 2=simulcast
   const { t } = useLingua();
   const toast = useToast();
+
+  const premi = PREMI(t);
+  const msgFeatures = MSG_FEATURES(t);
 
   const onCondividi = async () => {
     hapticLight();
@@ -255,18 +258,18 @@ export default function Home() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
           <Trophy size={20} color="var(--accent-warm)" />
           <h2 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700, fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>
-            Premi della Community
+            {t('home.premi.titolo')}
           </h2>
           <span className="chip" style={{ marginLeft: 'auto', background: 'rgba(255,184,108,0.12)', color: 'var(--accent-warm)', border: '1px solid rgba(255,184,108,0.22)', fontSize: '0.7rem', padding: '3px 10px' }}>
-            Ogni settimana e ogni mese
+            {t('home.premi.frequenza')}
           </span>
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.5rem', lineHeight: 1.65 }}>
-          Competi nel gioco del mese, rimani attivo nella community e vinci premi esclusivi. Tre modi per distinguersi.
+          {t('home.premi.desc')}
         </p>
 
         <div className="premi-grid">
-          {PREMI.map(p => (
+          {premi.map(p => (
             <div
               key={p.titolo}
               className="premio-card"
@@ -308,16 +311,16 @@ export default function Home() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
           <Shield size={20} color="var(--secondary)" />
           <h2 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700, fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>
-            <span className="text-gradient-cyan">Messaggi Privati</span>
-            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> — Cifrati E2E</span>
+            <span className="text-gradient-cyan">{t('home.msg.titolo')}</span>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> {t('home.msg.sottotitolo')}</span>
           </h2>
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.5rem', lineHeight: 1.65 }}>
-          Chatta in modo sicuro con gli altri membri della community. Zero intercettazioni, massima privacy — protetto dalla tua passkey.
+          {t('home.msg.desc')}
         </p>
 
         <div className="msg-features">
-          {MSG_FEATURES.map(f => (
+          {msgFeatures.map(f => (
             <div
               key={f.titolo}
               className="msg-feature"
@@ -332,7 +335,7 @@ export default function Home() {
 
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.25rem' }}>
           <Link to="/messaggi" className="btn btn-primary">
-            <MessageSquare size={15} /> Prova i Messaggi
+            <MessageSquare size={15} /> {t('home.msg.prova')}
           </Link>
         </div>
       </motion.section>

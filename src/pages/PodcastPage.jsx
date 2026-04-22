@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Mic, Headphones, Share2, ExternalLink } from 'lucide-react';
 import SEO from '../components/SEO';
+import { useLingua } from '../contexts/LinguaContext';
 
 const SPOTIFY_URL = 'https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9';
 const APPLE_URL   = 'https://podcasts.apple.com/it/podcast/umanit%C3%A0-o-ia/id1869893930';
@@ -13,16 +14,18 @@ const platforms = [
 ];
 
 export default function PodcastPage() {
+  const { t } = useLingua();
+
   const handleShare = () => {
     const shareData = {
       title: 'Umanità o IA? — ANDRYXify Podcast',
-      text: 'Scopri il podcast dove indaghiamo il confine tra tecnologia e biologia.',
+      text: t('podcast.share.testo'),
       url: SPOTIFY_URL,
     };
     if (navigator.share) {
       navigator.share(shareData).catch(console.error);
     } else {
-      navigator.clipboard.writeText(SPOTIFY_URL).then(() => alert('Link copiato!'));
+      navigator.clipboard.writeText(SPOTIFY_URL).then(() => alert(t('podcast.share.copiato')));
     }
   };
 
@@ -32,7 +35,7 @@ export default function PodcastPage() {
         title="Podcast — Umanità o IA?"
         description="Ascolta il podcast 'Umanità o IA?' di ANDRYXify (Andrea Taliento). Episodi su intelligenza artificiale, gaming, tecnologia e il futuro dell'umanità. Disponibile su Spotify e Apple Podcast."
         path="/podcast"
-        keywords="podcast intelligenza artificiale, umanità o ia, podcast tecnologia italiano, spotify podcast gaming"
+        keywords="podcast intelligenza artificiale, umanità o ia, podcast tecnologia italiano, spotify podcast gaming, andrea taliento podcast"
       />
       {/* Hero */}
       <header className="header" style={{ marginBottom: '1rem' }}>
@@ -51,8 +54,8 @@ export default function PodcastPage() {
             <Mic size={36} color="#fff" />
           </div>
         </motion.div>
-        <h1 className="title"><span className="text-gradient">Umanità o IA?</span></h1>
-        <p className="subtitle">Il podcast che esplora i confini tra l'essere umano e la tecnologia.</p>
+        <h1 className="title"><span className="text-gradient">{t('podcast.titolo')}</span></h1>
+        <p className="subtitle">{t('podcast.sottotitolo')}</p>
       </header>
 
       {/* Spotify embed — full widget */}
@@ -65,7 +68,7 @@ export default function PodcastPage() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Headphones size={20} color="var(--secondary)" />
-          <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Ascolta su Spotify</h2>
+          <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>{t('podcast.ascolta')}</h2>
         </div>
 
         {/* Full Spotify show embed — tall to show full episode list */}
@@ -103,7 +106,7 @@ export default function PodcastPage() {
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.95 }}
           >
-            <Share2 size={15} /> Condividi
+            <Share2 size={15} /> {t('podcast.condividi')}
           </motion.button>
         </div>
       </motion.div>
@@ -117,11 +120,10 @@ export default function PodcastPage() {
         transition={{ delay: 0.3 }}
       >
         <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
-          🎙️ Perché questo podcast?
+          {t('podcast.perche.titolo')}
         </h2>
         <p style={{ color: 'var(--text-muted)', lineHeight: 1.85, margin: 0, fontSize: '0.95rem' }}>
-          Nell'era dell'intelligenza artificiale, sappiamo davvero distinguere fra strumento e cervello in prestito?
-          ANDRYXify ti guida in un viaggio tra bit e biologia, esplorando domande che nessun algoritmo sa ancora rispondere.
+          {t('podcast.perche.testo')}
         </p>
         <motion.a
           href={SPOTIFY_URL}
@@ -131,7 +133,7 @@ export default function PodcastPage() {
           style={{ alignSelf: 'flex-start' }}
           whileHover={{ scale: 1.05 }}
         >
-          <ExternalLink size={15} /> Inizia ad ascoltare
+          <ExternalLink size={15} /> {t('podcast.inizia')}
         </motion.a>
       </motion.div>
     </div>

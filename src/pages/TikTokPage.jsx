@@ -3,8 +3,10 @@ import { motion } from 'framer-motion';
 import { ExternalLink, Music2, TrendingUp, Sparkles, Zap } from 'lucide-react';
 import TikTokIcon from '../components/TikTokIcon';
 import SEO from '../components/SEO';
+import { useLingua } from '../contexts/LinguaContext';
 
 export default function TikTokPage() {
+  const { t } = useLingua();
   // Load TikTok embed script once
   useEffect(() => {
     if (document.querySelector('script[src="https://www.tiktok.com/embed.js"]')) return;
@@ -19,14 +21,14 @@ export default function TikTokPage() {
         title="TikTok — Clip, Trend & Gaming"
         description="Le clip più divertenti di ANDRYXify su TikTok: gaming, intelligenza artificiale, trend e pillole di intrattenimento. Seguimi su TikTok!"
         path="/tiktok"
-        keywords="tiktok andryxify, clip gaming, video brevi streamer, trend tiktok italiano"
+        keywords="tiktok andryxify, clip gaming, video brevi streamer, trend tiktok italiano, andrea taliento tiktok"
       />
       <header style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 className="title">
           <span style={{ color: '#00F2FE' }}>TikTok</span> Vibes
         </h1>
         <p className="subtitle">
-          Clip, trend, IA e gaming nei formati più veloci del web.
+          {t('tiktok.sottotitolo')}
         </p>
       </header>
 
@@ -72,7 +74,7 @@ export default function TikTokPage() {
           </div>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.25rem', fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>@andryxify</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem', maxWidth: 420, lineHeight: 1.6 }}>
-            Gaming, IA, tech e tanto altro in pillole veloci. Seguimi per non perdere nemmeno un trend!
+            {t('tiktok.desc')}
           </p>
           <motion.a
             href="https://tiktok.com/@andryxify"
@@ -88,7 +90,7 @@ export default function TikTokPage() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <TikTokIcon size={18} color="#fff" /> Seguimi su TikTok
+            <TikTokIcon size={18} color="#fff" /> {t('tiktok.segui')}
           </motion.a>
         </div>
       </motion.div>
@@ -103,7 +105,7 @@ export default function TikTokPage() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <TikTokIcon size={20} color="#EE1D52" />
-          <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Feed TikTok</h2>
+          <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>{t('tiktok.feed.titolo')}</h2>
         </div>
 
         {/* TikTok embed via blockquote */}
@@ -155,7 +157,7 @@ export default function TikTokPage() {
           className="btn btn-ghost"
           whileHover={{ scale: 1.04 }}
         >
-          <ExternalLink size={16} /> Apri il profilo TikTok
+          <ExternalLink size={16} /> {t('tiktok.apri_profilo')}
         </motion.a>
       </motion.div>
     </div>

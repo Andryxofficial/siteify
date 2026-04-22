@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, animate as fmAnimate } from 'framer-motion';
-import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon, MessageCircle as MessageCircleIcon, Settings as SettingsIcon, Sun, Moon, SunMoon, Sunrise } from 'lucide-react';
+import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon, MessageCircle as MessageCircleIcon, Settings as SettingsIcon, Sun, Moon, SunMoon, Sunrise, UserCircle as UserCircleIcon } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 import useScrollHeader from '../hooks/useScrollHeader';
 import { hapticLight } from '../utils/haptics';
@@ -17,6 +17,7 @@ const CHIAVE_NON_LETTI = 'andryxify_ha_non_letti';
 /* I18n: label definite come chiavi di traduzione; risolte a runtime via t() */
 const NAV_LINKS = [
   { path: '/',          labelKey: 'nav.home',       Icon: HomeIcon      },
+  { path: '/chi-sono',  labelKey: 'nav.chisono',    Icon: UserCircleIcon },
   { path: '/socialify', labelKey: 'nav.socialify',  Icon: UsersIcon     },
   { path: '/twitch',    labelKey: 'nav.twitch',     Icon: TwitchIcon    },
   { path: '/youtube',   labelKey: 'nav.youtube',    Icon: YoutubeIcon   },

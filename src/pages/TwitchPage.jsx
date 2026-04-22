@@ -1,14 +1,17 @@
 import { motion } from 'framer-motion';
 import { Twitch, ExternalLink, Calendar, Users, Star } from 'lucide-react';
 import SEO from '../components/SEO';
-
-const twitchStats = [
-  { icon: <Users size={18} color="#9146FF" />, label: 'Community attiva' },
-  { icon: <Star  size={18} color="#FFD700" />, label: 'Contenuti originali' },
-  { icon: <Calendar size={18} color="var(--secondary)" />, label: 'Live regolari' },
-];
+import { useLingua } from '../contexts/LinguaContext';
 
 export default function TwitchPage() {
+  const { t } = useLingua();
+
+  const twitchStats = [
+    { icon: <Users    size={18} color="#9146FF" />, label: t('twitch.stat.community') },
+    { icon: <Star     size={18} color="#FFD700" />, label: t('twitch.stat.contenuti') },
+    { icon: <Calendar size={18} color="var(--secondary)" />, label: t('twitch.stat.live') },
+  ];
+
   return (
     <div
       className="main-content"
@@ -18,13 +21,13 @@ export default function TwitchPage() {
         title="Twitch — Live Streaming & Gaming"
         description="Guarda le dirette live di ANDRYXify (Andrea Taliento) su Twitch. Streaming di videogiochi, interazione in chat e community gaming italiana. Segui il canale Twitch e attiva le notifiche!"
         path="/twitch"
-        keywords="twitch andryxify, live streaming gaming, streamer italiano twitch, diretta videogiochi"
+        keywords="twitch andryxify, live streaming gaming, streamer italiano twitch, diretta videogiochi, andrea taliento twitch genova"
       />
       <header style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 className="title">
-          <span style={{ color: '#9146FF' }}>Twitch</span> Experience
+          <span style={{ color: '#9146FF' }}>Twitch</span> {t('twitch.titolo').replace('Twitch ', '')}
         </h1>
-        <p className="subtitle">Segui le dirette, interagisci in chat e scopri i momenti migliori.</p>
+        <p className="subtitle">{t('twitch.sottotitolo')}</p>
 
         <div className="glass-stats-bar" style={{ marginTop: '1rem' }}>
           {twitchStats.map(s => (
@@ -59,7 +62,7 @@ export default function TwitchPage() {
             gap: '6px',
           }}>
             <Twitch size={14} />
-            Chat in diretta — scrivi qui o usa il tasto <strong>Accedi</strong> in alto
+            {t('twitch.chat.intestazione')}<strong>{t('twitch.chat.accedi')}</strong>{t('twitch.chat.suffisso')}
           </div>
           <iframe
             src={`https://www.twitch.tv/embed/andryxify/chat?parent=${window.location.hostname}&darkpopout`}
@@ -93,11 +96,11 @@ export default function TwitchPage() {
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
             <Twitch size={28} color="#9146FF" />
             <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#9146FF', fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>
-              andryxify su Twitch
+              {t('twitch.canale.titolo')}
             </h2>
           </div>
           <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', maxWidth: '560px', margin: '0 auto 1.5rem', fontSize: '0.9rem' }}>
-            Seguimi su Twitch per non perderti nessuna diretta. Attiva le notifiche e unisciti alla community!
+            {t('twitch.canale.desc')}
           </p>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             <motion.a
@@ -113,7 +116,7 @@ export default function TwitchPage() {
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
             >
-              <Twitch size={16} /> Segui su Twitch
+              <Twitch size={16} /> {t('twitch.canale.segui')}
             </motion.a>
             <motion.a
               href="https://x.la/@andryxify"
@@ -125,7 +128,7 @@ export default function TwitchPage() {
               whileTap={{ scale: 0.96 }}
             >
               <ExternalLink size={16} />
-              Donazioni su x.la
+              {t('twitch.canale.donazioni')}
             </motion.a>
           </div>
         </div>
