@@ -16,7 +16,7 @@ import { useLingua } from '../contexts/LinguaContext';
 import { hapticLight, hapticSuccess } from '../utils/haptics';
 import SEO from '../components/SEO';
 
-const URL_APP = 'https://andryxify.it/';
+const URL_APP_DEFAULT = 'https://andryxify.it/';
 
 /* Lista changelog statica — si aggiorna di rilascio in rilascio. */
 const NOVITA = [
@@ -45,12 +45,16 @@ export default function AppPage() {
   const [qrPronto, setQrPronto] = useState(false);
 
   /* Genera il QR code lato client. La libreria `qrcode` è già in deps,
-     la importiamo dinamicamente per non pesare sul bundle iniziale. */
+     la importiamo dinamicamente per non pesare sul bundle iniziale.
+     Usiamo l'origin corrente così il QR funziona anche in dev/staging. */
   useEffect(() => {
     let smontato = false;
+    const url = (typeof window !== 'undefined' && window.location?.origin)
+      ? window.location.origin + '/'
+      : URL_APP_DEFAULT;
     import('qrcode').then(({ default: QRCode }) => {
       if (smontato || !qrRef.current) return;
-      QRCode.toCanvas(qrRef.current, URL_APP, {
+      QRCode.toCanvas(qrRef.current, url, {
         width: 176,
         margin: 1,
         color: { dark: '#050506', light: '#ffffff' },

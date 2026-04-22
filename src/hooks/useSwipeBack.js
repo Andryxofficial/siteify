@@ -36,7 +36,9 @@ export default function useSwipeBack(attivo = true) {
       if (e.pointerType !== 'touch') return;
       if (e.clientX > BORDO_PX) return;
       if (dentroCampoTesto(e.target)) return;
-      if (window.history.length <= 1) return;
+      // Nota: non controlliamo window.history.length perché include anche
+      // la forward history e non riflette se c'è una pagina precedente.
+      // In SPA, history.back() è no-op se non c'è una entry indietro.
       inizio = { x: e.clientX, y: e.clientY, time: Date.now(), pointerId: e.pointerId };
       trigger = false;
     };

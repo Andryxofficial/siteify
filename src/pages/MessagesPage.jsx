@@ -20,6 +20,7 @@ import {
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
 import { useEmoteTwitch } from '../hooks/useEmoteTwitch';
+import { setBadge } from '../utils/badge';
 import EmotePicker from '../components/EmotePicker';
 import SEO from '../components/SEO';
 import QRCode from 'qrcode';
@@ -2875,6 +2876,13 @@ export default function MessagesPage() {
       setConversazioni(dati.conversations || []);
     } catch { /* ignora */ } finally { setCaricandoConvo(false); }
   }, [twitchToken]);
+
+  /* ─── App badge: mostra il pallino sull'icona PWA col totale dei
+     messaggi non letti. Se non ci sono non-letti pulisce il badge. */
+  useEffect(() => {
+    const tot = conversazioni.reduce((acc, c) => acc + (Number(c.unread) || 0), 0);
+    setBadge(tot);
+  }, [conversazioni]);
 
   /* ─── Polling conversazioni ogni 15 secondi ─── */
   useEffect(() => {
