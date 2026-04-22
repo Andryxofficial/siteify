@@ -1,431 +1,398 @@
 /**
- * Andryx Jump — pixel art procedurale.
+ * Andryx Jump — sprite pixel art (disegno diretto su Canvas 2D).
  *
- * Tutti gli sprite sono disegnati con primitive Canvas 2D.
- * Niente bitmap esterne. Cache dei "frame" pre-renderizzati su offscreen
- * canvas per perf (rifatti solo al primo uso).
+ * Tutte le funzioni disegnano sul ctx fornito, a partire dalle coordinate (x, y).
+ * Nessuna immagine esterna. Nessuna cache: il chiamante puo' cachare se vuole.
  */
 
-const cache = new Map();
-
-function makeCanvas(w, h) {
-  const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  return c;
+/* ─── Helpers interni ─── */
+function px(ctx, lx, ly, col, w = 1, h = 1) {
+  ctx.fillStyle = col;
+  ctx.fillRect(lx, ly, w, h);
 }
 
-function px(ctx, x, y, color, size = 1) {
-  ctx.fillStyle = color;
-  ctx.fillRect(x, y, size, size);
+/* Trasformazione flip orizzontale attorno al bordo destro dello sprite. */
+function withFlip(ctx, x, y, w, dir, drawFn) {
+  ctx.save();
+  ctx.translate(x + (dir < 0 ? w : 0), y);
+  if (dir < 0) ctx.scale(-1, 1);
+  drawFn(ctx);
+  ctx.restore();
 }
 
 /* ─── ANDRYX (player) ─── */
-/* Sprite 16x24 (small) o 16x32 (big). 4 stati: idle, walk(2 frames), jump, fall.
-   Frontale stilizzato con cappello. */
+/* Palette per forma: small=blue, big=dark blue, fire=red tint */
+const ANDRYX_PALETTE = {
+  small: { tunic: '#1d72b8', tunicSh: '#0e4a80', pant: '#2a3a55' },
+  big:   { tunic: '#1a5a9a', tunicSh: '#0a3060', pant: '#1e2a40' },
+  fire:  { tunic: '#d62828', tunicSh: '#8a0020', pant: '#4a1010' },
+};
 
-function drawAndryxSmall(ctx, frame = 'idle', dir = 1) {
-  /* base pixel art 16x24, palette: cappello rosso, capelli neri, viso, tunica blu, scarpe marroni. */
-  const HAT = '#e63946';
+function drawAndryxBody(ctx, form, animFrame) {
+  const HAT    = '#e63946';
   const HAT_SH = '#a01020';
-  const FACE = '#fde0c8';
-  const HAIR = '#1a1a1a';
-  const TUNIC = '#1d72b8';
-  const TUNIC_SH = '#0e4a80';
-  const PANT = '#2a3a55';
-  const SHOE = '#5a3a1e';
-  const SKIN = '#fde0c8';
+  const FACE   = '#fde0c8';
+  const HAIR   = '#1a1a1a';
+  const SKIN   = '#fde0c8';
+  const SHOE   = '#5a3a1e';
+  const pal    = ANDRYX_PALETTE[form] || ANDRYX_PALETTE.small;
+  const TUNIC  = pal.tunic;
+  const TUNIC_SH = pal.tunicSh;
+  const PANT   = pal.pant;
 
-  ctx.save();
-  if (dir < 0) { ctx.translate(16, 0); ctx.scale(-1, 1); }
-
-  /* cappello (top, righe 0-3) */
-  px(ctx, 5, 0, HAT, 6);
-  px(ctx, 4, 1, HAT, 8);
-  px(ctx, 3, 2, HAT, 10);
-  px(ctx, 4, 3, HAT_SH, 8);
-  /* visiera (riga 4) */
-  px(ctx, 2, 4, HAT_SH, 10);
+  /* cappello */
+  px(ctx, 4, 0, HAT, 5, 2);
+  px(ctx, 3, 2, HAT, 7, 2);
+  px(ctx, 2, 4, HAT_SH, 9, 2);
   /* capelli ai lati */
-  px(ctx, 4, 5, HAIR, 1);
-  px(ctx, 11, 5, HAIR, 1);
-  /* viso (righe 5-9) */
-  px(ctx, 5, 5, FACE, 6);
-  px(ctx, 5, 6, FACE, 6);
-  px(ctx, 5, 7, FACE, 6);
-  px(ctx, 5, 8, FACE, 6);
-  px(ctx, 5, 9, FACE, 6);
-  /* occhio (orientato in base a dir, qui dir=1 → guarda destra) */
-  px(ctx, 9, 6, '#000', 2);
+  px(ctx, 2, 6, HAIR, 1, 2);
+  /* viso */
+  px(ctx, 3, 6, FACE, 6, 5);
+  /* occhio */
+  px(ctx, 7, 7, '#000', 2, 1);
   /* bocca */
-  px(ctx, 7, 8, HAT_SH, 2);
+  px(ctx, 5, 9, HAT_SH, 3, 1);
   /* collo */
-  px(ctx, 6, 10, SKIN, 4);
-  /* tunica (righe 11-17) */
-  px(ctx, 4, 11, TUNIC, 8);
-  px(ctx, 3, 12, TUNIC, 10);
-  px(ctx, 3, 13, TUNIC, 10);
-  px(ctx, 3, 14, TUNIC_SH, 10);
-  px(ctx, 4, 15, TUNIC, 8);
-  px(ctx, 4, 16, TUNIC_SH, 8);
-  /* braccia (variano con frame walk) */
-  if (frame === 'walk1') {
-    px(ctx, 2, 12, SKIN, 1); px(ctx, 2, 13, SKIN, 1);
-    px(ctx, 13, 13, SKIN, 1); px(ctx, 13, 14, SKIN, 1);
-  } else if (frame === 'walk2') {
-    px(ctx, 2, 13, SKIN, 1); px(ctx, 2, 14, SKIN, 1);
-    px(ctx, 13, 12, SKIN, 1); px(ctx, 13, 13, SKIN, 1);
-  } else if (frame === 'jump') {
-    px(ctx, 2, 11, SKIN, 1); px(ctx, 2, 12, SKIN, 1);
-    px(ctx, 13, 11, SKIN, 1); px(ctx, 13, 12, SKIN, 1);
-  } else if (frame === 'fall') {
-    px(ctx, 1, 13, SKIN, 1); px(ctx, 1, 14, SKIN, 1);
-    px(ctx, 14, 13, SKIN, 1); px(ctx, 14, 14, SKIN, 1);
+  px(ctx, 4, 11, SKIN, 4, 1);
+  /* tunica */
+  px(ctx, 2, 12, TUNIC, 8, 4);
+  px(ctx, 3, 16, TUNIC_SH, 6, 2);
+  /* braccia in base all'animFrame (0=idle, 1=walk1, 2=walk2, 3=jump) */
+  if (animFrame === 1) {
+    px(ctx, 1, 12, SKIN, 1, 2);
+    px(ctx, 10, 13, SKIN, 1, 2);
+  } else if (animFrame === 2) {
+    px(ctx, 1, 13, SKIN, 1, 2);
+    px(ctx, 10, 12, SKIN, 1, 2);
+  } else if (animFrame === 3) {
+    px(ctx, 1, 11, SKIN, 1, 2);
+    px(ctx, 10, 11, SKIN, 1, 2);
   } else {
-    px(ctx, 2, 12, SKIN, 1); px(ctx, 2, 13, SKIN, 1);
-    px(ctx, 13, 12, SKIN, 1); px(ctx, 13, 13, SKIN, 1);
+    px(ctx, 1, 12, SKIN, 1, 2);
+    px(ctx, 10, 12, SKIN, 1, 2);
   }
-  /* pantaloni / gambe (righe 17-22) */
-  if (frame === 'walk1') {
-    px(ctx, 4, 17, PANT, 3); px(ctx, 9, 17, PANT, 3);
-    px(ctx, 4, 18, PANT, 3); px(ctx, 9, 18, PANT, 3);
-    px(ctx, 4, 19, PANT, 3); px(ctx, 9, 19, PANT, 3);
-    px(ctx, 3, 20, SHOE, 4); px(ctx, 9, 20, SHOE, 4);
-    px(ctx, 2, 21, SHOE, 5); px(ctx, 10, 21, SHOE, 4);
-  } else if (frame === 'walk2') {
-    px(ctx, 4, 17, PANT, 3); px(ctx, 9, 17, PANT, 3);
-    px(ctx, 4, 18, PANT, 3); px(ctx, 9, 18, PANT, 3);
-    px(ctx, 4, 19, PANT, 3); px(ctx, 9, 19, PANT, 3);
-    px(ctx, 4, 20, SHOE, 4); px(ctx, 10, 20, SHOE, 3);
-    px(ctx, 4, 21, SHOE, 4); px(ctx, 10, 21, SHOE, 5);
-  } else if (frame === 'jump' || frame === 'fall') {
-    px(ctx, 5, 17, PANT, 6);
-    px(ctx, 5, 18, PANT, 6);
-    px(ctx, 4, 19, PANT, 8);
-    px(ctx, 4, 20, SHOE, 8);
-    px(ctx, 3, 21, SHOE, 4); px(ctx, 9, 21, SHOE, 4);
+  /* pantaloni e gambe */
+  if (animFrame === 1) {
+    px(ctx, 2, 18, PANT, 4, 4);
+    px(ctx, 6, 18, PANT, 4, 4);
+    px(ctx, 2, 20, SHOE, 5, 2);
+    px(ctx, 7, 21, SHOE, 4, 1);
+  } else if (animFrame === 2) {
+    px(ctx, 2, 18, PANT, 4, 4);
+    px(ctx, 6, 18, PANT, 4, 4);
+    px(ctx, 3, 21, SHOE, 4, 1);
+    px(ctx, 7, 20, SHOE, 4, 2);
+  } else if (animFrame === 3) {
+    px(ctx, 3, 18, PANT, 6, 4);
+    px(ctx, 2, 20, SHOE, 4, 2);
+    px(ctx, 7, 20, SHOE, 4, 2);
   } else {
-    px(ctx, 5, 17, PANT, 6);
-    px(ctx, 5, 18, PANT, 6);
-    px(ctx, 5, 19, PANT, 6);
-    px(ctx, 4, 20, SHOE, 4); px(ctx, 8, 20, SHOE, 4);
-    px(ctx, 3, 21, SHOE, 5); px(ctx, 8, 21, SHOE, 5);
+    px(ctx, 3, 18, PANT, 3, 4);
+    px(ctx, 6, 18, PANT, 3, 4);
+    px(ctx, 2, 21, SHOE, 4, 1);
+    px(ctx, 7, 21, SHOE, 4, 1);
+  }
+  /* fire flower dot sul cappello */
+  if (form === 'fire') {
+    px(ctx, 6, 0, '#ff8800', 2, 2);
+  }
+  /* big: aggiungi stivali grandi */
+  if (form === 'big' || form === 'fire') {
+    px(ctx, 1, 22, SHOE, 5, 2);
+    px(ctx, 6, 22, SHOE, 5, 2);
+  }
+}
+
+/**
+ * Disegna Andryx al contesto (x, y).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} x  - pixel mondo (gia' traslato in viewport dal chiamante)
+ * @param {number} y
+ * @param {'small'|'big'|'fire'} form
+ * @param {number} dir  - 1=destra, -1=sinistra
+ * @param {number} animFrame  - 0-3
+ * @param {number} iframes  - lampeggio se > 0
+ */
+export function drawAndryx(ctx, x, y, form, dir, animFrame, iframes) {
+  if (iframes > 0 && Math.floor(iframes / 4) % 2 === 0) return;
+  const w = 12;
+  withFlip(ctx, x, y, w, dir, (c) => drawAndryxBody(c, form, animFrame));
+}
+
+/* ─── SLOIMO (Goomba) 14×14 ─── */
+/**
+ * Disegna Sloimo (fungo arrabbiato) a (x, y).
+ */
+export function drawSlimo(ctx, x, y, animFrame) {
+  const A  = '#7a3a1e'; // marrone corpo
+  const B  = '#5a2010'; // scuro
+  const LT = '#c07050'; // luce
+  const YE = '#ffd040'; // piedi
+  ctx.save();
+  ctx.translate(x, y);
+  /* testa/corpo arrotondata */
+  px(ctx, 2, 1, A, 10, 2);
+  px(ctx, 1, 3, A, 12, 5);
+  px(ctx, 0, 5, A, 14, 3);
+  px(ctx, 1, 8, B, 12, 2);
+  /* highlight */
+  px(ctx, 3, 2, LT, 4, 2);
+  /* sopracciglia arrabbiate */
+  px(ctx, 1, 3, '#000', 3, 1);
+  px(ctx, 10, 3, '#000', 3, 1);
+  px(ctx, 2, 4, '#000', 2, 1);
+  px(ctx, 10, 4, '#000', 2, 1);
+  /* occhi */
+  px(ctx, 3, 5, '#fff', 3, 3);
+  px(ctx, 8, 5, '#fff', 3, 3);
+  px(ctx, 4, 6, '#000', 1, 2);
+  px(ctx, 9, 6, '#000', 1, 2);
+  /* piedi — animati */
+  const shift = animFrame % 2 === 0 ? 0 : 1;
+  px(ctx, 1,    10 + shift, YE, 5, 4);
+  px(ctx, 8,    10 - shift, YE, 5, 4);
+  ctx.restore();
+}
+
+/* ─── TARTARAX (Koopa) walk 14×22 ─── */
+/**
+ * Disegna Tartarax in piedi/camminante a (x, y).
+ */
+export function drawTartaraxWalk(ctx, x, y, dir, animFrame) {
+  const SH  = '#2d8a2d'; // guscio verde
+  const SH2 = '#1a5a1a'; // scuro guscio
+  const HEX = '#3daa3d'; // esagoni
+  const SK  = '#c8e87a'; // pelle
+  const EY  = '#fff';
+  ctx.save();
+  ctx.translate(x + (dir < 0 ? 14 : 0), y);
+  if (dir < 0) ctx.scale(-1, 1);
+
+  /* testa */
+  px(ctx, 2, 0, SK, 10, 6);
+  px(ctx, 1, 2, SK, 12, 4);
+  /* occhi */
+  px(ctx, 3, 1, EY, 3, 3);
+  px(ctx, 9, 1, EY, 3, 3);
+  px(ctx, 4, 2, '#000', 1, 2);
+  px(ctx, 10, 2, '#000', 1, 2);
+  /* collo */
+  px(ctx, 4, 6, SK, 6, 2);
+  /* guscio */
+  px(ctx, 1, 8, SH, 12, 9);
+  px(ctx, 0, 10, SH, 14, 5);
+  px(ctx, 1, 8, SH2, 12, 1);
+  px(ctx, 1, 16, SH2, 12, 1);
+  /* pattern esagono guscio */
+  px(ctx, 3, 10, HEX, 3, 3);
+  px(ctx, 8, 10, HEX, 3, 3);
+  px(ctx, 5, 13, HEX, 4, 3);
+  /* gambe animate */
+  const lOff = animFrame % 2 === 0 ? 0 : 2;
+  px(ctx, 2,  17 + lOff, SK, 4, 5);
+  px(ctx, 8,  17 - lOff, SK, 4, 5);
+  /* piedi */
+  px(ctx, 1,  20 + lOff, SK, 6, 2);
+  px(ctx, 7,  20 - lOff, SK, 6, 2);
+  ctx.restore();
+}
+
+/* ─── TARTARAX shell 14×14 ─── */
+/**
+ * Disegna il guscio di Tartarax a (x, y).
+ */
+export function drawTartaraxShell(ctx, x, y) {
+  const SH  = '#2d8a2d';
+  const SH2 = '#1a5a1a';
+  const HEX = '#3daa3d';
+  ctx.save();
+  ctx.translate(x, y);
+  px(ctx, 0,  0, SH,  14, 14);
+  px(ctx, 0,  0, SH2, 14,  1);
+  px(ctx, 0, 13, SH2, 14,  1);
+  px(ctx, 0,  0, SH2,  1, 14);
+  px(ctx, 13, 0, SH2,  1, 14);
+  /* esagoni */
+  px(ctx, 2, 3, HEX, 3, 3);
+  px(ctx, 9, 3, HEX, 3, 3);
+  px(ctx, 5, 8, HEX, 4, 3);
+  /* highlight */
+  px(ctx, 2, 1, 'rgba(255,255,255,0.3)', 5, 2);
+  ctx.restore();
+}
+
+/* ─── PALLA DI FUOCO 8×8 ─── */
+/**
+ * Disegna una palla di fuoco ruotante a (x, y).
+ */
+export function drawFireball(ctx, x, y, angle) {
+  ctx.save();
+  ctx.translate(x + 4, y + 4);
+  ctx.rotate(angle);
+  /* nucleo */
+  ctx.fillStyle = '#ffee44';
+  ctx.fillRect(-3, -3, 6, 6);
+  /* bordo caldo */
+  ctx.fillStyle = '#ff6600';
+  ctx.fillRect(-4, -2, 2, 4);
+  ctx.fillRect( 2, -2, 2, 4);
+  ctx.fillRect(-2, -4, 4, 2);
+  ctx.fillRect(-2,  2, 4, 2);
+  /* bagliore esterno */
+  ctx.fillStyle = 'rgba(255,200,0,0.5)';
+  ctx.fillRect(-4, -4, 8, 8);
+  ctx.restore();
+}
+
+/* ─── MONETA 8×8 ─── */
+/**
+ * Disegna una moneta (effetto spin) a (x, y). animFrame 0-3.
+ */
+export function drawCoin(ctx, x, y, animFrame) {
+  const f = animFrame % 4;
+  ctx.save();
+  ctx.translate(x, y);
+  if (f === 0) {
+    /* faccia piena */
+    ctx.fillStyle = '#ffd040';
+    ctx.fillRect(1, 0, 6, 8);
+    ctx.fillRect(0, 1, 8, 6);
+    ctx.fillStyle = '#a07020';
+    ctx.fillRect(1, 7, 6, 1);
+    ctx.fillStyle = '#fff8a0';
+    ctx.fillRect(2, 1, 2, 3);
+  } else if (f === 1 || f === 3) {
+    /* di lato */
+    ctx.fillStyle = '#ffd040';
+    ctx.fillRect(2, 0, 4, 8);
+    ctx.fillStyle = '#a07020';
+    ctx.fillRect(2, 7, 4, 1);
+  } else {
+    /* sottile */
+    ctx.fillStyle = '#ffd040';
+    ctx.fillRect(3, 0, 2, 8);
   }
   ctx.restore();
 }
 
-/** Restituisce la canvas dello sprite di Andryx, con cache. */
-export function getAndryxSprite(state, dir, big = false) {
-  const k = `andryx_${state}_${dir > 0 ? 'r' : 'l'}_${big ? 'b' : 's'}`;
-  if (cache.has(k)) return cache.get(k);
-  const h = big ? 32 : 24;
-  const c = makeCanvas(16, h);
-  const ctx = c.getContext('2d');
-  if (big) {
-    /* "big": disegna lo small scalato 1.33x verticalmente con bottom centrato */
-    const tmp = makeCanvas(16, 24);
-    drawAndryxSmall(tmp.getContext('2d'), state, dir);
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(tmp, 0, 0, 16, 24, 0, 0, 16, 32);
-  } else {
-    drawAndryxSmall(ctx, state, dir);
-  }
-  cache.set(k, c);
-  return c;
-}
-
-/* ─── NEMICI ─── */
-
-/* Sloimo: blob viola che cammina. 2 frame. */
-function drawSloimo(ctx, frame = 0) {
-  const A = '#9c4ad8';
-  const B = '#5a1e7a';
-  const C2 = '#c08aff';
-  /* corpo */
-  px(ctx, 3, 6 - (frame === 1 ? 1 : 0), A, 10);
-  px(ctx, 2, 7, A, 12);
-  px(ctx, 1, 8, A, 14);
-  px(ctx, 1, 9, A, 14);
-  px(ctx, 1, 10, A, 14);
-  px(ctx, 1, 11, A, 14);
-  px(ctx, 1, 12, B, 14);
-  px(ctx, 2, 13, B, 12);
+/* ─── POWER-UP CRISTALLO 12×12 ─── */
+export function drawPowerupCrystal(ctx, x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+  const A  = '#22e0ff';
+  const B  = '#0080a0';
+  const LT = '#a0f8ff';
+  /* corpo esagonale */
+  px(ctx, 4, 0, A, 4, 2);
+  px(ctx, 2, 2, A, 8, 3);
+  px(ctx, 1, 5, A, 10, 3);
+  px(ctx, 2, 8, B, 8, 3);
+  px(ctx, 4, 11, B, 4, 1);
   /* highlight */
-  px(ctx, 4, 8, C2, 2);
-  px(ctx, 4, 9, C2, 1);
-  /* occhi */
-  px(ctx, 5, 9, '#fff', 2);
-  px(ctx, 9, 9, '#fff', 2);
-  px(ctx, 6, 10, '#000', 1);
-  px(ctx, 10, 10, '#000', 1);
-  /* base wobble */
-  if (frame === 0) {
-    px(ctx, 1, 13, B, 14);
-  } else {
-    px(ctx, 0, 13, B, 16);
-  }
+  px(ctx, 4, 1, LT, 2, 2);
+  px(ctx, 3, 3, LT, 2, 1);
+  ctx.restore();
 }
 
-export function getSloimoSprite(frame = 0) {
-  const k = `sloimo_${frame}`;
-  if (cache.has(k)) return cache.get(k);
-  const c = makeCanvas(16, 16);
-  drawSloimo(c.getContext('2d'), frame);
-  cache.set(k, c);
-  return c;
-}
-
-/* Pipistrellix: pipistrello blu. 2 frame ali. */
-function drawBat(ctx, frame = 0) {
-  const A = '#3a2a5a';
-  const B = '#5a4080';
-  const C2 = '#8060a0';
-  /* corpo centrale */
-  px(ctx, 6, 5, A, 4);
-  px(ctx, 5, 6, A, 6);
-  px(ctx, 5, 7, A, 6);
-  px(ctx, 5, 8, B, 6);
-  px(ctx, 6, 9, B, 4);
-  /* orecchie */
-  px(ctx, 5, 4, A, 1); px(ctx, 10, 4, A, 1);
-  px(ctx, 6, 4, A, 1); px(ctx, 9, 4, A, 1);
-  /* occhi rossi */
-  px(ctx, 6, 6, '#ff4040', 1);
-  px(ctx, 9, 6, '#ff4040', 1);
-  /* ali */
-  if (frame === 0) {
-    /* ali stese */
-    px(ctx, 0, 6, B, 5);
-    px(ctx, 1, 7, C2, 4);
-    px(ctx, 2, 8, B, 3);
-    px(ctx, 11, 6, B, 5);
-    px(ctx, 11, 7, C2, 4);
-    px(ctx, 11, 8, B, 3);
-  } else {
-    /* ali su */
-    px(ctx, 1, 4, B, 4);
-    px(ctx, 2, 5, C2, 3);
-    px(ctx, 3, 6, B, 2);
-    px(ctx, 11, 4, B, 4);
-    px(ctx, 11, 5, C2, 3);
-    px(ctx, 11, 6, B, 2);
-  }
-}
-
-export function getBatSprite(frame = 0) {
-  const k = `bat_${frame}`;
-  if (cache.has(k)) return cache.get(k);
-  const c = makeCanvas(16, 16);
-  drawBat(c.getContext('2d'), frame);
-  cache.set(k, c);
-  return c;
-}
-
-/* Spinazzo: cespuglio di spuntoni grigi. Statico. */
-function drawSpike(ctx) {
-  const A = '#888';
-  const B = '#444';
-  const C2 = '#bbb';
-  /* base */
-  px(ctx, 1, 12, B, 14);
-  px(ctx, 1, 13, B, 14);
-  px(ctx, 0, 14, B, 16);
-  px(ctx, 0, 15, B, 16);
-  /* spuntoni triangolari */
-  for (let i = 0; i < 4; i++) {
-    const x = 1 + i * 4;
-    px(ctx, x, 11, A, 3);
-    px(ctx, x + 1, 9, A, 1);
-    px(ctx, x + 1, 10, A, 1);
-    px(ctx, x, 11, C2, 1);
-  }
-  /* punte appuntite */
-  px(ctx, 2, 8, A, 1);
-  px(ctx, 6, 7, A, 1);
-  px(ctx, 10, 8, A, 1);
-  px(ctx, 14, 7, A, 1);
-}
-
-export function getSpikeSprite() {
-  const k = 'spike';
-  if (cache.has(k)) return cache.get(k);
-  const c = makeCanvas(16, 16);
-  drawSpike(c.getContext('2d'));
-  cache.set(k, c);
-  return c;
-}
-
-/* ─── POWER-UP ─── */
-
-function drawCrystal(ctx, t = 0) {
-  const A = '#22e0ff';
-  const B = '#0080a0';
-  const C2 = '#a0f0ff';
-  const off = Math.sin(t * 0.1) * 1;
-  /* esagono cristallo */
-  px(ctx, 5, 4 + off, A, 6);
-  px(ctx, 4, 5 + off, A, 8);
-  px(ctx, 3, 6 + off, A, 10);
-  px(ctx, 3, 7 + off, A, 10);
-  px(ctx, 3, 8 + off, A, 10);
-  px(ctx, 3, 9 + off, B, 10);
-  px(ctx, 4, 10 + off, B, 8);
-  px(ctx, 5, 11 + off, B, 6);
-  /* highlight */
-  px(ctx, 5, 5 + off, C2, 2);
-  px(ctx, 5, 6 + off, C2, 1);
-}
-
-export function getCrystalSprite(t = 0) {
-  const f = Math.floor(t / 8) % 4;
-  const k = `crystal_${f}`;
-  if (cache.has(k)) return cache.get(k);
-  const c = makeCanvas(16, 16);
-  drawCrystal(c.getContext('2d'), f * 2);
-  cache.set(k, c);
-  return c;
-}
-
-function drawStar(ctx) {
-  const A = '#ffd040';
+/* ─── POWER-UP STELLA 12×12 ─── */
+export function drawPowerupStar(ctx, x, y, frame) {
+  ctx.save();
+  ctx.translate(x, y);
+  const bright = (frame % 4 < 2);
+  const A = bright ? '#ffd040' : '#ffb800';
   const B = '#ff8000';
-  /* stella 5 punte stilizzata */
-  px(ctx, 7, 2, A, 2);
-  px(ctx, 6, 3, A, 4);
-  px(ctx, 5, 4, A, 6);
-  px(ctx, 1, 5, A, 14);
-  px(ctx, 2, 6, A, 12);
-  px(ctx, 3, 7, A, 10);
-  px(ctx, 4, 8, A, 8);
-  px(ctx, 4, 9, B, 8);
-  px(ctx, 3, 10, B, 4); px(ctx, 9, 10, B, 4);
-  px(ctx, 2, 11, B, 3); px(ctx, 11, 11, B, 3);
+  /* stella a 5 punte stilizzata */
+  px(ctx, 5, 0, A, 2, 2);
+  px(ctx, 3, 2, A, 6, 2);
+  px(ctx, 0, 4, A, 12, 3);
+  px(ctx, 2, 7, A, 8, 2);
+  px(ctx, 1, 9, B, 4, 2);
+  px(ctx, 7, 9, B, 4, 2);
   /* occhietti */
-  px(ctx, 6, 7, '#000', 1);
-  px(ctx, 9, 7, '#000', 1);
+  px(ctx, 4, 5, '#000', 1, 1);
+  px(ctx, 7, 5, '#000', 1, 1);
+  ctx.restore();
 }
 
-export function getStarSprite() {
-  const k = 'star';
-  if (cache.has(k)) return cache.get(k);
-  const c = makeCanvas(16, 16);
-  drawStar(c.getContext('2d'));
-  cache.set(k, c);
-  return c;
-}
-
-function drawFeather(ctx) {
-  const A = '#ffffff';
-  const B = '#a0d8ff';
+/* ─── POWER-UP PIUMA 12×12 ─── */
+export function drawPowerupFeather(ctx, x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+  const W  = '#ffffff';
+  const BL = '#a0d8ff';
   const C2 = '#5090c0';
   /* asta */
-  px(ctx, 8, 2, C2, 1);
-  px(ctx, 8, 3, C2, 1);
-  px(ctx, 8, 4, C2, 1);
-  px(ctx, 8, 5, C2, 1);
-  px(ctx, 8, 6, C2, 1);
-  px(ctx, 8, 7, C2, 1);
-  px(ctx, 8, 8, C2, 1);
-  px(ctx, 8, 9, C2, 1);
-  px(ctx, 8, 10, C2, 1);
-  px(ctx, 8, 11, C2, 1);
-  px(ctx, 8, 12, C2, 1);
-  px(ctx, 8, 13, C2, 1);
-  /* barbe */
-  for (let i = 3; i <= 12; i++) {
-    const w = i < 6 ? 2 : i < 9 ? 4 : 5;
-    px(ctx, 8 - w, i, A, w);
-    px(ctx, 9, i, B, w);
-  }
+  for (let i = 2; i <= 11; i++) px(ctx, 5, i, C2, 1, 1);
   /* punta */
-  px(ctx, 7, 1, A, 3);
-}
-
-export function getFeatherSprite() {
-  const k = 'feather';
-  if (cache.has(k)) return cache.get(k);
-  const c = makeCanvas(16, 16);
-  drawFeather(c.getContext('2d'));
-  cache.set(k, c);
-  return c;
-}
-
-/* ─── COIN ─── */
-function drawCoin(ctx, frame = 0) {
-  const A = '#ffd040';
-  const B = '#a07020';
-  const C2 = '#fff080';
-  /* effetto rotazione: 3 frame */
-  if (frame === 0) {
-    /* faccia piena */
-    px(ctx, 5, 4, A, 6);
-    px(ctx, 4, 5, A, 8);
-    px(ctx, 4, 6, A, 8);
-    px(ctx, 4, 7, A, 8);
-    px(ctx, 4, 8, A, 8);
-    px(ctx, 4, 9, A, 8);
-    px(ctx, 4, 10, B, 8);
-    px(ctx, 5, 11, B, 6);
-    px(ctx, 6, 6, C2, 1);
-    px(ctx, 6, 7, '#000', 1);
-    px(ctx, 6, 8, '#000', 1);
-  } else if (frame === 1) {
-    /* di lato */
-    px(ctx, 7, 4, A, 2);
-    px(ctx, 6, 5, A, 4);
-    px(ctx, 6, 6, A, 4);
-    px(ctx, 6, 7, A, 4);
-    px(ctx, 6, 8, A, 4);
-    px(ctx, 6, 9, A, 4);
-    px(ctx, 6, 10, B, 4);
-    px(ctx, 7, 11, B, 2);
-  } else {
-    /* sottile */
-    px(ctx, 7, 4, A, 2);
-    px(ctx, 7, 5, A, 2);
-    px(ctx, 7, 6, A, 2);
-    px(ctx, 7, 7, A, 2);
-    px(ctx, 7, 8, A, 2);
-    px(ctx, 7, 9, A, 2);
-    px(ctx, 7, 10, B, 2);
-    px(ctx, 7, 11, B, 2);
+  px(ctx, 4, 0, W, 4, 2);
+  /* barbe */
+  for (let i = 3; i <= 10; i++) {
+    const w = i < 6 ? 2 : i < 9 ? 4 : 5;
+    px(ctx, 5 - w, i, W, w, 1);
+    px(ctx, 6, i, BL, Math.min(w, 5), 1);
   }
+  ctx.restore();
 }
 
-export function getCoinSprite(t = 0) {
-  const f = Math.floor(t / 8) % 4;
-  const idx = f === 3 ? 1 : f; /* 0,1,2,1 */
-  const k = `coin_${idx}`;
-  if (cache.has(k)) return cache.get(k);
-  const c = makeCanvas(16, 16);
-  drawCoin(c.getContext('2d'), idx);
-  cache.set(k, c);
-  return c;
+/* ─── POWER-UP FIRE FLOWER 12×12 ─── */
+export function drawPowerupFire(ctx, x, y, frame) {
+  ctx.save();
+  ctx.translate(x, y);
+  const anim = (frame % 6 < 3);
+  /* stelo verde */
+  px(ctx, 5, 7, '#2a7a2a', 2, 5);
+  /* petali */
+  const PC = anim ? '#ff4444' : '#ff8800';
+  px(ctx, 4, 2, PC, 4, 2);
+  px(ctx, 1, 4, PC, 3, 3);
+  px(ctx, 8, 4, PC, 3, 3);
+  px(ctx, 3, 7, PC, 6, 2);
+  /* centro giallo */
+  px(ctx, 4, 4, '#ffd040', 4, 3);
+  /* occhietti */
+  px(ctx, 5, 5, '#000', 1, 1);
+  px(ctx, 7, 5, '#000', 1, 1);
+  ctx.restore();
 }
 
-/* ─── BANDIERA / CHECKPOINT ─── */
-function drawFlag(ctx, color = '#ffd040', poleColor = '#444') {
+/* ─── CHECKPOINT FLAG 16×20 ─── */
+/**
+ * Disegna una bandierina checkpoint a (x, y). reached: bool.
+ */
+export function drawCheckpointFlag(ctx, x, y, reached) {
+  ctx.save();
+  ctx.translate(x, y);
   /* asta */
-  for (let y = 0; y < 16; y++) px(ctx, 7, y, poleColor, 1);
+  px(ctx, 7, 0, '#446080', 2, 20);
   /* bandiera triangolare */
-  for (let i = 0; i < 6; i++) {
-    px(ctx, 8, 1 + i, color, 6 - i);
+  const col = reached ? '#22c0ff' : '#8899aa';
+  for (let i = 0; i < 8; i++) {
+    px(ctx, 9, 1 + i, col, 8 - i, 1);
   }
+  /* pallina cima */
+  px(ctx, 6, 0, '#88bbcc', 4, 2);
+  ctx.restore();
 }
 
-export function getGoalFlagSprite() {
-  const k = 'goal_flag';
-  if (cache.has(k)) return cache.get(k);
-  const c = makeCanvas(16, 16);
-  drawFlag(c.getContext('2d'), '#ffd040', '#a08040');
-  cache.set(k, c);
-  return c;
-}
-
-export function getCheckpointSprite() {
-  const k = 'checkpoint';
-  if (cache.has(k)) return cache.get(k);
-  const c = makeCanvas(16, 16);
-  drawFlag(c.getContext('2d'), '#22c0ff', '#446080');
-  cache.set(k, c);
-  return c;
+/* ─── PALO GOAL 16×h ─── */
+/**
+ * Disegna il palo della bandiera goal (altezza h pixel) a (x, y).
+ */
+export function drawGoalPole(ctx, x, y, h) {
+  ctx.save();
+  ctx.translate(x, y);
+  /* palo metallico */
+  px(ctx, 7, 0, '#888', 2, h);
+  px(ctx, 7, 0, '#aaa', 1, h); // highlight
+  /* pallina in cima */
+  px(ctx, 5, 0, '#ffd040', 6, 4);
+  px(ctx, 4, 1, '#ffd040', 8, 2);
+  px(ctx, 6, 0, '#fff8c0', 2, 2); // highlight pallina
+  /* bandiera */
+  px(ctx, 9, 4,  '#ffd040', 8, 2);
+  px(ctx, 9, 6,  '#ffd040', 6, 2);
+  px(ctx, 9, 8,  '#ffd040', 4, 2);
+  px(ctx, 9, 10, '#ffd040', 2, 2);
+  px(ctx, 9, 4,  '#ff8000', 8, 1); // bordo bandiera
+  ctx.restore();
 }

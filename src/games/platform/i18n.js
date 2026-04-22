@@ -1,9 +1,5 @@
 /**
  * Andryx Jump — i18n IT/EN/ES.
- *
- * Il motore non puo` usare il LinguaContext React, quindi memorizza la
- * lingua corrente a livello di modulo. GamePage.jsx la imposta tramite
- * `setPlatformLang(lingua)` all'avvio e al cambio di lingua.
  */
 
 const LINGUE_OK = { it: true, en: true, es: true };
@@ -20,7 +16,7 @@ export function getPlatformLang() {
 const IT = {
   meta: {
     description: 'Platformer 2D originale a scorrimento laterale: 10 mondi a tema Andryx, salti acrobatici, power-up e nemici originali.',
-    instructions: 'Frecce/A-D per muoverti · Spazio/W/Z per saltare (più tieni premuto, più salti alto) · Shift per correre · Salta sui nemici per sconfiggerli. Raggiungi la bandiera dorata!',
+    instructions: 'Frecce/A-D per muoverti · Spazio/W/Z per saltare (piu tieni premuto, piu salti alto) · Shift per correre · X/Sec per palle di fuoco · Salta sui nemici. Raggiungi la bandiera dorata!',
     gameOverTitle: 'Game Over',
     hubDescription: 'Platformer originale stile arcade: 10 mondi, power-up, nemici, classifica dedicata.',
   },
@@ -46,19 +42,23 @@ const IT = {
     bestTime: 'Miglior tempo',
     bestScore: 'Record',
     newRecord: 'NUOVO RECORD!',
-    crystalGet: 'Cristallo! Ora resisti a un colpo in più',
+    crystalGet: 'Cristallo! Ora sei Grande Andryx!',
     starGet: 'Stella di Pixel! Invincibile per 8 secondi',
     featherGet: 'Piuma! Doppio salto per 12 secondi',
+    fireGet: 'Fiore di fuoco! Puoi sparare palle di fuoco',
     checkpointReached: 'Checkpoint raggiunto',
     sessionScore: 'Punteggio sessione',
     totalCoins: 'Monete totali',
+    tartaraxStomp: 'Tartarax neutralizzato!',
+    shellKick: 'Guscio lanciato!',
+    bigGet: 'Cristallo! Ora sei Grande Andryx!',
   },
 };
 
 const EN = {
   meta: {
     description: 'Original 2D side-scrolling platformer: 10 Andryx-themed worlds, acrobatic jumps, power-ups and original enemies.',
-    instructions: 'Arrows/A-D to move · Space/W/Z to jump (hold for higher jump) · Shift to run · Jump on enemies to defeat them. Reach the golden flag!',
+    instructions: 'Arrows/A-D to move · Space/W/Z to jump (hold for higher jump) · Shift to run · X/Sec for fireballs · Jump on enemies to defeat them. Reach the golden flag!',
     gameOverTitle: 'Game Over',
     hubDescription: 'Original arcade-style platformer: 10 worlds, power-ups, enemies, dedicated leaderboard.',
   },
@@ -84,28 +84,32 @@ const EN = {
     bestTime: 'Best time',
     bestScore: 'Best score',
     newRecord: 'NEW RECORD!',
-    crystalGet: 'Crystal! You can now take one extra hit',
+    crystalGet: 'Crystal! Now you are Big Andryx!',
     starGet: 'Pixel Star! Invincible for 8 seconds',
     featherGet: 'Feather! Double jump for 12 seconds',
+    fireGet: 'Fire Flower! You can shoot fireballs',
     checkpointReached: 'Checkpoint reached',
     sessionScore: 'Session score',
     totalCoins: 'Total coins',
+    tartaraxStomp: 'Tartarax neutralized!',
+    shellKick: 'Shell kicked!',
+    bigGet: 'Crystal! Now you are Big Andryx!',
   },
 };
 
 const ES = {
   meta: {
-    description: 'Plataformas 2D original de scroll lateral: 10 mundos temáticos Andryx, saltos acrobáticos, power-ups y enemigos originales.',
-    instructions: 'Flechas/A-D para moverte · Espacio/W/Z para saltar (manten para saltar más alto) · Shift para correr · Salta sobre enemigos para vencerlos. Alcanza la bandera dorada!',
+    description: 'Plataformas 2D original de scroll lateral: 10 mundos tematicos Andryx, saltos acrobaticos, power-ups y enemigos originales.',
+    instructions: 'Flechas/A-D para moverte · Espacio/W/Z para saltar (manten para saltar mas alto) · Shift para correr · X/Sec para bolas de fuego · Salta sobre enemigos. Alcanza la bandera dorada!',
     gameOverTitle: 'Game Over',
-    hubDescription: 'Plataformas arcade original: 10 mundos, power-ups, enemigos, clasificación dedicada.',
+    hubDescription: 'Plataformas arcade original: 10 mundos, power-ups, enemigos, clasificacion dedicada.',
   },
   ui: {
     coins: 'Monedas',
     lives: 'Vidas',
     time: 'Tiempo',
     world: 'Mundo',
-    score: 'Puntuación',
+    score: 'Puntuacion',
     pause: 'PAUSA',
     resume: 'Reanudar',
     quit: 'Salir',
@@ -120,25 +124,27 @@ const ES = {
     locked: 'Bloqueado',
     completed: 'Completado',
     bestTime: 'Mejor tiempo',
-    bestScore: 'Récord',
-    newRecord: '¡NUEVO RÉCORD!',
-    crystalGet: '¡Cristal! Ahora resistes un golpe más',
+    bestScore: 'Record',
+    newRecord: '¡NUEVO RECORD!',
+    crystalGet: '¡Cristal! ¡Ahora eres el Gran Andryx!',
     starGet: '¡Estrella Pixel! Invencible por 8 segundos',
     featherGet: '¡Pluma! Doble salto por 12 segundos',
+    fireGet: '¡Flor de fuego! Puedes disparar bolas de fuego',
     checkpointReached: 'Checkpoint alcanzado',
-    sessionScore: 'Puntuación de sesión',
+    sessionScore: 'Puntuacion de sesion',
     totalCoins: 'Monedas totales',
+    tartaraxStomp: '¡Tartarax neutralizado!',
+    shellKick: '¡Concha lanzada!',
+    bigGet: '¡Cristal! ¡Ahora eres el Gran Andryx!',
   },
 };
 
 const CATALOG = { it: IT, en: EN, es: ES };
 
-/** Restituisce un campo di meta tradotto (description/instructions/...). */
 export function getMetaText(key) {
   return CATALOG[linguaCorrente]?.meta?.[key] || IT.meta[key] || '';
 }
 
-/** Restituisce una stringa UI tradotta. */
 export function t(key) {
   return CATALOG[linguaCorrente]?.ui?.[key] || IT.ui[key] || key;
 }

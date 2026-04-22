@@ -128,6 +128,12 @@ export const SFX = {
   checkpoint:  () => { tone(659, 0.08, 'triangle', 0.18); setTimeout(() => tone(988, 0.10, 'triangle', 0.18), 80); setTimeout(() => tone(1318, 0.14, 'square', 0.18), 170); },
   oneup:       () => { const s = [523, 659, 784, 1046, 1318]; s.forEach((f, i) => setTimeout(() => tone(f, 0.10, 'triangle', 0.20), i * 80)); },
   enemyShot:   () => sweep(800, 200, 0.08, 'square', 0.14),
+  fireball:    () => sweep(440, 880, 0.08, 'sawtooth', 0.15),
+  fireballHit: () => {
+    tone(200, 0.05, 'square', 0.2);
+    tone(100, 0.1, 'square', 0.15);
+  },
+  kick:        () => sweep(300, 600, 0.06, 'square', 0.2),
 };
 
 /* ─── Musica procedurale per mondo ─── */

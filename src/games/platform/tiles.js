@@ -1,118 +1,119 @@
 /**
  * Andryx Jump — sistema tile.
  *
- * Una mappa è un array di stringhe; ogni char rappresenta un tile.
- * I tile sono 16x16 pixel logici (TILE_SIZE).
- *
  * Char legend:
  *   '.'  vuoto (cielo)
- *   '#'  ground solido (mattone)
- *   'g'  grass top (solido, variante visiva: cima erbosa)
- *   'G'  grass underground (solido, marrone scuro)
- *   'b'  block crystal (solido, breakable se cresci)
- *   '?'  question block (con coin / power-up nascosto)
- *   'B'  block usato (vuoto, solido)
+ *   '#'  ground solido
+ *   'g'  grass top (solido, cima erbosa)
+ *   'G'  earth/sottosuolo (solido, marrone)
+ *   'b'  mattone breakable (big Andryx lo rompe)
+ *   '?'  question block (nasconde power-up)
+ *   'B'  question block usato (vuoto, solido)
  *   'p'  one-way platform
- *   'l'  lava (tocco = morte)
- *   'w'  acqua (movimento rallentato)
+ *   'l'  lava (morte al tocco)
+ *   'w'  acqua (rallenta)
  *   'i'  ghiaccio (solido, friction bassa)
- *   'c'  coin (collezionabile)
- *   'C'  checkpoint (bandierina blu)
- *   'F'  goal flag (bandiera dorata, fine livello)
- *   'P'  player spawn
- *   's'  spawn Sloimo
- *   'v'  spawn Pipistrellix (bat che vola sinusoide)
- *   'x'  spawn Spinazzo (statico, danneggia al tocco)
+ *   'c'  moneta
+ *   'C'  checkpoint
+ *   'F'  goal flag (fine livello)
+ *   '|'  palo goal (solido decorativo)
+ *   'P'  spawn player
+ *   's'  spawn Sloimo (goomba)
+ *   'k'  spawn Tartarax (koopa)
+ *   'x'  spawn Spinazzo (spike statico)
  *   '*'  spawn power-up cristallo (cresci)
  *   '$'  spawn power-up stella (invuln)
  *   '~'  spawn power-up piuma (doppio salto)
- *   't'  tronco / albero (decorativo solido sottile)
+ *   '@'  spawn fire flower (forma fire)
+ *   '['  pipe cap sinistra (solido)
+ *   ']'  pipe cap destra (solido)
+ *   '{'  pipe corpo sinistra (solido)
+ *   '}'  pipe corpo destra (solido)
+ *   't'  tronco (decorativo solido)
  *   '='  ponte di legno (solido)
- *   '|'  palo (decorativo solido sottile)
  */
 
 export const TILE_SIZE = 16;
 
 export const TILES = {
-  EMPTY:     '.',
-  GROUND:    '#',
-  GRASS:     'g',
-  EARTH:     'G',
-  BRICK:     'b',
-  QUESTION:  '?',
-  USED:      'B',
-  PLATFORM:  'p',
-  LAVA:      'l',
-  WATER:     'w',
-  ICE:       'i',
-  COIN:      'c',
-  CHECKPOINT:'C',
-  GOAL:      'F',
-  PLAYER:    'P',
-  SLIME:     's',
-  BAT:       'v',
-  SPIKE:     'x',
+  EMPTY:      '.',
+  GROUND:     '#',
+  GRASS:      'g',
+  EARTH:      'G',
+  BRICK:      'b',
+  QUESTION:   '?',
+  USED:       'B',
+  PLATFORM:   'p',
+  LAVA:       'l',
+  WATER:      'w',
+  ICE:        'i',
+  COIN:       'c',
+  CHECKPOINT: 'C',
+  GOAL:       'F',
+  POLE:       '|',
+  PLAYER:     'P',
+  SLIME:      's',
+  KOOPA:      'k',
+  SPIKE:      'x',
   POW_CRYSTAL:'*',
-  POW_STAR:  '$',
+  POW_STAR:   '$',
   POW_FEATHER:'~',
-  TRUNK:     't',
-  BRIDGE:    '=',
-  POLE:      '|',
+  POW_FIRE:   '@',
+  PIPE_CAP_L: '[',
+  PIPE_CAP_R: ']',
+  PIPE_BODY_L:'{',
+  PIPE_BODY_R:'}',
+  TRUNK:      't',
+  BRIDGE:     '=',
 };
 
-/** True se il tile è solido (impedisce movimento). */
+/** True se il tile e solido (impedisce movimento). */
 export function isSolid(ch) {
-  return ch === TILES.GROUND || ch === TILES.GRASS || ch === TILES.EARTH ||
-         ch === TILES.BRICK  || ch === TILES.QUESTION || ch === TILES.USED ||
-         ch === TILES.ICE    || ch === TILES.BRIDGE   || ch === TILES.TRUNK ||
-         ch === TILES.POLE;
+  return ch === '#' || ch === 'g' || ch === 'G' ||
+         ch === 'b' || ch === '?' || ch === 'B' ||
+         ch === 'i' || ch === '=' || ch === 't' ||
+         ch === '[' || ch === ']' || ch === '{' || ch === '}';
 }
 
-/** True se il tile è una piattaforma one-way (collide solo da sopra). */
-export function isOneWay(ch) {
-  return ch === TILES.PLATFORM;
-}
+/** True se il tile e una piattaforma one-way. */
+export function isOneWay(ch) { return ch === 'p'; }
 
-/** True se il tile è dannoso al contatto. */
-export function isLava(ch) { return ch === TILES.LAVA; }
+/** True se il tile uccide al contatto. */
+export function isLava(ch) { return ch === 'l'; }
 
-/** True se il tile è acqua. */
-export function isWater(ch) { return ch === TILES.WATER; }
+/** True se il tile e acqua. */
+export function isWater(ch) { return ch === 'w'; }
 
-/** True se il tile è ghiaccio (solido + friction bassa). */
-export function isIce(ch) { return ch === TILES.ICE; }
+/** True se il tile e ghiaccio (solido + friction ridotta). */
+export function isIce(ch) { return ch === 'i'; }
 
-/** Char → entity-spawn type, o null se non spawnabile. */
+/** Char → tipo entita da spawnare, o null. */
 export function getSpawnType(ch) {
   switch (ch) {
-    case TILES.SLIME: return 'slime';
-    case TILES.BAT:   return 'bat';
-    case TILES.SPIKE: return 'spike';
-    case TILES.POW_CRYSTAL: return 'pow_crystal';
-    case TILES.POW_STAR:    return 'pow_star';
-    case TILES.POW_FEATHER: return 'pow_feather';
-    default: return null;
+    case 's': return 'slime';
+    case 'k': return 'koopa';
+    case 'x': return 'spike';
+    case '*': return 'pow_crystal';
+    case '$': return 'pow_star';
+    case '~': return 'pow_feather';
+    case '@': return 'pow_fire';
+    default:  return null;
   }
 }
 
-/** True se il tile è raccoglibile (coin/power) — viene rimosso al pickup. */
+/** True se il tile e raccoglibile (moneta/power-up nel tile). */
 export function isPickup(ch) {
-  return ch === TILES.COIN || ch === TILES.POW_CRYSTAL ||
-         ch === TILES.POW_STAR || ch === TILES.POW_FEATHER;
+  return ch === 'c' || ch === '*' || ch === '$' || ch === '~' || ch === '@';
 }
 
 /**
- * Helper di lettura tile da una mappa:
- * grid è array di stringhe, restituisce '.' se fuori bounds (cielo/aria).
- * Gli array di righe sono indicizzati top-down (row 0 = in alto).
- * Per le tile sotto il livello giocabile (oltre l'ultima riga) restituiamo
- * GROUND in modo che il giocatore non possa "cadere all'infinito" dentro
- * un buco senza morire — viene gestito dall'engine come fall-out.
+ * Legge il tile da una griglia (array di stringhe o array di char-array).
+ * Restituisce '.' fuori dai limiti (sopra/sotto); '#' per le pareti laterali.
  */
 export function getTile(grid, col, row) {
-  if (row < 0) return TILES.EMPTY;
-  if (row >= grid.length) return TILES.EMPTY; // sotto: vuoto → death-zone
+  if (row < 0) return '.';
+  if (row >= grid.length) return '.';
   const r = grid[row];
-  if (col < 0 || col >= r.length) return TILES.GROUND; // pareti laterali invisibili
+  if (col < 0 || col >= r.length) return '#';
   return r[col];
 }
