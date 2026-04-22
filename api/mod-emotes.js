@@ -13,11 +13,12 @@ import {
  * POST /api/mod-emotes  { action: 'seventv_remove', emote_id }
  * POST /api/mod-emotes  { action: 'seventv_rename', emote_id, name }
  * POST /api/mod-emotes  { action: 'seventv_set_token', token }   ← BROADCASTER ONLY
+ * POST /api/mod-emotes  { action: 'seventv_upload', name, contentType, dataBase64, tags?, addToSet? }
  *
  * NOTE permessi:
  *   - Tutte le mutation 7TV richiedono token utente 7TV salvato in Redis
  *     (`mod:seventv:token`, TTL 90gg). Solo il broadcaster lo può impostare.
- *   - I MOD possono cercare/leggere; possono fare add/remove/rename SE
+ *   - I MOD possono cercare/leggere; possono fare add/remove/rename/upload SE
  *     il broadcaster ha salvato un token (essi usano quel token, perché 7TV
  *     non ha distinzione moderator/broadcaster come Twitch — è il broadcaster
  *     a configurare gli "editor" lato 7TV).
@@ -26,6 +27,24 @@ import {
  *   mod:seventv:token         → token utente 7TV (TTL 90gg)
  *   mod:seventv:set_id_cache  → emote_set ID del canale (TTL 24h)
  */
+
+/* Aumentato il limite del body parser per accettare upload immagini fino a ~6 MB
+   (base64 ~33% overhead → cap pratico immagine raw ≈ 4.5 MB). */
+export const config = {
+  api: { bodyParser: { sizeLimit: '8mb' } },
+};
+
+/* Tipi MIME accettati per l'upload (supportati da 7TV) */
+const SEVENTV_UPLOAD_MIME = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'image/apng',
+  'image/avif',
+]);
+const SEVENTV_UPLOAD_MAX_BYTES = 6 * 1024 * 1024; // 6 MB raw
+const SEVENTV_NAME_RE = /^[A-Za-z0-9_-]{2,25}$/;
 
 const SEVENTV_TOKEN_KEY  = 'mod:seventv:token';
 const SEVENTV_TOKEN_TTL  = 90 * 24 * 60 * 60;
@@ -243,6 +262,144 @@ export default async function handler(req, res) {
       } catch (e) {
         return res.status(e.status || 500).json({ code: 'seventv_error', error: e.message });
       }
+    }
+
+    /* UPLOAD — carica un'immagine custom su 7TV e (opzionalmente) la aggiunge al set del canale */
+    if (action === 'seventv_upload') {
+      const { name, contentType, dataBase64, tags, addToSet } = body;
+      // Validazione nome
+      if (!name || typeof name !== 'string' || !SEVENTV_NAME_RE.test(name)) {
+        return res.status(400).json({
+          code: 'invalid_name',
+          error: 'Nome emote non valido. Usa 2-25 caratteri tra lettere, numeri, "_" e "-".',
+        });
+      }
+      // Validazione MIME
+      if (!contentType || typeof contentType !== 'string' || !SEVENTV_UPLOAD_MIME.has(contentType.toLowerCase())) {
+        return res.status(400).json({
+          code: 'invalid_mime',
+          error: 'Formato immagine non supportato. Usa PNG, JPEG, WebP, GIF, APNG o AVIF.',
+        });
+      }
+      // Validazione payload base64
+      if (!dataBase64 || typeof dataBase64 !== 'string') {
+        return res.status(400).json({ code: 'missing_image', error: 'Immagine mancante.' });
+      }
+      // Strip eventuale prefisso data: URL
+      const cleanBase64 = dataBase64.replace(/^data:[^;]+;base64,/, '');
+      let buffer;
+      try {
+        buffer = Buffer.from(cleanBase64, 'base64');
+      } catch {
+        return res.status(400).json({ code: 'invalid_image', error: 'Immagine base64 non decodificabile.' });
+      }
+      if (!buffer || buffer.length === 0) {
+        return res.status(400).json({ code: 'invalid_image', error: 'Immagine vuota.' });
+      }
+      if (buffer.length > SEVENTV_UPLOAD_MAX_BYTES) {
+        return res.status(413).json({
+          code: 'image_too_large',
+          error: `Immagine troppo grande (${Math.round(buffer.length / 1024)} KB). Massimo ${Math.round(SEVENTV_UPLOAD_MAX_BYTES / (1024 * 1024))} MB.`,
+        });
+      }
+
+      // Costruisci multipart form-data verso 7TV REST
+      // 7TV accetta POST https://7tv.io/v3/emotes con campo "image" (file) + "name" + "tags"
+      const formData = new FormData();
+      formData.append('name', name);
+      if (Array.isArray(tags) && tags.length > 0) {
+        // Tag: lowercase, solo [a-z0-9-], 1-30 char ciascuno, max 6 (limite 7TV).
+        const cleanTags = tags
+          .map(t => String(t || '').trim().toLowerCase())
+          .filter(t => /^[a-z0-9-]{1,30}$/.test(t))
+          .slice(0, 6);
+        if (cleanTags.length > 0) formData.append('tags', cleanTags.join(','));
+      }
+      const blob = new Blob([buffer], { type: contentType.toLowerCase() });
+      // Determina estensione corretta
+      const extByMime = {
+        'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp',
+        'image/gif': 'gif', 'image/apng': 'apng', 'image/avif': 'avif',
+      };
+      const ext = extByMime[contentType.toLowerCase()] || 'png';
+      formData.append('image', blob, `${name}.${ext}`);
+
+      let uploadJson = null;
+      let uploadStatus = 0;
+      try {
+        const uploadRes = await fetch(`${SEVENTV_REST}/emotes`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${sevenTvToken}` },
+          body: formData,
+        });
+        uploadStatus = uploadRes.status;
+        // 7TV può rispondere JSON o testo in caso di errore CDN
+        const ct = uploadRes.headers.get('content-type') || '';
+        if (ct.includes('application/json')) {
+          uploadJson = await uploadRes.json().catch(() => null);
+        } else {
+          const txt = await uploadRes.text().catch(() => '');
+          uploadJson = { error: txt || `7TV ${uploadStatus}` };
+        }
+        if (!uploadRes.ok) {
+          const msg = uploadJson?.error_humanized
+            || uploadJson?.error
+            || uploadJson?.message
+            || `7TV upload fallito (HTTP ${uploadStatus}).`;
+          return res.status(uploadStatus >= 400 && uploadStatus < 600 ? uploadStatus : 502).json({
+            code: 'seventv_upload_failed',
+            error: msg,
+          });
+        }
+      } catch (e) {
+        return res.status(502).json({
+          code: 'seventv_upload_failed',
+          error: `Connessione a 7TV fallita: ${e.message}`,
+        });
+      }
+
+      // L'ID dell'emote creata può apparire in vari campi: id, emote_id, data.id
+      const newEmoteId = uploadJson?.id || uploadJson?.emote_id || uploadJson?.data?.id || null;
+      if (!newEmoteId) {
+        return res.status(502).json({
+          code: 'seventv_upload_no_id',
+          error: 'Upload completato ma 7TV non ha restituito un ID emote.',
+        });
+      }
+
+      // Opzionalmente aggiungi al set del canale (default: true)
+      const shouldAdd = addToSet !== false;
+      let addResult = null;
+      let addError = null;
+      if (shouldAdd) {
+        const addQuery = `
+          mutation AddUploadedEmote($id: ObjectID!, $emote_id: ObjectID!, $name: String) {
+            emoteSet(id: $id) {
+              emotes(id: $emote_id, action: ADD, name: $name) {
+                id
+                name
+              }
+            }
+          }
+        `;
+        try {
+          addResult = await gqlCall(addQuery, {
+            id: setId,
+            emote_id: newEmoteId,
+            name,
+          }, sevenTvToken);
+        } catch (e) {
+          addError = e.message;
+        }
+      }
+
+      return res.status(200).json({
+        ok: true,
+        emote_id: newEmoteId,
+        added: shouldAdd && !addError,
+        addError,
+        addResult,
+      });
     }
 
     return res.status(400).json({ error: 'Azione POST non riconosciuta.' });

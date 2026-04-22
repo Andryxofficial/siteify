@@ -6,11 +6,12 @@
  *   Tab "7TV": GET /api/mod-emotes?action=seventv_status + lista emote 7TV canale
  *     + search 7TV + add/remove/rename + set token (broadcaster only)
  */
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Smile, Twitch as TwitchIcon, Search, Plus, Trash2, Loader, RefreshCw,
   Edit2, Check, X, AlertTriangle, ExternalLink, Info, Zap, Sparkles,
+  Upload, Image as ImageIcon,
 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { useEmoteTwitch } from '../../hooks/useEmoteTwitch';
@@ -54,6 +55,17 @@ export default function Emote({ token }) {
   const [renameId, setRenameId] = useState(null);
   const [renameValue, setRenameValue] = useState('');
   const [renameSaving, setRenameSaving] = useState(false);
+
+  // Upload custom emote
+  const [uploadFile, setUploadFile] = useState(null);            // File originale
+  const [uploadName, setUploadName] = useState('');              // Nome emote
+  const [uploadOriginalDim, setUploadOriginalDim] = useState(null); // { w, h, hasAlpha, animata }
+  const [uploadPad, setUploadPad] = useState(true);              // Applica padding a quadrato
+  const [uploadPreviewUrl, setUploadPreviewUrl] = useState(null);// blob: URL della preview elaborata
+  const [uploadProcessedBlob, setUploadProcessedBlob] = useState(null); // Blob da inviare
+  const [uploadProcessing, setUploadProcessing] = useState(false);
+  const [uploadSubmitting, setUploadSubmitting] = useState(false);
+  const fileInputRef = useRef(null);
 
   // isBroadcaster viene determinato dall'API in seventv_status response
   // (TwitchAuthContext non espone broadcasterId, lo sa solo il backend).
@@ -169,6 +181,223 @@ export default function Emote({ token }) {
     }
     setTokenSaving(false);
   }, [tokenInput, token, toast, loadSeventvStatus]);
+
+  /* ─── Upload custom emote ────────────────────────────────────────────────── */
+
+  // Reset stato upload (mantiene file/name a discrezione)
+  const resetUploadProcessing = useCallback(() => {
+    setUploadProcessedBlob(null);
+    if (uploadPreviewUrl) {
+      try { URL.revokeObjectURL(uploadPreviewUrl); } catch { /* ignore */ }
+    }
+    setUploadPreviewUrl(null);
+  }, [uploadPreviewUrl]);
+
+  const resetUploadAll = useCallback(() => {
+    setUploadFile(null);
+    setUploadName('');
+    setUploadOriginalDim(null);
+    setUploadPad(true);
+    resetUploadProcessing();
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [resetUploadProcessing]);
+
+  // Quando cambia il file: leggi metadata (dimensioni, alpha, animata)
+  useEffect(() => {
+    if (!uploadFile) {
+      setUploadOriginalDim(null);
+      resetUploadProcessing();
+      return;
+    }
+    let cancelled = false;
+    const ct = (uploadFile.type || '').toLowerCase();
+    // Tipi animati che NON possiamo ri-elaborare con un canvas singolo (frame multipli).
+    const animata = ct === 'image/gif' || ct === 'image/apng';
+    // Per WebP non possiamo sapere a priori se è animato senza parsing — assumiamo statico.
+
+    const url = URL.createObjectURL(uploadFile);
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) { URL.revokeObjectURL(url); return; }
+      const w = img.naturalWidth || img.width || 0;
+      const h = img.naturalHeight || img.height || 0;
+      // Rileva alpha disegnando su canvas e campionando
+      let hasAlpha = false;
+      if (!animata && w > 0 && h > 0) {
+        try {
+          // Campioniamo a max 64x64 per costare poco
+          const sw = Math.min(64, w);
+          const sh = Math.min(64, h);
+          const c = document.createElement('canvas');
+          c.width = sw; c.height = sh;
+          const ctx = c.getContext('2d', { willReadFrequently: true });
+          ctx.clearRect(0, 0, sw, sh);
+          ctx.drawImage(img, 0, 0, sw, sh);
+          const data = ctx.getImageData(0, 0, sw, sh).data;
+          // Soglia 250 (non 255) per tollerare il rumore introdotto da decoder
+          // JPEG/WebP che possono produrre alfa 254 anche su immagini "opache".
+          for (let i = 3; i < data.length; i += 4) {
+            if (data[i] < 250) { hasAlpha = true; break; }
+          }
+        } catch { /* ignore */ }
+      } else if (animata) {
+        // GIF/APNG hanno alpha 1-bit — assumiamo presente
+        hasAlpha = true;
+      }
+      setUploadOriginalDim({ w, h, hasAlpha, animata, mime: ct });
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      if (!cancelled) {
+        toast.error('Impossibile leggere l\'immagine.', { titolo: 'Upload 7TV' });
+        resetUploadAll();
+      }
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+    return () => { cancelled = true; };
+  }, [uploadFile, toast, resetUploadAll, resetUploadProcessing]);
+
+  // Quando cambiano file/dim/pad: produci il blob processato + preview
+  useEffect(() => {
+    if (!uploadFile || !uploadOriginalDim) {
+      resetUploadProcessing();
+      return;
+    }
+    const { w, h, animata } = uploadOriginalDim;
+    // Per animate o se padding disattivato (oppure già quadrata): usa file originale
+    const isSquare = w === h;
+    if (animata || !uploadPad || isSquare) {
+      const url = URL.createObjectURL(uploadFile);
+      setUploadProcessedBlob(uploadFile);
+      setUploadPreviewUrl(prev => {
+        if (prev) { try { URL.revokeObjectURL(prev); } catch { /* ignore */ } }
+        return url;
+      });
+      return;
+    }
+    // Altrimenti: pad a quadrato su canvas trasparente
+    let cancelled = false;
+    setUploadProcessing(true);
+    const url = URL.createObjectURL(uploadFile);
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) { URL.revokeObjectURL(url); return; }
+      const target = Math.max(w, h);
+      const c = document.createElement('canvas');
+      c.width = target;
+      c.height = target;
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, target, target); // sfondo trasparente (preserva alpha)
+      const dx = Math.floor((target - w) / 2);
+      const dy = Math.floor((target - h) / 2);
+      ctx.drawImage(img, dx, dy, w, h);
+      // Serializza in PNG per preservare l'alpha (sempre, anche se il file originale era JPEG)
+      c.toBlob(blob => {
+        URL.revokeObjectURL(url);
+        if (cancelled) return;
+        if (!blob) {
+          toast.error('Elaborazione immagine fallita.', { titolo: 'Upload 7TV' });
+          setUploadProcessing(false);
+          return;
+        }
+        const previewUrl = URL.createObjectURL(blob);
+        setUploadProcessedBlob(blob);
+        setUploadPreviewUrl(prev => {
+          if (prev) { try { URL.revokeObjectURL(prev); } catch { /* ignore */ } }
+          return previewUrl;
+        });
+        setUploadProcessing(false);
+      }, 'image/png');
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      if (!cancelled) {
+        toast.error('Lettura immagine fallita.', { titolo: 'Upload 7TV' });
+        setUploadProcessing(false);
+      }
+    };
+    img.src = url;
+    return () => { cancelled = true; URL.revokeObjectURL(url); };
+    // mime non usato direttamente ma incluso per riprocessare se cambia tipo
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadFile, uploadOriginalDim, uploadPad]);
+
+  // Cleanup blob URL alla smount
+  useEffect(() => {
+    return () => {
+      if (uploadPreviewUrl) {
+        try { URL.revokeObjectURL(uploadPreviewUrl); } catch { /* ignore */ }
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const onPickFile = useCallback((file) => {
+    if (!file) return;
+    const ct = (file.type || '').toLowerCase();
+    const allowed = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/apng', 'image/avif'];
+    if (!allowed.includes(ct)) {
+      toast.error('Formato non supportato. Usa PNG, JPEG, WebP, GIF, APNG o AVIF.', { titolo: 'Upload 7TV' });
+      return;
+    }
+    if (file.size > 6 * 1024 * 1024) {
+      toast.error(`Immagine troppo grande (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 6 MB.`, { titolo: 'Upload 7TV' });
+      return;
+    }
+    setUploadFile(file);
+    // Auto-suggest name dal filename
+    if (!uploadName) {
+      const base = file.name.replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 25);
+      if (base.length >= 2) setUploadName(base);
+    }
+  }, [toast, uploadName]);
+
+  const submitUpload = useCallback(async () => {
+    if (!uploadProcessedBlob || !uploadName.trim()) return;
+    if (!/^[A-Za-z0-9_-]{2,25}$/.test(uploadName.trim())) {
+      toast.error('Nome non valido. 2-25 caratteri tra lettere, numeri, "_" e "-".', { titolo: 'Upload 7TV' });
+      return;
+    }
+    setUploadSubmitting(true);
+    try {
+      // Converti blob → base64
+      const dataBase64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result;
+          if (typeof result !== 'string') return reject(new Error('Lettura fallita'));
+          // result = "data:<mime>;base64,XXXXX"
+          const idx = result.indexOf('base64,');
+          resolve(idx >= 0 ? result.slice(idx + 7) : result);
+        };
+        reader.onerror = () => reject(new Error('Lettura fallita'));
+        reader.readAsDataURL(uploadProcessedBlob);
+      });
+      const r = await modPost('/api/mod-emotes', token, {
+        action: 'seventv_upload',
+        name: uploadName.trim(),
+        contentType: uploadProcessedBlob.type || 'image/png',
+        dataBase64,
+        addToSet: true,
+      });
+      if (r.ok) {
+        if (r.data?.added === false && r.data?.addError) {
+          toast.warning(`Emote caricata ma non aggiunta al set: ${r.data.addError}`, { titolo: '⚠️ 7TV' });
+        } else {
+          toast.success(`Emote ${uploadName.trim()} caricata e aggiunta!`, { titolo: '✨ 7TV' });
+        }
+        resetUploadAll();
+        await loadSeventvStatus();
+      } else {
+        toast.error(r.error || 'Upload fallito.', { titolo: 'Upload 7TV' });
+      }
+    } catch (e) {
+      toast.error(e.message || 'Errore durante l\'upload.', { titolo: 'Upload 7TV' });
+    } finally {
+      setUploadSubmitting(false);
+    }
+  }, [uploadProcessedBlob, uploadName, token, toast, resetUploadAll, loadSeventvStatus]);
 
   // Filtra emote Twitch
   const filteredTwitchEmotes = useMemo(() => {
@@ -484,6 +713,149 @@ export default function Emote({ token }) {
                       );
                     })}
                   </div>
+                </div>
+              )}
+
+              {/* Upload custom emote */}
+              {tokenPresent && (
+                <div className="glass-card" style={{ padding: '1rem' }}>
+                  <h3 style={{ fontSize: '0.88rem', fontWeight: 600, marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    <Upload size={14} style={{ color: 'var(--primary)' }} />
+                    Carica emote custom
+                  </h3>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.75rem', lineHeight: 1.4 }}>
+                    Trascina o seleziona un'immagine (PNG, JPEG, WebP, GIF, APNG, AVIF — max 6&nbsp;MB).
+                    Se l'immagine non è quadrata, può essere automaticamente <strong>centrata su sfondo trasparente</strong> senza stretchare.
+                  </p>
+
+                  {!uploadFile ? (
+                    <label
+                      htmlFor="seventv-upload-input"
+                      className="glass-card"
+                      style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+                        padding: '1.5rem 1rem', textAlign: 'center', cursor: 'pointer',
+                        borderStyle: 'dashed', borderWidth: '1.5px',
+                      }}
+                    >
+                      <ImageIcon size={28} style={{ color: 'var(--text-muted)' }} />
+                      <div style={{ fontSize: '0.82rem', fontWeight: 500 }}>Scegli un file immagine</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        PNG · JPEG · WebP · GIF · APNG · AVIF
+                      </div>
+                      <input
+                        id="seventv-upload-input"
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/gif,image/apng,image/avif"
+                        onChange={(e) => onPickFile(e.target.files?.[0])}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {/* Preview + info */}
+                      <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                        <div
+                          className="glass-card"
+                          style={{
+                            width: 96, height: 96, padding: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'repeating-conic-gradient(rgba(255,255,255,0.08) 0% 25%, transparent 0% 50%) 50% / 16px 16px',
+                            position: 'relative', flexShrink: 0,
+                          }}
+                          aria-label="Anteprima emote"
+                        >
+                          {uploadProcessing ? (
+                            <Loader size={20} className="spin" style={{ color: 'var(--primary)' }} />
+                          ) : uploadPreviewUrl ? (
+                            <img
+                              src={uploadPreviewUrl}
+                              alt="Anteprima"
+                              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
+                            />
+                          ) : null}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.75rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span className="chip" style={{ fontSize: '0.7rem' }}>
+                              {uploadFile.name}
+                            </span>
+                            <span className="chip" style={{ fontSize: '0.7rem' }}>
+                              {(uploadFile.size / 1024).toFixed(1)} KB
+                            </span>
+                          </div>
+                          {uploadOriginalDim && (
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', color: 'var(--text-muted)' }}>
+                              <span>{uploadOriginalDim.w} × {uploadOriginalDim.h}px</span>
+                              {uploadOriginalDim.w === uploadOriginalDim.h && <span>· quadrata</span>}
+                              {uploadOriginalDim.hasAlpha && <span>· trasparenza ✓</span>}
+                              {uploadOriginalDim.animata && <span>· animata</span>}
+                            </div>
+                          )}
+                          {uploadOriginalDim && uploadOriginalDim.w !== uploadOriginalDim.h && !uploadOriginalDim.animata && (
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', marginTop: '0.2rem' }}>
+                              <input
+                                type="checkbox"
+                                checked={uploadPad}
+                                onChange={(e) => setUploadPad(e.target.checked)}
+                              />
+                              <span>Pad a quadrato {Math.max(uploadOriginalDim.w, uploadOriginalDim.h)}×{Math.max(uploadOriginalDim.w, uploadOriginalDim.h)} (sfondo trasparente)</span>
+                            </label>
+                          )}
+                          {uploadOriginalDim?.animata && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--accent-warm)', fontSize: '0.7rem' }}>
+                              <Info size={11} />
+                              <span>Le immagini animate vengono caricate come sono (no padding).</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Nome */}
+                      <div>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 500, marginBottom: '0.25rem', display: 'block' }}>
+                          Nome emote
+                        </label>
+                        <input
+                          className="mod-input"
+                          value={uploadName}
+                          onChange={(e) => setUploadName(e.target.value.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 25))}
+                          placeholder="MyCoolEmote"
+                          maxLength={25}
+                          style={{ marginTop: 0 }}
+                        />
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                          2-25 caratteri: lettere, numeri, &quot;_&quot;, &quot;-&quot;.
+                        </div>
+                      </div>
+
+                      {/* Azioni */}
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button
+                          className="btn-primary"
+                          onClick={submitUpload}
+                          disabled={
+                            uploadSubmitting || uploadProcessing || !uploadProcessedBlob ||
+                            !/^[A-Za-z0-9_-]{2,25}$/.test(uploadName.trim())
+                          }
+                          style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                        >
+                          {uploadSubmitting
+                            ? <Loader size={13} className="spin" />
+                            : <Upload size={13} />}
+                          Carica e aggiungi al canale
+                        </button>
+                        <button
+                          className="mod-permission-btn"
+                          onClick={resetUploadAll}
+                          disabled={uploadSubmitting}
+                          style={{ fontSize: '0.8rem', padding: '0.45rem 0.75rem' }}
+                        >
+                          <X size={13} /> Annulla
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
