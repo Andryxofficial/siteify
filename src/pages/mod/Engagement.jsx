@@ -15,7 +15,7 @@ function PollCard({ poll, onClose }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem' }}>
         <div>
           <h4 style={{ fontSize: '0.9rem', fontWeight: 600 }}>{poll.title}</h4>
-          <span className="chip" style={{ fontSize: '0.65rem', marginTop: '0.2rem', background: isActive ? 'rgba(29,185,84,.18)' : 'rgba(255,255,255,.08)', color: isActive ? 'var(--accent-spotify)' : 'var(--text-muted)' }}>
+          <span className={`chip ${isActive ? 'chip-success' : 'chip-neutral'}`} style={{ fontSize: '0.65rem', marginTop: '0.2rem' }}>
             {poll.status}
           </span>
         </div>
@@ -49,7 +49,7 @@ function PredictionCard({ pred, onResolve, onCancel }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem' }}>
         <div>
           <h4 style={{ fontSize: '0.9rem', fontWeight: 600 }}>{pred.title}</h4>
-          <span className="chip" style={{ fontSize: '0.65rem', background: isActive ? 'rgba(145,70,255,.18)' : 'rgba(255,255,255,.08)', color: isActive ? 'var(--accent-twitch)' : 'var(--text-muted)' }}>
+          <span className={`chip ${isActive ? 'chip-info' : 'chip-neutral'}`} style={{ fontSize: '0.65rem' }}>
             {pred.status}
           </span>
         </div>
@@ -66,7 +66,7 @@ function PredictionCard({ pred, onResolve, onCancel }) {
             <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-muted)' }}>{o.channel_points || 0} pts · {o.users || 0} utenti</span>
               {isActive && onResolve && (
-                <button className="mod-icon-btn" onClick={() => onResolve(pred.id, o.id)} title="Vinci con questo outcome" style={{ color: 'var(--accent-spotify)', fontSize: '0.7rem', fontWeight: 700 }}>
+                <button className="mod-icon-btn text-tonal-success" onClick={() => onResolve(pred.id, o.id)} title="Vinci con questo outcome" style={{ fontSize: '0.7rem', fontWeight: 700 }}>
                   <Check size={12} /> Vinci
                 </button>
               )}

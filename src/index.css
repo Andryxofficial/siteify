@@ -749,6 +749,38 @@ button.nav-tema-toggle {
 }
 
 /* ═══════════════════════════════════════════════════
+   CHIP SEMANTICHE — success / warn / danger / info / twitch
+   Pensate per essere leggibili sia in tema scuro sia in chiaro.
+   In scuro: testo tinta brillante su fondo tinto trasparente.
+   In chiaro: testo tinta scura su fondo tinto piu` opaco (override sotto).
+   ═══════════════════════════════════════════════════ */
+.chip-success {
+  background: rgba(29, 185, 84, 0.18);
+  color: #57f287;
+  border: 1px solid rgba(29, 185, 84, 0.30);
+}
+.chip-warn {
+  background: rgba(255, 184, 0, 0.18);
+  color: var(--accent-warm);
+  border: 1px solid rgba(255, 184, 0, 0.30);
+}
+.chip-danger {
+  background: rgba(255, 60, 60, 0.18);
+  color: #ff8585;
+  border: 1px solid rgba(255, 60, 60, 0.30);
+}
+.chip-info {
+  background: rgba(145, 70, 255, 0.18);
+  color: #c8a6ff;
+  border: 1px solid rgba(145, 70, 255, 0.30);
+}
+.chip-neutral {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: 1px solid var(--vetro-bordo-colore);
+}
+
+/* ═══════════════════════════════════════════════════
    BOTTONI — Stile capsula con vetro liquido
    ═══════════════════════════════════════════════════ */
 
@@ -6718,6 +6750,110 @@ html[data-tema="chiaro"] .mod-panel-header.glass-card {
     0 2px 8px rgba(60, 80, 160, 0.07),
     inset 0 1px 0 rgba(255, 255, 255, 0.96);
 }
+
+/* ── Mod panel: trigger comando (es. "!ciao") — leggibile in chiaro ── */
+html[data-tema="chiaro"] .mod-trigger {
+  color: #006d80;
+  background: rgba(0, 131, 143, 0.10);
+}
+
+/* ── Chip semantiche in tema chiaro ── */
+html[data-tema="chiaro"] .chip-success {
+  background: rgba(29, 135, 70, 0.16);
+  color: #0f6b2e;
+  border-color: rgba(29, 135, 70, 0.32);
+}
+html[data-tema="chiaro"] .chip-warn {
+  background: rgba(180, 110, 0, 0.16);
+  color: #8a5300;
+  border-color: rgba(180, 110, 0, 0.32);
+}
+html[data-tema="chiaro"] .chip-danger {
+  background: rgba(200, 30, 50, 0.14);
+  color: #a8002b;
+  border-color: rgba(200, 30, 50, 0.30);
+}
+html[data-tema="chiaro"] .chip-info {
+  background: rgba(110, 50, 220, 0.13);
+  color: #5a1ec4;
+  border-color: rgba(110, 50, 220, 0.30);
+}
+html[data-tema="chiaro"] .chip-neutral {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-muted);
+  border-color: rgba(80, 110, 200, 0.18);
+}
+
+/* ── Chip live (header Mod Panel quando lo streamer e` online) ── */
+html[data-tema="chiaro"] .chip-live {
+  background: rgba(200, 30, 50, 0.14);
+  color: #c0202b;
+  border-color: rgba(200, 30, 50, 0.32);
+  box-shadow: 0 0 12px rgba(200, 30, 50, 0.10),
+              inset 0 1px 0 rgba(255, 255, 255, 0.60);
+}
+html[data-tema="chiaro"] .chip-live-dot {
+  background: #c0202b;
+  box-shadow: 0 0 8px #c0202b;
+}
+
+/* ── Mod panel: pulsante permesso attivo — bordo accent piu` evidente ── */
+html[data-tema="chiaro"] .mod-permission-btn-active {
+  background: var(--primary-light);
+  border-color: rgba(224, 64, 251, 0.40);
+  color: var(--primary);
+}
+
+/* ── Modali Quick Action e Command Palette — pannello opaco in chiaro
+   per garantire leggibilita` sopra l'overlay scuro. ── */
+html[data-tema="chiaro"] .quick-action-modale.glass-panel,
+html[data-tema="chiaro"] .cmd-palette.glass-panel {
+  background: linear-gradient(145deg,
+    rgba(255, 255, 255, 0.97) 0%,
+    rgba(240, 245, 255, 0.94) 100%);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.30),
+    0 8px 24px rgba(60, 80, 160, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+html[data-tema="chiaro"] .quick-action-modale .glass-card {
+  background: rgba(248, 250, 255, 0.88);
+}
+
+/* ── Bottoni CTA "tonali" semantici (warn/success/danger) ──
+   Sostituiscono gli style inline `color: var(--accent-warm)` su sfondo
+   `rgba(255,184,0,0.2)` che in chiaro diventavano illeggibili. ── */
+.btn-tonal-warn {
+  background: linear-gradient(135deg, #FFB86C, #FF8A3D);
+  color: #2a1a00;
+  box-shadow:
+    0 4px 18px rgba(255, 138, 60, 0.32),
+    0 0 0 1px rgba(255, 138, 60, 0.30);
+}
+.btn-tonal-success {
+  background: linear-gradient(135deg, #2ed47a, #1DB954);
+  color: #03240f;
+  box-shadow:
+    0 4px 18px rgba(29, 185, 84, 0.30),
+    0 0 0 1px rgba(29, 185, 84, 0.30);
+}
+.btn-tonal-danger {
+  background: linear-gradient(135deg, #ff7a7a, #ff4747);
+  color: #2a0606;
+  box-shadow:
+    0 4px 18px rgba(255, 71, 71, 0.30),
+    0 0 0 1px rgba(255, 71, 71, 0.30);
+}
+
+/* ── Helper testo tonale: adatta colore al tema ── */
+.text-tonal-success { color: #1DB954; }
+.text-tonal-warn    { color: var(--accent-warm); }
+.text-tonal-danger  { color: var(--accent); }
+.text-tonal-info    { color: var(--accent-twitch); }
+html[data-tema="chiaro"] .text-tonal-success { color: #0f6b2e; }
+html[data-tema="chiaro"] .text-tonal-warn    { color: #8a5300; }
+html[data-tema="chiaro"] .text-tonal-danger  { color: #a8002b; }
+html[data-tema="chiaro"] .text-tonal-info    { color: #5a1ec4; }
 
 /* ── Lightbox immagini: l'overlay resta scuro (fullscreen viewer)
    quindi i bottoni bianchi vanno bene anche in tema chiaro. ── */

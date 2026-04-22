@@ -141,7 +141,7 @@ export default function Schedule({ token }) {
                       <span><Calendar size={10} /> {formatSegmentTime(s.start_time)}</span>
                       <span><Clock size={10} /> {s.duration_minutes || '?'}min</span>
                       {s.is_recurring && <span className="chip" style={{ fontSize: '0.65rem' }}>🔁 Ricorrente</span>}
-                      {s.canceled_until && <span className="chip" style={{ fontSize: '0.65rem', background: 'rgba(255,107,107,.15)', color: 'var(--accent)' }}>Annullato</span>}
+                      {s.canceled_until && <span className="chip chip-danger" style={{ fontSize: '0.65rem' }}>Annullato</span>}
                     </div>
                   </div>
                   <div className="mod-item-actions">
