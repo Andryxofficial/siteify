@@ -171,7 +171,7 @@ export default function Rewards({ token }) {
                       display: 'flex', alignItems: 'center', gap: 4 }}>
                       <Coins size={11} style={{ color: 'var(--accent-warm)' }} /> {r.cost?.toLocaleString('it-IT')} pt
                       {r.is_paused && <span className="chip" style={{ fontSize: '0.62rem' }}>⏸ Pausa</span>}
-                      {!r.is_enabled && <span className="chip" style={{ fontSize: '0.62rem', background: 'rgba(255,107,107,.15)', color: 'var(--accent)' }}>OFF</span>}
+                      {!r.is_enabled && <span className="chip chip-danger" style={{ fontSize: '0.62rem' }}>OFF</span>}
                     </div>
                   </div>
                 </div>

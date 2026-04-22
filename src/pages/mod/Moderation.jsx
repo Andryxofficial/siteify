@@ -122,7 +122,7 @@ export default function Moderation({ token }) {
             initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
           >
             {feedback.ok ? <Check size={14} color="var(--accent-spotify)" /> : <AlertTriangle size={14} color="var(--accent)" />}
-            <span style={{ flex: 1, fontSize: '0.85rem', color: feedback.ok ? 'var(--accent-spotify)' : 'var(--accent)' }}>{feedback.message}</span>
+            <span className={feedback.ok ? 'text-tonal-success' : 'text-tonal-danger'} style={{ flex: 1, fontSize: '0.85rem' }}>{feedback.message}</span>
             <button className="mod-icon-btn" onClick={() => setFeedback(null)}><X size={13} /></button>
           </motion.div>
         )}
@@ -209,7 +209,7 @@ export default function Moderation({ token }) {
             <Trash2 size={14} style={{ verticalAlign: 'middle', marginRight: '0.35rem', color: 'var(--accent)' }} />
             Cancella Chat
           </h3>
-          <button className="btn-primary" style={{ fontSize: '0.8rem', background: 'rgba(255,107,107,0.15)', borderColor: 'rgba(255,107,107,0.3)', color: 'var(--accent)' }}
+          <button className="btn-primary btn-tonal-danger" style={{ fontSize: '0.8rem' }}
             onClick={clearChat} disabled={loading}>
             <Trash2 size={13} /> Cancella ora
           </button>
@@ -222,7 +222,7 @@ export default function Moderation({ token }) {
             Shoutout
           </h3>
           {soFeedback && (
-            <p style={{ fontSize: '0.78rem', color: soFeedback.ok ? 'var(--accent-spotify)' : 'var(--accent)', marginBottom: '0.5rem' }}>{soFeedback.message}</p>
+            <p className={soFeedback.ok ? 'text-tonal-success' : 'text-tonal-danger'} style={{ fontSize: '0.78rem', marginBottom: '0.5rem' }}>{soFeedback.message}</p>
           )}
           <div style={{ display: 'flex', gap: '0.4rem' }}>
             <input className="mod-input" value={shoutoutLogin}

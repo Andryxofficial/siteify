@@ -167,17 +167,14 @@ function ModaleCommercial({ token, onClose }) {
           <button key={d}
             onClick={() => setDurata(d)}
             className={`mod-permission-btn${durata === d ? ' mod-permission-btn-active' : ''}`}
-            style={durata === d
-              ? { borderColor: 'var(--accent-warm)', color: 'var(--accent-warm)', background: 'rgba(255,184,0,0.18)' }
-              : { justifyContent: 'center' }}
+            style={{ justifyContent: 'center' }}
           >
             {d}s
           </button>
         ))}
       </div>
-      <button className="btn-primary" disabled={inviando} onClick={lancia}
-        style={{ width: '100%', fontSize: '0.9rem', padding: '0.6rem',
-          background: 'rgba(255,184,0,0.2)', borderColor: 'rgba(255,184,0,0.45)', color: 'var(--accent-warm)' }}>
+      <button className="btn-primary btn-tonal-warn" disabled={inviando} onClick={lancia}
+        style={{ width: '100%', fontSize: '0.9rem', padding: '0.6rem' }}>
         {inviando ? <Loader size={14} className="spin" /> : <Play size={14} />}
         Avvia pubblicità da {durata}s
       </button>
@@ -217,9 +214,8 @@ function ModaleMarker({ token, onClose }) {
         onKeyDown={e => e.key === 'Enter' && crea()}
         placeholder="Descrizione opzionale (max 140)" maxLength={140}
         style={{ marginBottom: '1rem', marginTop: 0 }} />
-      <button className="btn-primary" disabled={inviando} onClick={crea}
-        style={{ width: '100%', fontSize: '0.9rem', padding: '0.6rem',
-          background: 'rgba(29,185,84,0.2)', borderColor: 'rgba(29,185,84,0.45)', color: 'var(--accent-spotify)' }}>
+      <button className="btn-primary btn-tonal-success" disabled={inviando} onClick={crea}
+        style={{ width: '100%', fontSize: '0.9rem', padding: '0.6rem' }}>
         {inviando ? <Loader size={14} className="spin" /> : <Sparkles size={14} />}
         Salva marker
       </button>

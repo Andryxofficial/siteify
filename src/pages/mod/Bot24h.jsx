@@ -41,11 +41,11 @@ function buildBotOAuthUrl(tipo) {
 
 function StatoBadge({ ok, testoSi, testoNo }) {
   return ok ? (
-    <span className="chip" style={{ fontSize: '0.72rem', background: 'rgba(87,242,135,.15)', color: 'var(--accent-spotify)', border: '1px solid rgba(87,242,135,.25)' }}>
+    <span className="chip chip-success" style={{ fontSize: '0.72rem' }}>
       <CheckCircle2 size={11} /> {testoSi}
     </span>
   ) : (
-    <span className="chip" style={{ fontSize: '0.72rem', background: 'rgba(255,107,107,.12)', color: '#ff6b6b', border: '1px solid rgba(255,107,107,.25)' }}>
+    <span className="chip chip-danger" style={{ fontSize: '0.72rem' }}>
       <XCircle size={11} /> {testoNo}
     </span>
   );
@@ -188,8 +188,8 @@ export default function Bot24h({ token }) {
       {/* Errore */}
       {errore && (
         <div className="glass-card" style={{ padding: '0.75rem 1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', borderColor: 'rgba(255,107,107,.3)' }}>
-          <AlertCircle size={15} style={{ color: '#ff6b6b', flexShrink: 0 }} />
-          <span style={{ flex: 1, color: '#ff6b6b', fontSize: '0.85rem' }}>{errore}</span>
+          <AlertCircle size={15} className="text-tonal-danger" style={{ flexShrink: 0 }} />
+          <span className="text-tonal-danger" style={{ flex: 1, fontSize: '0.85rem' }}>{errore}</span>
           <button className="mod-icon-btn" onClick={() => setErrore('')}>✕</button>
         </div>
       )}
@@ -202,7 +202,7 @@ export default function Bot24h({ token }) {
           </div>
           <div>
             <div style={{ fontWeight: 700, fontSize: '1rem' }}>
-              Bot 24/7 {tuttiOk ? <span style={{ color: 'var(--accent-spotify)', fontSize: '0.8rem' }}>● Attivo</span> : <span style={{ color: 'var(--text-faint)', fontSize: '0.8rem' }}>● Non configurato</span>}
+              Bot 24/7 {tuttiOk ? <span className="text-tonal-success" style={{ fontSize: '0.8rem' }}>● Attivo</span> : <span style={{ color: 'var(--text-faint)', fontSize: '0.8rem' }}>● Non configurato</span>}
             </div>
             {stato?.botLogin && (
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -249,7 +249,7 @@ export default function Bot24h({ token }) {
           <Bot size={14} /> {stato?.botAutorizzato ? 'Re-autorizza Bot' : 'Autorizza Bot'} <ExternalLink size={12} />
         </a>
         {!CHIAVETWITCH && (
-          <p style={{ fontSize: '0.75rem', color: '#ff6b6b', marginTop: '0.5rem' }}>
+          <p className="text-tonal-danger" style={{ fontSize: '0.75rem', marginTop: '0.5rem' }}>
             ⚠ VITE_CHIAVETWITCH non configurato — il link OAuth non funzionerà.
           </p>
         )}
@@ -315,7 +315,7 @@ export default function Bot24h({ token }) {
                     <div key={sub.id} className="mod-item glass-card" style={{ padding: '0.6rem 0.9rem' }}>
                       <div className="mod-item-header">
                         <code className="mod-trigger" style={{ fontSize: '0.72rem' }}>{sub.type}</code>
-                        <span className="chip" style={{ fontSize: '0.65rem', background: sub.status === 'enabled' ? 'rgba(87,242,135,.12)' : 'rgba(255,107,107,.12)', color: sub.status === 'enabled' ? 'var(--accent-spotify)' : '#ff6b6b' }}>
+                        <span className={`chip ${sub.status === 'enabled' ? 'chip-success' : 'chip-danger'}`} style={{ fontSize: '0.65rem' }}>
                           {sub.status}
                         </span>
                         <div className="mod-item-actions">
