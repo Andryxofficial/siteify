@@ -10,7 +10,7 @@ import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Twitch, LogIn, RotateCcw, Trophy, Calendar, Crown, Award, Zap, Keyboard, WifiOff,
-  Maximize2, Minimize2,
+  Maximize2, Minimize2, Backpack, FlaskConical,
 } from 'lucide-react';
 import SEO from '../components/SEO';
 import { getGameForMonth, loadGameModule, getAllGameMetas } from '../games/registry';
@@ -125,6 +125,8 @@ export default function GamePage() {
   const joystickRef = useRef({ active: false, dx: 0, dy: 0 });
   const joystickDivRef = useRef(null);
   const actionBtnRef = useRef(false);
+  const inventoryBtnRef = useRef(false);
+  const potionBtnRef = useRef(false);
   const startGameRef = useRef(null);
   const cleanupRef = useRef(null);
 
@@ -321,6 +323,8 @@ export default function GamePage() {
         keysRef,
         joystickRef,
         actionBtnRef,
+        inventoryBtnRef,
+        potionBtnRef,
         onScore: (s) => setScore(s),
         onHpChange: (h, m) => { setHp(h); setMaxHp(m); },
         onGameOver: (finalScore) => {
@@ -356,8 +360,8 @@ export default function GamePage() {
   useEffect(() => {
     const down = (e) => {
       keysRef.current[e.key] = true;
-      // Prevent page scroll when playing
-      if (gameStatus === 'playing' && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) {
+      // Prevent page scroll/focus jump when playing
+      if (gameStatus === 'playing' && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Tab'].includes(e.key)) {
         e.preventDefault();
       }
     };
@@ -837,6 +841,26 @@ export default function GamePage() {
               >
                 <Keyboard size={18} />
               </button>
+              {isLegend && (
+                <>
+                  <button
+                    className="game-kb-toggle"
+                    onClick={() => { inventoryBtnRef.current = true; }}
+                    title="Inventario (I)"
+                    aria-label="Inventario"
+                  >
+                    <Backpack size={18} />
+                  </button>
+                  <button
+                    className="game-kb-toggle"
+                    onClick={() => { potionBtnRef.current = true; }}
+                    title="Usa pozione (P)"
+                    aria-label="Usa pozione"
+                  >
+                    <FlaskConical size={18} />
+                  </button>
+                </>
+              )}
               <button
                 className="game-attack-btn"
                 onTouchStart={onActionBtnPress}
