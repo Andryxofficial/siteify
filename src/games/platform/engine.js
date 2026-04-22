@@ -296,7 +296,7 @@ export function startEngine(canvas, cb, opts = {}) {
   }
 
   function maybeOneUp() {
-    if (state.coins >= 100) {
+    while (state.coins >= 100) {
       state.coins -= 100; state.lives += 1;
       state.persistent.lives = state.lives;
       state.floats.push({ text: '1UP!', x: state.player.x - state.camX, y: state.player.y - 8, vy: -0.7, life: 80, color: '#5af066' });
