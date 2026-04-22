@@ -94,6 +94,24 @@ export default function Home() {
     else if (r === 'unsupported') toast.error(t('condividi.errore'));
   };
 
+  // Google AdSense — caricato SOLO sulla Home (non su altre pagine)
+  useEffect(() => {
+    const SRC = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9142742381635509';
+    // Evita doppia iniezione se la Home viene rimontata
+    if (document.querySelector(`script[src="${SRC}"]`)) return;
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = SRC;
+    script.crossOrigin = 'anonymous';
+    script.dataset.andryxAdsense = 'home';
+    document.head.appendChild(script);
+    return () => {
+      // Rimuovi script all'unmount per non lasciare AdSense attivo su altre rotte
+      const el = document.querySelector('script[data-andryx-adsense="home"]');
+      if (el) el.remove();
+    };
+  }, []);
+
   useEffect(() => {
     const check = async () => {
       try {
