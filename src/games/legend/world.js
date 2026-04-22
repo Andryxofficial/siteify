@@ -73,20 +73,23 @@ const VILLAGE_ENTITIES = [
   /* Mercante e bambino vicino alla fontana (NE della croce) */
   { type: 'npc', kind: 'merchant', x: 19, y: 8, dialog: 'merchant' },
   { type: 'npc', kind: 'child', x: 13, y: 9, dialog: 'child' },
+  /* Vaso speciale 'q' — gestito come tile, non entità (vedi engine trySmashTile) */
+  /* La spada di papà Andryx — appare DAVANTI casa appena la porta si apre */
+  { type: 'item', kind: 'sword', x: 2, y: 13, requires: 'house_key' },
   /* Cartello al centro: indica le 4 direzioni */
-  { type: 'sign', x: 16, y: 11, text: 'Crocevia del Villaggio.\nN: Castello (Cristallo Blu)\nS: Caverna delle Gemme\nE: Foresta Sussurrante\nO: Pianura dell\'Ovest' },
+  { type: 'sign', x: 16, y: 11, textKey: 'village_main', text: 'Crocevia del Villaggio.\nN: Castello (Cristallo Blu)\nS: Caverna delle Gemme\nE: Foresta Sussurrante\nO: Pianura dell\'Ovest' },
   /* Cartello fontana */
-  { type: 'sign', x: 18, y: 9, text: 'Fontana del Villaggio.\nL\'acqua riflette le stelle.' },
+  { type: 'sign', x: 18, y: 9, textKey: 'village_fountain', text: 'Fontana del Villaggio.\nL\'acqua riflette le stelle.' },
   /* Cartello vicino all'imbocco nord: ricorda al player il gate del castello */
-  { type: 'sign', x: 13, y: 1, text: 'Strada per il Castello.\nRichiede il Cristallo Blu.' },
+  { type: 'sign', x: 13, y: 1, textKey: 'village_castle', text: 'Strada per il Castello.\nRichiede il Cristallo Blu.' },
   /* Cartello vicino all'ingresso della grotta */
-  { type: 'sign', x: 6, y: 4, text: 'Una vecchia grotta...\nSi dice che un saggio\nviva in queste rocce.' },
+  { type: 'sign', x: 6, y: 4, textKey: 'village_cave_hint', text: 'Una vecchia grotta...\nSi dice che un saggio\nviva in queste rocce.' },
   /* Cartello vicino alla casa di Andryx (hint sul vaso dorato) */
-  { type: 'sign', x: 6, y: 15, text: 'Casa di Andryx.\nI vasi dorati\nnascondono segreti preziosi...' },
+  { type: 'sign', x: 6, y: 15, textKey: 'village_house', text: 'Casa di Andryx.\nI vasi dorati\nnascondono segreti preziosi...' },
   /* Cartello est: richiede spada e scudo per avventurarsi */
-  { type: 'sign', x: 28, y: 10, text: 'Foresta Sussurrante.\nPericoloso! Servono\nspada e scudo.' },
+  { type: 'sign', x: 28, y: 10, textKey: 'village_east', text: 'Foresta Sussurrante.\nPericoloso! Servono\nspada e scudo.' },
   /* Cartello sud: caverna */
-  { type: 'sign', x: 14, y: 18, text: 'Caverna delle Gemme.\nPorta spada e scudo\nper sopravvivere!' },
+  { type: 'sign', x: 14, y: 18, textKey: 'village_south', text: 'Caverna delle Gemme.\nPorta spada e scudo\nper sopravvivere!' },
 ];
 
 /* ─── ZONA 1: Foresta Sussurrante — primo dungeon all'aperto ─── */
@@ -128,15 +131,15 @@ const FOREST_ENTITIES = [
   { type: 'enemy', kind: 'mage', x: 26, y: 10 },
   /* Mini-boss: Troll della Foresta (zona profonda est-sud) */
   { type: 'enemy', kind: 'forest_troll', x: 24, y: 16 },
-  /* Oggetti: heart container a destra profonda + bomba come ricompensa troll */
+  /* Oggetti: heart container a destra profonda + ricompense troll */
   { type: 'item', kind: 'heart_container', x: 26, y: 17, requires: 'has_crystal_green:false' },
   { type: 'item', kind: 'bomb', x: 28, y: 5, requires: 'forest_troll_defeated' },
   { type: 'item', kind: 'rupee', x: 5, y: 2 },
   { type: 'item', kind: 'potion', x: 14, y: 16, requires: 'forest_troll_defeated' },
   /* Cristallo verde appare dopo aver ripulito la zona (vedi engine) */
   { type: 'item', kind: 'crystal_green', x: 14, y: 2, requires: 'forest_clear' },
-  { type: 'sign', x: 2, y: 17, text: 'Foresta Sussurrante.\nElimina tutti i nemici,\nincluso il Troll, per\nfar apparire il Cristallo.' },
-  { type: 'sign', x: 18, y: 14, text: 'Attenzione!\nSi sente un rumore pesante\nnella foresta profonda...' },
+  { type: 'sign', x: 2, y: 17, textKey: 'forest_main', text: 'Foresta Sussurrante.\nElimina tutti i nemici,\nincluso il Troll, per\nfar apparire il Cristallo.' },
+  { type: 'sign', x: 18, y: 14, textKey: 'forest_troll_hint', text: 'Attenzione!\nSi sente un rumore pesante\nnella foresta profonda...' },
 ];
 
 /* ─── ZONA 2: Caverna delle Gemme — dungeon con puzzle e mini-boss ───
@@ -176,14 +179,15 @@ const CAVE_ENTITIES = [
   { type: 'enemy', kind: 'mage', x: 8, y: 14, requires: 'cave_door1' },
   /* Boss Custode: appare solo dopo aver acceso le 2 torce */
   { type: 'boss', kind: 'guardian', x: 14, y: 16, requires: 'cave_torches' },
-  /* Oggetti: pozione nelle stanze iniziali, heart container dopo boss */
-  { type: 'item', kind: 'potion', x: 3, y: 3 },
+  /* Oggetti: scudo nella prima stanza, pozione e rupie sparse, heart container dopo boss */
+  { type: 'item', kind: 'shield', x: 3, y: 3, requires: 'has_shield:false' },
+  { type: 'item', kind: 'potion', x: 3, y: 10 },
   { type: 'item', kind: 'rupee', x: 27, y: 3 },
   { type: 'item', kind: 'key', x: 27, y: 10 },
   { type: 'item', kind: 'heart_container', x: 3, y: 15, requires: 'guardian_defeated' },
   { type: 'item', kind: 'crystal_blue', x: 14, y: 16, requires: 'guardian_defeated' },
-  { type: 'sign', x: 14, y: 2, text: 'Caverna delle Gemme.\nAccendi le 2 torce per\nrisvegliare il Custode.\nLa chiave apre la porta.' },
-  { type: 'sign', x: 2, y: 17, text: 'Sento passi pesanti\nprovenire dal fondo...\nSii prudente, viandante.' },
+  { type: 'sign', x: 14, y: 2, textKey: 'cave_main', text: 'Caverna delle Gemme.\nAccendi le 2 torce per\nrisvegliare il Custode.\nLa chiave apre la porta.' },
+  { type: 'sign', x: 2, y: 17, textKey: 'cave_deep', text: 'Sento passi pesanti\nprovenire dal fondo...\nSii prudente, viandante.' },
 ];
 
 /* ─── ZONA 3: Castello del Re Ombra — boss finale ───
@@ -229,8 +233,8 @@ const CASTLE_ENTITIES = [
   /* Pozione e rupee nascosti */
   { type: 'item', kind: 'potion', x: 2, y: 9, requires: 'has_crystal_red:false' },
   { type: 'item', kind: 'rupee', x: 27, y: 9, requires: 'has_crystal_red:false' },
-  { type: 'sign', x: 14, y: 17, text: 'Castello del Re Ombra.\nIl tuo destino ti attende.\nSconfiggi tutte le guardie\nper risvegliare il Re.' },
-  { type: 'sign', x: 2, y: 2, text: 'Attento alle piastrelle\nincandescenti di lava!' },
+  { type: 'sign', x: 14, y: 17, textKey: 'castle_main', text: 'Castello del Re Ombra.\nIl tuo destino ti attende.\nSconfiggi tutte le guardie\nper risvegliare il Re.' },
+  { type: 'sign', x: 2, y: 2, textKey: 'castle_lava', text: 'Attento alle piastrelle\nincandescenti di lava!' },
 ];
 
 /* ─── ZONA 4: Pianura dell'Ovest — overworld breve, presto un nuovo dungeon ───

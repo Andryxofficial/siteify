@@ -6,6 +6,7 @@ import TikTokIcon from './TikTokIcon';
 import useScrollHeader from '../hooks/useScrollHeader';
 import { hapticLight } from '../utils/haptics';
 import { useTema } from '../contexts/TemaContext';
+import { useLingua } from '../contexts/LinguaContext';
 import { prefetchPagina } from '../lazyPages';
 
 const LOGO_URL = '/Firma_Andryx.png';
@@ -13,24 +14,25 @@ const LOGO_URL = '/Firma_Andryx.png';
 /* Chiave localStorage condivisa con MessagesPage per il badge non-letti */
 const CHIAVE_NON_LETTI = 'andryxify_ha_non_letti';
 
+/* I18n: label definite come chiavi di traduzione; risolte a runtime via t() */
 const NAV_LINKS = [
-  { path: '/',          label: 'Home',      Icon: HomeIcon      },
-  { path: '/socialify', label: 'SOCIALify', Icon: UsersIcon     },
-  { path: '/twitch',    label: 'Twitch',    Icon: TwitchIcon    },
-  { path: '/youtube',   label: 'YouTube',   Icon: YoutubeIcon   },
-  { path: '/instagram', label: 'Instagram', Icon: InstagramIcon },
-  { path: '/podcast',   label: 'Podcast',   Icon: MicIcon       },
-  { path: '/tiktok',    label: 'TikTok',    Icon: ({ size }) => <TikTokIcon size={size} /> },
-  { path: '/gioco',     label: 'Giochi',    Icon: GameIcon      },
-  { path: '/chat',      label: 'Chat',      Icon: MessageCircleIcon },
+  { path: '/',          labelKey: 'nav.home',       Icon: HomeIcon      },
+  { path: '/socialify', labelKey: 'nav.socialify',  Icon: UsersIcon     },
+  { path: '/twitch',    labelKey: 'nav.twitch',     Icon: TwitchIcon    },
+  { path: '/youtube',   labelKey: 'nav.youtube',    Icon: YoutubeIcon   },
+  { path: '/instagram', labelKey: 'nav.instagram',  Icon: InstagramIcon },
+  { path: '/podcast',   labelKey: 'nav.podcast',    Icon: MicIcon       },
+  { path: '/tiktok',    labelKey: 'nav.tiktok',     Icon: ({ size }) => <TikTokIcon size={size} /> },
+  { path: '/gioco',     labelKey: 'nav.giochi',     Icon: GameIcon      },
+  { path: '/chat',      labelKey: 'nav.chat',       Icon: MessageCircleIcon },
 ];
 
 const MOBILE_LINKS = [
-  { path: '/',              label: 'Home',        Icon: HomeIcon          },
-  { path: '/socialify',     label: 'SOCIALify',   Icon: UsersIcon         },
-  { path: '/gioco',         label: 'Giochi',      Icon: GameIcon          },
-  { path: '/chat',          label: 'Chat',        Icon: MessageCircleIcon },
-  { path: '/impostazioni',  label: 'Impostazioni', Icon: SettingsIcon     },
+  { path: '/',              labelKey: 'nav.home',          Icon: HomeIcon          },
+  { path: '/socialify',     labelKey: 'nav.socialify',     Icon: UsersIcon         },
+  { path: '/gioco',         labelKey: 'nav.giochi',        Icon: GameIcon          },
+  { path: '/chat',          labelKey: 'nav.chat',          Icon: MessageCircleIcon },
+  { path: '/impostazioni',  labelKey: 'nav.impostazioni',  Icon: SettingsIcon     },
 ];
 
 /* Elasticità ai bordi della bolla trascinabile (0 = rigido, 1 = libero) */
@@ -73,6 +75,7 @@ function useNonLetti() {
    ───────────────────────────────────────────────────────── */
 function MobileTabBar({ activePath, haNonLetti }) {
   const navigate    = useNavigate();
+  const { t }       = useLingua();
   const activeIdx   = MOBILE_LINKS.findIndex(l => l.path === activePath);
   const count       = MOBILE_LINKS.length;
   const tabWidthPct = 100 / count;
@@ -183,7 +186,7 @@ function MobileTabBar({ activePath, haNonLetti }) {
   }, []);
 
   return (
-    <nav className="mobile-tab-bar" aria-label="Navigazione principale">
+    <nav className="mobile-tab-bar" aria-label={t('nav.aria.main')}>
       {/* motion.div per rilevare il pan orizzontale; touch-action:pan-y
           lascia lo scroll verticale al browser, cattura solo l'asse X */}
       <motion.div
@@ -208,8 +211,9 @@ function MobileTabBar({ activePath, haNonLetti }) {
         )}
 
         {/* ── Tab items ── */}
-        {MOBILE_LINKS.map(({ path, label, Icon }) => {
+        {MOBILE_LINKS.map(({ path, labelKey, Icon }) => {
           const isActive = activePath === path;
+          const label = t(labelKey);
           return (
             <Link
               key={path}
@@ -257,11 +261,12 @@ function MobileTabBar({ activePath, haNonLetti }) {
    ───────────────────────────────────────────────────────── */
 
 const ICONE_TEMA = { auto: SunMoon, 'alba-tramonto': Sunrise, chiaro: Sun, scuro: Moon };
-const LABEL_TEMA = {
-  auto:            'Tema: Auto (segue sistema)',
-  'alba-tramonto': 'Tema: Alba/Tramonto (in base all\'ora)',
-  chiaro:          'Tema: Chiaro',
-  scuro:           'Tema: Scuro',
+/* Chiavi di traduzione per i tooltip del toggle tema, risolte via useLingua().t() */
+const CHIAVI_TEMA = {
+  auto:            'nav.tema.auto',
+  'alba-tramonto': 'nav.tema.alba-tramonto',
+  chiaro:          'nav.tema.chiaro',
+  scuro:           'nav.tema.scuro',
 };
 
 export default function Navbar() {
@@ -271,6 +276,9 @@ export default function Navbar() {
   const headerVisible     = useScrollHeader();
   const haNonLetti        = useNonLetti();
   const { modalita, cicla } = useTema();
+  const { t }             = useLingua();
+
+  const labelTema = t(CHIAVI_TEMA[modalita] || 'nav.tema.auto');
 
   const [hoveredPath, setHoveredPath] = useState(null);
   const [pillPos,     setPillPos]     = useState({ left: 0, width: 0 });
@@ -329,7 +337,7 @@ export default function Navbar() {
             transition={{ type: 'spring', stiffness: 340, damping: 32, mass: 0.8 }}
           >
             <div className="navbar-content">
-              <Link to="/" className="navbar-logo" aria-label="ANDRYXify – Home">
+              <Link to="/" className="navbar-logo" aria-label={t('nav.aria.logo')}>
                 <img src={LOGO_URL} alt="ANDRYXify" className="navbar-logo-img" fetchPriority="high" />
               </Link>
 
@@ -349,8 +357,9 @@ export default function Navbar() {
                   />
                 )}
 
-                {NAV_LINKS.map(({ path, label, Icon }) => {
+                {NAV_LINKS.map(({ path, labelKey, Icon }) => {
                   const isActive = location.pathname === path;
+                  const label = t(labelKey);
                   return (
                     <div
                       key={path}
@@ -382,8 +391,8 @@ export default function Navbar() {
               <motion.button
                 onClick={() => { cicla(); hapticLight(); }}
                 className="nav-link nav-tema-toggle"
-                aria-label={LABEL_TEMA[modalita]}
-                title={LABEL_TEMA[modalita]}
+                aria-label={labelTema}
+                title={labelTema}
                 style={{ marginLeft: '0.25rem', border: 'none', cursor: 'pointer', background: 'transparent' }}
                 whileHover={{ scale: 1.12 }}
                 whileTap={{ scale: 0.9, rotate: 15 }}
@@ -401,7 +410,7 @@ export default function Navbar() {
               </motion.button>
 
               {/* Icona impostazioni */}
-              <Link to="/impostazioni" className="nav-link" aria-label="Impostazioni" style={{ marginLeft: '0.25rem', display: 'flex', alignItems: 'center' }}>
+              <Link to="/impostazioni" className="nav-link" aria-label={t('nav.impostazioni')} style={{ marginLeft: '0.25rem', display: 'flex', alignItems: 'center' }}>
                 <SettingsIcon size={17} />
               </Link>
             </div>

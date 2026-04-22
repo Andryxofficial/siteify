@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { WifiOff, Wifi, Gamepad2 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useReti } from '../contexts/RetiContext';
+import { useLingua } from '../contexts/LinguaContext';
 
 const DELAY_NASCONDI_RIPRISTINO_MS = 3000;
 
@@ -40,6 +41,7 @@ function reducer(stato, azione) {
 export default function BannerOffline() {
   const { online } = useReti();
   const location = useLocation();
+  const { t } = useLingua();
   const [stato, dispatch] = useReducer(
     reducer,
     online ? 'nascosto' : 'offline'
@@ -76,19 +78,19 @@ export default function BannerOffline() {
           {stato === 'ripristinato' ? (
             <>
               <Wifi size={15} className="banner-offline-icon banner-offline-icon-ok" aria-hidden="true" />
-              <span>Connessione ripristinata</span>
+              <span>{t('offline.ripristinata')}</span>
             </>
           ) : (
             <>
               <WifiOff size={15} className="banner-offline-icon" aria-hidden="true" />
-              <span>Sei offline</span>
+              <span>{t('offline.sei_offline')}</span>
               {!giàSulGioco && (
                 <Link
                   to="/gioco"
                   className="banner-offline-cta"
-                  aria-label="Gioca offline mentre la connessione torna"
+                  aria-label={t('offline.aria.gioca')}
                 >
-                  <Gamepad2 size={13} /> Gioca offline
+                  <Gamepad2 size={13} /> {t('offline.gioca_offline')}
                 </Link>
               )}
             </>

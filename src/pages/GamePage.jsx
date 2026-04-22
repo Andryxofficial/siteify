@@ -14,8 +14,9 @@ import {
 } from 'lucide-react';
 import SEO from '../components/SEO';
 import { getGameForMonth, loadGameModule, getAllGameMetas } from '../games/registry';
-import { meta as legendMeta, hasSave as hasLegendSave, clearSave as clearLegendSave } from '../games/legend/index.js';
+import { meta as legendMeta, hasSave as hasLegendSave, clearSave as clearLegendSave, setLegendLang, getTranslatedMeta as getLegendTranslatedMeta } from '../games/legend/index.js';
 import { useReti } from '../contexts/RetiContext';
+import { useLingua } from '../contexts/LinguaContext';
 
 const CHIAVETWITCH = import.meta.env.VITE_CHIAVETWITCH;
 
@@ -70,6 +71,17 @@ const C = {
 export default function GamePage() {
   const location = useLocation();
   const { online } = useReti();
+  const { lingua } = useLingua();
+
+  /* Sincronizza la lingua del motore Andryx Legend con quella del sito.
+     Il motore è JS puro e non usa i contesti React: leggiamo `lingua`
+     da useLingua e lo propaghiamo al modulo Legend ogni volta che cambia
+     (es. utente cambia lingua dalle Impostazioni). I dialoghi aperti
+     dopo questo momento saranno nella nuova lingua; quelli già in corso
+     restano nella lingua in cui sono stati aperti. */
+  useEffect(() => {
+    try { setLegendLang(lingua); } catch { /* no-op */ }
+  }, [lingua]);
 
   /* ─── Current month & game module ─── */
   const now = new Date();
@@ -89,7 +101,17 @@ export default function GamePage() {
   const isModalitaProva = !isLegend && meseSelezionato !== currentMonth;
 
   const monthlyEntry = getGameForMonth(meseSelezionato);
-  const gameMeta = isLegend ? legendMeta : monthlyEntry.meta;
+  /* Meta di Legend con testi tradotti nella lingua attiva.
+     Chiamiamo `setLegendLang(lingua)` sincronamente prima di leggere il
+     meta tradotto, così la prima render dopo un cambio di lingua mostra
+     già i testi corretti (l'useEffect sopra mantiene lo stesso valore,
+     quindi è idempotente). La dipendenza su `lingua` è implicita: viene
+     letta dentro l'IIFE e passata a setLegendLang. */
+  const legendMetaTradotta = (() => {
+    try { setLegendLang(lingua); return getLegendTranslatedMeta(); }
+    catch { return legendMeta; }
+  })();
+  const gameMeta = isLegend ? legendMetaTradotta : monthlyEntry.meta;
 
   /* Stato "ho un salvataggio Legend?" — aggiornato all'init e dopo eventi. */
   const [legendSaveAvailable, setLegendSaveAvailable] = useState(() => {
@@ -632,7 +654,7 @@ export default function GamePage() {
             {legendSaveAvailable && !isLegend && <span style={{ marginLeft: 'auto', fontSize: '0.65rem', color: 'var(--accent-warm, #ffb86c)', fontWeight: 700 }}>⏵ SAVE</span>}
           </div>
           <div style={{ fontSize: '0.75rem', color: C.textMuted, lineHeight: 1.4 }}>
-            Avventura epica top-down: 4 zone, dialoghi, puzzle, boss. Classifica dedicata.
+            {legendMetaTradotta.hubDescription}
           </div>
         </button>
       </div>

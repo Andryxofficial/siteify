@@ -13,6 +13,7 @@
  */
 import { startEngine } from './engine.js';
 import { loadSave, saveSave, clearSave, hasSave } from './save.js';
+import { getLegendMetaText } from './i18n.js';
 
 export const meta = {
   id: 'legend',
@@ -25,6 +26,26 @@ export const meta = {
   gameOverTitle: 'Sei caduto in battaglia',
   actionLabel: '⚔️',
 };
+
+/**
+ * Restituisce `meta` con i campi testuali (description, instructions,
+ * gameOverTitle) tradotti nella lingua attualmente impostata tramite
+ * `setLegendLang()`. Se una chiave manca, ricade sul valore italiano
+ * di `meta`.
+ *
+ * Uso in GamePage: `const m = getTranslatedMeta();` prima del render
+ * dell'hub e dell'overlay idle.
+ */
+export function getTranslatedMeta() {
+  return {
+    ...meta,
+    description: getLegendMetaText('description') || meta.description,
+    instructions: getLegendMetaText('instructions') || meta.instructions,
+    gameOverTitle: getLegendMetaText('gameOverTitle') || meta.gameOverTitle,
+    hubDescription: getLegendMetaText('hubDescription') ||
+      'Avventura epica top-down: 4 zone, dialoghi, puzzle, boss. Classifica dedicata.',
+  };
+}
 
 /**
  * Avvia il gioco. `options.continueSave` decide se riprendere o nuova partita.
@@ -64,3 +85,6 @@ export function createGame(canvas, callbacks, options = {}) {
 
 /* Espongo helper per la GamePage hub (per mostrare "continua partita") */
 export { hasSave, loadSave, clearSave };
+/* Espongo il setter di lingua per permettere a GamePage di sincronizzare
+   la lingua del gioco con quella del sito (useLingua). */
+export { setLegendLang } from './i18n.js';
