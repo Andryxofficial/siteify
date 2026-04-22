@@ -52,7 +52,7 @@ export const DIALOGS = {
   },
   elder_intro: {
     portrait: 'NPC_ELDER',
-    onComplete: { setFlag: 'has_sword', setQuest: 'has_sword', playSfx: 'pickup' },
+    /* La spada viene raccolta fisicamente come item sul pavimento — nessun setFlag qui */
   },
   elder_after_key: {
     portrait: 'NPC_ELDER',

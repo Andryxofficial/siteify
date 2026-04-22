@@ -30,17 +30,22 @@ const MAX_ENTRIES = 50;
 const WEEKLY_TTL_SECONDS = 8 * 24 * 60 * 60; // 8 days
 
 /* Giochi supportati. 'monthly' = gioco del mese (key prefix 'lb');
-   'legend' = Andryx Legend (key prefix 'lb:legend'). */
-const SUPPORTED_GAMES = new Set(['monthly', 'legend']);
+   'legend' = Andryx Legend (key prefix 'lb:legend');
+   'hourglass' = Andryx Hourglass (key prefix 'lb:hourglass'). */
+const SUPPORTED_GAMES = new Set(['monthly', 'legend', 'hourglass']);
 
 /** Prefisso Redis per il gioco (default = monthly per retrocompatibilita`). */
 function gamePrefix(game) {
-  return game === 'legend' ? 'lb:legend' : 'lb';
+  if (game === 'legend') return 'lb:legend';
+  if (game === 'hourglass') return 'lb:hourglass';
+  return 'lb';
 }
 
 /** Chiave generale per il gioco. */
 function generalKeyFor(game) {
-  return game === 'legend' ? 'lb:legend:general' : GENERAL_KEY;
+  if (game === 'legend') return 'lb:legend:general';
+  if (game === 'hourglass') return 'lb:hourglass:general';
+  return GENERAL_KEY;
 }
 
 const MONTH_NAMES = [

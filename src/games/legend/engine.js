@@ -118,6 +118,17 @@ export function startEngine(canvas, callbacks, options = {}) {
      Compare al centro-basso dello schermo al cambio zona, poi svanisce. */
   let zoneBanner = { name: '', timer: 0 };
 
+  /* ─── Menu inventario (stile Link's Awakening pause screen) ───
+     Aperto con I/Tab/M o con bottone UI. Pausa il gameplay e mostra
+     una schermata fullscreen con tutti gli oggetti raccolti, cuori,
+     cristalli, quest, e suggerimenti uso. */
+  let inventoryOpen = false;
+  let inventoryAnim = 0;          /* 0→1 fade-in, 1→0 fade-out */
+
+  /* Toast effimero per messaggi tipo "Pozione usata", "Niente pozioni" */
+  let toast = { text: '', timer: 0 };
+  function showToast(t, frames = 90) { toast.text = t; toast.timer = frames; }
+
   /* Carica entita` zona */
   function loadZone(isInit = false) {
     const z = getZone(state.zoneId);
@@ -249,6 +260,8 @@ export function startEngine(canvas, callbacks, options = {}) {
       e.phase = 0;
     } else if (def.type === 'item') {
       e.bobPhase = Math.random() * Math.PI * 2;
+    } else if (def.type === 'chest') {
+      e.opened = !!state.flags[`chest_${def.x}_${def.y}`];
     }
     return e;
   }
@@ -284,16 +297,61 @@ export function startEngine(canvas, callbacks, options = {}) {
      a raffica tenendo il tasto premuto. */
   let prevActionDown = false;
   let actionEdge = false;
+  let prevInventoryDown = false;
+  let inventoryEdge = false;
+  let prevPotionDown = false;
+  let potionEdge = false;
   function refreshActionEdge() {
     const k = keys.current || {};
     const down = !!(k[' '] || k.z || k.Z || k.x || k.X || k.j || k.J);
     actionEdge = (down && !prevActionDown);
     prevActionDown = down;
+
+    /* Inventario: I, Tab, M */
+    const invDown = !!(k.i || k.I || k.Tab || k.m || k.M);
+    inventoryEdge = (invDown && !prevInventoryDown);
+    prevInventoryDown = invDown;
+
+    /* Uso pozione: P */
+    const potDown = !!(k.p || k.P);
+    potionEdge = (potDown && !prevPotionDown);
+    prevPotionDown = potDown;
   }
   function consumeAction() {
     if (actionEdge) { actionEdge = false; return true; }
     if (actionBtn.current) { actionBtn.current = false; return true; }
     return false;
+  }
+  function consumeInventoryToggle() {
+    if (inventoryEdge) { inventoryEdge = false; return true; }
+    /* Bottone esterno (mobile): callback ref settato da GamePage */
+    const b = callbacks.inventoryBtnRef;
+    if (b && b.current) { b.current = false; return true; }
+    return false;
+  }
+  function consumePotionUse() {
+    if (potionEdge) { potionEdge = false; return true; }
+    const b = callbacks.potionBtnRef;
+    if (b && b.current) { b.current = false; return true; }
+    return false;
+  }
+
+  function tryUsePotion() {
+    if (state.potions <= 0) {
+      showToast(getLegendEngineText('no_potion') || '✗ Nessuna pozione');
+      SFX.text();
+      return;
+    }
+    if (state.player.hp >= state.player.maxHp) {
+      showToast(getLegendEngineText('full_hp') || '✓ Vita già piena');
+      SFX.text();
+      return;
+    }
+    state.potions--;
+    state.player.hp = Math.min(state.player.maxHp, state.player.hp + 4);
+    SFX.heart();
+    callbacks.onHpChange?.(state.player.hp, state.player.maxHp);
+    showToast(getLegendEngineText('potion_used') || '🧪 Pozione usata!');
   }
 
   /* ─── Collisione AABB con tile ─── */
@@ -316,7 +374,14 @@ export function startEngine(canvas, callbacks, options = {}) {
   /* Box collision per il player (10×10 al centro 16×16) */
   function tryMovePlayer(dx, dy) {
     const p = state.player;
-    const r = 5;            // mezza hitbox
+    const r = 5;
+
+    /* Prova a spingere blocchi nella direzione di movimento */
+    if (dx !== 0 || dy !== 0) {
+      const dir = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      tryPushBlock(p.x, p.y, dir);
+    }
+
     const newX = p.x + dx;
     if (!tileSolidAt(newX - r, p.y - r) &&
         !tileSolidAt(newX + r, p.y - r) &&
@@ -331,6 +396,24 @@ export function startEngine(canvas, callbacks, options = {}) {
         !tileSolidAt(p.x + r, newY + r)) {
       p.y = newY;
     }
+  }
+
+  function tryPushBlock(px, py, dir) {
+    const frontTx = Math.floor(px / TILE_SIZE) + (dir === 'right' ? 1 : dir === 'left' ? -1 : 0);
+    const frontTy = Math.floor(py / TILE_SIZE) + (dir === 'down' ? 1 : dir === 'up' ? -1 : 0);
+    if (frontTx < 0 || frontTy < 0 || frontTx >= ZONE_W || frontTy >= ZONE_H) return;
+    const ch = mutableMap[frontTy]?.[frontTx];
+    if (!getTile(ch).pushable) return;
+    const destX = frontTx + (dir === 'right' ? 1 : dir === 'left' ? -1 : 0);
+    const destY = frontTy + (dir === 'down' ? 1 : dir === 'up' ? -1 : 0);
+    if (destX < 0 || destY < 0 || destX >= ZONE_W || destY >= ZONE_H) return;
+    const destCh = mutableMap[destY]?.[destX];
+    const destTile = getTile(destCh);
+    if (destTile.solid && !destTile.plate) return;
+    setMutation(frontTx, frontTy, '.');
+    setMutation(destX, destY, 'B');
+    SFX.hit();
+    checkPuzzles();
   }
 
   /* ─── Player update ─── */
@@ -394,6 +477,15 @@ export function startEngine(canvas, callbacks, options = {}) {
         if (entitiesOverlap(p, e, 14) && consumeAction()) openSignDialog(e);
       } else if (e.type === 'npc') {
         if (entitiesOverlap(p, e, 18) && consumeAction()) openNpcDialog(e);
+      } else if (e.type === 'chest' && !e.opened) {
+        /* Ostacolo fisico: respingi il player */
+        if (entitiesOverlap(p, e, 12)) {
+          const cdx = p.x - e.x, cdy = p.y - e.y;
+          const cm = Math.sqrt(cdx*cdx + cdy*cdy) || 1;
+          p.x += (cdx/cm)*0.8; p.y += (cdy/cm)*0.8;
+        }
+        /* Apertura con azione */
+        if (entitiesOverlap(p, e, 18) && consumeAction()) openChest(e);
       }
     }
 
@@ -412,6 +504,9 @@ export function startEngine(canvas, callbacks, options = {}) {
         if (!broke) SFX.text();
       }
     }
+
+    /* Auto-usa chiave su porte bloccate adiacenti */
+    if (state.keys > 0) tryUseKey();
 
     /* Transizioni zona */
     checkTransitions();
@@ -525,26 +620,40 @@ export function startEngine(canvas, callbacks, options = {}) {
   }
 
   function checkPuzzles() {
-    /* Caverna: 2 torce → apri porta nord per accesso al boss */
-    if (state.zoneId === 'cave') {
-      const litCount = countInMap('l', mutableMap);
-      if (litCount >= 2 && !state.flags.cave_door1_opened) {
-        state.flags.cave_door1_opened = true;
-        /* Apri la porta D in posizione nota */
-        for (let y = 0; y < ZONE_H; y++) {
-          for (let x = 0; x < ZONE_W; x++) {
-            if (mutableMap[y][x] === 'D') setMutation(x, y, 'd');
-          }
-        }
-        SFX.door();
-        showSystemMessage(getLegendEngineText('doors_open'));
-        /* Ricarica entita` per spawnare boss/mago */
-        const z = getZone(state.zoneId);
-        const newEnts = z.entities.filter(e => e.requires === 'cave_door1' || e.requires === 'cave_torches');
-        for (const ne of newEnts) {
-          if (!entities.find(ex => ex.def === ne)) entities.push(instantiateEntity(ne));
+    if (state.zoneId !== 'cave') return;
+
+    /* Torce accese → sblocca boss */
+    const litCount = countInMap('l', mutableMap);
+    if (litCount >= 2 && !state.flags.cave_torches_lit) {
+      state.flags.cave_torches_lit = true;
+      SFX.door();
+      showSystemMessage(getLegendEngineText('boss_awakens'));
+      const z = getZone(state.zoneId);
+      const newEnts = z.entities.filter(e => e.requires === 'cave_torches');
+      for (const ne of newEnts) {
+        if (!entities.find(ex => ex.def === ne)) entities.push(instantiateEntity(ne));
+      }
+    }
+
+    /* Prima porta (D a col14, row8): si apre usando la chiave (gestito da tryUseKey) */
+
+    /* Blocchi spingibili sulle piastre → apri seconda porta (D a col8, row14) */
+    const origMap = getZone('cave').map;
+    let platesPressed = 0;
+    for (let ry = 0; ry < ZONE_H; ry++) {
+      for (let rx = 0; rx < ZONE_W; rx++) {
+        if (origMap[ry]?.[rx] === 'P' && mutableMap[ry]?.[rx] === 'B') platesPressed++;
+      }
+    }
+    if (platesPressed >= 2 && !state.flags.cave_plates_done) {
+      state.flags.cave_plates_done = true;
+      for (let ry = 0; ry < ZONE_H; ry++) {
+        for (let rx = 0; rx < ZONE_W; rx++) {
+          if (ry === 14 && mutableMap[ry]?.[rx] === 'D') setMutation(rx, ry, 'd');
         }
       }
+      SFX.door();
+      showSystemMessage(getLegendEngineText('puzzle_solved'));
     }
   }
 
@@ -636,6 +745,19 @@ export function startEngine(canvas, callbacks, options = {}) {
       SFX.victory();
       openDialogById('crystal_red_pickup');
     }
+    callbacks.onScore?.(calculateFinalScore({ ...state, maxHp: state.player.maxHp }));
+  }
+
+  function openChest(e) {
+    const key = `chest_${e.def.x}_${e.def.y}`;
+    if (state.flags[key]) return;
+    state.flags[key] = true;
+    e.opened = true;
+    SFX.victory();
+    if (e.def.contains) {
+      spawnItem(e.x, e.y - TILE_SIZE, e.def.contains);
+    }
+    showSystemMessage(getLegendEngineText('chest_open'));
     callbacks.onScore?.(calculateFinalScore({ ...state, maxHp: state.player.maxHp }));
   }
 
@@ -807,6 +929,18 @@ export function startEngine(canvas, callbacks, options = {}) {
           spawnProjectile(e.x, e.y, Math.cos(angle), Math.sin(angle), '#8a6040', 1, 180);
         }
       }
+    } else if (e.kind === 'goblin') {
+      /* Goblin: corsa rapida verso il player, lancia pietre ogni 2s */
+      const sp = dist < 50 ? 1.2 : 0.85;
+      tryMoveEntity(e, (dx / dist) * sp, (dy / dist) * sp);
+      e.frame = (e.frame + 0.15) % 2;
+      if (Math.abs(dx) > Math.abs(dy)) e.dir = dx > 0 ? 'right' : 'left';
+      else e.dir = dy > 0 ? 'down' : 'up';
+      e.cooldown--;
+      if (e.cooldown <= 0 && dist < 110) {
+        e.cooldown = 90;
+        spawnProjectile(e.x, e.y, dx / dist, dy / dist, '#8B4513', 1, 150);
+      }
     }
   }
 
@@ -894,6 +1028,32 @@ export function startEngine(canvas, callbacks, options = {}) {
         spawnProjectile(e.x, e.y, Math.cos(a), Math.sin(a), '#b870d0', 2, 220);
       }
       SFX.bossHit();
+    }
+  }
+
+  function tryUseKey() {
+    if (state.keys <= 0) return;
+    const p = state.player;
+    const tx = Math.floor(p.x / TILE_SIZE);
+    const ty = Math.floor(p.y / TILE_SIZE);
+    const adj = [[tx, ty - 1], [tx, ty + 1], [tx - 1, ty], [tx + 1, ty]];
+    for (const [ax, ay] of adj) {
+      const ch = mutableMap[ay]?.[ax];
+      if (ch === 'D') {
+        setMutation(ax, ay, 'd');
+        state.keys--;
+        SFX.door();
+        if (!state.flags.cave_door1_opened && state.zoneId === 'cave') {
+          state.flags.cave_door1_opened = true;
+          const z = getZone(state.zoneId);
+          const newEnts = z.entities.filter(e => e.requires === 'cave_door1');
+          for (const ne of newEnts) {
+            if (!entities.find(ex => ex.def === ne)) entities.push(instantiateEntity(ne));
+          }
+        }
+        showSystemMessage(getLegendEngineText('key_used'));
+        return;
+      }
     }
   }
 
@@ -1331,6 +1491,294 @@ export function startEngine(canvas, callbacks, options = {}) {
     }
   }
 
+  /* ─── Toast effimero (notifiche tipo "Pozione usata") ─── */
+  function renderToast() {
+    if (!toast.timer || !toast.text) return;
+    const t = toast.timer;
+    const alpha = t > 60 ? 1 : t / 60;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    const text = toast.text;
+    ctx.font = 'bold 18px monospace';
+    const w = ctx.measureText(text).width + 28;
+    const h = 32;
+    const x = (CANVAS_SIZE - w) / 2;
+    const y = CANVAS_SIZE - 90;
+    /* Pannello */
+    ctx.fillStyle = 'rgba(8,12,40,0.88)';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = '#f0c850';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+    /* Testo */
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 4;
+    ctx.fillStyle = '#fff5b0';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, CANVAS_SIZE / 2, y + h / 2);
+    ctx.shadowBlur = 0;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+  }
+
+  /* ─── Schermata inventario (stile Link's Awakening pause screen) ───
+     Pannello fullscreen con bordo oro doppio. Sezioni:
+       • Titolo "INVENTARIO"
+       • Cuori grandi (tutti i max)
+       • Strumenti: Spada, Scudo (illuminati se posseduti)
+       • Cristalli: Verde, Blu, Rosso (3 slot)
+       • Consumabili: Rupie, Chiavi, Bombe, Pozioni (count)
+       • Quest line corrente
+       • Footer hint controlli */
+  function renderInventory() {
+    if (inventoryAnim <= 0) return;
+    const a = inventoryAnim;
+    ctx.save();
+
+    /* Backdrop scuro animato */
+    ctx.fillStyle = `rgba(0,0,0,${0.65 * a})`;
+    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    /* Pannello centrato 440×440 */
+    const panelW = 440;
+    const panelH = 444;
+    const px = (CANVAS_SIZE - panelW) / 2;
+    /* Anim slide-in dall'alto */
+    const py = (CANVAS_SIZE - panelH) / 2 + (1 - a) * 24;
+    ctx.globalAlpha = a;
+
+    /* Ombra */
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(px + 5, py + 7, panelW, panelH);
+    /* Fondo gradient blu profondo (Minish Cap) */
+    const grad = ctx.createLinearGradient(0, py, 0, py + panelH);
+    grad.addColorStop(0, 'rgba(28,38,90,0.97)');
+    grad.addColorStop(1, 'rgba(10,14,40,0.97)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(px, py, panelW, panelH);
+    /* Bordo esterno oro spesso + interno sottile */
+    ctx.strokeStyle = '#f0c850';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(px + 1.5, py + 1.5, panelW - 3, panelH - 3);
+    ctx.strokeStyle = 'rgba(240,200,80,0.55)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px + 7, py + 7, panelW - 14, panelH - 14);
+    /* Corner brackets */
+    ctx.strokeStyle = '#fff5b0';
+    ctx.lineWidth = 2;
+    const cb = 14;
+    ctx.beginPath(); ctx.moveTo(px + 5, py + 5 + cb); ctx.lineTo(px + 5, py + 5); ctx.lineTo(px + 5 + cb, py + 5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px + panelW - 5 - cb, py + 5); ctx.lineTo(px + panelW - 5, py + 5); ctx.lineTo(px + panelW - 5, py + 5 + cb); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px + 5, py + panelH - 5 - cb); ctx.lineTo(px + 5, py + panelH - 5); ctx.lineTo(px + 5 + cb, py + panelH - 5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px + panelW - 5 - cb, py + panelH - 5); ctx.lineTo(px + panelW - 5, py + panelH - 5); ctx.lineTo(px + panelW - 5, py + panelH - 5 - cb); ctx.stroke();
+
+    /* Titolo */
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = '#fff5b0';
+    ctx.font = 'bold 26px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(getLegendEngineText('inventory_title') || 'INVENTARIO', CANVAS_SIZE / 2, py + 36);
+    ctx.shadowBlur = 0;
+
+    /* Linea separatrice oro sotto al titolo */
+    ctx.strokeStyle = 'rgba(240,200,80,0.45)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(px + 24, py + 50); ctx.lineTo(px + panelW - 24, py + 50);
+    ctx.stroke();
+
+    /* ─── Cuori (riga sotto titolo) ─── */
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#fff5b0';
+    ctx.fillText(`♥ ${getLegendEngineText('inv_hp') || 'Vita'}`, px + 22, py + 76);
+    const fullHearts = Math.floor(state.player.hp / 2);
+    const halfHeart  = state.player.hp % 2 === 1;
+    const totalHearts = Math.ceil(state.player.maxHp / 2);
+    const heartSize = 22;
+    const heartPad  = 2;
+    const heartsStartX = px + 110;
+    for (let i = 0; i < totalHearts; i++) {
+      const hx = heartsStartX + i * (heartSize + heartPad);
+      const hy = py + 64;
+      if (i < fullHearts) {
+        drawSpriteScaled(ctx, SPRITES.ITEM_HEART, hx, hy, heartSize, heartSize);
+      } else if (i === fullHearts && halfHeart) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(hx, hy, heartSize / 2, heartSize);
+        ctx.clip();
+        drawSpriteScaled(ctx, SPRITES.ITEM_HEART, hx, hy, heartSize, heartSize);
+        ctx.restore();
+        ctx.strokeStyle = 'rgba(255,80,80,0.6)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(hx + 2, hy + 2, heartSize - 4, heartSize - 4);
+      } else {
+        ctx.strokeStyle = 'rgba(255,80,80,0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(hx + 3, hy + 3, heartSize - 6, heartSize - 6);
+      }
+    }
+
+    /* ─── Strumenti ─── */
+    let sectY = py + 102;
+    ctx.fillStyle = '#fff5b0';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(getLegendEngineText('inv_tools') || 'STRUMENTI', px + 22, sectY);
+    /* Slot 32×32 con sfondo */
+    const slotSize = 36;
+    const slotPad  = 8;
+    const tools = [
+      { sprite: 'ITEM_SWORD',  flag: 'has_sword',  label: 'A' },
+      { sprite: 'ITEM_SHIELD', flag: 'has_shield', label: 'B' },
+    ];
+    for (let i = 0; i < tools.length; i++) {
+      const sx = px + 22 + i * (slotSize + slotPad);
+      const sy = sectY + 8;
+      drawInvSlot(sx, sy, slotSize);
+      if (state.flags[tools[i].flag]) {
+        drawSpriteScaled(ctx, SPRITES[tools[i].sprite], sx + 4, sy + 4, slotSize - 8, slotSize - 8);
+      } else {
+        ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(sx + 6, sy + 6); ctx.lineTo(sx + slotSize - 6, sy + slotSize - 6);
+        ctx.moveTo(sx + slotSize - 6, sy + 6); ctx.lineTo(sx + 6, sy + slotSize - 6);
+        ctx.stroke();
+      }
+    }
+
+    /* ─── Cristalli (a destra dei tools) ─── */
+    ctx.fillStyle = '#fff5b0';
+    ctx.font = 'bold 16px monospace';
+    ctx.fillText(getLegendEngineText('inv_crystals') || 'CRISTALLI', px + 232, sectY);
+    const crystals = [
+      { sprite: 'ITEM_CRYSTAL_GREEN', flag: 'has_crystal_green' },
+      { sprite: 'ITEM_CRYSTAL_BLUE',  flag: 'has_crystal_blue'  },
+      { sprite: 'ITEM_CRYSTAL_RED',   flag: 'has_crystal_red'   },
+    ];
+    for (let i = 0; i < crystals.length; i++) {
+      const sx = px + 232 + i * (slotSize + slotPad);
+      const sy = sectY + 8;
+      drawInvSlot(sx, sy, slotSize);
+      if (state.flags[crystals[i].flag]) {
+        drawSpriteScaled(ctx, SPRITES[crystals[i].sprite], sx + 4, sy + 4, slotSize - 8, slotSize - 8);
+      } else {
+        ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(sx + 8, sy + 8, slotSize - 16, slotSize - 16);
+      }
+    }
+
+    /* ─── Consumabili (rupie/chiavi/bombe/pozioni) ─── */
+    sectY = py + 168;
+    ctx.fillStyle = '#fff5b0';
+    ctx.font = 'bold 16px monospace';
+    ctx.fillText(getLegendEngineText('inv_consumables') || 'OGGETTI', px + 22, sectY);
+
+    const items = [
+      { sprite: 'ITEM_RUPEE',  count: state.rupees },
+      { sprite: 'ITEM_KEY',    count: state.keys },
+      { sprite: 'ITEM_BOMB',   count: state.bombs },
+      { sprite: 'ITEM_POTION', count: state.potions, highlight: state.potions > 0 },
+    ];
+    for (let i = 0; i < items.length; i++) {
+      const sx = px + 22 + i * (slotSize + slotPad + 38);
+      const sy = sectY + 8;
+      drawInvSlot(sx, sy, slotSize, items[i].highlight);
+      if (items[i].count > 0) {
+        drawSpriteScaled(ctx, SPRITES[items[i].sprite], sx + 4, sy + 4, slotSize - 8, slotSize - 8);
+      } else {
+        ctx.globalAlpha = a * 0.35;
+        drawSpriteScaled(ctx, SPRITES[items[i].sprite], sx + 4, sy + 4, slotSize - 8, slotSize - 8);
+        ctx.globalAlpha = a;
+      }
+      /* Conteggio "x N" a destra dello slot */
+      ctx.fillStyle = items[i].count > 0 ? '#fff5b0' : 'rgba(255,245,176,0.4)';
+      ctx.font = 'bold 16px monospace';
+      ctx.fillText(`× ${items[i].count}`, sx + slotSize + 2, sy + slotSize / 2 + 6);
+    }
+
+    /* ─── Quest corrente ─── */
+    sectY = py + 232;
+    ctx.fillStyle = '#fff5b0';
+    ctx.font = 'bold 16px monospace';
+    ctx.fillText(getLegendEngineText('inv_quest') || 'MISSIONE', px + 22, sectY);
+
+    const questText = getCurrentQuestText();
+    const questLines = wrapText(questText, panelW - 44, '14px monospace');
+    ctx.font = '14px monospace';
+    ctx.fillStyle = '#d4e0ff';
+    for (let i = 0; i < Math.min(3, questLines.length); i++) {
+      ctx.fillText(questLines[i], px + 22, sectY + 22 + i * 18);
+    }
+
+    /* ─── Zona corrente ─── */
+    sectY = py + 312;
+    ctx.fillStyle = '#fff5b0';
+    ctx.font = 'bold 16px monospace';
+    ctx.fillText(getLegendEngineText('inv_zone') || 'ZONA', px + 22, sectY);
+    ctx.fillStyle = '#d4e0ff';
+    ctx.font = '14px monospace';
+    ctx.fillText(`📍 ${getLegendZoneName(state.zoneId) || state.zoneId}`, px + 22, sectY + 22);
+
+    /* ─── Stats ─── */
+    ctx.fillStyle = '#a8b8d8';
+    ctx.font = '13px monospace';
+    ctx.fillText(`☠ ${getLegendEngineText('inv_kills') || 'Nemici'}: ${state.kills}`, px + 22, sectY + 44);
+    ctx.fillText(`🏆 ${getLegendEngineText('inv_bosses') || 'Boss'}: ${state.defeatedBosses.size}/2`, px + 200, sectY + 44);
+
+    /* ─── Footer hint ─── */
+    ctx.fillStyle = 'rgba(240,200,80,0.85)';
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'center';
+    const hint = getLegendEngineText('inv_hint') || '[I/Tab/M] chiudi  ·  [P] usa pozione';
+    ctx.fillText(hint, CANVAS_SIZE / 2, py + panelH - 16);
+
+    ctx.shadowBlur = 0;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+  }
+
+  /* Helper: disegna slot 36×36 con sfondo blu scuro e bordo oro. */
+  function drawInvSlot(sx, sy, size, highlight) {
+    ctx.fillStyle = highlight ? 'rgba(60,80,140,0.85)' : 'rgba(20,28,60,0.85)';
+    ctx.fillRect(sx, sy, size, size);
+    ctx.strokeStyle = highlight ? '#f0c850' : 'rgba(240,200,80,0.55)';
+    ctx.lineWidth = highlight ? 2 : 1;
+    ctx.strokeRect(sx + 0.5, sy + 0.5, size - 1, size - 1);
+  }
+
+  /* Quest line corrente — restituisce un testo descrittivo. */
+  function getCurrentQuestText() {
+    const f = state.flags;
+    const k = (id) => getLegendEngineText('quest_' + id);
+    if (f.has_crystal_green && f.has_crystal_blue && f.has_crystal_red) {
+      return k('final') || 'Torna dal Re Andryx con i 3 cristalli per affrontare il Re Ombra.';
+    }
+    if (f.has_crystal_green && f.has_crystal_blue) {
+      return k('castle') || 'Vai a nord nel Castello: recupera il Cristallo Rosso dal Re Ombra.';
+    }
+    if (f.has_crystal_green) {
+      return k('cave') || 'Esplora la Caverna a sud: accendi le torce e sconfiggi il Custode per il Cristallo Blu.';
+    }
+    if (f.has_sword && f.has_shield) {
+      return k('forest') || 'Esplora la Foresta a est: sconfiggi il Troll per ottenere il Cristallo Verde.';
+    }
+    if (f.has_sword && !f.has_shield) {
+      return k('shield') || 'Trova lo SCUDO nella tua casa al villaggio: rompi il vaso dorato per la chiave.';
+    }
+    if (!f.has_sword) {
+      return k('sword') || 'Parla con l\'Anziano nella Grotta a nord-ovest del villaggio: ti dara` la spada di tuo padre.';
+    }
+    return k('start') || 'Parla con il Re Andryx nel villaggio per iniziare la tua avventura.';
+  }
+
   function renderOverlay() {
     if (gameOverRef.gameOver) {
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
@@ -1364,6 +1812,33 @@ export function startEngine(canvas, callbacks, options = {}) {
     tickCount++;
     refreshActionEdge();
     if (gameOverRef.gameOver || winRef.win) return;
+
+    /* Toggle inventario in qualsiasi momento (anche durante dialogo lo chiude prima) */
+    if (consumeInventoryToggle()) {
+      if (dialogState) {
+        /* Skip alla fine della riga corrente come se avessi premuto azione */
+      } else {
+        inventoryOpen = !inventoryOpen;
+        SFX.text();
+      }
+    }
+    /* Anim fade del menu */
+    if (inventoryOpen) inventoryAnim = Math.min(1, inventoryAnim + 0.18);
+    else                inventoryAnim = Math.max(0, inventoryAnim - 0.18);
+
+    /* Decadimento toast */
+    if (toast.timer > 0) toast.timer--;
+
+    /* Se inventario aperto: pausa gameplay (no movement, no enemy, no dialog) */
+    if (inventoryOpen) {
+      /* Permetti uso pozione anche dal menu */
+      if (consumePotionUse()) tryUsePotion();
+      return;
+    }
+
+    /* Uso pozione anche fuori dal menu (tasto P o bottone) */
+    if (consumePotionUse()) tryUsePotion();
+
     if (dialogState) {
       updateDialog();
       return;
@@ -1401,6 +1876,8 @@ export function startEngine(canvas, callbacks, options = {}) {
     renderHud();
     renderZoneBanner();
     renderDialog();
+    renderToast();
+    renderInventory();
     renderOverlay();
   }
 
@@ -1445,6 +1922,7 @@ const ENEMY_STATS = {
   skeleton:     { hp: 2,  speed: 0.7, damage: 1, points: 30 },
   mage:         { hp: 3,  speed: 0.4, damage: 1, points: 50 },
   forest_troll: { hp: 12, speed: 0.8, damage: 2, points: 200 }, /* mini-boss */
+  goblin:       { hp: 2,  speed: 0.9, damage: 1, points: 75 },
 };
 const BOSS_STATS = {
   guardian:    { hp: 12, speed: 0.4, damage: 2, points: 500 },
