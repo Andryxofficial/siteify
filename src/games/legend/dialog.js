@@ -52,6 +52,7 @@ export const DIALOGS = {
   },
   elder_intro: {
     portrait: 'NPC_ELDER',
+    onComplete: { setFlag: 'has_sword', setQuest: 'has_sword', playSfx: 'pickup' },
   },
   elder_after_key: {
     portrait: 'NPC_ELDER',
@@ -59,9 +60,15 @@ export const DIALOGS = {
   elder_after_sword: {
     portrait: 'NPC_ELDER',
   },
+  elder_village: {
+    portrait: 'NPC_ELDER',
+  },
   house_key_pickup: {
     portrait: 'ITEM_HOUSE_KEY',
     onComplete: { setFlag: 'house_key' },
+  },
+  andryx_house_enter: {
+    portrait: 'NPC_ELDER',
   },
   merchant: {
     portrait: 'NPC_MERCHANT',
@@ -99,11 +106,32 @@ export const DIALOGS = {
   shadow_king_intro: {
     portrait: 'BOSS_SHADOW_KING',
   },
+  forest_troll_intro: {
+    portrait: 'BOSS_GUARDIAN',
+  },
+  forest_troll_victory: {
+    portrait: null,
+  },
+  castle_boss_awakens: {
+    portrait: 'BOSS_SHADOW_KING',
+  },
   victory_guardian: {
     portrait: 'ITEM_CRYSTAL_BLUE',
   },
   victory_shadow_king: {
     portrait: 'ITEM_CRYSTAL_RED',
+  },
+  village_intro: {
+    portrait: 'NPC_ELDER',
+  },
+  forest_enter: {
+    portrait: 'NPC_ELDER',
+  },
+  cave_enter: {
+    portrait: 'NPC_ELDER',
+  },
+  castle_enter: {
+    portrait: 'BOSS_SHADOW_KING',
   },
 };
 
@@ -147,6 +175,9 @@ export function selectNpcDialog(npcId, state) {
     if (flags.has_sword) return 'elder_after_sword';
     if (flags.house_key) return 'elder_after_key';
     return 'elder_intro';
+  }
+  if (npcId === 'elder_village') {
+    return 'elder_village';
   }
   return npcId;
 }
