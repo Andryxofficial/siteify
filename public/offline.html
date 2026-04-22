@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>ANDRYXify — Sei offline</title>
+    <meta name="theme-color" content="#050506" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <style>
+      :root {
+        --bg: #050506;
+        --fg: #f0ecf4;
+        --muted: #a8a3b3;
+        --accent: #e040fb;
+      }
+      @media (prefers-color-scheme: light) {
+        :root { --bg: #f0f2f8; --fg: #16121f; --muted: #6b7180; }
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; min-height: 100%; background: var(--bg); color: var(--fg); }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Outfit, Inter, sans-serif;
+        display: flex; align-items: center; justify-content: center;
+        min-height: 100vh;
+        padding: 24px;
+        text-align: center;
+      }
+      .card {
+        max-width: 420px;
+        background: rgba(255,255,255,0.04);
+        border: 1.5px solid rgba(130,170,240,0.14);
+        border-radius: 28px;
+        padding: 32px 24px;
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        box-shadow: 0 24px 60px rgba(8,12,48,0.42);
+      }
+      .logo {
+        width: 84px; height: 84px;
+        border-radius: 20px;
+        margin: 0 auto 18px;
+        display: block;
+      }
+      h1 { margin: 0 0 10px; font-size: 1.6rem; letter-spacing: -0.02em; }
+      p  { margin: 0 0 18px; color: var(--muted); font-size: 0.98rem; line-height: 1.5; }
+      .btn {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 12px 20px;
+        border-radius: 14px;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 600;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: transform .15s ease, opacity .15s ease;
+      }
+      .btn:hover { transform: translateY(-1px); opacity: 0.92; }
+      .links { margin-top: 18px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; font-size: 0.85rem; }
+      .links a { color: var(--muted); text-decoration: none; border-bottom: 1px dashed transparent; }
+      .links a:hover { color: var(--fg); border-bottom-color: currentColor; }
+      .pulse {
+        display: inline-block;
+        width: 10px; height: 10px; border-radius: 50%;
+        background: #f87171;
+        margin-right: 6px; vertical-align: middle;
+        animation: pulse 1.6s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(0.85); }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card" role="main">
+      <img src="/pwa-192.png" alt="ANDRYXify" class="logo" />
+      <h1><span class="pulse" aria-hidden="true"></span>Sei offline</h1>
+      <p>
+        Sembra che la connessione sia caduta. Quando torni online tutto
+        ripartirà da solo. Nel frattempo puoi continuare a giocare —
+        i giochi sono cachati e funzionano senza rete.
+      </p>
+      <a class="btn" href="/gioco">🎮 Gioca offline</a>
+      <div class="links">
+        <a href="/" onclick="window.location.reload(); return false;">Riprova</a>
+        <a href="/">Home</a>
+      </div>
+    </main>
+    <script>
+      // Quando torna la connessione, ricarica automaticamente.
+      window.addEventListener('online', () => { window.location.reload(); });
+    </script>
+  </body>
+</html>

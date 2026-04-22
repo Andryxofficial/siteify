@@ -14,8 +14,11 @@ import Footer from './components/Footer';
 import PageTransition from './components/PageTransition';
 import CookieBanner from './components/CookieBanner';
 import BannerOffline from './components/BannerOffline';
+import PromptInstalla from './components/PromptInstalla';
 import useStandalone from './hooks/useStandalone';
 import useScrollToTop from './hooks/useScrollToTop';
+import useSwipeBack from './hooks/useSwipeBack';
+import useThemeColor from './hooks/useThemeColor';
 import UpdateToast from './components/UpdateToast';
 import Home from './pages/Home';
 import FallbackRitardato from './components/FallbackRitardato';
@@ -23,6 +26,7 @@ import {
   TwitchPage, YouTubePage, InstagramPage, PodcastPage, TikTokPage,
   GamePage, CommunityPage, ThreadView, Scoiattoli, ModPanel,
   FriendsPage, MessagesPage, ChatGeneralePage, SettingsPage, ProfiloPage,
+  AppPage,
   prefetchPagineMain,
 } from './lazyPages';
 import './index.css';
@@ -123,10 +127,34 @@ function TwitchOAuthRedirect() {
   return null;
 }
 
+/* Mappa colore status bar per rotta — emula app native con barra contestuale */
+const COLORE_PER_ROTTA = {
+  '/twitch':    '#9146FF',
+  '/youtube':   '#FF0000',
+  '/instagram': '#E1306C',
+  '/tiktok':    '#000000',
+  '/podcast':   '#1DB954',
+  '/gioco':     '#0a0612',
+  '/socialify': '#7c3aed',
+  '/chat':      '#0a0612',
+};
+
+function colorePerRotta(pathname) {
+  if (!pathname) return null;
+  for (const prefisso of Object.keys(COLORE_PER_ROTTA)) {
+    if (pathname === prefisso || pathname.startsWith(prefisso + '/')) {
+      return COLORE_PER_ROTTA[prefisso];
+    }
+  }
+  return null;
+}
+
 function AppLayout() {
   const location = useLocation();
   const isStandalone = useStandalone();
   useScrollToTop();
+  useSwipeBack(true);
+  useThemeColor(colorePerRotta(location.pathname));
 
   // Ripristina tema colore accent al carico (tema chiaro/scuro e font
   // sono già gestiti dallo script anti-FOUC in index.html e TemaProvider)
@@ -170,6 +198,7 @@ function AppLayout() {
               <Route path="/chat" element={<ChatGeneralePage />} />
               <Route path="/impostazioni" element={<SettingsPage />} />
               <Route path="/profilo/:username" element={<ProfiloPage />} />
+              <Route path="/app" element={<AppPage />} />
             </Routes>
           </Suspense>
           </ErrorBoundary>
@@ -178,6 +207,7 @@ function AppLayout() {
       <Footer />
       <UpdateToast />
       <BannerOffline />
+      <PromptInstalla />
       <CookieBanner />
     </div>
   );
