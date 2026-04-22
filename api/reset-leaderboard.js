@@ -59,16 +59,16 @@ import { Redis } from '@upstash/redis';
  */
 
 const GENERAL_KEY = 'lb:general';
-const SUPPORTED_GAMES = new Set(['monthly', 'legend', 'hourglass']);
+const SUPPORTED_GAMES = new Set(['monthly', 'legend', 'platform']);
 
 function gamePrefix(game) {
   if (game === 'legend') return 'lb:legend';
-  if (game === 'hourglass') return 'lb:hourglass';
+  if (game === 'platform') return 'lb:platform';
   return 'lb';
 }
 function generalKeyFor(game) {
   if (game === 'legend') return 'lb:legend:general';
-  if (game === 'hourglass') return 'lb:hourglass:general';
+  if (game === 'platform') return 'lb:platform:general';
   return GENERAL_KEY;
 }
 
