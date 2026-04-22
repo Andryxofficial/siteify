@@ -3,5 +3,10 @@ Allow: /
 Disallow: /api/
 Disallow: /scoiattoli
 Disallow: /mod-panel
+Disallow: /messaggi
+Disallow: /amici
+Disallow: /impostazioni
+Disallow: /overlay/
+Disallow: /profilo/
 
 Sitemap: https://andryxify.it/sitemap.xml

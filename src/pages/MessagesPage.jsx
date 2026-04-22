@@ -3027,7 +3027,7 @@ export default function MessagesPage() {
   if (fase === 'inizializzazione') {
     return (
       <>
-        <SEO title="Messaggi" />
+        <SEO title="Messaggi" path="/messaggi" noindex />
         <SpinnerCentrale testo="Inizializzazione messaggi sicuri…" />
       </>
     );
@@ -3037,7 +3037,7 @@ export default function MessagesPage() {
   if (fase === 'non-autenticato') {
     return (
       <>
-        <SEO title="Messaggi" />
+        <SEO title="Messaggi" path="/messaggi" noindex />
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="glass-panel"
           style={{ maxWidth: 420, margin: '60px auto', padding: '2.5rem', textAlign: 'center' }}>
@@ -3060,7 +3060,7 @@ export default function MessagesPage() {
   if (fase === 'setup-primo') {
     return (
       <>
-        <SEO title="Setup messaggi" />
+        <SEO title="Setup messaggi" path="/messaggi" noindex />
         <div style={{ padding: '1rem' }}>
           <FaseSetupPrimo username={twitchUser} token={twitchToken} onComplete={onSetupCompleto} />
         </div>
@@ -3072,7 +3072,7 @@ export default function MessagesPage() {
   if (fase === 'setup-joiner') {
     return (
       <>
-        <SEO title="Sincronizza dispositivo" />
+        <SEO title="Sincronizza dispositivo" path="/messaggi" noindex />
         <div style={{ padding: '1rem' }}>
           <FaseSetupJoiner username={twitchUser} token={twitchToken} onComplete={onSetupCompleto} />
         </div>
@@ -3083,7 +3083,7 @@ export default function MessagesPage() {
   /* ─── Fase: messaggi ─── */
   return (
     <>
-      <SEO title="Messaggi" />
+      <SEO title="Messaggi" path="/messaggi" noindex />
       <div className="msg-main-panel">
         {/* Barra laterale conversazioni */}
         <AnimatePresence mode="wait">

@@ -130,14 +130,14 @@
     {
       "@context": "https://schema.org",
       "@type": "VideoGame",
-      "name": "Neural Dash — Il Minigioco di ANDRYXify",
-      "description": "Guida il segnale neurale attraverso la rete sinaptica. Raccogli impulsi, evita i nodi corrotti e scala la classifica! Minigioco esclusivo con login Twitch e leaderboard.",
+      "name": "Andryx Legend — Avventura Pixel-Art di ANDRYXify",
+      "description": "Avventura top-down 2D pixel-art ispirata a The Minish Cap. Esplora 6 zone, sconfiggi nemici, raccogli i cristalli e affronta il Re Ombra. Include anche Andryx Jump (platformer 2D) e il Gioco del Mese con classifica Twitch.",
       "url": "https://andryxify.it/gioco",
-      "genre": ["Arcade", "Endless Runner", "Casual"],
+      "genre": ["Adventure", "Action", "Platformer", "Pixel Art"],
       "gamePlatform": "Web Browser",
       "operatingSystem": "Any",
       "applicationCategory": "Game",
-      "inLanguage": "it",
+      "inLanguage": ["it", "en", "es"],
       "author": { "@id": "https://andryxify.it/#persona" },
       "offers": {
         "@type": "Offer",
@@ -246,7 +246,59 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- ─── Fallback SEO statico ───
+           Visibile solo finché React non monta. Per i bot che non eseguono
+           JavaScript (Bingbot moderno è limitato, DuckDuckBot, Yandex, Baidu,
+           Slackbot/preview Telegram/WhatsApp) questo blocco fornisce subito
+           contenuto testuale indicizzabile: bio, link social, descrizione
+           sezioni del sito. Non appena React monta, il rendering sostituisce
+           tutto il contenuto di #root e questo fallback sparisce.
+           Il `[hidden]` su <noscript> evita che si veda durante il primo
+           paint, ma il bot lo legge comunque come parte del DOM iniziale.
+      -->
+      <div id="seo-fallback" style="max-width:760px;margin:0 auto;padding:2rem 1.25rem;font-family:system-ui,-apple-system,sans-serif;color:#e8e9ee;background:#050506;line-height:1.6;">
+        <h1 style="font-size:2rem;margin:0 0 0.5rem;">ANDRYXify — Andrea Taliento</h1>
+        <p style="font-size:1.05rem;color:#b8bac4;margin:0 0 1.5rem;">
+          Streamer Twitch, gamer e content creator italiano. Esplorando il confine
+          tra <strong>umanità</strong>, <strong>intelligenza artificiale</strong>
+          e <strong>gaming</strong>.
+        </p>
+
+        <h2 style="font-size:1.25rem;margin:1.5rem 0 0.5rem;">Dove trovarmi</h2>
+        <ul style="padding-left:1.25rem;margin:0 0 1.5rem;">
+          <li><a href="https://twitch.tv/andryxify" style="color:#9146FF;">Twitch — live di videogiochi</a></li>
+          <li><a href="https://youtube.com/@ANDRYXify" style="color:#FF0000;">YouTube — video e clip</a></li>
+          <li><a href="https://instagram.com/andryxify" style="color:#E1306C;">Instagram</a></li>
+          <li><a href="https://tiktok.com/@andryxify" style="color:#fff;">TikTok</a></li>
+          <li><a href="https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9" style="color:#1DB954;">Spotify — Podcast su IA</a></li>
+        </ul>
+
+        <h2 style="font-size:1.25rem;margin:1.5rem 0 0.5rem;">Sezioni del sito</h2>
+        <ul style="padding-left:1.25rem;margin:0 0 1.5rem;">
+          <li><a href="/twitch" style="color:#e8e9ee;">Twitch Live</a> — embed dello stream e chat in diretta.</li>
+          <li><a href="/youtube" style="color:#e8e9ee;">YouTube</a> — ultimi video pubblicati.</li>
+          <li><a href="/podcast" style="color:#e8e9ee;">Podcast</a> — episodi del podcast su intelligenza artificiale.</li>
+          <li><a href="/instagram" style="color:#e8e9ee;">Instagram</a> — feed social.</li>
+          <li><a href="/tiktok" style="color:#e8e9ee;">TikTok</a> — clip e momenti dei live.</li>
+          <li><a href="/gioco" style="color:#e8e9ee;">Giochi</a> — Andryx Legend (avventura pixel-art), Andryx Jump (platformer) e gioco del mese con classifica Twitch.</li>
+          <li><a href="/socialify" style="color:#e8e9ee;">SOCIALify</a> — community e thread tra utenti.</li>
+          <li><a href="/chat" style="color:#e8e9ee;">Chat</a> — chat pubblica del sito + chat Twitch.</li>
+          <li><a href="/app" style="color:#e8e9ee;">App</a> — installa ANDRYXify come web app sul telefono.</li>
+        </ul>
+
+        <p style="font-size:0.85rem;color:#888;margin-top:2rem;">
+          Stai vedendo questo testo perché il sito sta caricando o il tuo browser
+          ha JavaScript disabilitato. Per l'esperienza completa abilita JavaScript
+          e ricarica la pagina.
+        </p>
+      </div>
+      <noscript>
+        <p style="text-align:center;padding:1rem;color:#f87171;background:#1a0e1f;">
+          ⚠ Per usare ANDRYXify in modo interattivo è necessario abilitare JavaScript nel browser.
+        </p>
+      </noscript>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

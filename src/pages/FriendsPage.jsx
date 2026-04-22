@@ -116,7 +116,7 @@ export default function FriendsPage() {
   if (!isLoggedIn) {
     return (
       <div className="main-content">
-        <SEO title="Amici — SOCIALify" description="Gestisci le tue amicizie su ANDRYXify" path="/amici" />
+        <SEO title="Amici — SOCIALify" description="Gestisci le tue amicizie su ANDRYXify" path="/amici" noindex />
         <motion.div className="glass-panel" style={{ textAlign: 'center', padding: '3rem 1.5rem', marginTop: '1rem' }} {...entrata(0.1)}>
           <Users size={40} color="var(--primary)" style={{ marginBottom: '1rem' }} />
           <h2 style={{ marginBottom: '0.5rem' }}>Accedi per gestire i tuoi amici</h2>
@@ -135,7 +135,7 @@ export default function FriendsPage() {
 
   return (
     <div className="main-content">
-      <SEO title="Amici — SOCIALify" description="Gestisci le tue amicizie su ANDRYXify" path="/amici" />
+      <SEO title="Amici — SOCIALify" description="Gestisci le tue amicizie su ANDRYXify" path="/amici" noindex />
 
       {/* Header */}
       <section className="header" style={{ paddingTop: '1rem', paddingBottom: '0.5rem' }}>
