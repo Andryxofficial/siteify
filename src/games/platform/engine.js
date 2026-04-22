@@ -1198,10 +1198,6 @@ export function startEngine(canvas, cb, opts = {}) {
       state.prevPause = input.pause;
       if (state.paused) return;
 
-      /* edge: jump (per buffering) */
-      const justJumped = input.jump && !state.prevJump;
-      void justJumped;
-
       updatePlayer(input);
       updateEntities();
       updateParticles();
