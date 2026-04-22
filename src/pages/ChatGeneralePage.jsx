@@ -12,6 +12,7 @@ import { useEmoteTwitch } from '../hooks/useEmoteTwitch';
 import EmotePicker from '../components/EmotePicker';
 import SEO from '../components/SEO';
 import MessagesPage from './MessagesPage';
+import { useLingua } from '../contexts/LinguaContext';
 
 const CHAT_API = '/api/chat';
 const POLL_MS = 2000;
@@ -22,9 +23,28 @@ const entrata = (ritardo = 0) => ({
   transition: { delay: ritardo, type: 'spring', stiffness: 220, damping: 24 },
 });
 
-function tempoFa(ts) {
+function tempoFa(ts, lingua = 'it') {
   const diff = Date.now() - Number(ts);
   const min = Math.floor(diff / 60000);
+  if (lingua === 'en') {
+    if (min < 1) return 'just now';
+    if (min < 60) return `${min} min ago`;
+    const ore = Math.floor(min / 60);
+    if (ore < 24) return `${ore}h ago`;
+    const giorni = Math.floor(ore / 24);
+    if (giorni < 30) return `${giorni}d ago`;
+    return `${Math.floor(giorni / 30)} months ago`;
+  }
+  if (lingua === 'es') {
+    if (min < 1) return 'ahora';
+    if (min < 60) return `hace ${min} min`;
+    const ore = Math.floor(min / 60);
+    if (ore < 24) return `hace ${ore}h`;
+    const giorni = Math.floor(ore / 24);
+    if (giorni < 30) return `hace ${giorni}d`;
+    return `hace ${Math.floor(giorni / 30)} meses`;
+  }
+  // it (default)
   if (min < 1) return 'adesso';
   if (min < 60) return `${min} min fa`;
   const ore = Math.floor(min / 60);
@@ -37,6 +57,7 @@ function tempoFa(ts) {
 export default function ChatGeneralePage() {
   const { isLoggedIn, twitchToken, getTwitchLoginUrl } = useTwitchAuth();
   const { emoteCanale, emoteGlobali, seventvCanale, seventvGlobali, renderTestoConEmote } = useEmoteTwitch(twitchToken);
+  const { t, lingua } = useLingua();
 
   const [tab, setTab] = useState('twitch'); // twitch | sito
   const tabBarRef = useRef(null);
@@ -111,7 +132,7 @@ export default function ChatGeneralePage() {
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Errore nell\'invio.');
+        setError(data.error || t('chat.errore.invio'));
         return;
       }
 
@@ -122,23 +143,23 @@ export default function ChatGeneralePage() {
         return [data.message, ...prev];
       });
     } catch {
-      setError('Errore di rete.');
+      setError(t('chat.errore.rete'));
     } finally {
       setSending(false);
     }
   };
 
   const tabs = [
-    { id: 'twitch', label: 'Chat Twitch', icon: Twitch },
-    { id: 'sito', label: 'Chat Sito', icon: Users },
-    { id: 'privati', label: 'Messaggi Privati', icon: Lock },
+    { id: 'twitch', label: t('chat.tab.twitch'), icon: Twitch },
+    { id: 'sito', label: t('chat.tab.sito'), icon: Users },
+    { id: 'privati', label: t('chat.tab.privati'), icon: Lock },
   ];
 
   return (
     <div className="main-content" style={{ paddingTop: '1.5rem' }}>
       <SEO
         title="Chat"
-        description="Chat generale della community ANDRYXify — Twitch chat e chat sito."
+        description={t('chat.seo.desc')}
         path="/chat"
       />
 
@@ -147,7 +168,7 @@ export default function ChatGeneralePage() {
         style={{ textAlign: 'center', marginBottom: '1.2rem', fontSize: '1.8rem' }}
       >
         <MessageCircle size={28} style={{ verticalAlign: 'middle', marginRight: 8 }} />
-        Chat Generale
+        {t('chat.titolo')}
       </motion.h1>
 
       {/* Tab switcher */}
@@ -181,7 +202,7 @@ export default function ChatGeneralePage() {
         <motion.div {...entrata(0.1)} className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
           <iframe
             src={`https://www.twitch.tv/embed/andryxify/chat?parent=${window.location.hostname}&darkpopout`}
-            title="Chat Twitch ANDRYXify"
+            title={t('chat.twitch.iframe.title')}
             style={{
               width: '100%',
               height: 'min(600px, 80vh)',
@@ -201,11 +222,11 @@ export default function ChatGeneralePage() {
             <div className="glass-panel" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
               <LogIn size={40} style={{ marginBottom: '1rem', opacity: 0.6 }} />
               <p style={{ marginBottom: '1rem', opacity: 0.8 }}>
-                Effettua il login con Twitch per partecipare alla chat del sito.
+                {t('chat.login.prompt')}
               </p>
               <a href={getTwitchLoginUrl('/chat')} className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <Twitch size={18} />
-                Accedi con Twitch
+                {t('chat.login.cta')}
               </a>
             </div>
           ) : (
@@ -223,7 +244,7 @@ export default function ChatGeneralePage() {
               >
                 {messages.length === 0 && (
                   <p style={{ textAlign: 'center', opacity: 0.5, margin: 'auto' }}>
-                    Nessun messaggio ancora. Scrivi il primo!
+                    {t('chat.vuoto')}
                   </p>
                 )}
                 {messages.map((msg) => (
@@ -252,7 +273,7 @@ export default function ChatGeneralePage() {
                           {msg.authorDisplay || msg.author}
                         </span>
                         <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>
-                          {tempoFa(msg.createdAt)}
+                          {tempoFa(msg.createdAt, lingua)}
                         </span>
                       </div>
                       <p style={{ margin: '0.2rem 0 0', fontSize: '0.88rem', wordBreak: 'break-word' }}>
@@ -286,7 +307,7 @@ export default function ChatGeneralePage() {
                   type="text"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  placeholder="Scrivi un messaggio..."
+                  placeholder={t('chat.placeholder')}
                   maxLength={500}
                   style={{
                     flex: 1,

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Twitch, Youtube, Instagram, Mic } from 'lucide-react';
+import { Twitch, Youtube, Instagram, Mic, UserCircle } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 import DiscordIcon from './DiscordIcon';
 import { useLingua } from '../contexts/LinguaContext';
@@ -26,6 +26,15 @@ export default function Footer() {
           <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: 0, letterSpacing: '0.2px' }}>
             {t('footer.tagline')}
           </p>
+        </Link>
+
+        {/* Link interno Chi sono */}
+        <Link
+          to="/chi-sono"
+          className="btn btn-ghost footer-social-btn"
+          style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem', color: 'var(--primary)', borderColor: 'rgba(224,64,251,0.20)', background: 'rgba(224,64,251,0.07)' }}
+        >
+          <UserCircle size={15} /> {t('nav.chi-sono')}
         </Link>
 
         {/* Social links */}

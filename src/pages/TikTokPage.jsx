@@ -3,8 +3,11 @@ import { motion } from 'framer-motion';
 import { ExternalLink, Music2, TrendingUp, Sparkles, Zap } from 'lucide-react';
 import TikTokIcon from '../components/TikTokIcon';
 import SEO from '../components/SEO';
+import { useLingua } from '../contexts/LinguaContext';
 
 export default function TikTokPage() {
+  const { t } = useLingua();
+
   // Load TikTok embed script once
   useEffect(() => {
     if (document.querySelector('script[src="https://www.tiktok.com/embed.js"]')) return;
@@ -13,6 +16,14 @@ export default function TikTokPage() {
     s.async = true;
     document.body.appendChild(s);
   }, []);
+
+  const tiktokStats = [
+    { icon: <Music2 size={20} color="#EE1D52" />, label: t('tiktok.stat.sounds') },
+    { icon: <TrendingUp size={20} color="#69C9D0" />, label: t('tiktok.stat.viral') },
+    { icon: <Sparkles size={20} color="#FFD700" />, label: t('tiktok.stat.ia') },
+    { icon: <Zap size={20} color="#9146FF" />, label: t('tiktok.stat.gaming') },
+  ];
+
   return (
     <div className="main-content">
       <SEO
@@ -26,7 +37,7 @@ export default function TikTokPage() {
           <span style={{ color: '#00F2FE' }}>TikTok</span> Vibes
         </h1>
         <p className="subtitle">
-          Clip, trend, IA e gaming nei formati più veloci del web.
+          {t('tiktok.subtitle')}
         </p>
       </header>
 
@@ -72,7 +83,7 @@ export default function TikTokPage() {
           </div>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.25rem', fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>@andryxify</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem', maxWidth: 420, lineHeight: 1.6 }}>
-            Gaming, IA, tech e tanto altro in pillole veloci. Seguimi per non perdere nemmeno un trend!
+            {t('tiktok.profilo.desc')}
           </p>
           <motion.a
             href="https://tiktok.com/@andryxify"
@@ -88,7 +99,7 @@ export default function TikTokPage() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <TikTokIcon size={18} color="#fff" /> Seguimi su TikTok
+            <TikTokIcon size={18} color="#fff" /> {t('tiktok.cta.segui')}
           </motion.a>
         </div>
       </motion.div>
@@ -103,7 +114,7 @@ export default function TikTokPage() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <TikTokIcon size={20} color="#EE1D52" />
-          <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Feed TikTok</h2>
+          <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>{t('tiktok.feed.titolo')}</h2>
         </div>
 
         {/* TikTok embed via blockquote */}
@@ -136,12 +147,7 @@ export default function TikTokPage() {
         transition={{ delay: 0.6 }}
       >
         <div className="glass-stats-bar" style={{ justifyContent: 'center', gap: '2.5rem', marginBottom: '1.5rem' }}>
-          {[
-            { icon: <Music2 size={20} color="#EE1D52" />, label: 'Trending Sounds' },
-            { icon: <TrendingUp size={20} color="#69C9D0" />, label: 'Viral Clips' },
-            { icon: <Sparkles size={20} color="#FFD700" />, label: 'IA Content' },
-            { icon: <Zap size={20} color="#9146FF" />, label: 'Gaming Moments' },
-          ].map(stat => (
+          {tiktokStats.map(stat => (
             <div key={stat.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
               {stat.icon}
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>{stat.label}</span>
@@ -155,7 +161,7 @@ export default function TikTokPage() {
           className="btn btn-ghost"
           whileHover={{ scale: 1.04 }}
         >
-          <ExternalLink size={16} /> Apri il profilo TikTok
+          <ExternalLink size={16} /> {t('tiktok.cta.apri')}
         </motion.a>
       </motion.div>
     </div>

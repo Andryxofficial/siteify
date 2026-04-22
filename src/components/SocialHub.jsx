@@ -2,56 +2,15 @@ import { motion } from 'framer-motion';
 import { Twitch, Youtube, Instagram, Mic, ArrowUpRight } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 import DiscordIcon from './DiscordIcon';
+import { useLingua } from '../contexts/LinguaContext';
 
-const links = [
-  {
-    id: 'twitch',
-    title: 'Twitch',
-    desc: 'Live streaming, gaming & chatting',
-    icon: <Twitch size={22} />,
-    url: 'https://twitch.tv/andryxify',
-    color: '#9146FF',
-  },
-  {
-    id: 'youtube',
-    title: 'YouTube',
-    desc: 'Video, highlights e approfondimenti',
-    icon: <Youtube size={22} />,
-    url: 'https://youtube.com/@ANDRYXify',
-    color: '#FF0000',
-  },
-  {
-    id: 'instagram',
-    title: 'Instagram',
-    desc: 'Dietro le quinte e aggiornamenti',
-    icon: <Instagram size={22} />,
-    url: 'https://instagram.com/andryxify',
-    color: '#E1306C',
-  },
-  {
-    id: 'tiktok',
-    title: 'TikTok',
-    desc: 'Clip divertenti e pillole di IA',
-    icon: <TikTokIcon size={22} />,
-    url: 'https://tiktok.com/@andryxify',
-    color: '#00F2FE',
-  },
-  {
-    id: 'podcast',
-    title: 'Podcast',
-    desc: 'Umanità o IA? — Ascolta ora',
-    icon: <Mic size={22} />,
-    url: 'https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9',
-    color: '#1DB954',
-  },
-  {
-    id: 'discord',
-    title: 'Discord',
-    desc: 'Chat vocale e community',
-    icon: <DiscordIcon size={22} />,
-    url: 'https://discord.gg/BuckKZ4',
-    color: '#5865F2',
-  },
+const LINKS_DATI = [
+  { id: 'twitch',    title: 'Twitch',    descKey: 'social.twitch.desc',    icon: <Twitch     size={22} />, url: 'https://twitch.tv/andryxify',                                    color: '#9146FF' },
+  { id: 'youtube',   title: 'YouTube',   descKey: 'social.youtube.desc',   icon: <Youtube    size={22} />, url: 'https://youtube.com/@ANDRYXify',                                 color: '#FF0000' },
+  { id: 'instagram', title: 'Instagram', descKey: 'social.instagram.desc', icon: <Instagram  size={22} />, url: 'https://instagram.com/andryxify',                                color: '#E1306C' },
+  { id: 'tiktok',    title: 'TikTok',    descKey: 'social.tiktok.desc',    icon: <TikTokIcon size={22} />, url: 'https://tiktok.com/@andryxify',                                  color: '#00F2FE' },
+  { id: 'podcast',   title: 'Podcast',   descKey: 'social.podcast.desc',   icon: <Mic        size={22} />, url: 'https://open.spotify.com/show/1wtbUNmK9cWJXum02QsxW9',          color: '#1DB954' },
+  { id: 'discord',   title: 'Discord',   descKey: 'social.discord.desc',   icon: <DiscordIcon size={22}/>, url: 'https://discord.gg/BuckKZ4',                                     color: '#5865F2' },
 ];
 
 const container = {
@@ -65,6 +24,7 @@ const item = {
 };
 
 export default function SocialHub() {
+  const { t } = useLingua();
   return (
     <motion.div
       className="links-grid"
@@ -72,7 +32,7 @@ export default function SocialHub() {
       initial="hidden"
       animate="visible"
     >
-      {links.map(link => (
+      {LINKS_DATI.map(link => (
         <motion.a
           key={link.id}
           href={link.url}
@@ -100,7 +60,7 @@ export default function SocialHub() {
           </motion.div>
           <div className="link-content">
             <span className="link-title" style={{ color: link.color }}>{link.title}</span>
-            <span className="link-desc">{link.desc}</span>
+            <span className="link-desc">{t(link.descKey)}</span>
           </div>
           <ArrowUpRight size={15} style={{ marginLeft: 'auto', opacity: 0.3, flexShrink: 0, color: link.color }} />
         </motion.a>

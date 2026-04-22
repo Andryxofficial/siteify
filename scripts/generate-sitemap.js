@@ -17,6 +17,7 @@ const BASE_URL = 'https://andryxify.it';
 // L'ordine determina l'ordine nella sitemap.
 const PAGES = [
   { loc: '/',          priority: '1.0', changefreq: 'daily'   },
+  { loc: '/chi-sono',  priority: '0.9', changefreq: 'monthly' },
   { loc: '/twitch',    priority: '0.9', changefreq: 'daily'   },
   { loc: '/youtube',   priority: '0.8', changefreq: 'weekly'  },
   { loc: '/podcast',   priority: '0.8', changefreq: 'weekly'  },

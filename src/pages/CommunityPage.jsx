@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -11,23 +11,45 @@ import { useNotifiche } from '../hooks/useNotifiche';
 import useIsMod from '../hooks/useIsMod';
 import BottoneAggiungiAmico from '../components/BottoneAggiungiAmico';
 import SEO from '../components/SEO';
+import { useLingua } from '../contexts/LinguaContext';
 
-const CATEGORIE = [
-  { valore: 'generale',      etichetta: '💬 Generale',     colore: 'var(--text-muted)' },
-  { valore: 'giochi',        etichetta: '🎮 Giochi',       colore: 'var(--accent-twitch)' },
-  { valore: 'stream',        etichetta: '📺 Dirette',      colore: '#9146FF' },
-  { valore: 'tech',          etichetta: '🤖 Tech & IA',    colore: 'var(--secondary)' },
-  { valore: 'meme',          etichetta: '😂 Meme',         colore: 'var(--accent-warm)' },
-  { valore: 'suggerimenti',  etichetta: '💡 Suggerimenti', colore: 'var(--primary)' },
-];
-
-function infoCategoria(valore) {
-  return CATEGORIE.find(c => c.valore === valore) || CATEGORIE[0];
+function getCATEGORIE(t) {
+  return [
+    { valore: 'generale',     etichetta: t('community.cat.generale'),     colore: 'var(--text-muted)' },
+    { valore: 'giochi',       etichetta: t('community.cat.giochi'),       colore: 'var(--accent-twitch)' },
+    { valore: 'stream',       etichetta: t('community.cat.stream'),       colore: '#9146FF' },
+    { valore: 'tech',         etichetta: t('community.cat.tech'),         colore: 'var(--secondary)' },
+    { valore: 'meme',         etichetta: t('community.cat.meme'),         colore: 'var(--accent-warm)' },
+    { valore: 'suggerimenti', etichetta: t('community.cat.suggerimenti'), colore: 'var(--primary)' },
+  ];
 }
 
-function tempoFa(ts) {
+function infoCategoria(valore, categorie) {
+  return categorie.find(c => c.valore === valore) || categorie[0];
+}
+
+function tempoFa(ts, lingua = 'it') {
   const diff = Date.now() - Number(ts);
   const min = Math.floor(diff / 60000);
+  if (lingua === 'en') {
+    if (min < 1) return 'just now';
+    if (min < 60) return `${min} min ago`;
+    const ore = Math.floor(min / 60);
+    if (ore < 24) return `${ore}h ago`;
+    const giorni = Math.floor(ore / 24);
+    if (giorni < 30) return `${giorni}d ago`;
+    return `${Math.floor(giorni / 30)} months ago`;
+  }
+  if (lingua === 'es') {
+    if (min < 1) return 'ahora';
+    if (min < 60) return `hace ${min} min`;
+    const ore = Math.floor(min / 60);
+    if (ore < 24) return `hace ${ore}h`;
+    const giorni = Math.floor(ore / 24);
+    if (giorni < 30) return `hace ${giorni}d`;
+    return `hace ${Math.floor(giorni / 30)} meses`;
+  }
+  // it (default)
   if (min < 1) return 'adesso';
   if (min < 60) return `${min} min fa`;
   const ore = Math.floor(min / 60);
@@ -47,7 +69,9 @@ const entrata = (ritardo = 0) => ({
    SCHEDA POST
    ═══════════════════════════════════════ */
 function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
-  const cat = infoCategoria(post.tag);
+  const { t, lingua } = useLingua();
+  const CATEGORIE = useMemo(() => getCATEGORIE(t), [t]);
+  const cat = infoCategoria(post.tag, CATEGORIE);
   const [favorito, setFavorito] = useState(false);
 
   // Controlla se il post è nei preferiti
@@ -109,7 +133,7 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
                 currentUser={currentUser}
               />
               <span className="social-tempo">
-                <Clock size={11} /> {tempoFa(post.createdAt)}
+                <Clock size={11} /> {tempoFa(post.createdAt, lingua)}
               </span>
               <span className="chip social-chip-categoria" style={{
                 background: `${cat.colore}18`, color: cat.colore,
@@ -184,6 +208,8 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
    ═══════════════════════════════════════ */
 function EditorPost({ onChiudi, onCreato }) {
   const { twitchToken } = useTwitchAuth();
+  const { t } = useLingua();
+  const CATEGORIE = useMemo(() => getCATEGORIE(t), [t]);
 
   // Ripristina bozza da localStorage
   const bozzaSalvata = (() => {
@@ -269,7 +295,7 @@ function EditorPost({ onChiudi, onCreato }) {
         onSubmit={invia}
       >
         <div className="social-editor-testata">
-          <h3 className="social-editor-titolo">✏️ Nuovo Post</h3>
+          <h3 className="social-editor-titolo">{t('community.editor.titolo')}</h3>
           <button type="button" onClick={onChiudi} className="social-btn-azione" style={{ padding: '6px' }}>
             <X size={18} />
           </button>
@@ -298,7 +324,7 @@ function EditorPost({ onChiudi, onCreato }) {
 
         <input
           type="text"
-          placeholder="Titolo del post…"
+          placeholder={t('community.editor.titolo_ph')}
           value={titolo}
           onChange={(e) => setTitolo(e.target.value)}
           maxLength={120}
@@ -307,7 +333,7 @@ function EditorPost({ onChiudi, onCreato }) {
         />
 
         <textarea
-          placeholder="Scrivi il tuo messaggio…"
+          placeholder={t('community.editor.testo_ph')}
           value={testo}
           onChange={(e) => setTesto(e.target.value)}
           maxLength={2000}
@@ -327,7 +353,7 @@ function EditorPost({ onChiudi, onCreato }) {
             onClick={() => setMostraAnteprima(!mostraAnteprima)}
             style={{ fontSize: '0.7rem', padding: '2px 8px', cursor: 'pointer', background: mostraAnteprima ? 'rgba(var(--primary-rgb, 99,102,241), 0.15)' : 'transparent', color: mostraAnteprima ? 'var(--primary)' : 'var(--text-faint)', border: `1px solid ${mostraAnteprima ? 'var(--primary)' : 'var(--glass-border)'}` }}
           >
-            {mostraAnteprima ? '✏️ Editor' : '👁️ Anteprima'}
+            {mostraAnteprima ? t('community.editor.editor') : t('community.editor.anteprima')}
           </button>
         </div>
 
@@ -344,9 +370,9 @@ function EditorPost({ onChiudi, onCreato }) {
         <div className="social-media-sezione">
           <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.4rem' }}>
             {[
-              { value: '',      label: '📝 Testo' },
-              { value: 'video', label: '🎥 Video' },
-              { value: 'audio', label: '🎵 Audio' },
+              { value: '',      label: t('community.post.tipo.testo') },
+              { value: 'video', label: t('community.post.tipo.video') },
+              { value: 'audio', label: t('community.post.tipo.audio') },
             ].map(t => (
               <button key={t.value} type="button" className="chip" onClick={() => setMediaType(t.value)}
                 style={{
@@ -379,7 +405,7 @@ function EditorPost({ onChiudi, onCreato }) {
             disabled={invio || !titolo.trim() || !testo.trim()}
             style={{ fontSize: '0.85rem', padding: '0.5rem 1.3rem' }}
           >
-            {invio ? 'Invio…' : <><Send size={14} /> Pubblica</>}
+            {invio ? t('community.editor.invio') : <><Send size={14} /> {t('community.editor.pubblica')}</>}
           </button>
         </div>
       </motion.form>
@@ -391,16 +417,18 @@ function EditorPost({ onChiudi, onCreato }) {
    CLASSIFICA XP
    ═══════════════════════════════════════ */
 
-const LEVELS = [
-  { level: 1, xp: 0,    label: 'Nuovo Arrivato', emoji: '🌱' },
-  { level: 2, xp: 50,   label: 'Curioso',         emoji: '🌿' },
-  { level: 3, xp: 150,  label: 'Appassionato',    emoji: '⭐' },
-  { level: 4, xp: 350,  label: 'Habitué',         emoji: '💫' },
-  { level: 5, xp: 700,  label: 'Esperto',         emoji: '🔥' },
-  { level: 6, xp: 1200, label: 'Veterano',        emoji: '💎' },
-  { level: 7, xp: 2000, label: 'Elite',           emoji: '🏆' },
-  { level: 8, xp: 3500, label: 'Leggenda',        emoji: '👑' },
-];
+function getLEVELS(t) {
+  return [
+    { level: 1, xp: 0,    label: t('community.lv.1'), emoji: '🌱' },
+    { level: 2, xp: 50,   label: t('community.lv.2'), emoji: '🌿' },
+    { level: 3, xp: 150,  label: t('community.lv.3'), emoji: '⭐' },
+    { level: 4, xp: 350,  label: t('community.lv.4'), emoji: '💫' },
+    { level: 5, xp: 700,  label: t('community.lv.5'), emoji: '🔥' },
+    { level: 6, xp: 1200, label: t('community.lv.6'), emoji: '💎' },
+    { level: 7, xp: 2000, label: t('community.lv.7'), emoji: '🏆' },
+    { level: 8, xp: 3500, label: t('community.lv.8'), emoji: '👑' },
+  ];
+}
 
 const RANK_MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -448,6 +476,8 @@ function RigaClassifica({ entry, rank, showProgress = true }) {
 }
 
 function Classifica() {
+  const { t } = useLingua();
+  const LEVELS = useMemo(() => getLEVELS(t), [t]);
   const [lbTab, setLbTab] = useState('mensile');
   const [monthly, setMonthly] = useState([]);
   const [general, setGeneral] = useState([]);
@@ -468,11 +498,11 @@ function Classifica() {
       setArchive(data.archive || []);
       setCurrentLabel(data.currentLabel || '');
     } catch {
-      setErrore('Impossibile caricare la classifica.');
+      setErrore(t('community.errore.classifica'));
     } finally {
       setCaricamento(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { caricaClassifica(); }, [caricaClassifica]);
 
@@ -487,29 +517,29 @@ function Classifica() {
       {/* Sub-tabs */}
       <div className="social-lb-tabs">
         {[
-          { id: 'mensile',  label: '📅 ' + (currentLabel || 'Mese') },
-          { id: 'generale', label: '🌐 Generale' },
-          { id: 'archivio', label: '📚 Archivio' },
-          { id: 'livelli',  label: '⭐ Livelli' },
-        ].map(t => (
+          { id: 'mensile',  label: '📅 ' + (currentLabel || t('game.lb.mensile')) },
+          { id: 'generale', label: t('community.lb.tab.generale') },
+          { id: 'archivio', label: t('community.lb.tab.archivio') },
+          { id: 'livelli',  label: t('community.lb.tab.livelli') },
+        ].map(tab => (
           <button
-            key={t.id}
-            className={`social-lb-tab${lbTab === t.id ? ' attiva' : ''}`}
-            onClick={() => setLbTab(t.id)}
+            key={tab.id}
+            className={`social-lb-tab${lbTab === tab.id ? ' attiva' : ''}`}
+            onClick={() => setLbTab(tab.id)}
           >
-            {t.label}
+            {tab.label}
           </button>
         ))}
       </div>
 
       {caricamento ? (
-        <div className="social-lb-vuoto">Caricamento…</div>
+        <div className="social-lb-vuoto">{t('community.caricamento')}</div>
       ) : errore ? (
         <div className="social-lb-vuoto" style={{ color: 'var(--accent)' }}>
           {errore}
           <br />
           <button className="btn btn-ghost" onClick={caricaClassifica} style={{ marginTop: '0.75rem', fontSize: '0.82rem' }}>
-            Riprova
+            {t('community.riprova')}
           </button>
         </div>
       ) : lbTab === 'archivio' ? (
@@ -517,7 +547,7 @@ function Classifica() {
           {archive.length === 0 ? (
             <div className="social-lb-vuoto">
               <p style={{ fontSize: '1.5rem', marginBottom: '0.4rem' }}>📭</p>
-              Nessun mese archiviato ancora.
+              {t('community.archivio.vuoto')}
             </div>
           ) : archive.map(mese => (
             <div key={mese.season} className="social-lb-archivio-mese">
@@ -537,7 +567,7 @@ function Classifica() {
       ) : lbTab === 'livelli' ? (
         <div>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-            I livelli si azzerano ogni mese. Guadagna XP interagendo con la community!
+            {t('community.livelli.descr')}
           </p>
 
           {/* XP Rewards */}
@@ -616,13 +646,13 @@ function Classifica() {
             <div className="social-lb-vuoto">
               <p style={{ fontSize: '1.5rem', marginBottom: '0.4rem' }}>🏆</p>
               {lbTab === 'mensile'
-                ? 'Sii il primo a guadagnare XP questo mese!'
-                : 'La classifica generale è ancora vuota. Inizia a interagire!'}
+                ? t('community.vuoto.mensile')
+                : t('community.vuoto.generale')}
             </div>
           ) : (
             <>
               <p className="social-lb-titolo-sezione">
-                {lbTab === 'mensile' ? `Top community — ${currentLabel}` : 'Classifica generale (cumulativa)'}
+                {lbTab === 'mensile' ? `${t('community.top.mensile')} ${currentLabel}` : t('community.top.generale')}
               </p>
               <div className="social-lb-lista">
                 {elenco.map((entry, i) => (
@@ -660,7 +690,9 @@ export default function CommunityPage() {
   const { isLoggedIn, twitchUser, twitchToken, clientId, getTwitchLoginUrl } = useTwitchAuth();
   const { supportato: notificheSupportate, attivo: notificheAttive, attiva: attivaNotifiche, disattiva: disattivaNotifiche } = useNotifiche();
   const isMod = useIsMod();
+  const { t } = useLingua();
   const [searchParams, setSearchParams] = useSearchParams();
+  const CATEGORIE = useMemo(() => getCATEGORIE(t), [t]);
 
   const [posts, setPosts] = useState([]);
   const [pagina, setPagina] = useState(parseInt(searchParams.get('pagina')) || 1);
@@ -690,11 +722,11 @@ export default function CommunityPage() {
       setTotPagine(data.pages || 1);
     } catch (e) {
       console.error('Caricamento post fallito:', e);
-      setErrore('Impossibile caricare i post.');
+      setErrore(t('community.errore.post'));
     } finally {
       setCaricamento(false);
     }
-  }, [pagina, categoriaAttiva, twitchToken]);
+  }, [pagina, categoriaAttiva, twitchToken, t]);
 
   useEffect(() => { caricaPosts(); }, [caricaPosts]);
 
@@ -774,7 +806,7 @@ export default function CommunityPage() {
                   <button
                     className="btn btn-ghost social-btn-notifica"
                     onClick={notificheAttive ? disattivaNotifiche : attivaNotifiche}
-                    title={notificheAttive ? 'Disattiva notifiche' : 'Attiva notifiche'}
+                    title={notificheAttive ? t('community.notifiche.disattiva') : t('community.notifiche.attiva')}
                   >
                     {notificheAttive ? <BellOff size={15} /> : <Bell size={15} />}
                   </button>
@@ -784,18 +816,18 @@ export default function CommunityPage() {
                   onClick={() => setMostraEditor(true)}
                   style={{ fontSize: '0.82rem', padding: '0.45rem 1.1rem' }}
                 >
-                  <Plus size={15} /> Nuovo Post
+                  <Plus size={15} /> {t('community.nuovo_post')}
                 </button>
               </div>
             </>
           ) : (
             <>
               <span className="social-testo-accesso">
-                Accedi con Twitch per pubblicare e mettere «mi piace»
+                {t('community.login.prompt')}
               </span>
               {clientId && (
                 <a href={getTwitchLoginUrl('/socialify')} className="btn social-btn-twitch">
-                  <LogIn size={14} /> Accedi con Twitch
+                  <LogIn size={14} /> {t('community.login.cta')}
                 </a>
               )}
             </>
@@ -808,11 +840,11 @@ export default function CommunityPage() {
         <motion.div {...entrata(0.20)} className="social-quick-links">
           <Link to="/amici" className="social-quick-link glass-card">
             <Users size={18} />
-            <span>Amici</span>
+            <span>{t('community.amici')}</span>
           </Link>
           <Link to="/messaggi" className="social-quick-link glass-card">
             <Lock size={18} />
-            <span>Messaggi</span>
+            <span>{t('community.messaggi')}</span>
           </Link>
           {/* Mod Panel — visibile solo a chi è effettivamente moderatore del canale.
               Stile "premium" con bordo viola Twitch e iconcina scintilla. */}
@@ -832,13 +864,13 @@ export default function CommunityPage() {
           className={`social-tab-principale${vistaAttiva === 'feed' ? ' attiva' : ''}`}
           onClick={() => setVistaAttiva('feed')}
         >
-          <MessageSquare size={15} /> Feed
+          <MessageSquare size={15} /> {t('community.feed')}
         </button>
         <button
           className={`social-tab-principale${vistaAttiva === 'classifica' ? ' attiva' : ''}`}
           onClick={() => setVistaAttiva('classifica')}
         >
-          <Trophy size={15} /> Classifica
+          <Trophy size={15} /> {t('community.classifica')}
         </button>
       </motion.div>
 
@@ -860,7 +892,7 @@ export default function CommunityPage() {
                 border: `1px solid ${!categoriaAttiva ? 'rgba(255,255,255,0.14)' : 'var(--glass-border)'}`,
               }}
             >
-              Tutti
+              {t('community.tutti')}
             </button>
             {CATEGORIE.map(c => (
               <button
@@ -890,14 +922,14 @@ export default function CommunityPage() {
               <div className="glass-panel" style={{ textAlign: 'center', padding: '2rem' }}>
                 <p style={{ color: 'var(--accent)' }}>{errore}</p>
                 <button className="btn btn-ghost" onClick={caricaPosts} style={{ marginTop: '0.75rem' }}>
-                  Riprova
+                  {t('community.riprova')}
                 </button>
               </div>
             ) : posts.length === 0 ? (
               <div className="glass-panel social-vuoto">
                 <p style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🫥</p>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  {categoriaAttiva ? `Nessun post nella categoria "${infoCategoria(categoriaAttiva).etichetta}".` : 'Ancora nessun post. Sii il primo!'}
+                  {categoriaAttiva ? `Nessun post nella categoria "${infoCategoria(categoriaAttiva, CATEGORIE).etichetta}".` : t('community.post.vuoto')}
                 </p>
                 {isLoggedIn && (
                   <button
@@ -905,7 +937,7 @@ export default function CommunityPage() {
                     onClick={() => setMostraEditor(true)}
                     style={{ marginTop: '1rem', fontSize: '0.85rem' }}
                   >
-                    <Plus size={15} /> Scrivi il primo!
+                    <Plus size={15} /> {t('community.post.primo')}
                   </button>
                 )}
               </div>

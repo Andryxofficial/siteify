@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import SEO from '../components/SEO';
+import { useLingua } from '../contexts/LinguaContext';
 
 const API_URL = '/api/friends';
 
@@ -23,9 +24,28 @@ const entrata = (ritardo = 0) => ({
   transition: { delay: ritardo, type: 'spring', stiffness: 220, damping: 24 },
 });
 
-function tempoFa(ts) {
+function tempoFa(ts, lingua = 'it') {
   const diff = Date.now() - Number(ts);
   const min = Math.floor(diff / 60000);
+  if (lingua === 'en') {
+    if (min < 1) return 'just now';
+    if (min < 60) return `${min} min ago`;
+    const ore = Math.floor(min / 60);
+    if (ore < 24) return `${ore}h ago`;
+    const giorni = Math.floor(ore / 24);
+    if (giorni < 30) return `${giorni}d ago`;
+    return `${Math.floor(giorni / 30)} months ago`;
+  }
+  if (lingua === 'es') {
+    if (min < 1) return 'ahora';
+    if (min < 60) return `hace ${min} min`;
+    const ore = Math.floor(min / 60);
+    if (ore < 24) return `hace ${ore}h`;
+    const giorni = Math.floor(ore / 24);
+    if (giorni < 30) return `hace ${giorni}d`;
+    return `hace ${Math.floor(giorni / 30)} meses`;
+  }
+  // it (default)
   if (min < 1) return 'adesso';
   if (min < 60) return `${min} min fa`;
   const ore = Math.floor(min / 60);
@@ -37,6 +57,7 @@ function tempoFa(ts) {
 
 export default function FriendsPage() {
   const { isLoggedIn, twitchToken, clientId, getTwitchLoginUrl } = useTwitchAuth();
+  const { t, lingua } = useLingua();
 
   const [tab, setTab] = useState('friends'); // friends | requests | search
   const [friends, setFriends] = useState([]);
@@ -119,13 +140,13 @@ export default function FriendsPage() {
         <SEO title="Amici — SOCIALify" description="Gestisci le tue amicizie su ANDRYXify" path="/amici" noindex />
         <motion.div className="glass-panel" style={{ textAlign: 'center', padding: '3rem 1.5rem', marginTop: '1rem' }} {...entrata(0.1)}>
           <Users size={40} color="var(--primary)" style={{ marginBottom: '1rem' }} />
-          <h2 style={{ marginBottom: '0.5rem' }}>Accedi per gestire i tuoi amici</h2>
+          <h2 style={{ marginBottom: '0.5rem' }}>{t('friends.login.titolo')}</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-            Effettua il login con Twitch per aggiungere amici e inviare messaggi.
+            {t('friends.login.desc')}
           </p>
           {clientId && (
             <a href={getTwitchLoginUrl('/amici')} className="btn social-btn-twitch">
-              <LogIn size={14} /> Accedi con Twitch
+              <LogIn size={14} /> {t('friends.login.cta')}
             </a>
           )}
         </motion.div>
@@ -141,24 +162,24 @@ export default function FriendsPage() {
       <section className="header" style={{ paddingTop: '1rem', paddingBottom: '0.5rem' }}>
         <motion.h1 className="title" {...entrata(0.05)}>
           <Users size={28} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />
-          <span className="text-gradient">Amici</span>
+          <span className="text-gradient">{t('friends.titolo')}</span>
         </motion.h1>
         <motion.p className="subtitle" {...entrata(0.1)}>
-          Gestisci le tue amicizie nella community.
+          {t('friends.subtitle')}
         </motion.p>
       </section>
 
       {/* Tabs */}
       <motion.div {...entrata(0.15)} className="mod-tabs" style={{ marginBottom: '1rem' }}>
         <button className={`mod-tab${tab === 'friends' ? ' mod-tab-active' : ''}`} onClick={() => setTab('friends')}>
-          <Users size={15} /> Amici <span className="mod-badge">{friends.length}</span>
+          <Users size={15} /> {t('friends.tab.amici')} <span className="mod-badge">{friends.length}</span>
         </button>
         <button className={`mod-tab${tab === 'requests' ? ' mod-tab-active' : ''}`} onClick={() => setTab('requests')}>
-          <UserPlus size={15} /> Richieste
+          <UserPlus size={15} /> {t('friends.tab.richieste')}
           {requests.length > 0 && <span className="mod-badge" style={{ background: 'var(--accent)', color: 'white' }}>{requests.length}</span>}
         </button>
         <button className={`mod-tab${tab === 'search' ? ' mod-tab-active' : ''}`} onClick={() => setTab('search')}>
-          <Search size={15} /> Cerca
+          <Search size={15} /> {t('friends.tab.cerca')}
         </button>
       </motion.div>
 
@@ -178,12 +199,12 @@ export default function FriendsPage() {
         <motion.div className="glass-panel" style={{ padding: '1.25rem' }} {...entrata(0.05)}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-              <Loader size={20} className="spin" /> Caricamento…
+              <Loader size={20} className="spin" /> {t('friends.caricamento')}
             </div>
           ) : friends.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
               <p style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>🫥</p>
-              <p style={{ fontSize: '0.9rem' }}>Nessun amico ancora. Usa la ricerca per aggiungerne!</p>
+              <p style={{ fontSize: '0.9rem' }}>{t('friends.vuoto')}</p>
             </div>
           ) : (
             <div className="mod-list">
@@ -192,12 +213,12 @@ export default function FriendsPage() {
                   <Twitch size={16} color="#9146FF" />
                   <span style={{ fontWeight: 600, flex: 1 }}>{f}</span>
                   <div style={{ display: 'flex', gap: '0.35rem' }}>
-                    <Link to={`/messaggi?con=${f}`} className="mod-icon-btn" title="Invia messaggio">
+                    <Link to={`/messaggi?con=${f}`} className="mod-icon-btn" title={t('friends.msg')}>
                       <MessageSquare size={14} />
                     </Link>
                     <button
                       className="mod-icon-btn mod-icon-btn-danger"
-                      title="Rimuovi amico"
+                      title={t('friends.rimuovi')}
                       disabled={actionLoading === f}
                       onClick={() => doAction('remove', f)}
                     >
@@ -217,11 +238,11 @@ export default function FriendsPage() {
           {/* Incoming */}
           <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem' }}>
-              📩 Richieste ricevute ({requests.length})
+              📩 {t('friends.richieste.ricevute')} ({requests.length})
             </h3>
             {requests.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '1rem' }}>
-                Nessuna richiesta in sospeso.
+                {t('friends.richieste.nessuna')}
               </p>
             ) : (
               <div className="mod-list">
@@ -235,7 +256,7 @@ export default function FriendsPage() {
                     <div style={{ flex: 1 }}>
                       <span style={{ fontWeight: 600 }}>{r.display || r.from}</span>
                       <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)', marginLeft: '0.4rem' }}>
-                        <Clock size={10} /> {tempoFa(r.createdAt)}
+                        <Clock size={10} /> {tempoFa(r.createdAt, lingua)}
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: '0.35rem' }}>
@@ -258,14 +279,14 @@ export default function FriendsPage() {
           {sent.length > 0 && (
             <div className="glass-panel" style={{ padding: '1.25rem' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem' }}>
-                📤 Richieste inviate ({sent.length})
+                📤 {t('friends.richieste.inviate')} ({sent.length})
               </h3>
               <div className="mod-list">
                 {sent.map(s => (
                   <div key={s} className="mod-item glass-card" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem' }}>
                     <Twitch size={16} color="#9146FF" />
                     <span style={{ fontWeight: 600, flex: 1 }}>{s}</span>
-                    <button className="mod-icon-btn mod-icon-btn-danger" title="Annulla richiesta"
+                    <button className="mod-icon-btn mod-icon-btn-danger" title={t('friends.annulla')}
                       disabled={actionLoading === s} onClick={() => doAction('cancel', s)}>
                       <X size={14} />
                     </button>
@@ -281,7 +302,7 @@ export default function FriendsPage() {
       {tab === 'search' && (
         <motion.div className="glass-panel" style={{ padding: '1.25rem' }} {...entrata(0.05)}>
           <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem' }}>
-            <Search size={16} style={{ verticalAlign: 'middle' }} /> Cerca utente Twitch
+            <Search size={16} style={{ verticalAlign: 'middle' }} /> {t('friends.cerca.titolo')}
           </h3>
           <form onSubmit={(e) => { e.preventDefault(); searchUser(); }}
             style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
@@ -289,14 +310,14 @@ export default function FriendsPage() {
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Username Twitch…"
+              placeholder={t('friends.cerca.placeholder')}
               className="mod-input"
               style={{ flex: 1 }}
               maxLength={50}
             />
             <button type="submit" className="btn btn-primary" disabled={searching || searchQuery.trim().length < 2}
               style={{ fontSize: '0.82rem', padding: '0.45rem 1rem' }}>
-              {searching ? <Loader size={14} className="spin" /> : <Search size={14} />} Cerca
+              {searching ? <Loader size={14} className="spin" /> : <Search size={14} />} {t('friends.cerca.btn')}
             </button>
           </form>
 
@@ -308,34 +329,34 @@ export default function FriendsPage() {
                   <Twitch size={18} color="#9146FF" />
                   <span style={{ fontWeight: 600, flex: 1 }}>{searchStatus.target}</span>
                   {searchStatus.status === 'self' && (
-                    <span className="chip" style={{ fontSize: '0.72rem' }}>Sei tu! 😄</span>
+                    <span className="chip" style={{ fontSize: '0.72rem' }}>{t('friends.status.self')}</span>
                   )}
                   {searchStatus.status === 'friends' && (
                     <span className="chip" style={{ fontSize: '0.72rem', background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}>
-                      <UserCheck size={12} /> Già amici
+                      <UserCheck size={12} /> {t('friends.status.amici')}
                     </span>
                   )}
                   {searchStatus.status === 'pending' && (
                     <span className="chip" style={{ fontSize: '0.72rem', background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
-                      <Clock size={12} /> Richiesta inviata
+                      <Clock size={12} /> {t('friends.status.pending')}
                     </span>
                   )}
                   {searchStatus.status === 'incoming' && (
                     <button className="btn btn-primary" onClick={() => doAction('accept', searchStatus.target)}
                       disabled={actionLoading === searchStatus.target}
                       style={{ fontSize: '0.78rem', padding: '0.35rem 0.8rem' }}>
-                      <Check size={13} /> Accetta richiesta
+                      <Check size={13} /> {t('friends.accetta')}
                     </button>
                   )}
                   {searchStatus.status === 'none' && (
                     <button className="btn btn-primary" onClick={() => doAction('send', searchStatus.target)}
                       disabled={actionLoading === searchStatus.target}
                       style={{ fontSize: '0.78rem', padding: '0.35rem 0.8rem' }}>
-                      <UserPlus size={13} /> Aggiungi
+                      <UserPlus size={13} /> {t('friends.aggiungi')}
                     </button>
                   )}
                   {searchStatus.status === 'error' && (
-                    <span style={{ color: 'var(--accent)', fontSize: '0.82rem' }}>Errore nella ricerca</span>
+                    <span style={{ color: 'var(--accent)', fontSize: '0.82rem' }}>{t('friends.errore_ricerca')}</span>
                   )}
                 </div>
               </motion.div>
@@ -343,7 +364,7 @@ export default function FriendsPage() {
           </AnimatePresence>
 
           <p style={{ color: 'var(--text-faint)', fontSize: '0.76rem', marginTop: '1rem' }}>
-            💡 Inserisci il nome utente Twitch esatto della persona che vuoi aggiungere.
+            {t('friends.cerca.hint')}
           </p>
         </motion.div>
       )}
@@ -351,10 +372,10 @@ export default function FriendsPage() {
       {/* Discord integration */}
       <motion.div className="glass-panel" style={{ padding: '1.25rem', marginTop: '1rem', textAlign: 'center' }} {...entrata(0.2)}>
         <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-          🎮 Vuoi parlare in vocale?
+          {t('friends.discord.titolo')}
         </h3>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-          Unisciti al server Discord della community per chat vocali, stanze tematiche e altro!
+          {t('friends.discord.desc')}
         </p>
         <a
           href="https://discord.gg/BuckKZ4"
@@ -363,7 +384,7 @@ export default function FriendsPage() {
           className="btn btn-primary"
           style={{ fontSize: '0.85rem', padding: '0.5rem 1.3rem', background: 'linear-gradient(135deg, #5865F2, #7289DA)' }}
         >
-          <ExternalLink size={14} /> Unisciti al Discord
+          <ExternalLink size={14} /> {t('friends.discord.cta')}
         </a>
       </motion.div>
     </div>
