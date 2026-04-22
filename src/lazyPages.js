@@ -31,6 +31,7 @@ const loaders = {
   '/impostazioni': () => import('./pages/SettingsPage'),
   '/profilo/:username': () => import('./pages/ProfiloPage'),
   '/app':          () => import('./pages/AppPage'),
+  '/chi-sono':     () => import('./pages/ChiSonoPage'),
 };
 
 /* Componenti lazy — uno per route */
@@ -50,6 +51,7 @@ export const ChatGeneralePage = lazy(loaders['/chat']);
 export const SettingsPage  = lazy(loaders['/impostazioni']);
 export const ProfiloPage   = lazy(loaders['/profilo/:username']);
 export const AppPage       = lazy(loaders['/app']);
+export const ChiSonoPage   = lazy(loaders['/chi-sono']);
 
 /* Cache delle Promise: import() è già idempotente lato bundler, ma
    tracciamo qui i percorsi già richiesti per evitare lavoro inutile */

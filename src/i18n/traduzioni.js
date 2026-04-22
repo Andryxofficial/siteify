@@ -177,6 +177,111 @@ export const TRADUZIONI = {
 
     'settings.dati.esporta':         'Esporta impostazioni (JSON)',
     'settings.dati.elimina_descr':   'Per eliminare il tuo account e tutti i dati associati, contatta l\'amministratore tramite i canali social.',
+
+    /* ── Chi sono ── */
+    'chi-sono.seo.title':       'Chi sono — Andrea Taliento (ANDRYXify)',
+    'chi-sono.seo.description': 'Ciao, sono Andrea Taliento (ANDRYXify): streamer Twitch nato a Genova il 5 marzo 1998. Appassionato di videogiochi, foto, video, tecnologia, IA, anime e manga. Seguimi su Twitch, YouTube, TikTok e Instagram!',
+    'chi-sono.seo.keywords':    'chi è andryxify, andrea taliento, streamer genova, gamer genovese, anime manga one piece, content creator liguria',
+    'chi-sono.titolo':          'Chi sono',
+    'chi-sono.saluto':          'Ciao!',
+    'chi-sono.bio':             'Io sono Andrea, sono nato il 5 Marzo del 1998 e amo tutto ciò che concerne i videogiochi, le foto, i video, la tecnologia, l\'IA... Insomma, sono un nerd. Mi piacciono gli Anime e leggo Manga. Il mio Anime preferito rimane One Piece, ma ho una lista davvero luuuuunghissima, che sia di anime che sia di manga, ma di questo magari ne parlerò in live per presentarmi meglio. Benvenuto nel mio sito!',
+    'chi-sono.scopri':          'Scopri i miei contenuti',
+    'chi-sono.seguimi':         'Seguimi',
+    'chi-sono.interessi.titolo': 'I miei interessi',
+    'chi-sono.interessi.gaming': 'Gaming',
+    'chi-sono.interessi.ia':     'Intelligenza Artificiale',
+    'chi-sono.interessi.foto':   'Fotografia & Video',
+    'chi-sono.interessi.anime':  'Anime & Manga',
+    'chi-sono.interessi.tech':   'Tecnologia',
+    'chi-sono.dove.titolo':     'Dove trovarmi',
+    'chi-sono.live.titolo':     'In live su Twitch',
+    'chi-sono.live.desc':       'Gaming, chat, IA e intrattenimento in diretta. Ogni live è un\'esperienza nuova!',
+    'chi-sono.fatti.nato':      'Nato il',
+    'chi-sono.fatti.citta':     'Città',
+    'chi-sono.fatti.anime':     'Anime preferito',
+    'chi-sono.fatti.tipo':      'Tipo',
+    'chi-sono.fatti.tipo_val':  'Nerd doc 🤓',
+
+    /* ── Twitch page ── */
+    'twitch.subtitle':          'Segui le dirette, interagisci in chat e scopri i momenti migliori.',
+    'twitch.stat.community':    'Community attiva',
+    'twitch.stat.contenuti':    'Contenuti originali',
+    'twitch.stat.live':         'Live regolari',
+    'twitch.chat.hint':         'Chat in diretta — scrivi qui o usa il tasto Accedi in alto',
+    'twitch.canale.titolo':     'andryxify su Twitch',
+    'twitch.canale.desc':       'Seguimi su Twitch per non perderti nessuna diretta. Attiva le notifiche e unisciti alla community!',
+    'twitch.cta.segui':         'Segui su Twitch',
+    'twitch.cta.donazioni':     'Donazioni su x.la',
+
+    /* ── YouTube page ── */
+    'youtube.subtitle':         'Riflessioni, approfondimenti e highlights sul futuro digitale.',
+    'youtube.canale.desc':      'Live, estratti, approfondimenti sull\'intelligenza artificiale, reaction e gaming. Esplora tutti i contenuti originali e unisciti alla community!',
+    'youtube.cta.iscriviti':    'Iscriviti al Canale',
+    'youtube.ultimi_video':     'Ultimi Video',
+    'youtube.guarda':           'Guarda su YouTube',
+
+    /* ── Instagram page ── */
+    'instagram.subtitle':       'Dietro le quinte, storie quotidiane e istanti catturati.',
+    'instagram.profilo.desc':   'Dietro le quinte delle live, pillole di IA, gaming moments e contenuti esclusivi. Seguimi per non perderti nulla!',
+    'instagram.cta.segui':      'Segui su Instagram',
+    'instagram.stories.desc':   'Le Stories di Instagram sono il posto migliore per seguire i miei aggiornamenti quotidiani in tempo reale.',
+    'instagram.cta.stories':    'Apri le Stories',
+
+    /* ── Podcast page ── */
+    'podcast.subtitle':         'Il podcast che esplora i confini tra l\'essere umano e la tecnologia.',
+    'podcast.ascolta.titolo':   'Ascolta su Spotify',
+    'podcast.condividi':        'Condividi',
+    'podcast.perche.titolo':    'Perché questo podcast?',
+    'podcast.perche.desc':      'Nell\'era dell\'intelligenza artificiale, sappiamo davvero distinguere fra strumento e cervello in prestito? ANDRYXify ti guida in un viaggio tra bit e biologia, esplorando domande che nessun algoritmo sa ancora rispondere.',
+    'podcast.cta.inizia':       'Inizia ad ascoltare',
+
+    /* ── TikTok page ── */
+    'tiktok.subtitle':          'Clip, trend, IA e gaming nei formati più veloci del web.',
+    'tiktok.profilo.desc':      'Gaming, IA, tech e tanto altro in pillole veloci. Seguimi per non perdere nemmeno un trend!',
+    'tiktok.cta.segui':         'Seguimi su TikTok',
+    'tiktok.feed.titolo':       'Feed TikTok',
+    'tiktok.cta.apri':          'Apri il profilo TikTok',
+    'tiktok.stat.sounds':       'Trending Sounds',
+    'tiktok.stat.viral':        'Viral Clips',
+    'tiktok.stat.ia':           'IA Content',
+    'tiktok.stat.gaming':       'Gaming Moments',
+
+    /* ── Home: sezione premi community ── */
+    'home.premi.titolo':        'Premi della Community',
+    'home.premi.frequenza':     'Ogni settimana e ogni mese',
+    'home.premi.desc':          'Competi nel gioco del mese, rimani attivo nella community e vinci premi esclusivi. Tre modi per distinguersi.',
+    'home.premi.vip.titolo':    'VIP Settimanale',
+    'home.premi.vip.desc':      'Il punteggio più alto della settimana vince il ruolo VIP su Twitch per un mese intero.',
+    'home.premi.vip.cta':       'Gioca ora',
+    'home.premi.campione.titolo': 'Campione Mensile',
+    'home.premi.campione.desc': 'Il punteggio più alto del mese riceve un premio speciale rivelato in live da Andryx.',
+    'home.premi.campione.cta':  'Classifica',
+    'home.premi.star.titolo':   'Social Star',
+    'home.premi.star.desc':     'Il membro più attivo e costruttivo della community ogni mese ottiene un riconoscimento speciale.',
+    'home.premi.star.cta':      'Community',
+
+    /* ── Home: sezione messaggi privati ── */
+    'home.msg.titolo':          'Messaggi Privati',
+    'home.msg.e2e':             '— Cifrati E2E',
+    'home.msg.desc':            'Chatta in modo sicuro con gli altri membri della community. Zero intercettazioni, massima privacy — protetto dalla tua passkey.',
+    'home.msg.feature.login.titolo': 'Login con Twitch',
+    'home.msg.feature.login.desc':   'Accedi con il tuo account Twitch in un click, nessuna registrazione extra.',
+    'home.msg.feature.e2e.titolo':   'Cifrati End‑to‑End',
+    'home.msg.feature.e2e.desc':     'I messaggi sono leggibili solo da te e dal destinatario. Nemmeno il server può leggerli.',
+    'home.msg.feature.passkey.titolo': 'Passkey',
+    'home.msg.feature.passkey.desc':   'Proteggi le tue chiavi con Face ID, impronta digitale o PIN del dispositivo.',
+    'home.msg.cta':             'Prova i Messaggi',
+
+    /* ── SocialHub ── */
+    'social.twitch.desc':       'Live streaming, gaming & chatting',
+    'social.youtube.desc':      'Video, highlights e approfondimenti',
+    'social.instagram.desc':    'Dietro le quinte e aggiornamenti',
+    'social.tiktok.desc':       'Clip divertenti e pillole di IA',
+    'social.podcast.desc':      'Umanità o IA? — Ascolta ora',
+    'social.discord.desc':      'Chat vocale e community',
+
+    /* ── Navbar: nuova voce ── */
+    'nav.chi-sono':             'Chi sono',
   },
 
   en: {
@@ -331,6 +436,111 @@ export const TRADUZIONI = {
 
     'settings.dati.esporta':         'Export settings (JSON)',
     'settings.dati.elimina_descr':   'To delete your account and all associated data, contact the admin through the social channels.',
+
+    /* ── Chi sono ── */
+    'chi-sono.seo.title':       'About me — Andrea Taliento (ANDRYXify)',
+    'chi-sono.seo.description': 'Hi, I\'m Andrea Taliento (ANDRYXify): Twitch streamer born in Genoa on March 5, 1998. Passionate about video games, photography, video, technology, AI, anime and manga. Follow me on Twitch, YouTube, TikTok and Instagram!',
+    'chi-sono.seo.keywords':    'who is andryxify, andrea taliento, genoa streamer, gamer genova, anime manga one piece, content creator liguria',
+    'chi-sono.titolo':          'About me',
+    'chi-sono.saluto':          'Hello!',
+    'chi-sono.bio':             'I\'m Andrea, born on March 5, 1998, and I love everything related to video games, photography, video, technology, AI... In short, I\'m a nerd. I\'m into Anime and I read Manga. My favourite Anime is One Piece, but I have a really loooong list — both anime and manga — and maybe I\'ll talk about it in a live stream to introduce myself properly. Welcome to my site!',
+    'chi-sono.scopri':          'Discover my content',
+    'chi-sono.seguimi':         'Follow me',
+    'chi-sono.interessi.titolo': 'My interests',
+    'chi-sono.interessi.gaming': 'Gaming',
+    'chi-sono.interessi.ia':     'Artificial Intelligence',
+    'chi-sono.interessi.foto':   'Photography & Video',
+    'chi-sono.interessi.anime':  'Anime & Manga',
+    'chi-sono.interessi.tech':   'Technology',
+    'chi-sono.dove.titolo':     'Where to find me',
+    'chi-sono.live.titolo':     'Live on Twitch',
+    'chi-sono.live.desc':       'Gaming, chat, AI and entertainment live. Every stream is a new experience!',
+    'chi-sono.fatti.nato':      'Born on',
+    'chi-sono.fatti.citta':     'City',
+    'chi-sono.fatti.anime':     'Favourite anime',
+    'chi-sono.fatti.tipo':      'Type',
+    'chi-sono.fatti.tipo_val':  'Certified nerd 🤓',
+
+    /* ── Twitch page ── */
+    'twitch.subtitle':          'Follow my streams, chat live and discover the best moments.',
+    'twitch.stat.community':    'Active community',
+    'twitch.stat.contenuti':    'Original content',
+    'twitch.stat.live':         'Regular streams',
+    'twitch.chat.hint':         'Live chat — type here or use the Log in button above',
+    'twitch.canale.titolo':     'andryxify on Twitch',
+    'twitch.canale.desc':       'Follow me on Twitch so you don\'t miss any stream. Turn on notifications and join the community!',
+    'twitch.cta.segui':         'Follow on Twitch',
+    'twitch.cta.donazioni':     'Donate on x.la',
+
+    /* ── YouTube page ── */
+    'youtube.subtitle':         'Thoughts, deep-dives and highlights from the digital frontier.',
+    'youtube.canale.desc':      'Live streams, clips, AI deep-dives, reactions and gaming. Explore all original content and join the community!',
+    'youtube.cta.iscriviti':    'Subscribe to the Channel',
+    'youtube.ultimi_video':     'Latest Videos',
+    'youtube.guarda':           'Watch on YouTube',
+
+    /* ── Instagram page ── */
+    'instagram.subtitle':       'Behind the scenes, daily stories and captured moments.',
+    'instagram.profilo.desc':   'Behind-the-scenes of streams, AI nuggets, gaming moments and exclusive content. Follow me so you don\'t miss a thing!',
+    'instagram.cta.segui':      'Follow on Instagram',
+    'instagram.stories.desc':   'Instagram Stories are the best place to follow my daily updates in real time.',
+    'instagram.cta.stories':    'Open Stories',
+
+    /* ── Podcast page ── */
+    'podcast.subtitle':         'The podcast exploring the boundary between humans and technology.',
+    'podcast.ascolta.titolo':   'Listen on Spotify',
+    'podcast.condividi':        'Share',
+    'podcast.perche.titolo':    'Why this podcast?',
+    'podcast.perche.desc':      'In the age of artificial intelligence, do we really know how to tell a tool from a borrowed brain? ANDRYXify guides you on a journey between bits and biology, exploring questions no algorithm can yet answer.',
+    'podcast.cta.inizia':       'Start listening',
+
+    /* ── TikTok page ── */
+    'tiktok.subtitle':          'Clips, trends, AI and gaming in the web\'s fastest formats.',
+    'tiktok.profilo.desc':      'Gaming, AI, tech and much more in quick bites. Follow me so you don\'t miss a single trend!',
+    'tiktok.cta.segui':         'Follow me on TikTok',
+    'tiktok.feed.titolo':       'TikTok Feed',
+    'tiktok.cta.apri':          'Open TikTok profile',
+    'tiktok.stat.sounds':       'Trending Sounds',
+    'tiktok.stat.viral':        'Viral Clips',
+    'tiktok.stat.ia':           'AI Content',
+    'tiktok.stat.gaming':       'Gaming Moments',
+
+    /* ── Home: community prizes ── */
+    'home.premi.titolo':        'Community Prizes',
+    'home.premi.frequenza':     'Every week and every month',
+    'home.premi.desc':          'Compete in the game of the month, stay active in the community and win exclusive prizes. Three ways to stand out.',
+    'home.premi.vip.titolo':    'Weekly VIP',
+    'home.premi.vip.desc':      'The highest score of the week wins the VIP role on Twitch for a whole month.',
+    'home.premi.vip.cta':       'Play now',
+    'home.premi.campione.titolo': 'Monthly Champion',
+    'home.premi.campione.desc': 'The highest score of the month receives a special prize revealed live by Andryx.',
+    'home.premi.campione.cta':  'Leaderboard',
+    'home.premi.star.titolo':   'Social Star',
+    'home.premi.star.desc':     'The most active and constructive community member each month gets a special recognition.',
+    'home.premi.star.cta':      'Community',
+
+    /* ── Home: private messages ── */
+    'home.msg.titolo':          'Private Messages',
+    'home.msg.e2e':             '— E2E Encrypted',
+    'home.msg.desc':            'Chat securely with other community members. Zero interceptions, maximum privacy — protected by your passkey.',
+    'home.msg.feature.login.titolo': 'Log in with Twitch',
+    'home.msg.feature.login.desc':   'Sign in with your Twitch account in one click, no extra registration.',
+    'home.msg.feature.e2e.titolo':   'End‑to‑End Encrypted',
+    'home.msg.feature.e2e.desc':     'Messages are readable only by you and the recipient. Not even the server can read them.',
+    'home.msg.feature.passkey.titolo': 'Passkey',
+    'home.msg.feature.passkey.desc':   'Protect your keys with Face ID, fingerprint or device PIN.',
+    'home.msg.cta':             'Try Messages',
+
+    /* ── SocialHub ── */
+    'social.twitch.desc':       'Live streaming, gaming & chatting',
+    'social.youtube.desc':      'Videos, highlights and deep-dives',
+    'social.instagram.desc':    'Behind the scenes and updates',
+    'social.tiktok.desc':       'Fun clips and AI nuggets',
+    'social.podcast.desc':      'Humanity or AI? — Listen now',
+    'social.discord.desc':      'Voice chat and community',
+
+    /* ── Navbar ── */
+    'nav.chi-sono':             'About me',
   },
 
   es: {
@@ -485,6 +695,111 @@ export const TRADUZIONI = {
 
     'settings.dati.esporta':         'Exportar ajustes (JSON)',
     'settings.dati.elimina_descr':   'Para eliminar tu cuenta y todos los datos asociados, contacta al administrador por los canales sociales.',
+
+    /* ── Chi sono ── */
+    'chi-sono.seo.title':       'Quién soy — Andrea Taliento (ANDRYXify)',
+    'chi-sono.seo.description': '¡Hola, soy Andrea Taliento (ANDRYXify): streamer de Twitch nacido en Génova el 5 de marzo de 1998. Apasionado de los videojuegos, la fotografía, el vídeo, la tecnología, la IA, el anime y el manga. ¡Sígueme en Twitch, YouTube, TikTok e Instagram!',
+    'chi-sono.seo.keywords':    'quién es andryxify, andrea taliento, streamer génova, gamer genovese, anime manga one piece, content creator liguria',
+    'chi-sono.titolo':          'Quién soy',
+    'chi-sono.saluto':          '¡Hola!',
+    'chi-sono.bio':             'Soy Andrea, nací el 5 de marzo de 1998 y me encanta todo lo relacionado con los videojuegos, la fotografía, el vídeo, la tecnología, la IA... En resumen, soy un friki. Me gustan los Anime y leo Manga. Mi Anime favorito sigue siendo One Piece, pero tengo una lista reaaaalmente larga — tanto de anime como de manga — y quizás hable de ello en directo para presentarme mejor. ¡Bienvenido a mi sitio!',
+    'chi-sono.scopri':          'Descubre mis contenidos',
+    'chi-sono.seguimi':         'Sígueme',
+    'chi-sono.interessi.titolo': 'Mis intereses',
+    'chi-sono.interessi.gaming': 'Gaming',
+    'chi-sono.interessi.ia':     'Inteligencia Artificial',
+    'chi-sono.interessi.foto':   'Fotografía y Vídeo',
+    'chi-sono.interessi.anime':  'Anime y Manga',
+    'chi-sono.interessi.tech':   'Tecnología',
+    'chi-sono.dove.titolo':     'Dónde encontrarme',
+    'chi-sono.live.titolo':     'En directo en Twitch',
+    'chi-sono.live.desc':       'Gaming, chat, IA y entretenimiento en vivo. ¡Cada directo es una experiencia nueva!',
+    'chi-sono.fatti.nato':      'Nacido el',
+    'chi-sono.fatti.citta':     'Ciudad',
+    'chi-sono.fatti.anime':     'Anime favorito',
+    'chi-sono.fatti.tipo':      'Tipo',
+    'chi-sono.fatti.tipo_val':  'Friki certificado 🤓',
+
+    /* ── Twitch page ── */
+    'twitch.subtitle':          'Sigue mis directos, chatea en vivo y descubre los mejores momentos.',
+    'twitch.stat.community':    'Comunidad activa',
+    'twitch.stat.contenuti':    'Contenido original',
+    'twitch.stat.live':         'Directos regulares',
+    'twitch.chat.hint':         'Chat en vivo — escribe aquí o usa el botón Iniciar sesión de arriba',
+    'twitch.canale.titolo':     'andryxify en Twitch',
+    'twitch.canale.desc':       '¡Sígueme en Twitch para no perderte ningún directo. Activa las notificaciones y únete a la comunidad!',
+    'twitch.cta.segui':         'Seguir en Twitch',
+    'twitch.cta.donazioni':     'Donaciones en x.la',
+
+    /* ── YouTube page ── */
+    'youtube.subtitle':         'Reflexiones, análisis en profundidad y highlights del futuro digital.',
+    'youtube.canale.desc':      'Directos, clips, análisis de IA, reacciones y gaming. ¡Explora todo el contenido original y únete a la comunidad!',
+    'youtube.cta.iscriviti':    'Suscribirse al canal',
+    'youtube.ultimi_video':     'Últimos vídeos',
+    'youtube.guarda':           'Ver en YouTube',
+
+    /* ── Instagram page ── */
+    'instagram.subtitle':       'Entre bastidores, historias cotidianas e instantes capturados.',
+    'instagram.profilo.desc':   'Entre bastidores de los directos, píldoras de IA, momentos gaming y contenido exclusivo. ¡Sígueme para no perderte nada!',
+    'instagram.cta.segui':      'Seguir en Instagram',
+    'instagram.stories.desc':   'Las Stories de Instagram son el mejor lugar para seguir mis actualizaciones diarias en tiempo real.',
+    'instagram.cta.stories':    'Abrir Stories',
+
+    /* ── Podcast page ── */
+    'podcast.subtitle':         'El podcast que explora los límites entre el ser humano y la tecnología.',
+    'podcast.ascolta.titolo':   'Escuchar en Spotify',
+    'podcast.condividi':        'Compartir',
+    'podcast.perche.titolo':    '¿Por qué este podcast?',
+    'podcast.perche.desc':      'En la era de la inteligencia artificial, ¿sabemos realmente distinguir entre una herramienta y un cerebro prestado? ANDRYXify te guía en un viaje entre bits y biología, explorando preguntas que ningún algoritmo sabe todavía responder.',
+    'podcast.cta.inizia':       'Empezar a escuchar',
+
+    /* ── TikTok page ── */
+    'tiktok.subtitle':          'Clips, tendencias, IA y gaming en los formatos más rápidos de la web.',
+    'tiktok.profilo.desc':      'Gaming, IA, tech y mucho más en píldoras rápidas. ¡Sígueme para no perderte ni una tendencia!',
+    'tiktok.cta.segui':         'Sígueme en TikTok',
+    'tiktok.feed.titolo':       'Feed TikTok',
+    'tiktok.cta.apri':          'Abrir perfil TikTok',
+    'tiktok.stat.sounds':       'Trending Sounds',
+    'tiktok.stat.viral':        'Viral Clips',
+    'tiktok.stat.ia':           'IA Content',
+    'tiktok.stat.gaming':       'Gaming Moments',
+
+    /* ── Home: premios de la comunidad ── */
+    'home.premi.titolo':        'Premios de la Comunidad',
+    'home.premi.frequenza':     'Cada semana y cada mes',
+    'home.premi.desc':          'Compite en el juego del mes, mantente activo en la comunidad y gana premios exclusivos. Tres formas de destacar.',
+    'home.premi.vip.titolo':    'VIP Semanal',
+    'home.premi.vip.desc':      'La puntuación más alta de la semana gana el rol VIP en Twitch durante un mes entero.',
+    'home.premi.vip.cta':       'Jugar ahora',
+    'home.premi.campione.titolo': 'Campeón Mensual',
+    'home.premi.campione.desc': 'La puntuación más alta del mes recibe un premio especial revelado en directo por Andryx.',
+    'home.premi.campione.cta':  'Clasificación',
+    'home.premi.star.titolo':   'Social Star',
+    'home.premi.star.desc':     'El miembro más activo y constructivo de la comunidad cada mes obtiene un reconocimiento especial.',
+    'home.premi.star.cta':      'Comunidad',
+
+    /* ── Home: mensajes privados ── */
+    'home.msg.titolo':          'Mensajes Privados',
+    'home.msg.e2e':             '— Cifrados E2E',
+    'home.msg.desc':            'Chatea de forma segura con otros miembros de la comunidad. Cero interceptaciones, máxima privacidad — protegido por tu passkey.',
+    'home.msg.feature.login.titolo': 'Iniciar sesión con Twitch',
+    'home.msg.feature.login.desc':   'Inicia sesión con tu cuenta de Twitch en un clic, sin registro adicional.',
+    'home.msg.feature.e2e.titolo':   'Cifrado de extremo a extremo',
+    'home.msg.feature.e2e.desc':     'Los mensajes solo los pueden leer tú y el destinatario. Ni siquiera el servidor puede leerlos.',
+    'home.msg.feature.passkey.titolo': 'Passkey',
+    'home.msg.feature.passkey.desc':   'Protege tus claves con Face ID, huella dactilar o PIN del dispositivo.',
+    'home.msg.cta':             'Probar Mensajes',
+
+    /* ── SocialHub ── */
+    'social.twitch.desc':       'Streaming en vivo, gaming y chat',
+    'social.youtube.desc':      'Vídeos, highlights y análisis en profundidad',
+    'social.instagram.desc':    'Entre bastidores y actualizaciones',
+    'social.tiktok.desc':       'Clips divertidos y píldoras de IA',
+    'social.podcast.desc':      '¿Humanidad o IA? — Escucha ahora',
+    'social.discord.desc':      'Chat de voz y comunidad',
+
+    /* ── Navbar ── */
+    'nav.chi-sono':             'Quién soy',
   },
 };
 

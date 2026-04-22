@@ -20,63 +20,17 @@ const su = (delay = 0) => ({
   transition: { delay, type: 'spring', stiffness: 220, damping: 24 },
 });
 
-// Variante con whileInView per sezioni sotto il fold
 const inView = (delay = 0) => ({
-  initial:    { opacity: 0, y: 28 },
+  initial:     { opacity: 0, y: 28 },
   whileInView: { opacity: 1, y: 0 },
-  viewport:   { once: true, margin: '-60px' },
-  transition: { delay, type: 'spring', stiffness: 200, damping: 26 },
+  viewport:    { once: true, margin: '-60px' },
+  transition:  { delay, type: 'spring', stiffness: 200, damping: 26 },
 });
-
-const PREMI = [
-  {
-    emoji: '🏆',
-    colore: 'var(--accent-twitch)',
-    titolo: 'VIP Settimanale',
-    desc: 'Il punteggio più alto della settimana vince il ruolo VIP su Twitch per un mese intero.',
-    cta: { label: 'Gioca ora', to: '/gioco', ext: null },
-  },
-  {
-    emoji: '👑',
-    colore: 'var(--accent-warm)',
-    titolo: 'Campione Mensile',
-    desc: 'Il punteggio più alto del mese riceve un premio speciale rivelato in live da Andryx.',
-    cta: { label: 'Classifica', to: '/gioco#classifica', ext: null },
-  },
-  {
-    emoji: '⭐',
-    colore: 'var(--primary)',
-    titolo: 'Social Star',
-    desc: 'Il membro più attivo e costruttivo della community ogni mese ottiene un riconoscimento speciale.',
-    cta: { label: 'Community', to: '/socialify', ext: null },
-  },
-];
 
 const STILE_PREMIO_CTA = {
   fontSize: '0.76rem', padding: '0.3rem 0.85rem',
   marginTop: 'auto', alignSelf: 'flex-start', minHeight: 'unset',
 };
-
-const MSG_FEATURES = [
-  {
-    icona: <Twitch size={22} />,
-    colore: 'var(--accent-twitch)',
-    titolo: 'Login con Twitch',
-    desc: 'Accedi con il tuo account Twitch in un click, nessuna registrazione extra.',
-  },
-  {
-    icona: <Lock size={22} />,
-    colore: 'var(--secondary)',
-    titolo: 'Cifrati End‑to‑End',
-    desc: 'I messaggi sono leggibili solo da te e dal destinatario. Nemmeno il server può leggerli.',
-  },
-  {
-    icona: <Fingerprint size={22} />,
-    colore: 'var(--primary)',
-    titolo: 'Passkey',
-    desc: 'Proteggi le tue chiavi con Face ID, impronta digitale o PIN del dispositivo.',
-  },
-];
 
 export default function Home() {
   const [liveState, setLiveState] = useState(0); // 0=offline 1=twitch 2=simulcast
@@ -129,9 +83,9 @@ export default function Home() {
     <div className="main-content home-flow">
       <SEO
         title="Home"
-        description="ANDRYXify (Andrea Taliento) — Streamer Twitch, gamer e content creator italiano. Live streaming di videogiochi, podcast su Intelligenza Artificiale, video YouTube, clip TikTok e minigioco esclusivo con classifica."
+        description="ANDRYXify (Andrea Taliento) — Streamer Twitch di Genova, gamer e content creator italiano. Live streaming di videogiochi, podcast su Intelligenza Artificiale, video YouTube, clip TikTok e minigioco esclusivo con classifica."
         path="/"
-        keywords="andryxify, andrea taliento, streamer twitch italiano, content creator gaming, podcast intelligenza artificiale"
+        keywords="andryxify, andrea taliento, streamer genova, gamer genovese, content creator liguria, twitch genova, streaming italiano"
       />
 
       {/* ── Hero ── */}
@@ -255,45 +209,33 @@ export default function Home() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
           <Trophy size={20} color="var(--accent-warm)" />
           <h2 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700, fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>
-            Premi della Community
+            {t('home.premi.titolo')}
           </h2>
           <span className="chip" style={{ marginLeft: 'auto', background: 'rgba(255,184,108,0.12)', color: 'var(--accent-warm)', border: '1px solid rgba(255,184,108,0.22)', fontSize: '0.7rem', padding: '3px 10px' }}>
-            Ogni settimana e ogni mese
+            {t('home.premi.frequenza')}
           </span>
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.5rem', lineHeight: 1.65 }}>
-          Competi nel gioco del mese, rimani attivo nella community e vinci premi esclusivi. Tre modi per distinguersi.
+          {t('home.premi.desc')}
         </p>
 
         <div className="premi-grid">
-          {PREMI.map(p => (
+          {[
+            { emoji: '🏆', colore: 'var(--accent-twitch)', titoloKey: 'home.premi.vip.titolo',      descKey: 'home.premi.vip.desc',      ctaKey: 'home.premi.vip.cta',      to: '/gioco' },
+            { emoji: '👑', colore: 'var(--accent-warm)',   titoloKey: 'home.premi.campione.titolo', descKey: 'home.premi.campione.desc', ctaKey: 'home.premi.campione.cta', to: '/gioco#classifica' },
+            { emoji: '⭐', colore: 'var(--primary)',       titoloKey: 'home.premi.star.titolo',     descKey: 'home.premi.star.desc',     ctaKey: 'home.premi.star.cta',     to: '/socialify' },
+          ].map(p => (
             <div
-              key={p.titolo}
+              key={p.titoloKey}
               className="premio-card"
               style={{ '--accent-card': p.colore }}
             >
               <div className="premio-emoji">{p.emoji}</div>
-              <div className="premio-titolo" style={{ color: p.colore }}>{p.titolo}</div>
-              <div className="premio-desc">{p.desc}</div>
-              {p.cta.to ? (
-                <Link
-                  to={p.cta.to}
-                  className="btn btn-ghost"
-                  style={STILE_PREMIO_CTA}
-                >
-                  {p.cta.label} →
-                </Link>
-              ) : (
-                <a
-                  href={p.cta.ext}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn btn-ghost"
-                  style={STILE_PREMIO_CTA}
-                >
-                  {p.cta.label} →
-                </a>
-              )}
+              <div className="premio-titolo" style={{ color: p.colore }}>{t(p.titoloKey)}</div>
+              <div className="premio-desc">{t(p.descKey)}</div>
+              <Link to={p.to} className="btn btn-ghost" style={STILE_PREMIO_CTA}>
+                {t(p.ctaKey)} →
+              </Link>
             </div>
           ))}
         </div>
@@ -308,31 +250,35 @@ export default function Home() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
           <Shield size={20} color="var(--secondary)" />
           <h2 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700, fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>
-            <span className="text-gradient-cyan">Messaggi Privati</span>
-            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> — Cifrati E2E</span>
+            <span className="text-gradient-cyan">{t('home.msg.titolo')}</span>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> {t('home.msg.e2e')}</span>
           </h2>
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.5rem', lineHeight: 1.65 }}>
-          Chatta in modo sicuro con gli altri membri della community. Zero intercettazioni, massima privacy — protetto dalla tua passkey.
+          {t('home.msg.desc')}
         </p>
 
         <div className="msg-features">
-          {MSG_FEATURES.map(f => (
+          {[
+            { icona: <Twitch size={22} />,      colore: 'var(--accent-twitch)', titoloKey: 'home.msg.feature.login.titolo',   descKey: 'home.msg.feature.login.desc'   },
+            { icona: <Lock size={22} />,         colore: 'var(--secondary)',     titoloKey: 'home.msg.feature.e2e.titolo',    descKey: 'home.msg.feature.e2e.desc'     },
+            { icona: <Fingerprint size={22} />,  colore: 'var(--primary)',       titoloKey: 'home.msg.feature.passkey.titolo', descKey: 'home.msg.feature.passkey.desc' },
+          ].map(f => (
             <div
-              key={f.titolo}
+              key={f.titoloKey}
               className="msg-feature"
               style={{ '--accent-card': f.colore }}
             >
               <div className="msg-feature-icon" style={{ color: f.colore }}>{f.icona}</div>
-              <div className="msg-feature-titolo">{f.titolo}</div>
-              <div className="msg-feature-desc">{f.desc}</div>
+              <div className="msg-feature-titolo">{t(f.titoloKey)}</div>
+              <div className="msg-feature-desc">{t(f.descKey)}</div>
             </div>
           ))}
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.25rem' }}>
           <Link to="/messaggi" className="btn btn-primary">
-            <MessageSquare size={15} /> Prova i Messaggi
+            <MessageSquare size={15} /> {t('home.msg.cta')}
           </Link>
         </div>
       </motion.section>
