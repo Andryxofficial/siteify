@@ -403,8 +403,8 @@ export default function Emote({ token }) {
                       return (
                         <div key={emote.id} className="glass-card" style={{ padding: '0.5rem', textAlign: 'center', position: 'relative' }}>
                           <img
-                            src={emote.url2x || emote.url}
-                            srcSet={`${emote.url || emote.url2x} 1x, ${emote.url2x || emote.url} 2x`}
+                            src={emote.url || emote.url2x}
+                            srcSet={emote.url && emote.url2x ? `${emote.url} 1x, ${emote.url2x} 2x` : undefined}
                             alt={emote.nome}
                             title={emote.nome}
                             loading="lazy"

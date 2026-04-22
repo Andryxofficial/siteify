@@ -164,7 +164,7 @@ export default async function handler(req, res) {
         });
         return res.status(200).json({ emotes: items });
       } catch (e) {
-        return res.status(e.status === 200 ? 502 : (e.status || 502)).json({
+        return res.status(e.status && e.status !== 200 ? e.status : 502).json({
           code: 'seventv_search_failed',
           error: `Ricerca 7TV non disponibile: ${e.message}`,
         });
