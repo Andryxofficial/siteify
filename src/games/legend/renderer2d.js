@@ -246,7 +246,8 @@ export class Renderer2D {
   /* ─── Background zona (colore sotto la mappa) ─── */
   _zoneBackground() {
     switch (this.zoneId) {
-      case 'cave':   return '#1a1424';
+      case 'cave':
+      case 'elder_cave': return '#1a1424';
       case 'castle': return '#1c1030';
       case 'forest': return '#1f3a1a';
       default:       return '#3a8c3a'; // erba villaggio

@@ -46,9 +46,9 @@ const VILLAGE_MAP = [
   'TTTTTTTTTTTTTT__TTTTTTTTTTTTTT',
   'T.,.,..,.123,.__...123,..,,..T',
   'T.....,b.789..__...789..,..,.T',
-  'T,.b..........__......b,.,,,.T',
-  'T,...,......p.__,,....p,..b..T',
-  'T.b.,......,.,__,.,,,,.,..,..T',
+  'T,SSS.........__......b,.,,,.T',
+  'T,SFS,......p.__,,....p,..b..T',
+  'T.SSS......,.,__,.,,,,.,..,..T',
   'T.,....,b...,,__,.,......,...T',
   'T....b......,,__........b....T',
   'T....,..b..,..__.C..,b,..,...T',
@@ -68,8 +68,6 @@ const VILLAGE_MAP = [
 const VILLAGE_ENTITIES = [
   /* Re davanti alla sua casa (in alto a destra) */
   { type: 'npc', kind: 'king', x: 20, y: 4, dialog: 'king_intro' },
-  /* Anziano davanti casa propria (in alto a sinistra) — dà la spada */
-  { type: 'npc', kind: 'elder', x: 10, y: 4, dialog: 'elder_intro' },
   /* Mercante e bambino vicino alla fontana (NE della croce) */
   { type: 'npc', kind: 'merchant', x: 19, y: 8, dialog: 'merchant' },
   { type: 'npc', kind: 'child', x: 13, y: 9, dialog: 'child' },
@@ -79,6 +77,8 @@ const VILLAGE_ENTITIES = [
   { type: 'sign', x: 18, y: 9, text: 'Fontana del Villaggio.\nL\'acqua riflette le stelle.' },
   /* Cartello vicino all'imbocco nord: ricorda al player il gate del castello */
   { type: 'sign', x: 13, y: 1, text: 'Strada per il Castello.\nRichiede il Cristallo Blu.' },
+  /* Cartello vicino all'ingresso della grotta */
+  { type: 'sign', x: 6, y: 4, text: 'Una vecchia grotta...\nSi dice che un saggio\nviva in queste rocce.' },
 ];
 
 /* ─── ZONA 1: Foresta Sussurrante — primo dungeon all'aperto ─── */
@@ -227,6 +227,42 @@ const PLAINS_ENTITIES = [
   { type: 'sign', x: 27, y: 11, text: 'Verso est: si torna al\nVillaggio dei Pixel.' },
 ];
 
+/* ─── ZONA 5: Grotta del Saggio — caverna dove il vecchio dona la spada ───
+   Ispirata al primo The Legend of Zelda (1986): il vecchietto nella caverna.
+   Ingresso dal Villaggio tramite portal trigger al tile (3,4).
+   Uscita: bordo sud → Villaggio spawn (3,6). */
+const ELDER_CAVE_MAP = [
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+  'WWWWWWWWWFFFFFFFFFFFFWWWWWWWWW',
+  'WWWWWWWFFFFFFFFFFFFFFFFWWWWWWW',
+  'WWWWWWLFFFFFFFFFFFFFFFFFWWWWWW',
+  'WWWWFFFFFFFFFFFFFFFFFFFFFFWWWW',
+  'WWWWFFFFFFFFFFFFFFFFFFFFFFWWWW',
+  'WWWWFFFFFFFFFFFFFFFFFFFFFFWWWW',
+  'WWWWWFFFFFFFFFFFFFFFFLFFFWWWWW',
+  'WWWWWWWFFFFFFFFFFFFFFFFWWWWWWW',
+  'WWWWWWWWWFFFFFFFFFFFFWWWWWWWWW',
+  'WWWWWWWWWWWWWFFFWWWWWWWWWWWWWW',
+  'WWWWWWWWWWWWWFFFWWWWWWWWWWWWWW',
+  'WWWWWWWWWWWWWFFFWWWWWWWWWWWWWW',
+  'WWWWWWWWWWWWWFFFWWWWWWWWWWWWWW',
+  'WWWWWWWWWWWWWFFFWWWWWWWWWWWWWW',
+];
+
+const ELDER_CAVE_ENTITIES = [
+  /* L'Anziano siede al centro della grotta con la spada di papà Andryx */
+  { type: 'npc', kind: 'elder', x: 14, y: 10, dialog: 'elder_intro' },
+  /* Piccola ricompensa nascosta nella grotta */
+  { type: 'item', kind: 'rupee', x: 8, y: 9, requires: 'has_sword:false' },
+  { type: 'item', kind: 'rupee', x: 20, y: 11, requires: 'has_sword:false' },
+];
+
+
 /* ─── Definizioni zone ─── */
 
 export const ZONES = {
@@ -245,6 +281,8 @@ export const ZONES = {
       { trigger: 'edge', side: 'west',  toZone: 'plains', spawn: { x: 28, y: 10 } },
       /* Nord → Castello: gated dal Cristallo Blu (devi prima battere il Custode) */
       { trigger: 'edge', side: 'north', toZone: 'castle', spawn: { x: 14, y: 18 }, requires: 'has_crystal_blue' },
+      /* Ingresso alla Grotta del Saggio — tile (3,4) è l'apertura nella roccia */
+      { trigger: 'portal', x: 3, y: 4, toZone: 'elder_cave', spawn: { x: 14, y: 17 } },
     ],
   },
   forest: {
@@ -292,6 +330,18 @@ export const ZONES = {
     music: 'village',
     transitions: [
       { trigger: 'edge', side: 'east', toZone: 'village', spawn: { x: 1, y: 10 } },
+    ],
+  },
+  elder_cave: {
+    id: 'elder_cave',
+    name: 'Grotta del Saggio',
+    map: ELDER_CAVE_MAP,
+    entities: ELDER_CAVE_ENTITIES,
+    spawn: { x: 14, y: 17 },
+    music: 'cave',
+    /* Uscita: bordo sud → torna nel villaggio appena fuori dall'ingresso */
+    transitions: [
+      { trigger: 'edge', side: 'south', toZone: 'village', spawn: { x: 3, y: 6 } },
     ],
   },
 };
