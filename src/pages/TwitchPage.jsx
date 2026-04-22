@@ -25,7 +25,7 @@ export default function TwitchPage() {
       />
       <header style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 className="title">
-          <span style={{ color: '#9146FF' }}>Twitch</span> {t('twitch.titolo').replace('Twitch ', '')}
+          <span style={{ color: '#9146FF' }}>Twitch</span> {t('twitch.titolo_suffix')}
         </h1>
         <p className="subtitle">{t('twitch.sottotitolo')}</p>
 
@@ -62,8 +62,7 @@ export default function TwitchPage() {
             gap: '6px',
           }}>
             <Twitch size={14} />
-            {t('twitch.chat.intestazione')}<strong>{t('twitch.chat.accedi')}</strong>{t('twitch.chat.suffisso')}
-          </div>
+            {t('twitch.chat.intestazione')}<strong>{t('twitch.chat.accedi')}</strong>{t('twitch.chat.suffisso')}          </div>
           <iframe
             src={`https://www.twitch.tv/embed/andryxify/chat?parent=${window.location.hostname}&darkpopout`}
             height="100%"

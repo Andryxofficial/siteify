@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Twitch, Sparkles, Zap, Brain, Gamepad2,
@@ -83,8 +83,8 @@ export default function Home() {
   const { t } = useLingua();
   const toast = useToast();
 
-  const premi = PREMI(t);
-  const msgFeatures = MSG_FEATURES(t);
+  const premi = useMemo(() => PREMI(t), [t]);
+  const msgFeatures = useMemo(() => MSG_FEATURES(t), [t]);
 
   const onCondividi = async () => {
     hapticLight();

@@ -204,6 +204,7 @@ export const TRADUZIONI = {
 
     /* ── Pagina Twitch ── */
     'twitch.titolo':           'Twitch Experience',
+    'twitch.titolo_suffix':    'Experience',
     'twitch.sottotitolo':      'Segui le dirette, interagisci in chat e scopri i momenti migliori.',
     'twitch.stat.community':   'Community attiva',
     'twitch.stat.contenuti':   'Contenuti originali',
@@ -455,6 +456,7 @@ export const TRADUZIONI = {
 
     /* ── Twitch Page ── */
     'twitch.titolo':           'Twitch Experience',
+    'twitch.titolo_suffix':    'Experience',
     'twitch.sottotitolo':      'Watch live streams, chat and discover the best moments.',
     'twitch.stat.community':   'Active community',
     'twitch.stat.contenuti':   'Original content',
@@ -706,6 +708,7 @@ export const TRADUZIONI = {
 
     /* ── Página Twitch ── */
     'twitch.titolo':           'Experiencia Twitch',
+    'twitch.titolo_suffix':    'Experiencia',
     'twitch.sottotitolo':      'Sigue los directos, interactúa en el chat y descubre los mejores momentos.',
     'twitch.stat.community':   'Comunidad activa',
     'twitch.stat.contenuti':   'Contenido original',
