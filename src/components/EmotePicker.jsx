@@ -264,11 +264,17 @@ export default function EmotePicker({
               <Search size={14} style={{ opacity: 0.5, flexShrink: 0 }} />
               <input
                 ref={inputRef}
-                type="text"
+                type="search"
                 value={ricerca}
                 onChange={e => { setRicerca(e.target.value); setIndFocus(-1); }}
                 onKeyDown={handleInputKeyDown}
                 placeholder="Cerca emote..."
+                inputMode="search"
+                enterKeyHint="search"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
                 style={{
                   flex: 1,
                   background: 'transparent',

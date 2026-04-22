@@ -18,6 +18,7 @@ import { meta as legendMeta, hasSave as hasLegendSave, clearSave as clearLegendS
 import { meta as platformMeta, hasSave as hasPlatformSave, clearSave as clearPlatformSave, setPlatformLang, getTranslatedMeta as getPlatformTranslatedMeta } from '../games/platform/index.js';
 import { useReti } from '../contexts/RetiContext';
 import { useLingua } from '../contexts/LinguaContext';
+import useWakeLock from '../hooks/useWakeLock';
 
 const CHIAVETWITCH = import.meta.env.VITE_CHIAVETWITCH;
 
@@ -153,6 +154,10 @@ export default function GamePage() {
   const [, setMaxHp] = useState(0);
   const [showKeyboard, setShowKeyboard] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  /* Wake Lock — mantiene lo schermo acceso durante una partita,
+     così non si spegne dopo i 30s di inattività di Android/iOS. */
+  useWakeLock(gameStatus === 'playing');
 
   // Twitch auth
   const [twitchUser, setTwitchUser] = useState(null);

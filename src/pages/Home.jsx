@@ -3,13 +3,16 @@ import { motion } from 'framer-motion';
 import {
   Twitch, Sparkles, Zap, Brain, Gamepad2,
   Trophy, Crown, Star, Lock, MessageSquare,
-  Fingerprint, Shield,
+  Fingerprint, Shield, Share2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SocialHub from '../components/SocialHub';
 import PodcastPromo from '../components/PodcastPromo';
 import SEO from '../components/SEO';
 import { useLingua } from '../contexts/LinguaContext';
+import { useToast } from '../contexts/ToastContext';
+import { condividi, puoCondividere } from '../utils/condividi';
+import { hapticLight } from '../utils/haptics';
 
 const su = (delay = 0) => ({
   initial:    { opacity: 0, y: 22 },
@@ -78,6 +81,18 @@ const MSG_FEATURES = [
 export default function Home() {
   const [liveState, setLiveState] = useState(0); // 0=offline 1=twitch 2=simulcast
   const { t } = useLingua();
+  const toast = useToast();
+
+  const onCondividi = async () => {
+    hapticLight();
+    const r = await condividi({
+      titolo: 'ANDRYXify',
+      testo:  t('app.claim'),
+      url:    typeof window !== 'undefined' ? window.location.origin + '/' : 'https://andryxify.it/',
+    });
+    if (r === 'copied') toast.success(t('condividi.copiato'));
+    else if (r === 'unsupported') toast.error(t('condividi.errore'));
+  };
 
   useEffect(() => {
     const check = async () => {
@@ -162,6 +177,11 @@ export default function Home() {
           <Link to="/gioco" className="btn btn-ghost">
             <Gamepad2 size={15} /> {t('home.cta.gioca_ora')}
           </Link>
+          {puoCondividere() && (
+            <button type="button" onClick={onCondividi} className="btn btn-ghost" aria-label={t('condividi.titolo')}>
+              <Share2 size={15} /> {t('condividi.titolo')}
+            </button>
+          )}
         </motion.div>
       </section>
 

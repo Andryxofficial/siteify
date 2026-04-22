@@ -5,6 +5,7 @@ const FONTS_CACHE = 'andryxify-fonts';
 
 const STATIC_ASSETS = [
   '/',
+  '/offline.html',
   '/manifest.webmanifest',
   '/logo.png',
   '/Firma_Andryx.png',
@@ -99,11 +100,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ── HTML navigation: network-first, fall back to cached '/' ──────────────
+  // ── HTML navigation: network-first, fall back to cached '/', poi a /offline.html ──
   if (request.destination === 'document' || url.origin === self.location.origin) {
     event.respondWith(
       fetch(request).catch(() =>
-        caches.match('/').then((r) => r || fetch(request))
+        caches.match('/').then((r) => r || caches.match('/offline.html'))
       )
     );
   }
