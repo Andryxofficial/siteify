@@ -249,6 +249,8 @@ export function startEngine(canvas, callbacks, options = {}) {
       e.phase = 0;
     } else if (def.type === 'item') {
       e.bobPhase = Math.random() * Math.PI * 2;
+    } else if (def.type === 'chest') {
+      e.opened = !!state.flags[`chest_${def.x}_${def.y}`];
     }
     return e;
   }
@@ -316,7 +318,14 @@ export function startEngine(canvas, callbacks, options = {}) {
   /* Box collision per il player (10×10 al centro 16×16) */
   function tryMovePlayer(dx, dy) {
     const p = state.player;
-    const r = 5;            // mezza hitbox
+    const r = 5;
+
+    /* Prova a spingere blocchi nella direzione di movimento */
+    if (dx !== 0 || dy !== 0) {
+      const dir = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      tryPushBlock(p.x, p.y, dir);
+    }
+
     const newX = p.x + dx;
     if (!tileSolidAt(newX - r, p.y - r) &&
         !tileSolidAt(newX + r, p.y - r) &&
@@ -331,6 +340,24 @@ export function startEngine(canvas, callbacks, options = {}) {
         !tileSolidAt(p.x + r, newY + r)) {
       p.y = newY;
     }
+  }
+
+  function tryPushBlock(px, py, dir) {
+    const frontTx = Math.floor(px / TILE_SIZE) + (dir === 'right' ? 1 : dir === 'left' ? -1 : 0);
+    const frontTy = Math.floor(py / TILE_SIZE) + (dir === 'down' ? 1 : dir === 'up' ? -1 : 0);
+    if (frontTx < 0 || frontTy < 0 || frontTx >= ZONE_W || frontTy >= ZONE_H) return;
+    const ch = mutableMap[frontTy]?.[frontTx];
+    if (!getTile(ch).pushable) return;
+    const destX = frontTx + (dir === 'right' ? 1 : dir === 'left' ? -1 : 0);
+    const destY = frontTy + (dir === 'down' ? 1 : dir === 'up' ? -1 : 0);
+    if (destX < 0 || destY < 0 || destX >= ZONE_W || destY >= ZONE_H) return;
+    const destCh = mutableMap[destY]?.[destX];
+    const destTile = getTile(destCh);
+    if (destTile.solid && !destTile.plate) return;
+    setMutation(frontTx, frontTy, '.');
+    setMutation(destX, destY, 'B');
+    SFX.hit();
+    checkPuzzles();
   }
 
   /* ─── Player update ─── */
@@ -394,6 +421,15 @@ export function startEngine(canvas, callbacks, options = {}) {
         if (entitiesOverlap(p, e, 14) && consumeAction()) openSignDialog(e);
       } else if (e.type === 'npc') {
         if (entitiesOverlap(p, e, 18) && consumeAction()) openNpcDialog(e);
+      } else if (e.type === 'chest' && !e.opened) {
+        /* Ostacolo fisico: respingi il player */
+        if (entitiesOverlap(p, e, 12)) {
+          const cdx = p.x - e.x, cdy = p.y - e.y;
+          const cm = Math.sqrt(cdx*cdx + cdy*cdy) || 1;
+          p.x += (cdx/cm)*0.8; p.y += (cdy/cm)*0.8;
+        }
+        /* Apertura con azione */
+        if (entitiesOverlap(p, e, 18) && consumeAction()) openChest(e);
       }
     }
 
@@ -412,6 +448,9 @@ export function startEngine(canvas, callbacks, options = {}) {
         if (!broke) SFX.text();
       }
     }
+
+    /* Auto-usa chiave su porte bloccate adiacenti */
+    if (state.keys > 0) tryUseKey();
 
     /* Transizioni zona */
     checkTransitions();
@@ -525,26 +564,40 @@ export function startEngine(canvas, callbacks, options = {}) {
   }
 
   function checkPuzzles() {
-    /* Caverna: 2 torce → apri porta nord per accesso al boss */
-    if (state.zoneId === 'cave') {
-      const litCount = countInMap('l', mutableMap);
-      if (litCount >= 2 && !state.flags.cave_door1_opened) {
-        state.flags.cave_door1_opened = true;
-        /* Apri la porta D in posizione nota */
-        for (let y = 0; y < ZONE_H; y++) {
-          for (let x = 0; x < ZONE_W; x++) {
-            if (mutableMap[y][x] === 'D') setMutation(x, y, 'd');
-          }
-        }
-        SFX.door();
-        showSystemMessage(getLegendEngineText('doors_open'));
-        /* Ricarica entita` per spawnare boss/mago */
-        const z = getZone(state.zoneId);
-        const newEnts = z.entities.filter(e => e.requires === 'cave_door1' || e.requires === 'cave_torches');
-        for (const ne of newEnts) {
-          if (!entities.find(ex => ex.def === ne)) entities.push(instantiateEntity(ne));
+    if (state.zoneId !== 'cave') return;
+
+    /* Torce accese → sblocca boss */
+    const litCount = countInMap('l', mutableMap);
+    if (litCount >= 2 && !state.flags.cave_torches_lit) {
+      state.flags.cave_torches_lit = true;
+      SFX.door();
+      showSystemMessage(getLegendEngineText('boss_awakens') || '⚠ Il Custode si risveglia!');
+      const z = getZone(state.zoneId);
+      const newEnts = z.entities.filter(e => e.requires === 'cave_torches');
+      for (const ne of newEnts) {
+        if (!entities.find(ex => ex.def === ne)) entities.push(instantiateEntity(ne));
+      }
+    }
+
+    /* Prima porta (D a col14, row8): si apre usando la chiave (gestito da tryUseKey) */
+
+    /* Blocchi spingibili sulle piastre → apri seconda porta (D a col8, row14) */
+    const origMap = getZone('cave').map;
+    let platesPressed = 0;
+    for (let ry = 0; ry < ZONE_H; ry++) {
+      for (let rx = 0; rx < ZONE_W; rx++) {
+        if (origMap[ry]?.[rx] === 'P' && mutableMap[ry]?.[rx] === 'B') platesPressed++;
+      }
+    }
+    if (platesPressed >= 2 && !state.flags.cave_plates_done) {
+      state.flags.cave_plates_done = true;
+      for (let ry = 0; ry < ZONE_H; ry++) {
+        for (let rx = 0; rx < ZONE_W; rx++) {
+          if (ry === 14 && mutableMap[ry]?.[rx] === 'D') setMutation(rx, ry, 'd');
         }
       }
+      SFX.door();
+      showSystemMessage('✅ Puzzle risolto! La porta si apre!');
     }
   }
 
@@ -636,6 +689,19 @@ export function startEngine(canvas, callbacks, options = {}) {
       SFX.victory();
       openDialogById('crystal_red_pickup');
     }
+    callbacks.onScore?.(calculateFinalScore({ ...state, maxHp: state.player.maxHp }));
+  }
+
+  function openChest(e) {
+    const key = `chest_${e.def.x}_${e.def.y}`;
+    if (state.flags[key]) return;
+    state.flags[key] = true;
+    e.opened = true;
+    SFX.victory();
+    if (e.def.contains) {
+      spawnItem(e.x, e.y - TILE_SIZE, e.def.contains);
+    }
+    showSystemMessage('📦 Hai trovato qualcosa!');
     callbacks.onScore?.(calculateFinalScore({ ...state, maxHp: state.player.maxHp }));
   }
 
@@ -807,6 +873,18 @@ export function startEngine(canvas, callbacks, options = {}) {
           spawnProjectile(e.x, e.y, Math.cos(angle), Math.sin(angle), '#8a6040', 1, 180);
         }
       }
+    } else if (e.kind === 'goblin') {
+      /* Goblin: corsa rapida verso il player, lancia pietre ogni 2s */
+      const sp = dist < 50 ? 1.2 : 0.85;
+      tryMoveEntity(e, (dx / dist) * sp, (dy / dist) * sp);
+      e.frame = (e.frame + 0.15) % 2;
+      if (Math.abs(dx) > Math.abs(dy)) e.dir = dx > 0 ? 'right' : 'left';
+      else e.dir = dy > 0 ? 'down' : 'up';
+      e.cooldown--;
+      if (e.cooldown <= 0 && dist < 110) {
+        e.cooldown = 90;
+        spawnProjectile(e.x, e.y, dx / dist, dy / dist, '#8B4513', 1, 150);
+      }
     }
   }
 
@@ -894,6 +972,32 @@ export function startEngine(canvas, callbacks, options = {}) {
         spawnProjectile(e.x, e.y, Math.cos(a), Math.sin(a), '#b870d0', 2, 220);
       }
       SFX.bossHit();
+    }
+  }
+
+  function tryUseKey() {
+    if (state.keys <= 0) return;
+    const p = state.player;
+    const tx = Math.floor(p.x / TILE_SIZE);
+    const ty = Math.floor(p.y / TILE_SIZE);
+    const adj = [[tx, ty - 1], [tx, ty + 1], [tx - 1, ty], [tx + 1, ty]];
+    for (const [ax, ay] of adj) {
+      const ch = mutableMap[ay]?.[ax];
+      if (ch === 'D') {
+        setMutation(ax, ay, 'd');
+        state.keys--;
+        SFX.door();
+        if (!state.flags.cave_door1_opened && state.zoneId === 'cave') {
+          state.flags.cave_door1_opened = true;
+          const z = getZone(state.zoneId);
+          const newEnts = z.entities.filter(e => e.requires === 'cave_door1');
+          for (const ne of newEnts) {
+            if (!entities.find(ex => ex.def === ne)) entities.push(instantiateEntity(ne));
+          }
+        }
+        showSystemMessage('🗝️ Porta aperta!');
+        return;
+      }
     }
   }
 
@@ -1445,6 +1549,7 @@ const ENEMY_STATS = {
   skeleton:     { hp: 2,  speed: 0.7, damage: 1, points: 30 },
   mage:         { hp: 3,  speed: 0.4, damage: 1, points: 50 },
   forest_troll: { hp: 12, speed: 0.8, damage: 2, points: 200 }, /* mini-boss */
+  goblin:       { hp: 2,  speed: 0.9, damage: 1, points: 75 },
 };
 const BOSS_STATS = {
   guardian:    { hp: 12, speed: 0.4, damage: 2, points: 500 },
