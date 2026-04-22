@@ -21,8 +21,8 @@ import { useState, useEffect, useCallback, useMemo, createElement } from 'react'
 
 const API_URL = '/api/emotes';
 // Bump versione cache: lo schema include ora `provider`, `animata` e 7TV
-const CACHE_KEY = 'andryxify_emotes_cache_v2';
-const LEGACY_CACHE_KEY = 'andryxify_emotes_cache';
+const CACHE_KEY = 'andryxify_emotes_cache_v3';
+const LEGACY_CACHE_KEY = 'andryxify_emotes_cache_v2';
 const CACHE_TTL = 2 * 60 * 60 * 1000; // 2 ore in ms
 
 function leggiCache() {

@@ -27,6 +27,13 @@ import { Redis } from '@upstash/redis';
  * Schema emote unificato: { id, nome, url, url2x, url4x, animata, provider, tipo }
  */
 
+// Cache keys versionate: bump v3 → emote Twitch animate ora correttamente
+// distinte da quelle statiche (vecchie cache v2 erano tutte animata:false).
+const KEY_TW_CANALE   = 'emotes:v3:canale';
+const KEY_TW_GLOBALI  = 'emotes:v3:globali';
+const KEY_7TV_CANALE  = 'emotes:v3:7tv:canale';
+const KEY_7TV_GLOBALI = 'emotes:v3:7tv:globali';
+
 const CACHE_TTL = 2 * 60 * 60;       // 2 ore
 const BROADCASTER_TTL = 24 * 60 * 60; // 24 ore
 const BROADCASTER_LOGIN = process.env.BROADCASTER_USERNAME || 'andryxify';
@@ -55,10 +62,10 @@ export default async function handler(req, res) {
   /* ─── Controlla la cache Redis ─── */
   try {
     const [cachedCanale, cachedGlobali, cached7tvCanale, cached7tvGlobali] = await Promise.all([
-      redis.get('emotes:canale'),
-      redis.get('emotes:globali'),
-      redis.get('emotes:7tv:canale'),
-      redis.get('emotes:7tv:globali'),
+      redis.get(KEY_TW_CANALE),
+      redis.get(KEY_TW_GLOBALI),
+      redis.get(KEY_7TV_CANALE),
+      redis.get(KEY_7TV_GLOBALI),
     ]);
 
     // Riteniamo la cache valida se almeno le Twitch sono presenti.
@@ -141,30 +148,12 @@ export default async function handler(req, res) {
 
     if (canaleRes.ok) {
       const canaleData = await canaleRes.json();
-      emoteCanale = (canaleData.data || []).map(e => ({
-        id: `twitch-${e.id}`,
-        nome: e.name,
-        url: e.images?.url_1x || `https://static-cdn.jtvnw.net/emoticons/v2/${e.id}/default/dark/1.0`,
-        url2x: e.images?.url_2x || `https://static-cdn.jtvnw.net/emoticons/v2/${e.id}/default/dark/2.0`,
-        url4x: e.images?.url_4x || `https://static-cdn.jtvnw.net/emoticons/v2/${e.id}/default/dark/3.0`,
-        animata: false,
-        provider: 'twitch',
-        tipo: e.emote_type || 'canale',
-      }));
+      emoteCanale = (canaleData.data || []).map(e => mapTwitchEmote(e, e.emote_type || 'canale'));
     }
 
     if (globaliRes.ok) {
       const globaliData = await globaliRes.json();
-      emoteGlobali = (globaliData.data || []).map(e => ({
-        id: `twitch-${e.id}`,
-        nome: e.name,
-        url: e.images?.url_1x || `https://static-cdn.jtvnw.net/emoticons/v2/${e.id}/default/dark/1.0`,
-        url2x: e.images?.url_2x || `https://static-cdn.jtvnw.net/emoticons/v2/${e.id}/default/dark/2.0`,
-        url4x: e.images?.url_4x || `https://static-cdn.jtvnw.net/emoticons/v2/${e.id}/default/dark/3.0`,
-        animata: false,
-        provider: 'twitch',
-        tipo: 'globale',
-      }));
+      emoteGlobali = (globaliData.data || []).map(e => mapTwitchEmote(e, 'globale'));
     }
 
     emote7tvCanale  = sevenTvCanaleData;
@@ -177,10 +166,10 @@ export default async function handler(req, res) {
   /* ─── Salva in cache Redis ─── */
   try {
     await Promise.all([
-      redis.set('emotes:canale',      JSON.stringify(emoteCanale),     { ex: CACHE_TTL }),
-      redis.set('emotes:globali',     JSON.stringify(emoteGlobali),    { ex: CACHE_TTL }),
-      redis.set('emotes:7tv:canale',  JSON.stringify(emote7tvCanale),  { ex: CACHE_TTL }),
-      redis.set('emotes:7tv:globali', JSON.stringify(emote7tvGlobali), { ex: CACHE_TTL }),
+      redis.set(KEY_TW_CANALE,   JSON.stringify(emoteCanale),     { ex: CACHE_TTL }),
+      redis.set(KEY_TW_GLOBALI,  JSON.stringify(emoteGlobali),    { ex: CACHE_TTL }),
+      redis.set(KEY_7TV_CANALE,  JSON.stringify(emote7tvCanale),  { ex: CACHE_TTL }),
+      redis.set(KEY_7TV_GLOBALI, JSON.stringify(emote7tvGlobali), { ex: CACHE_TTL }),
     ]);
   } catch { /* best effort — la risposta prosegue comunque */ }
 
@@ -193,6 +182,38 @@ export default async function handler(req, res) {
     },
     daCache: false,
   });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Helper Twitch — costruisce schema unificato distinguendo statiche/animate.
+   Per le emote animate Helix di default ritorna `images.url_*` STATICI
+   (PNG) → bisogna costruire l'URL animato a mano usando il pattern
+   `/emoticons/v2/<id>/animated/dark/<size>` (.0 size 1/2/3).
+   ═══════════════════════════════════════════════════════════════════════ */
+function mapTwitchEmote(e, tipo) {
+  const animata = Array.isArray(e.format) && e.format.includes('animated');
+  const tier    = e.tier || null; // '1000' | '2000' | '3000' (sub tier 1/2/3)
+  const variant = animata ? 'animated' : 'static';
+
+  // URL animati: pattern fisso CDN. Url Helix `images.url_*` puntano alla
+  // versione statica e quindi NON sono adatti per emote animate.
+  const buildUrl = (size) =>
+    animata
+      ? `https://static-cdn.jtvnw.net/emoticons/v2/${e.id}/${variant}/dark/${size}.0`
+      : (e.images?.[`url_${size}x`] || `https://static-cdn.jtvnw.net/emoticons/v2/${e.id}/static/dark/${size}.0`);
+
+  return {
+    id:       `twitch-${e.id}`,
+    nome:     e.name,
+    url:      buildUrl(1),
+    url2x:    buildUrl(2),
+    url4x:    buildUrl(3), // Twitch CDN supporta fino a 3.0 per le emote canale
+    animata,
+    provider: 'twitch',
+    tipo,                    // 'subscriptions' | 'bitstier' | 'follower' | 'globale'
+    tier,                    // tier numerico per le subscriptions (1000/2000/3000)
+    setId:    e.emote_set_id || null,
+  };
 }
 
 /* ═══════════════════════════════════════════════════════════════════════

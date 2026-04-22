@@ -473,7 +473,16 @@ export async function modAuthGate(req, redis) {
     try { await syncModsFromTwitch(redis, twitchUser); } catch { /* non bloccante */ }
   }
   const isMod = twitchUser ? await isUserMod(redis, twitchUser.login) : false;
-  return { twitchUser, isMod };
+  // Stabilisce se l'utente coincide col broadcaster: utile agli endpoint
+  // che gating azioni "broadcaster only" (es. set token 7TV).
+  let isBroadcaster = false;
+  if (twitchUser) {
+    try {
+      const broadcasterLogin = await getBroadcasterUsername(redis);
+      if (broadcasterLogin && twitchUser.login === broadcasterLogin) isBroadcaster = true;
+    } catch { /* ignore */ }
+  }
+  return { twitchUser, isMod, isBroadcaster };
 }
 
 /**
