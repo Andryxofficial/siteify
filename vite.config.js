@@ -27,6 +27,12 @@ export default defineConfig({
           if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-') || id.includes('node_modules/victory-vendor')) {
             return 'vendor-recharts';
           }
+          /* Andryx Hourglass — chunk core (engine/render/state/audio/sprites/i18n).
+             Le scene (src/games/hourglass/scenes/*) restano fuori per essere
+             lazy-loaded separatamente al cambio scena, come un metroidvania. */
+          if (id.includes('/src/games/hourglass/') && !id.includes('/src/games/hourglass/scenes/')) {
+            return 'hourglass';
+          }
         },
       },
     },
