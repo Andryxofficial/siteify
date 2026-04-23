@@ -166,6 +166,15 @@ function AppLayout() {
     }
   }, []);
 
+  // Rimuovi la splash screen appena il primo render è committato al DOM
+  useEffect(() => {
+    const splash = document.getElementById('andryx-splash');
+    if (!splash) return;
+    splash.classList.add('nascosto');
+    const t = setTimeout(() => splash.remove(), 500);
+    return () => clearTimeout(t);
+  }, []);
+
   // Prefetch in idle dei chunk delle pagine principali della navbar:
   // così la prima navigazione dopo l'home è già istantanea, anche su mobile
   // dove non c'è hover. Sicuro chiamare più volte (cache interna).

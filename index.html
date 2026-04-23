@@ -320,5 +320,27 @@
       </noscript>
     </div>
     <script type="module" src="/src/main.jsx"></script>
+
+    <!-- Splash screen — copre il fallback SEO statico finché React non monta -->
+    <div id="andryx-splash" style="position:fixed;inset:0;z-index:99999;background:#050506;display:flex;align-items:center;justify-content:center;pointer-events:all;">
+      <img
+        src="/Firma_Andryx.png"
+        alt="ANDRYXify"
+        style="max-width:260px;width:65%;height:auto;object-fit:contain;animation:andryxSplashPulse 1.6s ease-in-out infinite;"
+      />
+    </div>
+    <style>
+      @keyframes andryxSplashPulse {
+        0%, 100% { opacity: 0.75; transform: scale(1); }
+        50%       { opacity: 1;    transform: scale(1.04); }
+      }
+      #andryx-splash {
+        transition: opacity 0.45s ease;
+      }
+      #andryx-splash.nascosto {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
   </body>
 </html>
