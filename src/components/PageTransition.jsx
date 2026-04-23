@@ -43,12 +43,20 @@ export default function PageTransition({ children }) {
   const { pathname } = useLocation();
 
   if (senzaTransizione(pathname)) {
-    // Wrapper statico: nessun transform/opacity inline, nessun layer di
-    // compositing → IntersectionObserver V2 di Twitch non rileva oscuramenti.
+    // Wrapper senza animazioni di entrata: nessun transform/opacity inline,
+    // nessun layer di compositing → IntersectionObserver V2 di Twitch non
+    // rileva oscuramenti e la chat rimane scrivibile per mod/broadcaster.
+    // Usiamo comunque motion.div (senza initial/animate) per segnalare
+    // correttamente l'uscita ad AnimatePresence mode="wait": senza di esso
+    // AnimatePresence aspetta un exit animation che non arriva mai e blocca
+    // qualsiasi navigazione successiva verso altre sezioni.
     return (
-      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <motion.div
+        exit={{ opacity: 1, transition: { duration: 0 } }}
+        style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+      >
         {children}
-      </div>
+      </motion.div>
     );
   }
 
