@@ -2423,6 +2423,19 @@ body {
   flex-shrink: 0;
 }
 
+/* Chip solo-amici */
+.social-chip-amici {
+  font-size: 0.61rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  background: rgba(130, 170, 240, 0.14);
+  color: rgba(160, 200, 255, 0.9);
+  border: 1px solid rgba(130, 170, 240, 0.28);
+}
+
 /* Contenuto post (titolo + body + media + azioni) indentato sotto avatar */
 .social-scheda-contenuto {
   padding-left: 56px; /* 44px avatar + 12px gap */

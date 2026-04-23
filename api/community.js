@@ -25,6 +25,7 @@ import { GENERAL_KEY, getMonthlyKey, getCurrentSeason, getLevel, getDecayedXp, g
  */
 
 const VALID_TAGS = ['generale', 'giochi', 'stream', 'tech', 'meme', 'suggerimenti'];
+const VALID_VISIBILITIES = ['public', 'friends'];
 const VALID_MEDIA_TYPES = ['video', 'audio', ''];
 const MAX_TITLE = 120;
 const MAX_BODY = 2000;
@@ -52,6 +53,16 @@ function getEngagementMultiplier(likeCount, replyCount) {
   if (total >= 10) return 1.5;
   if (total >= 5)  return 1.25;
   return 1.0;
+}
+
+/**
+ * Ritorna true se il viewer può vedere il post.
+ * Post friends-only: visibili solo all'autore e ai suoi amici autenticati.
+ */
+function canSeePost(post, viewerLogin, viewerFriends) {
+  if (post.visibility !== 'friends') return true;
+  if (!viewerLogin) return false;
+  return post.author === viewerLogin || viewerFriends.has(post.author);
 }
 
 /** Award XP to a user on both the monthly and general leaderboards. */
@@ -166,6 +177,22 @@ export default async function handler(req, res) {
         if (!post || !post.id) {
           return res.status(404).json({ error: 'Post non trovato.' });
         }
+
+        // Controllo visibilità per post solo-amici
+        if (post.visibility === 'friends') {
+          const authHeader = req.headers.authorization;
+          const viewer = authHeader?.startsWith('Bearer ') ? await validateTwitch(authHeader) : null;
+          if (!viewer) {
+            return res.status(403).json({ error: 'Questo post è visibile solo agli amici dell\'autore.' });
+          }
+          if (viewer.login !== post.author) {
+            const isFriend = await redis.sismember(`friends:${viewer.login}`, post.author);
+            if (!isFriend) {
+              return res.status(403).json({ error: 'Questo post è visibile solo agli amici dell\'autore.' });
+            }
+          }
+        }
+
         let liked = false;
         const authHeader = req.headers.authorization;
         if (authHeader?.startsWith('Bearer ')) {
@@ -189,7 +216,6 @@ export default async function handler(req, res) {
       const tag = req.query?.tag;
       const user = req.query?.user;
       const start = (page - 1) * limit;
-      const end = start + limit - 1;
 
       let sourceKey = 'community:timeline';
       if (tag && VALID_TAGS.includes(tag)) {
@@ -198,34 +224,41 @@ export default async function handler(req, res) {
         sourceKey = `community:user:${sanitize(user, 50)}`;
       }
 
-      // Get post IDs (newest first)
-      const postIds = await redis.zrange(sourceKey, start, end, { rev: true });
-      const total = await redis.zcard(sourceKey);
+      // Fetch un buffer generoso per compensare i post filtrati per visibilità
+      const FETCH_BUFFER = 200;
+      const allIds = await redis.zrange(sourceKey, 0, FETCH_BUFFER - 1, { rev: true });
 
-      if (!postIds || postIds.length === 0) {
-        return res.status(200).json({ posts: [], total, page, pages: Math.ceil(total / limit) });
+      if (!allIds || allIds.length === 0) {
+        return res.status(200).json({ posts: [], total: 0, page, pages: 1 });
       }
 
       // Fetch all post hashes in parallel
-      const posts = await Promise.all(
-        postIds.map(id => redis.hgetall(`community:post:${id}`))
+      const allPosts = await Promise.all(
+        allIds.map(id => redis.hgetall(`community:post:${id}`))
       );
 
-      // Check likes for current user if authenticated
+      // Determina viewer e i suoi amici (un solo hset read per request)
+      let viewerLogin = null;
+      let viewerFriends = new Set();
       let userLikes = {};
       const authHeader = req.headers.authorization;
       if (authHeader?.startsWith('Bearer ')) {
         const twitchUser = await validateTwitch(authHeader);
         if (twitchUser) {
-          const likeChecks = await Promise.all(
-            postIds.map(id => redis.sismember(`community:likes:${id}`, twitchUser.login))
-          );
-          postIds.forEach((id, i) => { userLikes[id] = !!likeChecks[i]; });
+          viewerLogin = twitchUser.login;
+          const [friendsList, likeChecks] = await Promise.all([
+            redis.smembers(`friends:${viewerLogin}`),
+            Promise.all(allIds.map(id => redis.sismember(`community:likes:${id}`, viewerLogin))),
+          ]);
+          viewerFriends = new Set(friendsList || []);
+          allIds.forEach((id, i) => { userLikes[id] = !!likeChecks[i]; });
         }
       }
 
-      const result = posts
+      // Filtra per visibilità, poi pagina
+      const visible = allPosts
         .filter(p => p && p.id)
+        .filter(p => canSeePost(p, viewerLogin, viewerFriends))
         .map(p => ({
           ...p,
           replyCount: Number(p.replyCount || 0),
@@ -233,11 +266,14 @@ export default async function handler(req, res) {
           liked: !!userLikes[p.id],
         }));
 
+      const total = visible.length;
+      const paginated = visible.slice(start, start + limit);
+
       return res.status(200).json({
-        posts: result,
+        posts: paginated,
         total,
         page,
-        pages: Math.ceil(total / limit),
+        pages: Math.ceil(total / limit) || 1,
       });
     } catch (e) {
       console.error('Community GET error:', e);
@@ -253,11 +289,12 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Devi effettuare il login con Twitch.' });
       }
 
-      const { title: rawTitle, body: rawBody, tag: rawTag, mediaUrl: rawMediaUrl, mediaType: rawMediaType, mediaId: rawMediaId } = req.body || {};
+      const { title: rawTitle, body: rawBody, tag: rawTag, mediaUrl: rawMediaUrl, mediaType: rawMediaType, mediaId: rawMediaId, visibility: rawVisibility } = req.body || {};
 
       const title = censorProfanity(sanitize(rawTitle, MAX_TITLE));
       const body = censorProfanity(sanitize(rawBody, MAX_BODY));
       const tag = VALID_TAGS.includes(rawTag) ? rawTag : 'generale';
+      const visibility = VALID_VISIBILITIES.includes(rawVisibility) ? rawVisibility : 'public';
 
       // Media allegato tramite upload reale (mediaId da /api/community-media)
       let mediaId = '';
@@ -309,6 +346,7 @@ export default async function handler(req, res) {
         title,
         body,
         tag,
+        visibility,
         mediaUrl,
         mediaType,
         mediaId,

@@ -205,9 +205,10 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
       <Link
         to={`/socialify/${post.id}`}
         className="glass-card social-scheda-post"
+        style={{ '--cat-color': cat.colore }}
       >
+        {/* Header: avatar + meta */}
         <div className="social-scheda-riga">
-          {/* Immagine profilo */}
           <div className="social-avatar">
             {post.authorAvatar ? (
               <img src={post.authorAvatar} alt="" />
@@ -216,9 +217,8 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
             )}
           </div>
 
-          <div className="social-scheda-corpo">
-            {/* Intestazione */}
-            <div className="social-scheda-intestazione">
+          <div className="social-scheda-meta">
+            <div className="social-autore-riga">
               <span className="social-autore">
                 {post.authorDisplay || post.author}
               </span>
@@ -227,76 +227,79 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
                 twitchToken={twitchToken}
                 currentUser={currentUser}
               />
-              <span className="social-tempo">
-                <Clock size={11} /> {tempoFa(post.createdAt, lingua)}
-              </span>
               <span className="chip social-chip-categoria" style={{
                 background: `${cat.colore}18`, color: cat.colore,
                 border: `1px solid ${cat.colore}30`,
               }}>
                 {cat.etichetta}
               </span>
+              {post.visibility === 'friends' && (
+                <span className="chip social-chip-amici">👥 Amici</span>
+              )}
             </div>
+            <span className="social-tempo">
+              <Clock size={11} /> {tempoFa(post.createdAt, lingua)}
+            </span>
+          </div>
+        </div>
 
-            {/* Titolo */}
-            <h3 className="social-titolo-post">{renderTestoConEmote(post.title)}</h3>
+        {/* Contenuto indentato (Twitter-style) */}
+        <div className="social-scheda-contenuto">
+          <h3 className="social-titolo-post">{renderTestoConEmote(post.title)}</h3>
+          <p className="social-anteprima-testo">{renderTestoConEmote(post.body)}</p>
 
-            {/* Anteprima testo */}
-            <p className="social-anteprima-testo">{renderTestoConEmote(post.body)}</p>
-
-            {/* Media preview: upload reale (mediaId) o URL legacy */}
-            {post.mediaId ? (
-              <MediaDisplay mediaId={post.mediaId} mediaType={post.mediaType} />
-            ) : (
-              <>
-                {post.mediaUrl && post.mediaType === 'video' && (
-                  <div className="social-media-preview" onClick={e => e.preventDefault()}>
-                    <video src={post.mediaUrl} controls preload="metadata" className="social-media-video">
-                      Il tuo browser non supporta il tag video.
-                    </video>
+          {/* Media preview */}
+          {post.mediaId ? (
+            <MediaDisplay mediaId={post.mediaId} mediaType={post.mediaType} />
+          ) : (
+            <>
+              {post.mediaUrl && post.mediaType === 'video' && (
+                <div className="social-media-preview" onClick={e => e.preventDefault()}>
+                  <video src={post.mediaUrl} controls preload="metadata" className="social-media-video">
+                    Il tuo browser non supporta il tag video.
+                  </video>
+                </div>
+              )}
+              {post.mediaUrl && post.mediaType === 'audio' && (
+                <div className="social-media-preview" onClick={e => e.preventDefault()}>
+                  <div className="social-media-audio-wrapper">
+                    <Music size={16} color="var(--primary)" />
+                    <audio src={post.mediaUrl} controls preload="metadata" className="social-media-audio">
+                      Il tuo browser non supporta il tag audio.
+                    </audio>
                   </div>
-                )}
-                {post.mediaUrl && post.mediaType === 'audio' && (
-                  <div className="social-media-preview" onClick={e => e.preventDefault()}>
-                    <div className="social-media-audio-wrapper">
-                      <Music size={16} color="var(--primary)" />
-                      <audio src={post.mediaUrl} controls preload="metadata" className="social-media-audio">
-                        Il tuo browser non supporta il tag audio.
-                      </audio>
-                    </div>
-                  </div>
-                )}
-                {post.mediaUrl && !post.mediaType && (
-                  <div className="social-media-preview" onClick={e => e.preventDefault()}>
-                    <a href={post.mediaUrl} target="_blank" rel="noopener noreferrer" className="social-media-link">
-                      <Film size={14} /> Apri media
-                    </a>
-                  </div>
-                )}
-              </>
-            )}
+                </div>
+              )}
+              {post.mediaUrl && !post.mediaType && (
+                <div className="social-media-preview" onClick={e => e.preventDefault()}>
+                  <a href={post.mediaUrl} target="_blank" rel="noopener noreferrer" className="social-media-link">
+                    <Film size={14} /> Apri media
+                  </a>
+                </div>
+              )}
+            </>
+          )}
 
-            {/* Azioni */}
-            <div className="social-azioni-riga">
-              <button
-                className="social-btn-azione"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onMiPiace(post); }}
-              >
-                <Heart size={14} fill={post.liked ? 'var(--accent)' : 'none'} color={post.liked ? 'var(--accent)' : 'var(--text-faint)'} />
-                <span>{post.likeCount || 0}</span>
-              </button>
-              <button
-                className="social-btn-azione"
-                onClick={toggleFavorito}
-                title={favorito ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
-              >
-                <Star size={14} fill={favorito ? '#facc15' : 'none'} color={favorito ? '#facc15' : 'var(--text-faint)'} />
-              </button>
-              <span className="social-btn-azione" style={{ pointerEvents: 'none' }}>
-                <MessageSquare size={14} color="var(--text-faint)" />
-                <span>{post.replyCount || 0}</span>
-              </span>
-            </div>
+          {/* Azioni */}
+          <div className="social-azioni-riga">
+            <button
+              className={`social-btn-azione${post.liked ? ' social-btn-azione--liked' : ''}`}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onMiPiace(post); }}
+            >
+              <Heart size={14} fill={post.liked ? 'currentColor' : 'none'} />
+              <span>{post.likeCount || 0}</span>
+            </button>
+            <button
+              className={`social-btn-azione${favorito ? ' social-btn-azione--liked' : ''}`}
+              onClick={toggleFavorito}
+              title={favorito ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
+            >
+              <Star size={14} fill={favorito ? 'currentColor' : 'none'} />
+            </button>
+            <span className="social-btn-azione" style={{ pointerEvents: 'none' }}>
+              <MessageSquare size={14} color="var(--text-faint)" />
+              <span>{post.replyCount || 0}</span>
+            </span>
           </div>
         </div>
       </Link>
@@ -324,6 +327,7 @@ function EditorPost({ onChiudi, onCreato }) {
   const [titolo, setTitolo] = useState(bozzaSalvata?.titolo || '');
   const [testo, setTesto] = useState(bozzaSalvata?.testo || '');
   const [categoria, setCategoria] = useState(bozzaSalvata?.categoria || 'generale');
+  const [visibilita, setVisibilita] = useState('public');
   const [mediaUrl, setMediaUrl] = useState(bozzaSalvata?.mediaUrl || '');
   const [mediaType, setMediaType] = useState(bozzaSalvata?.mediaType || '');
   const [mediaFile, setMediaFile]       = useState(null);   // File selezionato
@@ -398,7 +402,7 @@ function EditorPost({ onChiudi, onCreato }) {
     setInvio(true);
     setErrore('');
     try {
-      const payload = { title: titolo.trim(), body: testo.trim(), tag: categoria };
+      const payload = { title: titolo.trim(), body: testo.trim(), tag: categoria, visibility: visibilita };
 
       // Upload media reale se presente
       if (mediaFile) {
@@ -482,6 +486,42 @@ function EditorPost({ onChiudi, onCreato }) {
               }}
             >
               {c.etichetta}
+            </button>
+          ))}
+        </div>
+
+        {/* Selettore visibilità */}
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '0.65rem' }}>
+          {[
+            { val: 'public',  label: '🌍 Pubblico',    descr: 'Visibile a tutti' },
+            { val: 'friends', label: '👥 Solo amici',  descr: 'Visibile solo ai tuoi amici' },
+          ].map(({ val, label, descr }) => (
+            <button
+              key={val}
+              type="button"
+              onClick={() => setVisibilita(val)}
+              title={descr}
+              style={{
+                flex: 1,
+                padding: '0.45rem 0.6rem',
+                borderRadius: 'var(--r-sm)',
+                fontSize: '0.78rem',
+                fontWeight: visibilita === val ? 700 : 400,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                background: visibilita === val
+                  ? (val === 'friends' ? 'rgba(130,170,240,0.15)' : 'rgba(34,197,94,0.12)')
+                  : 'var(--surface-1)',
+                color: visibilita === val
+                  ? (val === 'friends' ? 'rgba(130,200,255,0.9)' : 'var(--accent-spotify)')
+                  : 'var(--text-faint)',
+                border: `1px solid ${visibilita === val
+                  ? (val === 'friends' ? 'rgba(130,170,240,0.3)' : 'rgba(34,197,94,0.3)')
+                  : 'var(--glass-border)'}`,
+                transition: 'all 0.18s',
+              }}
+            >
+              {label}
             </button>
           ))}
         </div>

@@ -203,6 +203,11 @@ export default function ThreadView() {
 
       // Carica il singolo post direttamente via ?id=
       const res = await fetch(`/api/community?id=${postId}`, { headers });
+      if (res.status === 403) {
+        setErrore('🔒 Questo post è visibile solo agli amici dell\'autore.');
+        setCaricamento(false);
+        return;
+      }
       if (!res.ok) {
         setErrore('Post non trovato.');
         setCaricamento(false);
@@ -393,7 +398,7 @@ export default function ThreadView() {
       </motion.div>
 
       {/* Post principale */}
-      <motion.article className="glass-panel social-post-principale" {...entrata(0.1)}>
+      <motion.article className="glass-panel social-post-principale" {...entrata(0.1)} style={{ '--cat-color': cat.colore }}>
         <div className="social-scheda-riga">
           <div className="social-avatar social-avatar-grande">
             {post.authorAvatar ? (
@@ -418,6 +423,9 @@ export default function ThreadView() {
               }}>
                 {cat.etichetta}
               </span>
+              {post.visibility === 'friends' && (
+                <span className="chip social-chip-amici">👥 Solo amici</span>
+              )}
             </div>
 
             <h1 className="social-titolo-thread">{post.title}</h1>
