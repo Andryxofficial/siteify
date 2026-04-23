@@ -401,7 +401,7 @@ export default function Emote({ token }) {
                     {seventvEmoteList.map(emote => {
                       const isRenaming = renameId === emote.id;
                       return (
-                        <div key={emote.id} className="glass-card" style={{ padding: '0.5rem', textAlign: 'center', position: 'relative' }}>
+                        <div key={emote.id} className="glass-card" style={{ padding: '0.5rem', textAlign: isRenaming ? 'left' : 'center', position: 'relative', gridColumn: isRenaming ? '1 / -1' : undefined, display: isRenaming ? 'flex' : undefined, alignItems: isRenaming ? 'center' : undefined, gap: isRenaming ? '0.6rem' : undefined }}>
                           <img
                             src={emote.url || emote.url2x}
                             srcSet={emote.url && emote.url2x ? `${emote.url} 1x, ${emote.url2x} 2x` : undefined}
@@ -409,32 +409,35 @@ export default function Emote({ token }) {
                             title={emote.nome}
                             loading="lazy"
                             decoding="async"
-                            style={{ width: 48, height: 48, objectFit: 'contain', display: 'block', margin: '0 auto 0.3rem' }}
+                            style={{ width: 48, height: 48, objectFit: 'contain', display: 'block', margin: isRenaming ? 0 : '0 auto 0.3rem', flexShrink: 0 }}
                           />
                           {isRenaming ? (
-                            <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.3rem' }}>
+                            <div style={{ display: 'flex', gap: '0.35rem', marginTop: 0, flex: 1, minWidth: 0, alignItems: 'center' }}>
                               <input
                                 className="mod-input"
                                 value={renameValue}
                                 onChange={ev => setRenameValue(ev.target.value)}
                                 onKeyDown={ev => ev.key === 'Enter' && renameSeventvEmote(emote)}
                                 placeholder={emote.nome}
-                                style={{ fontSize: '0.7rem', padding: '0.2rem 0.3rem', marginTop: 0 }}
+                                autoFocus
+                                style={{ fontSize: '0.85rem', padding: '0.35rem 0.55rem', marginTop: 0, flex: 1, minWidth: 0, width: '100%' }}
                               />
                               <button
                                 className="mod-icon-btn"
                                 onClick={() => renameSeventvEmote(emote)}
                                 disabled={renameSaving}
-                                style={{ padding: '0.2rem' }}
+                                style={{ padding: '0.35rem', flexShrink: 0 }}
+                                title="Conferma"
                               >
-                                {renameSaving ? <Loader size={10} className="spin" /> : <Check size={10} />}
+                                {renameSaving ? <Loader size={14} className="spin" /> : <Check size={14} />}
                               </button>
                               <button
                                 className="mod-icon-btn"
                                 onClick={() => { setRenameId(null); setRenameValue(''); }}
-                                style={{ padding: '0.2rem' }}
+                                style={{ padding: '0.35rem', flexShrink: 0 }}
+                                title="Annulla"
                               >
-                                <X size={10} />
+                                <X size={14} />
                               </button>
                             </div>
                           ) : (
