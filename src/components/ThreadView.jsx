@@ -3,7 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Heart, MessageSquare, Clock, Send, Trash2, User,
-  Twitch, Film, Music, Paperclip, X, Volume2,
+  Twitch, Film, Music, Paperclip, X, Volume2, CornerDownRight, Reply,
+  Share2,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import BottoneAggiungiAmico from './BottoneAggiungiAmico';
@@ -116,15 +117,37 @@ function MediaDisplay({ mediaId, mediaType }) {
 }
 
 
-function SchedaRisposta({ risposta, puoEliminare, onElimina, twitchToken, currentUser }) {
+function SchedaRisposta({ risposta, puoEliminare, onElimina, onRispondi, onVaiA, twitchToken, currentUser }) {
+  const annidata = !!risposta.parentReplyId;
   return (
     <motion.div
-      className="social-risposta"
+      id={`risposta-${risposta.id}`}
+      className={`social-risposta${annidata ? ' social-risposta--annidata' : ''}`}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ type: 'spring', stiffness: 260, damping: 24 }}
     >
+      {/* Quote-pill: "↳ in risposta a @user: «...»" */}
+      {annidata && (
+        <button
+          type="button"
+          className="social-risposta-quote"
+          onClick={(e) => { e.stopPropagation(); onVaiA?.(risposta.parentReplyId); }}
+          title="Vai alla risposta originale"
+        >
+          <CornerDownRight size={12} aria-hidden="true" />
+          <span className="social-risposta-quote-autore">
+            @{risposta.parentReplyAuthorDisplay || risposta.parentReplyAuthor || '…'}
+          </span>
+          {risposta.parentReplySnippet && (
+            <span className="social-risposta-quote-snippet">
+              «{risposta.parentReplySnippet}{risposta.parentReplySnippet.length >= 140 ? '…' : ''}»
+            </span>
+          )}
+        </button>
+      )}
+
       <div className="social-risposta-riga">
         <div className="social-avatar social-avatar-piccolo">
           {risposta.authorAvatar ? (
@@ -135,7 +158,7 @@ function SchedaRisposta({ risposta, puoEliminare, onElimina, twitchToken, curren
         </div>
         <div className="social-risposta-corpo">
           <div className="social-risposta-intestazione">
-            <span className="social-autore" style={{ fontSize: '0.82rem' }}>
+            <span className="social-autore" style={{ fontSize: '0.86rem' }}>
               {risposta.authorDisplay || risposta.author}
             </span>
             <BottoneAggiungiAmico
@@ -143,23 +166,35 @@ function SchedaRisposta({ risposta, puoEliminare, onElimina, twitchToken, curren
               twitchToken={twitchToken}
               currentUser={currentUser}
             />
-            <span className="social-tempo" style={{ fontSize: '0.68rem' }}>
-              {tempoFa(risposta.createdAt)}
+            <span className="social-tempo" style={{ fontSize: '0.7rem' }}>
+              <Clock size={10} /> {tempoFa(risposta.createdAt)}
             </span>
             {puoEliminare && (
               <button
-                className="social-btn-azione"
+                className="social-btn-azione social-btn-azione--danger"
                 onClick={() => onElimina(risposta.id)}
-                style={{ marginLeft: 'auto', color: 'var(--accent)', padding: '2px 6px' }}
+                style={{ marginLeft: 'auto', padding: '3px 7px' }}
                 title="Elimina risposta"
               >
-                <Trash2 size={13} />
+                <Trash2 size={12} />
               </button>
             )}
           </div>
           <p className="social-testo-risposta">{risposta.body}</p>
           {risposta.mediaId && (
             <MediaDisplay mediaId={risposta.mediaId} mediaType={risposta.mediaType} />
+          )}
+          {/* Azione: Rispondi a questa risposta */}
+          {onRispondi && (
+            <div className="social-risposta-azioni">
+              <button
+                type="button"
+                className="social-btn-azione social-btn-azione--reply"
+                onClick={() => onRispondi(risposta)}
+              >
+                <Reply size={12} /> Rispondi
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -182,12 +217,15 @@ export default function ThreadView() {
   const [testoRisposta, setTestoRisposta] = useState('');
   const [invio, setInvio] = useState(false);
   const [erroreRisposta, setErroreRisposta] = useState('');
+  const [rispostaA, setRispostaA] = useState(null); // { id, author, displayName } se rispondiamo a una risposta
   const [mediaFile, setMediaFile]           = useState(null);
   const [mediaPreview, setMediaPreview]     = useState(null);
   const [mediaType, setMediaType]           = useState('');
   const [caricandoMedia, setCaricandoMedia] = useState(false);
   const fileInputRispostaRef = useRef(null);
   const mediaPreviewRef      = useRef(null); // ref per revoca blob URL sicura su unmount
+  const textareaRispostaRef  = useRef(null);
+  const formRispostaRef      = useRef(null);
 
   useEffect(() => {
     return () => { if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current); };
@@ -268,6 +306,7 @@ export default function ThreadView() {
     setErroreRisposta('');
     try {
       const payload = { postId, body: testoRisposta.trim() };
+      if (rispostaA?.id) payload.parentReplyId = rispostaA.id;
 
       // Upload media allegato
       if (mediaFile) {
@@ -297,6 +336,7 @@ export default function ThreadView() {
       if (!res.ok) throw new Error(data.error || 'Errore');
       setRisposte(prev => [...prev, data.reply]);
       setTestoRisposta('');
+      setRispostaA(null);
       if (mediaPreview) { URL.revokeObjectURL(mediaPreview); mediaPreviewRef.current = null; }
       setMediaFile(null);
       setMediaPreview(null);
@@ -309,6 +349,34 @@ export default function ThreadView() {
       setInvio(false);
     }
   };
+
+  /* ── Inizia "rispondi a una risposta" ── */
+  const iniziaRispostaA = useCallback((risposta) => {
+    setRispostaA({
+      id: risposta.id,
+      author: risposta.author,
+      displayName: risposta.authorDisplay || risposta.author,
+    });
+    // Scroll al form e focus
+    setTimeout(() => {
+      if (formRispostaRef.current) {
+        formRispostaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      if (textareaRispostaRef.current) {
+        textareaRispostaRef.current.focus();
+      }
+    }, 50);
+  }, []);
+
+  /* ── Scroll a una risposta esistente (quando si clicca sul quote-pill) ── */
+  const vaiARisposta = useCallback((id) => {
+    const el = document.getElementById(`risposta-${id}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('social-risposta--evidenziata');
+      setTimeout(() => el.classList.remove('social-risposta--evidenziata'), 1600);
+    }
+  }, []);
 
   /* ── Elimina risposta ── */
   const eliminaRisposta = async (idRisposta) => {
@@ -476,26 +544,41 @@ export default function ThreadView() {
         {/* Azioni */}
         <div className="social-azioni-thread">
           <button
-            className="social-btn-azione"
+            className={`social-btn-azione${post.liked ? ' social-btn-azione--liked' : ''}`}
             onClick={gestisciMiPiace}
             disabled={!isLoggedIn}
             title={isLoggedIn ? (post.liked ? 'Togli mi piace' : 'Metti mi piace') : 'Accedi per mettere mi piace'}
           >
-            <Heart size={16} fill={post.liked ? 'var(--accent)' : 'none'} color={post.liked ? 'var(--accent)' : 'var(--text-faint)'} />
+            <Heart size={15} fill={post.liked ? 'currentColor' : 'none'} />
             <span>{post.likeCount || 0}</span>
           </button>
           <span className="social-btn-azione" style={{ pointerEvents: 'none' }}>
-            <MessageSquare size={16} color="var(--text-faint)" />
+            <MessageSquare size={15} />
             <span>{risposte.length}</span>
           </span>
+          <button
+            type="button"
+            className="social-btn-azione"
+            onClick={() => {
+              const url = `${window.location.origin}/socialify/${post.id}`;
+              if (navigator.share) {
+                navigator.share({ title: post.title, url }).catch(() => {});
+              } else {
+                navigator.clipboard?.writeText(url);
+              }
+            }}
+            title="Condividi link"
+          >
+            <Share2 size={14} /> <span>Condividi</span>
+          </button>
           {isLoggedIn && post.author === twitchUser && (
             <button
-              className="social-btn-azione"
+              className="social-btn-azione social-btn-azione--danger"
               onClick={eliminaPost}
-              style={{ marginLeft: 'auto', color: 'var(--accent)' }}
+              style={{ marginLeft: 'auto' }}
               title="Elimina post"
             >
-              <Trash2 size={15} /> Elimina
+              <Trash2 size={14} /> Elimina
             </button>
           )}
         </div>
@@ -515,6 +598,8 @@ export default function ThreadView() {
                 risposta={r}
                 puoEliminare={isLoggedIn && r.author === twitchUser}
                 onElimina={eliminaRisposta}
+                onRispondi={isLoggedIn ? iniziaRispostaA : null}
+                onVaiA={vaiARisposta}
                 twitchToken={twitchToken}
                 currentUser={twitchUser}
               />
@@ -530,14 +615,34 @@ export default function ThreadView() {
       </motion.div>
 
       {/* Form risposta */}
-      <motion.div {...entrata(0.24)}>
+      <motion.div {...entrata(0.24)} ref={formRispostaRef}>
         {isLoggedIn ? (
           <form onSubmit={inviaRisposta} className="glass-panel social-form-risposta">
+            {/* Contesto: stai rispondendo a una risposta specifica */}
+            {rispostaA && (
+              <div className="social-form-contesto">
+                <CornerDownRight size={13} />
+                <span>
+                  Stai rispondendo a <strong>@{rispostaA.displayName}</strong>
+                </span>
+                <button
+                  type="button"
+                  className="social-form-contesto-chiudi"
+                  onClick={() => setRispostaA(null)}
+                  title="Annulla risposta annidata"
+                  aria-label="Annulla risposta annidata"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            )}
+
             <div className="social-form-risposta-riga">
               <textarea
+                ref={textareaRispostaRef}
                 value={testoRisposta}
                 onChange={(e) => setTestoRisposta(e.target.value)}
-                placeholder="Scrivi una risposta…"
+                placeholder={rispostaA ? `Rispondi a @${rispostaA.displayName}…` : 'Scrivi una risposta…'}
                 maxLength={1000}
                 rows={2}
                 className="social-campo social-area-testo"
