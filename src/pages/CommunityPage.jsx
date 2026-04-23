@@ -14,7 +14,7 @@ import EmotePicker from '../components/EmotePicker';
 import BottoneAggiungiAmico from '../components/BottoneAggiungiAmico';
 import SEO from '../components/SEO';
 import { useLingua } from '../contexts/LinguaContext';
-import { comprimeFileMedia } from '../utils/comprimi';
+import { comprimeFileMedia, arrayBufferABase64 } from '../utils/comprimi';
 
 function getCATEGORIE(t) {
   return [
@@ -319,7 +319,7 @@ function EditorPost({ onChiudi, onCreato }) {
       /* Se c'è un file allegato, caricalo su /api/community-media prima */
       if (mediaFile) {
         const arrayBuffer = await mediaFile.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        const base64 = arrayBufferABase64(arrayBuffer);
         const uploadRes = await fetch('/api/community-media', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },

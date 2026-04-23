@@ -106,11 +106,10 @@ export default async function handler(req, res) {
     const twitchUser = await validateTwitch(req.headers.authorization);
     if (!twitchUser) return res.status(401).json({ error: 'Devi effettuare il login con Twitch.' });
 
-    const { action, data, mimeType: rawMime, name: rawName } = req.body || {};
-    if (action !== 'upload') return res.status(400).json({ error: 'Azione non valida.' });
+    const { dataBase64, contentType: rawMime, name: rawName } = req.body || {};
 
-    if (!data || typeof data !== 'string') return res.status(400).json({ error: 'Data base64 richiesta.' });
-    if (data.length > MAX_MEDIA_BYTES) {
+    if (!dataBase64 || typeof dataBase64 !== 'string') return res.status(400).json({ error: 'Data base64 richiesta.' });
+    if (dataBase64.length > MAX_MEDIA_BYTES) {
       return res.status(413).json({ error: 'File troppo grande (massimo ~4MB).' });
     }
 
@@ -127,17 +126,17 @@ export default async function handler(req, res) {
         author: twitchUser.login,
         mimeType,
         name,
-        size: data.length,
+        size: dataBase64.length,
         createdAt: Date.now(),
       });
 
       await Promise.all([
-        redis.set(`community:media:${mediaId}`, data, { ex: MEDIA_TTL }),
+        redis.set(`community:media:${mediaId}`, dataBase64, { ex: MEDIA_TTL }),
         redis.set(`community:media:${mediaId}:meta`, meta, { ex: MEDIA_TTL }),
       ]);
 
       return res.status(201).json({
-        mediaId,
+        id: mediaId,
         url: `/api/community-media?id=${mediaId}`,
       });
     } catch (e) {

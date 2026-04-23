@@ -137,6 +137,21 @@ export function categoriaMedia(mimeType) {
   return 'file';
 }
 
+/**
+ * Codifica un ArrayBuffer in base64 in modo sicuro per file di qualsiasi dimensione.
+ * Usa un approccio a blocchi (chunk) per evitare stack overflow su file grandi,
+ * a differenza di `btoa(String.fromCharCode(...new Uint8Array(buffer)))`.
+ */
+export function arrayBufferABase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const CHUNK = 8192;
+  let binario = '';
+  for (let i = 0; i < bytes.byteLength; i += CHUNK) {
+    binario += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binario);
+}
+
 /** Formatta dimensione file in KB/MB leggibili */
 export function formatDimensione(bytes) {
   if (bytes < 1024)       return `${bytes} B`;

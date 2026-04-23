@@ -8,7 +8,7 @@ import {
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import BottoneAggiungiAmico from './BottoneAggiungiAmico';
 import SEO from '../components/SEO';
-import { comprimeFileMedia } from '../utils/comprimi';
+import { comprimeFileMedia, arrayBufferABase64 } from '../utils/comprimi';
 
 const MAPPA_CATEGORIE = {
   generale:     { etichetta: '💬 Generale',     colore: 'var(--text-muted)' },
@@ -233,7 +233,7 @@ export default function ThreadView() {
       /* Upload media allegato se presente */
       if (mediaFileRisposta) {
         const arrayBuffer = await mediaFileRisposta.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        const base64 = arrayBufferABase64(arrayBuffer);
         const uploadRes = await fetch('/api/community-media', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
