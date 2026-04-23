@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { useLingua } from '../../contexts/LinguaContext';
-import { modGet } from '../../utils/modApi';
+import { modGet, modPost } from '../../utils/modApi';
 import ShieldModeModal, { useDisattivaScudo } from './ShieldModeModal';
 
 const AUTOMOD_CATEGORIES = [
