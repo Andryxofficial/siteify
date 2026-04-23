@@ -1654,7 +1654,13 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
     return () => document.removeEventListener('pointerdown', chiudi);
   }, [menuAperto, mostraReazioni]);
 
-  /* Calcola posizione finale del menu evitando di uscire dal viewport (solo desktop) */
+  /* Helper: chiude il menu e azzera sempre le coordinate (evita posizioni stantie) */
+  const chiudiMenu = useCallback(() => {
+    setMenuAperto(false);
+    setPosMenu(null);
+  }, []);
+
+  /* Calcola posizione finale del menu evitando di uscire dal viewport */
   const stileMenu = useMemo(() => {
     if (!posMenu) return undefined;
     const W_STIMATA = 180;
@@ -1673,13 +1679,17 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
     };
   }, [posMenu]);
 
-  /* Long-press su mobile per aprire menu contestuale */
+  /* Long-press su mobile/tablet per aprire menu contestuale */
   useEffect(() => () => clearTimeout(longPressTimer.current), []);
-  const onTouchStart = useCallback(() => {
+  const onTouchStart = useCallback((e) => {
     touchMoved.current = false;
+    /* Salva le coordinate touch per posizionare correttamente il menu su tablet */
+    const touch = e.touches[0];
+    const touchPos = touch ? { x: touch.clientX, y: touch.clientY } : null;
     longPressTimer.current = setTimeout(() => {
       if (!touchMoved.current) {
         try { navigator.vibrate?.(12); } catch { /* vibrazione non supportata */ }
+        if (touchPos) setPosMenu(touchPos);
         setMenuAperto(true);
       }
     }, 500);
@@ -1846,7 +1856,7 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
               <motion.div
                 className="msg-context-overlay"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                onClick={() => setMenuAperto(false)} />
+                onClick={chiudiMenu} />
               <motion.div ref={menuRef} className="msg-context-menu"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1857,31 +1867,31 @@ const MessaggioBubble = memo(function MessaggioBubble({ msg, mio, raggruppato, o
                 <div className="msg-context-handle" />
                 {!msg.eliminato && (
                   <button className="msg-context-item"
-                    onClick={() => { onRispondi && onRispondi(msg); setMenuAperto(false); }}>
+                    onClick={() => { onRispondi && onRispondi(msg); chiudiMenu(); }}>
                     <Reply size={16} /> Rispondi
                   </button>
                 )}
                 {!msg.eliminato && testoVisibile && (
                   <button className="msg-context-item"
-                    onClick={() => { copiaNeglAppunti(testoVisibile); setMenuAperto(false); }}>
+                    onClick={() => { copiaNeglAppunti(testoVisibile); chiudiMenu(); }}>
                     <Copy size={16} /> Copia
                   </button>
                 )}
                 {!msg.eliminato && (
                   <button className="msg-context-item"
-                    onClick={() => { onInoltra(msg); setMenuAperto(false); }}>
+                    onClick={() => { onInoltra(msg); chiudiMenu(); }}>
                     <CornerUpRight size={16} /> Inoltra
                   </button>
                 )}
                 {mio && !msg.eliminato && (
                   <button className="msg-context-item"
-                    onClick={() => { onModifica(msg); setMenuAperto(false); }}>
+                    onClick={() => { onModifica(msg); chiudiMenu(); }}>
                     <Pencil size={16} /> Modifica
                   </button>
                 )}
                 {mio && (
                   <button className="msg-context-item msg-context-danger"
-                    onClick={() => { onElimina(msg); setMenuAperto(false); }}>
+                    onClick={() => { onElimina(msg); chiudiMenu(); }}>
                     <Trash2 size={16} /> Elimina
                   </button>
                 )}

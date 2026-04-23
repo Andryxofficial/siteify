@@ -5,6 +5,7 @@ import {
   MessageSquare, Heart, Clock, Send, X, ChevronLeft, ChevronRight,
   Twitch, LogIn, Plus, User, Bell, BellOff, Trophy, Film, Music,
   Users, Lock, Shield, Star, Paperclip, Image as ImageIcon, Volume2, Video,
+  Mic, StopCircle,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
@@ -352,6 +353,25 @@ function EditorPost({ onChiudi, onCreato }) {
   const [errore, setErrore] = useState('');
   const [mostraAnteprima, setMostraAnteprima] = useState(false);
 
+  /* Registrazione audio inline */
+  const [registrazioneAttiva, setRegistrazioneAttiva] = useState(false);
+  const [durataReg, setDurataReg] = useState(0);
+  const mediaRecorderRef  = useRef(null);
+  const audioChunksRef    = useRef([]);
+  const durataTimerRef    = useRef(null);
+
+  // Cleanup registrazione su unmount
+  useEffect(() => {
+    return () => {
+      clearInterval(durataTimerRef.current);
+      try {
+        if (mediaRecorderRef.current?.state !== 'inactive') {
+          mediaRecorderRef.current?.stream?.getTracks().forEach(t => t.stop());
+        }
+      } catch { /* silent */ }
+    };
+  }, []);
+
   /* @mention nel campo body */
   const menzione = useMenzione(testoRef, testo, (nuovoVal, nuovaCursore) => {
     setTesto(nuovoVal);
@@ -395,6 +415,50 @@ function EditorPost({ onChiudi, onCreato }) {
     setMediaType('');
   };
 
+  const avviaRegistrazione = async () => {
+    if (mediaFile) return; // Non sovrascrivere un file già allegato
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const opzioni = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? { mimeType: 'audio/webm;codecs=opus' }
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? { mimeType: 'audio/webm' }
+          : {};
+      const rec = new MediaRecorder(stream, opzioni);
+      audioChunksRef.current = [];
+      rec.ondataavailable = (ev) => { if (ev.data.size > 0) audioChunksRef.current.push(ev.data); };
+      rec.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const mime = rec.mimeType || 'audio/webm';
+        const blob = new Blob(audioChunksRef.current, { type: mime });
+        const ext  = mime.includes('ogg') ? 'ogg' : mime.includes('mp4') ? 'm4a' : 'webm';
+        const file = new File([blob], `registrazione.${ext}`, { type: mime });
+        if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current);
+        const url = URL.createObjectURL(blob);
+        mediaPreviewRef.current = url;
+        setMediaFile(file);
+        setMediaPreview(url);
+        setMediaType('audio');
+        setDurataReg(0);
+      };
+      rec.start(200);
+      mediaRecorderRef.current = rec;
+      setRegistrazioneAttiva(true);
+      setDurataReg(0);
+      durataTimerRef.current = setInterval(() => setDurataReg(d => d + 1), 1000);
+    } catch (err) {
+      setErrore('Microfono non accessibile: ' + err.message);
+    }
+  };
+
+  const fermaRegistrazione = () => {
+    clearInterval(durataTimerRef.current);
+    setRegistrazioneAttiva(false);
+    if (mediaRecorderRef.current?.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
   // Colore contatore caratteri
   const contatoreColore = testo.length > 1950 ? 'var(--accent)' : testo.length > 1800 ? '#ffb300' : 'var(--text-faint)';
 
@@ -403,7 +467,7 @@ function EditorPost({ onChiudi, onCreato }) {
     return t
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/`(.+?)`/g, '<code style="background:rgba(255,255,255,0.08);padding:1px 4px;border-radius:3px;font-size:0.85em">$1</code>')
+      .replace(/`(.+?)`/g, '<code style="background:var(--surface-3);padding:1px 4px;border-radius:3px;font-size:0.85em">$1</code>')
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:var(--primary)">$1</a>')
       .replace(/\n/g, '<br/>');
   };
@@ -588,7 +652,7 @@ function EditorPost({ onChiudi, onCreato }) {
             onChange={(e) => { setTesto(e.target.value); menzione.onChange(e); }}
             onKeyDown={menzione.onKeyDown}
             maxLength={2000}
-            rows={5}
+            rows={6}
             className="social-campo social-area-testo"
             required
           />
@@ -631,14 +695,16 @@ function EditorPost({ onChiudi, onCreato }) {
         {/* Allega media reale */}
         <div className="social-media-sezione">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              className="chip"
-              onClick={() => fileInputRef.current?.click()}
-              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', padding: '4px 10px' }}
-            >
-              <Paperclip size={13} /> Allega media
-            </button>
+            {!mediaFile && (
+              <button
+                type="button"
+                className="chip"
+                onClick={() => fileInputRef.current?.click()}
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', padding: '4px 10px' }}
+              >
+                <Paperclip size={13} /> Allega media
+              </button>
+            )}
             <input
               ref={fileInputRef}
               type="file"
@@ -646,9 +712,42 @@ function EditorPost({ onChiudi, onCreato }) {
               style={{ display: 'none' }}
               onChange={onFileSelezionato}
             />
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)' }}>
-              Immagini, audio e video — max 5 MB (immagini compresse auto)
-            </span>
+
+            {/* Registrazione audio inline */}
+            {!mediaFile && (
+              registrazioneAttiva ? (
+                <div className="social-reg-audio">
+                  <div className="social-reg-audio-indicator">
+                    <span className="social-reg-audio-dot" />
+                    REC {String(Math.floor(durataReg / 60)).padStart(2, '0')}:{String(durataReg % 60).padStart(2, '0')}
+                  </div>
+                  <button
+                    type="button"
+                    className="chip"
+                    onClick={fermaRegistrazione}
+                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', padding: '4px 10px', color: 'var(--accent)', borderColor: 'rgba(224,64,251,0.35)' }}
+                  >
+                    <StopCircle size={13} /> Ferma
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="chip"
+                  onClick={avviaRegistrazione}
+                  style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', padding: '4px 10px' }}
+                  title="Registra un messaggio audio"
+                >
+                  <Mic size={13} /> Registra audio
+                </button>
+              )
+            )}
+
+            {!mediaFile && !registrazioneAttiva && (
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)' }}>
+                Immagini, audio, video — max 5 MB
+              </span>
+            )}
           </div>
 
           {/* Anteprima file selezionato */}

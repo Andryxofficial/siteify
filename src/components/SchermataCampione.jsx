@@ -131,7 +131,7 @@ export default function SchermataCampione() {
                     placeholder={t('campione.placeholder')}
                     value={target}
                     onChange={e => { setTarget(e.target.value); setConferma(false); setErrore(''); }}
-                    style={{ flex: 1, padding: '0.6rem 0.8rem', border: '1px solid rgba(130,170,240,0.14)', borderRadius: 12, background: 'rgba(255,255,255,0.04)', outline: 'none', color: 'inherit', fontSize: '0.9rem' }}
+                    style={{ flex: 1, padding: '0.6rem 0.8rem', border: '1px solid rgba(130,170,240,0.14)', borderRadius: 12, background: 'var(--surface-2)', outline: 'none', color: 'inherit', fontSize: '0.9rem' }}
                   />
                 </div>
                 {errore && <p style={{ color: '#f87171', fontSize: '0.8rem', marginTop: '0.4rem' }}>{errore}</p>}

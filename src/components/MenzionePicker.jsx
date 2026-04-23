@@ -286,7 +286,7 @@ export function DropdownMenzione({
               ) : (
                 <div style={{
                   width: 28, height: 28, borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.08)',
+                  background: 'var(--surface-3)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
                 }}>
