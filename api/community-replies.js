@@ -1,8 +1,10 @@
 import { Redis } from '@upstash/redis';
 import { GENERAL_KEY, getMonthlyKey, getCurrentSeason, getDecayedXp, getContentQualityMultiplier, getProfanityPenalty, censorProfanity } from './social-leaderboard.js';
 
-const XP_REPLY          = 5; // create a reply (base, subject to hourly diminishing returns + quality)
-const XP_REPLY_RECEIVED = 2; // post author receives XP when someone replies to their post
+const XP_REPLY                = 5; // create a reply (base, subject to hourly diminishing returns + quality)
+const XP_REPLY_RECEIVED       = 2; // post author receives XP when someone replies to their post
+const XP_REPLY_LIKE_GIVEN     = 1; // user gives a like to a reply (subject to decay)
+const XP_REPLY_LIKE_RECEIVED  = 1; // reply author receives a like
 
 async function awardXp(redis, username, xp) {
   if (!username || xp <= 0) return;
@@ -18,13 +20,15 @@ async function awardXp(redis, username, xp) {
  * Community Replies API
  *
  * Redis data model:
- *   community:reply:<id>         → Hash  { id, postId, author, authorAvatar, authorDisplay, body, createdAt }
+ *   community:reply:<id>         → Hash  { id, postId, author, authorAvatar, authorDisplay, body, createdAt, likeCount }
  *   community:replies:<postId>   → Sorted Set (score = timestamp, member = replyId)
+ *   community:reply-likes:<id>   → Set of usernames who liked the reply
  *   community:reply-counter      → String (auto-increment reply ID counter)
  *   community:ratelimit:reply:<user> → String (TTL-based rate limiter)
  *
  * GET  /api/community-replies?postId=<id>&page=1&limit=30
  * POST /api/community-replies  { postId, body }  — requires Twitch auth
+ * PATCH /api/community-replies { replyId, action: "like" | "unlike" } — requires Twitch auth
  * DELETE /api/community-replies { replyId }       — requires Twitch auth (author or admin)
  */
 
@@ -72,7 +76,7 @@ async function validateTwitch(authHeader) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -115,8 +119,32 @@ export default async function handler(req, res) {
         replyIds.map(id => redis.hgetall(`community:reply:${id}`))
       );
 
+      const validReplies = replies.filter(r => r && r.id);
+
+      // Determina viewer (per flag `liked`) — best effort, GET resta pubblico
+      let viewerLogin = null;
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        const twitchUser = await validateTwitch(authHeader);
+        if (twitchUser) viewerLogin = twitchUser.login;
+      }
+
+      let likedFlags = {};
+      if (viewerLogin && validReplies.length > 0) {
+        const checks = await Promise.all(
+          validReplies.map(r => redis.sismember(`community:reply-likes:${r.id}`, viewerLogin))
+        );
+        validReplies.forEach((r, i) => { likedFlags[r.id] = !!checks[i]; });
+      }
+
+      const enriched = validReplies.map(r => ({
+        ...r,
+        likeCount: Number(r.likeCount || 0),
+        liked: !!likedFlags[r.id],
+      }));
+
       return res.status(200).json({
-        replies: replies.filter(r => r && r.id),
+        replies: enriched,
         total,
         page,
         pages: Math.ceil(total / limit),
@@ -196,6 +224,7 @@ export default async function handler(req, res) {
         authorDisplay: twitchUser.displayName,
         body,
         createdAt: now,
+        likeCount: 0,
         ...(mediaId ? { mediaId, mediaType } : {}),
         ...(parentReplyId ? {
           parentReplyId,
@@ -238,10 +267,63 @@ export default async function handler(req, res) {
         } catch (e) { console.warn('XP award (reply) error:', e); }
       })();
 
-      return res.status(201).json({ reply });
+      return res.status(201).json({ reply: { ...reply, likeCount: 0, liked: false } });
     } catch (e) {
       console.error('Replies POST error:', e);
       return res.status(500).json({ error: 'Errore nell\'invio della risposta.' });
+    }
+  }
+
+  /* ─── PATCH: like/unlike a reply ─── */
+  if (req.method === 'PATCH') {
+    try {
+      const twitchUser = await validateTwitch(req.headers.authorization);
+      if (!twitchUser) {
+        return res.status(401).json({ error: 'Devi effettuare il login con Twitch.' });
+      }
+
+      const { replyId, action } = req.body || {};
+      if (!replyId || !['like', 'unlike'].includes(action)) {
+        return res.status(400).json({ error: 'Richiesta non valida.' });
+      }
+
+      const replyKey = `community:reply:${replyId}`;
+      const reply = await redis.hgetall(replyKey);
+      if (!reply || !reply.id) {
+        return res.status(404).json({ error: 'Risposta non trovata.' });
+      }
+
+      const likesKey = `community:reply-likes:${replyId}`;
+
+      if (action === 'like') {
+        const added = await redis.sadd(likesKey, twitchUser.login);
+        if (added) {
+          await redis.hincrby(replyKey, 'likeCount', 1);
+          // XP best-effort: liker (decay) + autore della risposta
+          ;(async () => {
+            try {
+              const likerXp = await getDecayedXp(redis, twitchUser.login, 'reply-like', XP_REPLY_LIKE_GIVEN);
+              if (likerXp > 0) await awardXp(redis, twitchUser.login, likerXp);
+
+              const replyAuthor = reply.author;
+              if (replyAuthor && replyAuthor !== twitchUser.login) {
+                await awardXp(redis, replyAuthor, XP_REPLY_LIKE_RECEIVED);
+              }
+            } catch (e) { console.warn('XP award (reply like) error:', e); }
+          })();
+        }
+      } else {
+        const removed = await redis.srem(likesKey, twitchUser.login);
+        if (removed) {
+          await redis.hincrby(replyKey, 'likeCount', -1);
+        }
+      }
+
+      const newCount = Number(await redis.hget(replyKey, 'likeCount') || 0);
+      return res.status(200).json({ likeCount: Math.max(0, newCount), liked: action === 'like' });
+    } catch (e) {
+      console.error('Replies PATCH error:', e);
+      return res.status(500).json({ error: 'Errore nell\'aggiornamento del mi piace.' });
     }
   }
 
