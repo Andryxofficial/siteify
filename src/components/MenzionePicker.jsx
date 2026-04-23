@@ -19,18 +19,19 @@
  * seleziona un utente dalla tendina. Il chiamante aggiorna il proprio state e riposiziona il cursore.
  */
 
-import { useState, useEffect, useRef, useCallback, useReducer } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AtSign } from 'lucide-react';
 
 /* ── Costanti ── */
-const MIN_QUERY_LEN = 2;   // caratteri minimi DOPO @ per avviare la ricerca
+const MIN_QUERY_LEN = 1;   // caratteri minimi DOPO @ per avviare la ricerca
 const MAX_RISULTATI = 8;
-const DEBOUNCE_MS   = 220;
+const DEBOUNCE_MS   = 180;
+const PANEL_WIDTH   = 320; // larghezza fissa leggibile per il dropdown
 
 /* ── Utility: trova il token @xxx alla posizione cursore ── */
 function trovaMenzioneAlCursore(testo, cursore) {
-  if (!testo || cursore < 2) return null; // serve almeno @x
+  if (!testo || cursore < 1) return null;
   let i = cursore - 1;
   while (i >= 0) {
     const c = testo[i];
@@ -103,6 +104,11 @@ export function useMenzione(inputRef, value, onInserisci) {
       if (inputRef.current) {
         setPosRect(inputRef.current.getBoundingClientRect());
       }
+    } else if (trovato && trovato.query.length === 0) {
+      /* L'utente ha appena digitato @: tieni traccia della posizione ma
+         non aprire il dropdown finché non c'è almeno 1 carattere. */
+      tokenStartRef.current = trovato.start;
+      chiudi();
     } else {
       chiudi();
     }
@@ -189,14 +195,18 @@ export function DropdownMenzione({
 
   /* Stima altezza dropdown per capire se aprire sopra o sotto */
   const PANEL_H  = Math.min(utenti.length * 52 + 40, 300);
-  const MARGIN   = 6;
+  const MARGIN   = 8;
   const spazioSopra = posRect ? posRect.top : 0;
   const apriSopra   = spazioSopra >= PANEL_H + MARGIN;
 
   let panelStyle = {};
   if (posRect) {
-    const left  = Math.max(MARGIN, Math.min(posRect.left, window.innerWidth - 260 - MARGIN));
-    const width = Math.min(posRect.width, Math.min(window.innerWidth - 2 * MARGIN, 400));
+    /* Larghezza fissa leggibile, mai oltre il viewport */
+    const width = Math.min(PANEL_WIDTH, window.innerWidth - 2 * MARGIN);
+    /* Allinea il dropdown all'inizio del campo, ma mantienilo dentro il viewport */
+    const leftPreferito = posRect.left;
+    const leftMax       = window.innerWidth - width - MARGIN;
+    const left          = Math.max(MARGIN, Math.min(leftPreferito, leftMax));
     if (apriSopra) {
       panelStyle = { bottom: window.innerHeight - posRect.top + MARGIN, top: 'auto', left, width };
     } else {
@@ -293,11 +303,11 @@ export function DropdownMenzione({
                   <AtSign size={13} style={{ opacity: 0.5 }} />
                 </div>
               )}
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {u.displayName}
                 </div>
-                <div style={{ fontSize: '0.72rem', opacity: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontSize: '0.75rem', opacity: 0.6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   @{u.username}
                 </div>
               </div>
