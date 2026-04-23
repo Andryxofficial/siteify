@@ -15,6 +15,7 @@ import BottoneAggiungiAmico from '../components/BottoneAggiungiAmico';
 import SEO from '../components/SEO';
 import { useLingua } from '../contexts/LinguaContext';
 import { preparaMediaPerUpload, MEDIA_ACCETTATI } from '../utils/compressioneMedia';
+import { useMenzione, DropdownMenzione, renderConMenzioni } from '../components/MenzionePicker';
 
 function getCATEGORIE(t) {
   return [
@@ -330,9 +331,18 @@ function EditorPost({ onChiudi, onCreato }) {
   const [caricandoMedia, setCaricandoMedia] = useState(false);
   const fileInputRef    = useRef(null);
   const mediaPreviewRef = useRef(null); // ref per revoca blob URL sicura su unmount
+  const testoRef        = useRef(null); // ref per @mention
   const [invio, setInvio] = useState(false);
   const [errore, setErrore] = useState('');
   const [mostraAnteprima, setMostraAnteprima] = useState(false);
+
+  /* @mention nel campo body */
+  const menzione = useMenzione(testoRef, testo, (nuovoVal, nuovaCursore) => {
+    setTesto(nuovoVal);
+    setTimeout(() => {
+      if (testoRef.current) testoRef.current.setSelectionRange(nuovaCursore, nuovaCursore);
+    }, 0);
+  });
 
   // Pulizia URL blob su unmount (via ref, sempre aggiornato)
   useEffect(() => {
@@ -498,9 +508,11 @@ function EditorPost({ onChiudi, onCreato }) {
 
         <div style={{ position: 'relative' }}>
           <textarea
+            ref={testoRef}
             placeholder={t('community.editor.testo_ph')}
             value={testo}
-            onChange={(e) => setTesto(e.target.value)}
+            onChange={(e) => { setTesto(e.target.value); menzione.onChange(e); }}
+            onKeyDown={menzione.onKeyDown}
             maxLength={2000}
             rows={5}
             className="social-campo social-area-testo"
@@ -515,6 +527,7 @@ function EditorPost({ onChiudi, onCreato }) {
               onSelect={(nome) => setTesto(prev => (prev ? `${prev} ${nome}` : nome))}
             />
           </div>
+          <DropdownMenzione {...menzione.dropdownProps} />
         </div>
 
         {/* Contatore caratteri + toggle anteprima */}

@@ -194,6 +194,14 @@ export default async function handler(req, res) {
       await redis.lpush('chat:messages', JSON.stringify(message));
       await redis.ltrim('chat:messages', 0, MAX_MESSAGES - 1);
 
+      /* Indice mention: aggiorna score (più recente = priorità maggiore) — non-bloccante */
+      redis.zadd('users:mention', { score: Date.now(), member: twitchUser.login }).catch(() => {});
+      redis.hset(`users:mention:meta:${twitchUser.login}`, {
+        displayName: twitchUser.displayName,
+        avatar:      twitchUser.avatar || '',
+        updatedAt:   Date.now(),
+      }).catch(() => {});
+
       return res.status(200).json({ ok: true, message });
     } catch (e) {
       console.error('Chat POST error:', e);

@@ -324,6 +324,13 @@ export default async function handler(req, res) {
         redis.zadd(`community:tag:${tag}`, { score: now, member: id }),
         redis.zadd(`community:user:${twitchUser.login}`, { score: now, member: id }),
         redis.set(rlKey, '1', { ex: RATE_LIMIT_SECONDS }),
+        /* Indice mention: aggiorna score (più recente = priorità maggiore) */
+        redis.zadd('users:mention', { score: now, member: twitchUser.login }),
+        redis.hset(`users:mention:meta:${twitchUser.login}`, {
+          displayName: twitchUser.displayName,
+          avatar:      twitchUser.avatar || '',
+          updatedAt:   now,
+        }),
       ]);
 
       // Award XP for creating a post — quality-adjusted, profanity-penalized, with diminishing returns

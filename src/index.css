@@ -2396,6 +2396,36 @@ body {
   flex-shrink: 0;
 }
 
+/* ═══════════════════════════════════════
+   TAG MENZIONE (@username) — chip inline nel testo renderizzato
+   ═══════════════════════════════════════ */
+.tag-menzione {
+  display: inline;
+  color: var(--primary, #7c86ff);
+  font-weight: 600;
+  cursor: default;
+  border-radius: 4px;
+  padding: 0 2px;
+  transition: background 0.15s;
+}
+.tag-menzione:hover {
+  background: rgba(124,134,255,0.12);
+}
+
+/* Dropdown menzione — stilizzato come glass-panel */
+.menzione-dropdown {
+  box-shadow: 0 8px 32px rgba(8,12,48,0.55);
+  border: 1.5px solid rgba(130,170,240,0.16) !important;
+}
+.menzione-voce {
+  color: var(--text-main);
+  font-family: inherit;
+}
+.menzione-voce:hover,
+.menzione-voce[data-focus='true'] {
+  background: rgba(130,170,240,0.16) !important;
+}
+
 .social-titolo-post {
   font-size: 0.95rem;
   font-weight: 700;

@@ -183,6 +183,13 @@ export default async function handler(req, res) {
         redis.zadd(`community:replies:${postId}`, { score: now, member: id }),
         redis.hincrby(`community:post:${postId}`, 'replyCount', 1),
         redis.set(rlKey, '1', { ex: RATE_LIMIT_SECONDS }),
+        /* Indice mention */
+        redis.zadd('users:mention', { score: now, member: twitchUser.login }),
+        redis.hset(`users:mention:meta:${twitchUser.login}`, {
+          displayName: twitchUser.displayName,
+          avatar:      twitchUser.avatar || '',
+          updatedAt:   now,
+        }),
       ]);
 
       // Award XP for writing a reply — quality-adjusted, profanity-penalized, with diminishing returns
