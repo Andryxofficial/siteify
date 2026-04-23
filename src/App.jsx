@@ -8,6 +8,7 @@ import { ToastProvider } from './contexts/ToastContext';
 import { TemaProvider } from './contexts/TemaContext';
 import { RetiProvider } from './contexts/RetiContext';
 import { LinguaProvider, useLingua } from './contexts/LinguaContext';
+import { TelegramProvider, useTelegram } from './contexts/TelegramContext';
 import Navbar from './components/Navbar';
 import SchermataCampione from './components/SchermataCampione';
 import Footer from './components/Footer';
@@ -26,7 +27,7 @@ import {
   TwitchPage, YouTubePage, InstagramPage, PodcastPage, TikTokPage,
   GamePage, CommunityPage, ThreadView, Scoiattoli, ModPanel,
   FriendsPage, MessagesPage, ChatGeneralePage, SettingsPage, ProfiloPage,
-  AppPage, ChiSonoPage, TagInfoPage,
+  AppPage, ChiSonoPage, TagInfoPage, TelegramPage,
   prefetchPagineMain,
 } from './lazyPages';
 import './index.css';
@@ -153,10 +154,11 @@ function colorePerRotta(pathname) {
 }
 
 function AppLayout() {
-  const location = useLocation();
+  const location   = useLocation();
   const isStandalone = useStandalone();
+  const { isTelegram } = useTelegram();
   useScrollToTop();
-  useSwipeBack(true);
+  useSwipeBack(!isTelegram); // il BackButton Telegram gestisce il back nel WebView
   useThemeColor(colorePerRotta(location.pathname));
 
   // Ripristina tema colore accent al carico (tema chiaro/scuro e font
@@ -184,8 +186,8 @@ function AppLayout() {
   useEffect(() => { prefetchPagineMain(); }, []);
 
   return (
-    <div className={`app-container${isStandalone ? ' pwa-standalone' : ''}`}>
-      <Navbar />
+    <div className={`app-container${isStandalone ? ' pwa-standalone' : ''}${isTelegram ? ' tg-app' : ''}`}>
+      {!isTelegram && <Navbar />}
       <SchermataCampione />
       <AnimatePresence mode="wait">
         <PageTransition key={location.pathname}>
@@ -213,12 +215,13 @@ function AppLayout() {
               <Route path="/profilo/:username" element={<ProfiloPage />} />
               <Route path="/app" element={<AppPage />} />
               <Route path="/chi-sono" element={<ChiSonoPage />} />
+              <Route path="/telegram" element={<TelegramPage />} />
             </Routes>
           </Suspense>
           </ErrorBoundary>
         </PageTransition>
       </AnimatePresence>
-      <Footer />
+      {!isTelegram && <Footer />}
       <UpdateToast />
       <BannerOffline />
       <PromptInstalla />
@@ -233,18 +236,20 @@ function App() {
       <TemaProvider>
         <LinguaProvider>
           <RetiProvider>
-            <TwitchAuthProvider>
-              <ToastProvider>
-                <TwitchOAuthRedirect />
-                {/* Layout overlay — no navbar/footer, sfondo trasparente */}
-                <Routes>
-                  <Route path="/overlay/goals"  element={<Suspense fallback={null}><GoalsOverlay /></Suspense>} />
-                  <Route path="/overlay/events" element={<Suspense fallback={null}><EventsOverlay /></Suspense>} />
-                  <Route path="/overlay/alerts" element={<Suspense fallback={null}><AlertsOverlay /></Suspense>} />
-                  <Route path="*" element={<AppLayout />} />
-                </Routes>
-              </ToastProvider>
-            </TwitchAuthProvider>
+            <TelegramProvider>
+              <TwitchAuthProvider>
+                <ToastProvider>
+                  <TwitchOAuthRedirect />
+                  {/* Layout overlay — no navbar/footer, sfondo trasparente */}
+                  <Routes>
+                    <Route path="/overlay/goals"  element={<Suspense fallback={null}><GoalsOverlay /></Suspense>} />
+                    <Route path="/overlay/events" element={<Suspense fallback={null}><EventsOverlay /></Suspense>} />
+                    <Route path="/overlay/alerts" element={<Suspense fallback={null}><AlertsOverlay /></Suspense>} />
+                    <Route path="*" element={<AppLayout />} />
+                  </Routes>
+                </ToastProvider>
+              </TwitchAuthProvider>
+            </TelegramProvider>
           </RetiProvider>
         </LinguaProvider>
       </TemaProvider>
