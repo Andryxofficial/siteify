@@ -11,6 +11,24 @@ import BottoneAggiungiAmico from './BottoneAggiungiAmico';
 import SEO from '../components/SEO';
 import { preparaMediaPerUpload, MEDIA_ACCETTATI } from '../utils/compressioneMedia';
 import { useMenzione, DropdownMenzione, renderConMenzioni } from './MenzionePicker';
+import { useEmoteTwitch } from '../hooks/useEmoteTwitch';
+
+/**
+ * Combina rendering emote (Twitch/7TV) + evidenziazione @menzioni.
+ * `renderTestoConEmote` produce un array di stringhe e <img>; applichiamo
+ * `renderConMenzioni` solo alle parti stringa, lasciando intatte le emote.
+ */
+function renderConEmoteEMenzioni(testo, renderTestoConEmote) {
+  if (!testo || typeof testo !== 'string') return testo;
+  const nodi = renderTestoConEmote(testo);
+  if (!Array.isArray(nodi)) return renderConMenzioni(testo);
+  return nodi.map((nodo, i) => {
+    if (typeof nodo === 'string') {
+      return <span key={`t-${i}`}>{renderConMenzioni(nodo)}</span>;
+    }
+    return nodo;
+  });
+}
 
 const MAPPA_CATEGORIE = {
   generale:     { etichetta: '💬 Generale',     colore: 'var(--text-muted)' },
@@ -118,7 +136,7 @@ function MediaDisplay({ mediaId, mediaType }) {
 }
 
 
-function SchedaRisposta({ risposta, puoEliminare, onElimina, onRispondi, onVaiA, onMiPiace, isLoggedIn, twitchToken, currentUser }) {
+function SchedaRisposta({ risposta, puoEliminare, onElimina, onRispondi, onVaiA, onMiPiace, isLoggedIn, twitchToken, currentUser, renderTestoRicco }) {
   const annidata = !!risposta.parentReplyId;
   const conteggioLike = Number(risposta.likeCount || 0);
   const giaPiaciuta = !!risposta.liked;
@@ -183,7 +201,7 @@ function SchedaRisposta({ risposta, puoEliminare, onElimina, onRispondi, onVaiA,
               </button>
             )}
           </div>
-          <p className="social-testo-risposta">{renderConMenzioni(risposta.body)}</p>
+          <p className="social-testo-risposta">{renderTestoRicco ? renderTestoRicco(risposta.body) : renderConMenzioni(risposta.body)}</p>
           {risposta.mediaId && (
             <MediaDisplay mediaId={risposta.mediaId} mediaType={risposta.mediaType} />
           )}
@@ -230,6 +248,11 @@ function SchedaRisposta({ risposta, puoEliminare, onElimina, onRispondi, onVaiA,
 export default function ThreadView() {
   const { postId } = useParams();
   const { isLoggedIn, twitchUser, twitchToken, clientId, getTwitchLoginUrl } = useTwitchAuth();
+  const { renderTestoConEmote } = useEmoteTwitch(twitchToken);
+  const renderTestoRicco = useCallback(
+    (testo) => renderConEmoteEMenzioni(testo, renderTestoConEmote),
+    [renderTestoConEmote],
+  );
 
   const [post, setPost] = useState(null);
   const [risposte, setRisposte] = useState([]);
@@ -573,7 +596,7 @@ export default function ThreadView() {
               )}
             </div>
 
-            <h1 className="social-titolo-thread">{post.title}</h1>
+            <h1 className="social-titolo-thread">{renderTestoRicco(post.title)}</h1>
 
             <span className="social-tempo" style={{ fontSize: '0.72rem' }}>
               <Clock size={11} /> {formattaData(post.createdAt)}
@@ -582,7 +605,7 @@ export default function ThreadView() {
         </div>
 
         {/* Corpo del post */}
-        <div className="social-corpo-thread">{renderConMenzioni(post.body)}</div>
+        <div className="social-corpo-thread">{renderTestoRicco(post.body)}</div>
 
         {/* Media content: upload reale (mediaId) o URL legacy */}
         {post.mediaId ? (
@@ -681,6 +704,7 @@ export default function ThreadView() {
                 isLoggedIn={isLoggedIn}
                 twitchToken={twitchToken}
                 currentUser={twitchUser}
+                renderTestoRicco={renderTestoRicco}
               />
             ))}
           </AnimatePresence>
