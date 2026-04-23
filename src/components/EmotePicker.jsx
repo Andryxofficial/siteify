@@ -34,10 +34,36 @@ export default function EmotePicker({
   const [aperto, setAperto]   = useState(false);
   const [ricerca, setRicerca] = useState('');
   const [indFocus, setIndFocus] = useState(-1);
+  // Posizione fixed del pannello calcolata dal bottone trigger
+  const [panelStyle, setPanelStyle] = useState({});
   const pannelloRef = useRef(null);
   const btnRef      = useRef(null);
   const inputRef    = useRef(null);
   const gridRef     = useRef(null);
+
+  /** Ricalcola le coordinate fixed del pannello rispetto al bottone trigger */
+  const aggiornaPosPannello = useCallback(() => {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const PANEL_W  = Math.min(300, window.innerWidth * 0.88);
+    const PANEL_H  = 340; // stima altezza massima panel (barra ricerca + griglia)
+    const MARGIN   = 8;
+    const spazioSopra  = rect.top;
+    const spazioSotto  = window.innerHeight - rect.bottom;
+    // Preferisce aprire sopra; se non c'è spazio sufficiente apre sotto
+    const apriSopra = spazioSopra >= PANEL_H || spazioSopra > spazioSotto;
+    // Allineamento orizzontale: parte dal bordo sinistro del pulsante, clamped al viewport
+    let left = rect.left;
+    if (left + PANEL_W > window.innerWidth - MARGIN) {
+      left = window.innerWidth - PANEL_W - MARGIN;
+    }
+    left = Math.max(MARGIN, left);
+    if (apriSopra) {
+      setPanelStyle({ bottom: window.innerHeight - rect.top + MARGIN, top: 'auto', left, width: PANEL_W });
+    } else {
+      setPanelStyle({ top: rect.bottom + MARGIN, bottom: 'auto', left, width: PANEL_W });
+    }
+  }, []);
 
   // Chiudi pannello cliccando fuori
   useEffect(() => {
@@ -51,6 +77,18 @@ export default function EmotePicker({
     document.addEventListener('pointerdown', handleClick);
     return () => document.removeEventListener('pointerdown', handleClick);
   }, [aperto]);
+
+  // Aggiorna posizione al resize e scroll quando il pannello è aperto
+  useEffect(() => {
+    if (!aperto) return;
+    const handle = () => aggiornaPosPannello();
+    window.addEventListener('resize', handle, { passive: true });
+    window.addEventListener('scroll', handle, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener('resize', handle);
+      window.removeEventListener('scroll', handle, { capture: true });
+    };
+  }, [aperto, aggiornaPosPannello]);
 
   // Focus sul campo ricerca quando si apre
   useEffect(() => {
@@ -71,9 +109,15 @@ export default function EmotePicker({
   }, [aperto]);
 
   const togglePannello = useCallback(() => {
-    setAperto(prev => !prev);
+    setAperto(prev => {
+      if (!prev) {
+        // Calcola la posizione PRIMA di aprire, al prossimo microtask
+        setTimeout(() => aggiornaPosPannello(), 0);
+      }
+      return !prev;
+    });
     setRicerca('');
-  }, []);
+  }, [aggiornaPosPannello]);
 
   const handleSelect = useCallback((nome) => {
     onSelect?.(nome);
@@ -202,7 +246,7 @@ export default function EmotePicker({
           : '7tv-globali';
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', display: 'inline-flex' }}>
       {/* Bottone toggle */}
       <button
         ref={btnRef}
@@ -227,7 +271,7 @@ export default function EmotePicker({
         <Smile size={20} />
       </button>
 
-      {/* Pannello emote */}
+      {/* Pannello emote — position:fixed per sfuggire a qualsiasi stacking context */}
       <AnimatePresence>
         {aperto && (
           <motion.div
@@ -238,18 +282,15 @@ export default function EmotePicker({
             transition={{ type: 'spring', stiffness: 300, damping: 28 }}
             className="glass-panel"
             style={{
-              position: 'absolute',
-              bottom: '100%',
-              left: 0,
-              marginBottom: '0.5rem',
-              width: 'min(300px, 88vw)',
+              position: 'fixed',
+              zIndex: 9999,
+              ...panelStyle,
               display: 'flex',
               flexDirection: 'column',
-              zIndex: 200,
               padding: 0,
               overflow: 'hidden',
               maxWidth: 'none',
-              margin: '0 0 0.5rem 0',
+              boxShadow: '0 8px 40px rgba(8,12,48,0.60)',
             }}
           >
             {/* Barra ricerca */}
