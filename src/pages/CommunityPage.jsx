@@ -12,6 +12,7 @@ import useIsMod from '../hooks/useIsMod';
 import { useEmoteTwitch } from '../hooks/useEmoteTwitch';
 import EmotePicker from '../components/EmotePicker';
 import BottoneAggiungiAmico from '../components/BottoneAggiungiAmico';
+import LinkProfilo from '../components/LinkProfilo';
 import SEO from '../components/SEO';
 import TagInput from '../components/TagInput';
 import TagStrip, { TagChip } from '../components/TagStrip';
@@ -211,19 +212,19 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
       >
         {/* Header: avatar + meta */}
         <div className="social-scheda-riga">
-          <div className="social-avatar">
+          <LinkProfilo user={post.author} className="social-avatar">
             {post.authorAvatar ? (
               <img src={post.authorAvatar} alt="" />
             ) : (
               <User size={20} />
             )}
-          </div>
+          </LinkProfilo>
 
           <div className="social-scheda-meta">
             <div className="social-autore-riga">
-              <span className="social-autore">
+              <LinkProfilo user={post.author} className="social-autore">
                 {post.authorDisplay || post.author}
-              </span>
+              </LinkProfilo>
               <BottoneAggiungiAmico
                 targetUser={post.author}
                 twitchToken={twitchToken}

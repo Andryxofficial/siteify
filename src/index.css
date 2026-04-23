@@ -3368,13 +3368,39 @@ body {
   display: inline;
   color: var(--primary, #7c86ff);
   font-weight: 600;
-  cursor: default;
+  cursor: pointer;
   border-radius: 4px;
   padding: 0 2px;
   transition: background 0.15s;
 }
 .tag-menzione:hover {
   background: rgba(124,134,255,0.12);
+}
+
+/* ── LinkProfilo: nomi/avatar cliccabili che portano al profilo utente ── */
+.link-profilo {
+  cursor: pointer;
+  transition: filter 0.16s ease, color 0.16s ease, opacity 0.16s ease;
+  outline: none;
+}
+.link-profilo:hover {
+  filter: brightness(1.18);
+  text-decoration: none;
+}
+.link-profilo:hover .social-autore,
+.link-profilo.social-autore:hover {
+  color: var(--primary, #7c86ff);
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+.link-profilo:hover img {
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 2px rgba(130,170,240,0.35);
+}
+.link-profilo:focus-visible {
+  box-shadow: 0 0 0 2px rgba(130,170,240,0.55);
+  border-radius: 6px;
 }
 
 /* Dropdown menzione — stilizzato come glass-panel */

@@ -20,6 +20,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AtSign } from 'lucide-react';
 
@@ -319,17 +320,46 @@ export function DropdownMenzione({
   );
 }
 
+/* ── Componente interno: chip @menzione cliccabile ── */
+function ChipMenzione({ raw }) {
+  const navigate = useNavigate();
+  const username = raw.slice(1).toLowerCase();
+  const onClick = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (e.metaKey || e.ctrlKey || e.button === 1) {
+      window.open(`/profilo/${username}`, '_blank', 'noopener');
+      return;
+    }
+    navigate(`/profilo/${username}`);
+  };
+  return (
+    <span
+      role="link"
+      tabIndex={0}
+      className="tag-menzione link-profilo"
+      title={`Profilo di ${username}`}
+      onClick={onClick}
+      onAuxClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick(e);
+        }
+      }}
+    >
+      {raw}
+    </span>
+  );
+}
+
 /* ── Utility: evidenzia @menzioni nel testo già renderizzato ── */
 export function renderConMenzioni(testo) {
   if (!testo || typeof testo !== 'string') return testo;
   const parti = testo.split(/(@[a-zA-Z0-9_]{1,25})/g);
   return parti.map((parte, i) => {
     if (/^@[a-zA-Z0-9_]{1,25}$/.test(parte)) {
-      return (
-        <span key={i} className="tag-menzione" title={`Profilo di ${parte.slice(1)}`}>
-          {parte}
-        </span>
-      );
+      return <ChipMenzione key={i} raw={parte} />;
     }
     return parte;
   });
