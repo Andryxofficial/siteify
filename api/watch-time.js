@@ -51,8 +51,7 @@ export function getMilestone(totalSeconds) {
 }
 
 function italianDate(now = new Date()) {
-  const s = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' }); // YYYY-MM-DD
-  return s; // 'YYYY-MM-DD'
+  return now.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' }); // YYYY-MM-DD
 }
 
 function getCurrentSeason(now = new Date()) {
@@ -149,7 +148,9 @@ export default async function handler(req, res) {
       const valRes = await fetch('https://id.twitch.tv/oauth2/validate', {
         headers: { Authorization: `OAuth ${token}` },
       });
-      if (!valRes.ok) return res.status(401).json({ error: 'Token non valido' });
+      if (!valRes.ok) {
+        return res.status(401).json({ error: `Token non valido (HTTP ${valRes.status}).` });
+      }
       const valData = await valRes.json();
       const username = valData.login;
       if (!username) return res.status(401).json({ error: 'Username non trovato' });
@@ -203,11 +204,13 @@ export default async function handler(req, res) {
     }
 
     try {
-      /* Rate limit: max 1 heartbeat ogni RATE_LIMIT_TTL secondi per utente */
+      /* Rate limit: max 1 heartbeat ogni RATE_LIMIT_TTL secondi per utente.
+       * Upstash Redis: SET NX restituisce 'OK' al successo, null se la chiave
+       * esiste già (lock non acquisito). */
       const rlKey = `watch:rl:${username}`;
       const alreadyLocked = await redis.set(rlKey, '1', { nx: true, ex: RATE_LIMIT_TTL });
       if (alreadyLocked === null) {
-        /* null = SET NX fallito = chiave esisteva già = troppo frequente */
+        /* null = chiave già esistente → heartbeat troppo frequente */
         const [totalRaw, monthlyRaw] = await Promise.all([
           redis.zscore(LEADERBOARD_KEY, username),
           redis.zscore(monthlyKey, username),

@@ -97,8 +97,10 @@ function ClassificaWatchTime({ t, twitchUser, twitchToken }) {
   }, []);
 
   const voci = tabAttiva === 'globale' ? (dati?.leaderboard || []) : (dati?.monthly || []);
-  const mioTotaleGlobale  = (mioDato?.totalSeconds   || 0) + tempoLocale;
-  const mioTotaleMensile  = (mioDato?.monthlySeconds || 0) + tempoLocale;
+  // Aggiunge l'offset locale solo se mioDato è già stato ricevuto almeno una volta
+  const offsetLocale      = mioDato !== null ? tempoLocale : 0;
+  const mioTotaleGlobale  = (mioDato?.totalSeconds   || 0) + offsetLocale;
+  const mioTotaleMensile  = (mioDato?.monthlySeconds || 0) + offsetLocale;
   const mioTotale = tabAttiva === 'globale' ? mioTotaleGlobale : mioTotaleMensile;
   const mioRank   = tabAttiva === 'globale' ? mioDato?.rank      : mioDato?.monthlyRank;
 
@@ -241,7 +243,8 @@ function ClassificaWatchTime({ t, twitchUser, twitchToken }) {
           </div>
         ) : (
           voci.map((voce, idx) => {
-            const isMe = twitchUser && voce.username?.toLowerCase() === twitchUser?.toLowerCase();
+            const mioUsernameNorm = twitchUser?.toLowerCase();
+            const isMe = !!mioUsernameNorm && voce.username?.toLowerCase() === mioUsernameNorm;
             const milestone = getMilestone(voce.totalSeconds);
             const secondiEffettivi = isMe ? mioTotale : voce.totalSeconds;
             return (
@@ -359,7 +362,9 @@ export default function TwitchPage() {
   const { twitchUser, twitchToken } = useTwitchAuth();
 
   /* Traccia se la pagina è visibile (non in background) */
-  const [paginaVisibile, setPaginaVisibile] = useState(!document.hidden);
+  const [paginaVisibile, setPaginaVisibile] = useState(
+    typeof document !== 'undefined' ? !document.hidden : true
+  );
   useEffect(() => {
     const onVisibility = () => setPaginaVisibile(!document.hidden);
     document.addEventListener('visibilitychange', onVisibility);
