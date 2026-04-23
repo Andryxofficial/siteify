@@ -3200,7 +3200,7 @@ body {
   bottom: 0;
   margin: 0 -1.3rem -1.3rem;
   padding: 0.75rem 1.3rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
-  background: var(--glass-bg-flat, rgba(18, 22, 40, 0.92));
+  background: var(--glass-bg-flat);
   border-top: 1px solid var(--glass-border);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);

@@ -359,18 +359,27 @@ function EditorPost({ onChiudi, onCreato }) {
   const mediaRecorderRef  = useRef(null);
   const audioChunksRef    = useRef([]);
   const durataTimerRef    = useRef(null);
+  const streamRef         = useRef(null); // stream MediaStream separato per cleanup sicuro
+
+  /* Ferma lo stream del microfono — usato sia su stop che su unmount */
+  const fermaStream = useCallback(() => {
+    clearInterval(durataTimerRef.current);
+    try { streamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* silent */ }
+    streamRef.current = null;
+  }, []);
 
   // Cleanup registrazione su unmount
   useEffect(() => {
     return () => {
-      clearInterval(durataTimerRef.current);
+      fermaStream();
       try {
         if (mediaRecorderRef.current?.state !== 'inactive') {
-          mediaRecorderRef.current?.stream?.getTracks().forEach(t => t.stop());
+          mediaRecorderRef.current.onstop = null; // non elaborare l'audio sull'unmount
+          mediaRecorderRef.current.stop();
         }
       } catch { /* silent */ }
     };
-  }, []);
+  }, [fermaStream]);
 
   /* @mention nel campo body */
   const menzione = useMenzione(testoRef, testo, (nuovoVal, nuovaCursore) => {
@@ -416,9 +425,13 @@ function EditorPost({ onChiudi, onCreato }) {
   };
 
   const avviaRegistrazione = async () => {
-    if (mediaFile) return; // Non sovrascrivere un file già allegato
+    if (mediaFile) {
+      setErrore('Rimuovi prima il file allegato prima di registrare.');
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
       const opzioni = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? { mimeType: 'audio/webm;codecs=opus' }
         : MediaRecorder.isTypeSupported('audio/webm')
@@ -428,15 +441,15 @@ function EditorPost({ onChiudi, onCreato }) {
       audioChunksRef.current = [];
       rec.ondataavailable = (ev) => { if (ev.data.size > 0) audioChunksRef.current.push(ev.data); };
       rec.onstop = () => {
-        stream.getTracks().forEach(t => t.stop());
+        fermaStream();
         const mime = rec.mimeType || 'audio/webm';
         const blob = new Blob(audioChunksRef.current, { type: mime });
         const ext  = mime.includes('ogg') ? 'ogg' : mime.includes('mp4') ? 'm4a' : 'webm';
-        const file = new File([blob], `registrazione.${ext}`, { type: mime });
+        const audioFile = new File([blob], `registrazione.${ext}`, { type: mime });
         if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current);
         const url = URL.createObjectURL(blob);
         mediaPreviewRef.current = url;
-        setMediaFile(file);
+        setMediaFile(audioFile);
         setMediaPreview(url);
         setMediaType('audio');
         setDurataReg(0);
@@ -447,15 +460,17 @@ function EditorPost({ onChiudi, onCreato }) {
       setDurataReg(0);
       durataTimerRef.current = setInterval(() => setDurataReg(d => d + 1), 1000);
     } catch (err) {
+      fermaStream();
       setErrore('Microfono non accessibile: ' + err.message);
     }
   };
 
   const fermaRegistrazione = () => {
-    clearInterval(durataTimerRef.current);
     setRegistrazioneAttiva(false);
     if (mediaRecorderRef.current?.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stop(); // onstop gestisce fermaStream + file
+    } else {
+      fermaStream();
     }
   };
 
@@ -725,7 +740,7 @@ function EditorPost({ onChiudi, onCreato }) {
                     type="button"
                     className="chip"
                     onClick={fermaRegistrazione}
-                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', padding: '4px 10px', color: 'var(--accent)', borderColor: 'rgba(224,64,251,0.35)' }}
+                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', padding: '4px 10px', color: 'var(--accent)', borderColor: 'var(--accent)' }}
                   >
                     <StopCircle size={13} /> Ferma
                   </button>
