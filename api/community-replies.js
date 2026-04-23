@@ -135,7 +135,7 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Devi effettuare il login con Twitch.' });
       }
 
-      const { postId, body: rawBody } = req.body || {};
+      const { postId, body: rawBody, mediaId: rawMediaId, mediaType: rawMediaType } = req.body || {};
 
       if (!postId) {
         return res.status(400).json({ error: 'postId richiesto.' });
@@ -145,6 +145,10 @@ export default async function handler(req, res) {
       if (!body || body.length < 2) {
         return res.status(400).json({ error: 'La risposta deve avere almeno 2 caratteri.' });
       }
+
+      // Media allegato (opzionale)
+      const mediaId   = rawMediaId  ? sanitize(rawMediaId, 100) : '';
+      const mediaType = ['image', 'audio', 'video'].includes(rawMediaType) ? rawMediaType : '';
 
       // Check parent post exists (and get author for XP)
       const parentPost = await redis.hgetall(`community:post:${postId}`);
@@ -171,6 +175,7 @@ export default async function handler(req, res) {
         authorDisplay: twitchUser.displayName,
         body,
         createdAt: now,
+        ...(mediaId ? { mediaId, mediaType } : {}),
       };
 
       await Promise.all([
@@ -234,6 +239,10 @@ export default async function handler(req, res) {
         redis.del(replyKey),
         redis.zrem(`community:replies:${reply.postId}`, replyId),
         redis.hincrby(`community:post:${reply.postId}`, 'replyCount', -1),
+        ...(reply.mediaId ? [
+          redis.del(`cm:${reply.mediaId}`),
+          redis.del(`cm:${reply.mediaId}:meta`),
+        ] : []),
       ]);
 
       return res.status(200).json({ deleted: true });

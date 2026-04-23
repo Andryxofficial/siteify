@@ -253,19 +253,23 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Devi effettuare il login con Twitch.' });
       }
 
-      const { title: rawTitle, body: rawBody, tag: rawTag, mediaUrl: rawMediaUrl, mediaType: rawMediaType } = req.body || {};
+      const { title: rawTitle, body: rawBody, tag: rawTag, mediaUrl: rawMediaUrl, mediaType: rawMediaType, mediaId: rawMediaId } = req.body || {};
 
       const title = censorProfanity(sanitize(rawTitle, MAX_TITLE));
       const body = censorProfanity(sanitize(rawBody, MAX_BODY));
       const tag = VALID_TAGS.includes(rawTag) ? rawTag : 'generale';
 
-      // Validate media (optional)
+      // Media allegato tramite upload reale (mediaId da /api/community-media)
+      let mediaId = '';
       let mediaUrl = '';
       let mediaType = '';
-      if (rawMediaUrl) {
+      if (rawMediaId) {
+        mediaId  = sanitize(rawMediaId, 100);
+        mediaType = ['image', 'audio', 'video'].includes(rawMediaType) ? rawMediaType : '';
+      } else if (rawMediaUrl) {
+        // Backward compat: accetta ancora URL HTTPS (legacy)
         mediaUrl = sanitize(rawMediaUrl, MAX_MEDIA_URL);
         mediaType = VALID_MEDIA_TYPES.includes(rawMediaType) ? rawMediaType : '';
-        // Basic URL validation — must be a valid HTTPS URL
         if (mediaUrl) {
           try {
             const parsed = new URL(mediaUrl);
@@ -307,6 +311,7 @@ export default async function handler(req, res) {
         tag,
         mediaUrl,
         mediaType,
+        mediaId,
         createdAt: now,
         replyCount: 0,
         likeCount: 0,
@@ -445,6 +450,11 @@ export default async function handler(req, res) {
         redis.zrem(`community:user:${post.author}`, postId),
         ...replyIds.map(rid => redis.del(`community:reply:${rid}`)),
       ];
+      // Elimina media allegato al post (se presente)
+      if (post.mediaId) {
+        deleteOps.push(redis.del(`cm:${post.mediaId}`));
+        deleteOps.push(redis.del(`cm:${post.mediaId}:meta`));
+      }
       await Promise.all(deleteOps);
 
       return res.status(200).json({ deleted: true });
