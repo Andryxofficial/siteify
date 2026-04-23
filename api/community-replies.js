@@ -29,6 +29,8 @@ async function awardXp(redis, username, xp) {
  */
 
 const MAX_BODY = 1000;
+const MAX_MEDIA_ID = 100;
+const MAX_MIME_TYPE = 100;
 const MAX_PER_PAGE = 50;
 const DEFAULT_PER_PAGE = 30;
 const RATE_LIMIT_SECONDS = 15;
@@ -135,13 +137,16 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Devi effettuare il login con Twitch.' });
       }
 
-      const { postId, body: rawBody } = req.body || {};
+      const { postId, body: rawBody, mediaId: rawMediaId, mediaMimeType: rawMediMimeType } = req.body || {};
 
       if (!postId) {
         return res.status(400).json({ error: 'postId richiesto.' });
       }
 
-      const body = censorProfanity(sanitize(rawBody, MAX_BODY));
+      const body          = censorProfanity(sanitize(rawBody, MAX_BODY));
+      const mediaId       = sanitize(rawMediaId || '', MAX_MEDIA_ID);
+      const mediaMimeType = sanitize(rawMediMimeType || '', MAX_MIME_TYPE);
+
       if (!body || body.length < 2) {
         return res.status(400).json({ error: 'La risposta deve avere almeno 2 caratteri.' });
       }
@@ -170,6 +175,8 @@ export default async function handler(req, res) {
         authorAvatar: twitchUser.avatar || '',
         authorDisplay: twitchUser.displayName,
         body,
+        mediaId,
+        mediaMimeType,
         createdAt: now,
       };
 

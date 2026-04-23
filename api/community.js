@@ -29,6 +29,8 @@ const VALID_MEDIA_TYPES = ['video', 'audio', ''];
 const MAX_TITLE = 120;
 const MAX_BODY = 2000;
 const MAX_MEDIA_URL = 500;
+const MAX_MEDIA_ID = 100;
+const MAX_MIME_TYPE = 100;
 const MAX_PER_PAGE = 50;
 const DEFAULT_PER_PAGE = 20;
 const RATE_LIMIT_SECONDS = 30; // min seconds between posts
@@ -253,7 +255,7 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Devi effettuare il login con Twitch.' });
       }
 
-      const { title: rawTitle, body: rawBody, tag: rawTag, mediaUrl: rawMediaUrl, mediaType: rawMediaType } = req.body || {};
+      const { title: rawTitle, body: rawBody, tag: rawTag, mediaUrl: rawMediaUrl, mediaType: rawMediaType, mediaId: rawMediaId, mediaMimeType: rawMediMimeType } = req.body || {};
 
       const title = censorProfanity(sanitize(rawTitle, MAX_TITLE));
       const body = censorProfanity(sanitize(rawBody, MAX_BODY));
@@ -277,6 +279,10 @@ export default async function handler(req, res) {
           }
         }
       }
+
+      // Nuovo campo: mediaId (file caricato tramite /api/community-media)
+      const mediaId       = sanitize(rawMediaId || '', MAX_MEDIA_ID);
+      const mediaMimeType = sanitize(rawMediMimeType || '', MAX_MIME_TYPE);
 
       if (!title || title.length < 3) {
         return res.status(400).json({ error: 'Il titolo deve avere almeno 3 caratteri.' });
@@ -307,6 +313,8 @@ export default async function handler(req, res) {
         tag,
         mediaUrl,
         mediaType,
+        mediaId,
+        mediaMimeType,
         createdAt: now,
         replyCount: 0,
         likeCount: 0,
