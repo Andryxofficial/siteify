@@ -181,6 +181,7 @@ export default async function handler(req, res) {
       await Promise.all([
         redis.hset(`community:reply:${id}`, reply),
         redis.zadd(`community:replies:${postId}`, { score: now, member: id }),
+        redis.zadd(`community:user-replies:${twitchUser.login}`, { score: now, member: id }),
         redis.hincrby(`community:post:${postId}`, 'replyCount', 1),
         redis.set(rlKey, '1', { ex: RATE_LIMIT_SECONDS }),
         /* Indice mention */
