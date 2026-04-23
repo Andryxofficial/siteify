@@ -7940,7 +7940,7 @@ html[data-tema="chiaro"] .app-feature-icon {
    Forziamo un minimo di 1rem (16px) su mobile per
    eliminare il comportamento senza impattare desktop.
    ═══════════════════════════════════════════════════ */
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
   textarea,
   select {
@@ -7991,7 +7991,7 @@ html[data-tema="chiaro"] .tag-input-chips {
 }
 html[data-tema="chiaro"] .tag-input-chips:focus-within {
   background: #ffffff;
-  border-color: color-mix(in srgb, var(--primary) 50%, transparent);
+  border-color: rgba(224, 64, 251, 0.50);
 }
 
 /* Titolo editor */
@@ -8049,8 +8049,9 @@ html[data-tema="chiaro"] .social-editor-sfondo {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Previene scroll del body dietro il modal su iOS */
-body:has(.social-editor-sfondo) {
+/* Previene scroll del body dietro il modal su iOS —
+   la classe .modal-aperto viene aggiunta via JS (EditorPost) */
+body.modal-aperto {
   overflow: hidden;
   touch-action: none;
 }
