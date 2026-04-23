@@ -26,7 +26,7 @@ import {
   TwitchPage, YouTubePage, InstagramPage, PodcastPage, TikTokPage,
   GamePage, CommunityPage, ThreadView, Scoiattoli, ModPanel,
   FriendsPage, MessagesPage, ChatGeneralePage, SettingsPage, ProfiloPage,
-  AppPage, ChiSonoPage,
+  AppPage, ChiSonoPage, TagInfoPage,
   prefetchPagineMain,
 } from './lazyPages';
 import './index.css';
@@ -85,12 +85,15 @@ function ErrorFallback({ messaggio }) {
   );
 }
 
-// Skeleton minimo di fallback per Suspense
+// Skeleton minimo di fallback per Suspense.
+// L'altezza riservata (≥ 60vh) evita CLS: anche se la pagina reale è più alta,
+// il footer non saltella verso l'alto-basso quando il chunk si committa.
 function PaginaCaricamento() {
   return (
-    <div className="main-content" style={{ paddingTop: '2rem' }}>
+    <div className="main-content" style={{ paddingTop: '2rem', minHeight: '60vh' }}>
       <div className="glass-panel skeleton" style={{ height: 120, marginBottom: '1rem' }} />
-      <div className="glass-panel skeleton" style={{ height: 200 }} />
+      <div className="glass-panel skeleton" style={{ height: 240 }} />
+      <div className="glass-panel skeleton" style={{ height: 180 }} />
     </div>
   );
 }
@@ -198,6 +201,7 @@ function AppLayout() {
               <Route path="/gioco" element={<GamePage />} />
               <Route path="/giochi" element={<GamePage />} />
               <Route path="/socialify" element={<CommunityPage />} />
+              <Route path="/socialify/info-tag" element={<TagInfoPage />} />
               <Route path="/socialify/:postId" element={<ThreadView />} />
 
               <Route path="/scoiattoli" element={<Scoiattoli />} />

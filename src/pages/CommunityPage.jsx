@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, Heart, Clock, Send, X, ChevronLeft, ChevronRight,
   Twitch, LogIn, Plus, User, Bell, BellOff, Trophy, Film, Music,
-  Users, Lock, Shield, Star,
+  Users, Lock, Shield, Star, Paperclip, Image as ImageIcon, Volume2, Video,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
@@ -13,7 +13,11 @@ import { useEmoteTwitch } from '../hooks/useEmoteTwitch';
 import EmotePicker from '../components/EmotePicker';
 import BottoneAggiungiAmico from '../components/BottoneAggiungiAmico';
 import SEO from '../components/SEO';
+import TagInput from '../components/TagInput';
+import TagStrip, { TagChip } from '../components/TagStrip';
 import { useLingua } from '../contexts/LinguaContext';
+import { preparaMediaPerUpload, MEDIA_ACCETTATI } from '../utils/compressioneMedia';
+import { useMenzione, DropdownMenzione, renderConMenzioni } from '../components/MenzionePicker';
 
 function getCATEGORIE(t) {
   return [
@@ -68,6 +72,96 @@ const entrata = (ritardo = 0) => ({
 });
 
 /* ═══════════════════════════════════════
+   MEDIA DISPLAY — carica e visualizza media allegati (immagini, audio, video)
+   ═══════════════════════════════════════ */
+const MIME_CONSENTITI = ['image/', 'audio/', 'video/'];
+function mimeValido(mime) {
+  return typeof mime === 'string' && MIME_CONSENTITI.some(p => mime.startsWith(p));
+}
+
+function MediaDisplay({ mediaId, mediaType, apiPath = '/api/community-media', token = null }) {
+  const [src, setSrc]       = useState(null);
+  const [mime, setMime]     = useState('');
+  const [nome, setNome]     = useState('');
+  const [caric, setCaric]   = useState(true);
+  const [errore, setErrore] = useState(false);
+  const blobUrlRef = useRef(null);
+
+  useEffect(() => {
+    if (!mediaId) return;
+    let annullato = false;
+    (async () => {
+      setCaric(true);
+      setErrore(false);
+      try {
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await fetch(`${apiPath}?action=get&id=${encodeURIComponent(mediaId)}`, { headers });
+        if (!res.ok) throw new Error('Media non trovato');
+        const dati = await res.json();
+        if (annullato) return;
+        /* Valida il MIME type prima di costruire il data: URL (prevenzione XSS) */
+        if (!mimeValido(dati.mimeType)) throw new Error('Tipo MIME non supportato');
+        const blob = await fetch(`data:${dati.mimeType};base64,${dati.data}`).then(r => r.blob());
+        if (annullato) return;
+        /* Revoca il precedente blob URL prima di crearne uno nuovo */
+        if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+        const newUrl = URL.createObjectURL(blob);
+        blobUrlRef.current = newUrl;
+        setSrc(newUrl);
+        setMime(dati.mimeType);
+        setNome(dati.name || 'file');
+      } catch {
+        if (!annullato) setErrore(true);
+      } finally {
+        if (!annullato) setCaric(false);
+      }
+    })();
+    return () => {
+      annullato = true;
+      if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
+    };
+  }, [mediaId, apiPath, token]);
+
+  if (!mediaId) return null;
+  if (caric) return (
+    <div className="social-media-preview" style={{ opacity: 0.5, fontSize: '0.8rem' }}>
+      ⏳ Caricamento media…
+    </div>
+  );
+  if (errore) return null;
+
+  const tipo = mediaType || (mime.startsWith('image/') ? 'image' : mime.startsWith('audio/') ? 'audio' : 'video');
+
+  if (tipo === 'image') {
+    return (
+      <div className="social-media-preview" onClick={e => e.preventDefault()}>
+        <img src={src} alt={nome} className="social-media-img"
+          style={{ maxWidth: '100%', maxHeight: 320, borderRadius: 10, display: 'block' }} />
+      </div>
+    );
+  }
+  if (tipo === 'audio') {
+    return (
+      <div className="social-media-preview" onClick={e => e.preventDefault()}>
+        <div className="social-media-audio-wrapper">
+          <Music size={16} color="var(--primary)" />
+          <audio src={src} controls preload="metadata" className="social-media-audio">
+            Il tuo browser non supporta il tag audio.
+          </audio>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="social-media-preview" onClick={e => e.preventDefault()}>
+      <video src={src} controls preload="metadata" className="social-media-video">
+        Il tuo browser non supporta il tag video.
+      </video>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
    SCHEDA POST
    ═══════════════════════════════════════ */
 function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
@@ -113,9 +207,10 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
       <Link
         to={`/socialify/${post.id}`}
         className="glass-card social-scheda-post"
+        style={{ '--cat-color': cat.colore }}
       >
+        {/* Header: avatar + meta */}
         <div className="social-scheda-riga">
-          {/* Immagine profilo */}
           <div className="social-avatar">
             {post.authorAvatar ? (
               <img src={post.authorAvatar} alt="" />
@@ -124,9 +219,8 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
             )}
           </div>
 
-          <div className="social-scheda-corpo">
-            {/* Intestazione */}
-            <div className="social-scheda-intestazione">
+          <div className="social-scheda-meta">
+            <div className="social-autore-riga">
               <span className="social-autore">
                 {post.authorDisplay || post.author}
               </span>
@@ -135,70 +229,88 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
                 twitchToken={twitchToken}
                 currentUser={currentUser}
               />
-              <span className="social-tempo">
-                <Clock size={11} /> {tempoFa(post.createdAt, lingua)}
-              </span>
               <span className="chip social-chip-categoria" style={{
                 background: `${cat.colore}18`, color: cat.colore,
                 border: `1px solid ${cat.colore}30`,
               }}>
                 {cat.etichetta}
               </span>
+              {post.visibility === 'friends' && (
+                <span className="chip social-chip-amici">👥 Amici</span>
+              )}
             </div>
+            <span className="social-tempo">
+              <Clock size={11} /> {tempoFa(post.createdAt, lingua)}
+            </span>
+          </div>
+        </div>
 
-            {/* Titolo */}
-            <h3 className="social-titolo-post">{renderTestoConEmote(post.title)}</h3>
+        {/* Contenuto indentato (Twitter-style) */}
+        <div className="social-scheda-contenuto">
+          <h3 className="social-titolo-post">{renderTestoConEmote(post.title)}</h3>
+          <p className="social-anteprima-testo">{renderTestoConEmote(post.body)}</p>
 
-            {/* Anteprima testo */}
-            <p className="social-anteprima-testo">{renderTestoConEmote(post.body)}</p>
-
-            {/* Media preview */}
-            {post.mediaUrl && post.mediaType === 'video' && (
-              <div className="social-media-preview" onClick={e => e.preventDefault()}>
-                <video src={post.mediaUrl} controls preload="metadata" className="social-media-video">
-                  Il tuo browser non supporta il tag video.
-                </video>
-              </div>
-            )}
-            {post.mediaUrl && post.mediaType === 'audio' && (
-              <div className="social-media-preview" onClick={e => e.preventDefault()}>
-                <div className="social-media-audio-wrapper">
-                  <Music size={16} color="var(--primary)" />
-                  <audio src={post.mediaUrl} controls preload="metadata" className="social-media-audio">
-                    Il tuo browser non supporta il tag audio.
-                  </audio>
+          {/* Media preview */}
+          {post.mediaId ? (
+            <MediaDisplay mediaId={post.mediaId} mediaType={post.mediaType} />
+          ) : (
+            <>
+              {post.mediaUrl && post.mediaType === 'video' && (
+                <div className="social-media-preview" onClick={e => e.preventDefault()}>
+                  <video src={post.mediaUrl} controls preload="metadata" className="social-media-video">
+                    Il tuo browser non supporta il tag video.
+                  </video>
                 </div>
-              </div>
-            )}
-            {post.mediaUrl && !post.mediaType && (
-              <div className="social-media-preview" onClick={e => e.preventDefault()}>
-                <a href={post.mediaUrl} target="_blank" rel="noopener noreferrer" className="social-media-link">
-                  <Film size={14} /> Apri media
-                </a>
-              </div>
-            )}
+              )}
+              {post.mediaUrl && post.mediaType === 'audio' && (
+                <div className="social-media-preview" onClick={e => e.preventDefault()}>
+                  <div className="social-media-audio-wrapper">
+                    <Music size={16} color="var(--primary)" />
+                    <audio src={post.mediaUrl} controls preload="metadata" className="social-media-audio">
+                      Il tuo browser non supporta il tag audio.
+                    </audio>
+                  </div>
+                </div>
+              )}
+              {post.mediaUrl && !post.mediaType && (
+                <div className="social-media-preview" onClick={e => e.preventDefault()}>
+                  <a href={post.mediaUrl} target="_blank" rel="noopener noreferrer" className="social-media-link">
+                    <Film size={14} /> Apri media
+                  </a>
+                </div>
+              )}
+            </>
+          )}
 
-            {/* Azioni */}
-            <div className="social-azioni-riga">
-              <button
-                className="social-btn-azione"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onMiPiace(post); }}
-              >
-                <Heart size={14} fill={post.liked ? 'var(--accent)' : 'none'} color={post.liked ? 'var(--accent)' : 'var(--text-faint)'} />
-                <span>{post.likeCount || 0}</span>
-              </button>
-              <button
-                className="social-btn-azione"
-                onClick={toggleFavorito}
-                title={favorito ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
-              >
-                <Star size={14} fill={favorito ? '#facc15' : 'none'} color={favorito ? '#facc15' : 'var(--text-faint)'} />
-              </button>
-              <span className="social-btn-azione" style={{ pointerEvents: 'none' }}>
-                <MessageSquare size={14} color="var(--text-faint)" />
-                <span>{post.replyCount || 0}</span>
-              </span>
+          {/* Tag liberi (free-form) — chip cliccabili che filtrano il feed */}
+          {Array.isArray(post.tags) && post.tags.length > 0 && (
+            <div className="social-post-tags">
+              {post.tags.slice(0, 5).map(slug => (
+                <TagChip key={slug} slug={slug} compact />
+              ))}
             </div>
+          )}
+
+          {/* Azioni */}
+          <div className="social-azioni-riga">
+            <button
+              className={`social-btn-azione${post.liked ? ' social-btn-azione--liked' : ''}`}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onMiPiace(post); }}
+            >
+              <Heart size={14} fill={post.liked ? 'currentColor' : 'none'} />
+              <span>{post.likeCount || 0}</span>
+            </button>
+            <button
+              className={`social-btn-azione${favorito ? ' social-btn-azione--liked' : ''}`}
+              onClick={toggleFavorito}
+              title={favorito ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
+            >
+              <Star size={14} fill={favorito ? 'currentColor' : 'none'} />
+            </button>
+            <span className="social-btn-azione" style={{ pointerEvents: 'none' }}>
+              <MessageSquare size={14} color="var(--text-faint)" />
+              <span>{post.replyCount || 0}</span>
+            </span>
           </div>
         </div>
       </Link>
@@ -226,17 +338,62 @@ function EditorPost({ onChiudi, onCreato }) {
   const [titolo, setTitolo] = useState(bozzaSalvata?.titolo || '');
   const [testo, setTesto] = useState(bozzaSalvata?.testo || '');
   const [categoria, setCategoria] = useState(bozzaSalvata?.categoria || 'generale');
+  const [tagLiberi, setTagLiberi] = useState(Array.isArray(bozzaSalvata?.tagLiberi) ? bozzaSalvata.tagLiberi : []);
+  const [visibilita, setVisibilita] = useState('public');
   const [mediaUrl, setMediaUrl] = useState(bozzaSalvata?.mediaUrl || '');
   const [mediaType, setMediaType] = useState(bozzaSalvata?.mediaType || '');
+  const [mediaFile, setMediaFile]       = useState(null);   // File selezionato
+  const [mediaPreview, setMediaPreview] = useState(null);   // URL blob per anteprima
+  const [caricandoMedia, setCaricandoMedia] = useState(false);
+  const fileInputRef    = useRef(null);
+  const mediaPreviewRef = useRef(null); // ref per revoca blob URL sicura su unmount
+  const testoRef        = useRef(null); // ref per @mention
   const [invio, setInvio] = useState(false);
   const [errore, setErrore] = useState('');
   const [mostraAnteprima, setMostraAnteprima] = useState(false);
 
-  // Auto-salva bozza ad ogni modifica
+  /* @mention nel campo body */
+  const menzione = useMenzione(testoRef, testo, (nuovoVal, nuovaCursore) => {
+    setTesto(nuovoVal);
+    setTimeout(() => {
+      if (testoRef.current) testoRef.current.setSelectionRange(nuovaCursore, nuovaCursore);
+    }, 0);
+  });
+
+  // Pulizia URL blob su unmount (via ref, sempre aggiornato)
   useEffect(() => {
-    const bozza = { titolo, testo, categoria, mediaUrl, mediaType };
+    return () => { if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current); };
+  }, []);
+
+  // Auto-salva bozza ad ogni modifica (senza media, troppo grande)
+  useEffect(() => {
+    const bozza = { titolo, testo, categoria, tagLiberi };
     localStorage.setItem('andryxify_bozza_post', JSON.stringify(bozza));
-  }, [titolo, testo, categoria, mediaUrl, mediaType]);
+  }, [titolo, testo, categoria, tagLiberi]);
+
+  const onFileSelezionato = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current);
+    const newUrl = URL.createObjectURL(file);
+    mediaPreviewRef.current = newUrl;
+    setMediaFile(file);
+    setMediaPreview(newUrl);
+    setMediaType(
+      file.type.startsWith('image/') ? 'image' :
+      file.type.startsWith('audio/') ? 'audio' : 'video'
+    );
+    setMediaUrl('');
+    e.target.value = '';
+  };
+
+  const rimuoviMedia = () => {
+    if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current);
+    mediaPreviewRef.current = null;
+    setMediaFile(null);
+    setMediaPreview(null);
+    setMediaType('');
+  };
 
   // Colore contatore caratteri
   const contatoreColore = testo.length > 1950 ? 'var(--accent)' : testo.length > 1800 ? '#ffb300' : 'var(--text-faint)';
@@ -257,11 +414,34 @@ function EditorPost({ onChiudi, onCreato }) {
     setInvio(true);
     setErrore('');
     try {
-      const payload = { title: titolo.trim(), body: testo.trim(), tag: categoria };
-      if (mediaUrl.trim()) {
-        payload.mediaUrl = mediaUrl.trim();
+      const payload = {
+        title: titolo.trim(),
+        body: testo.trim(),
+        tag: categoria,
+        tags: tagLiberi,                  // Tag liberi smart (max 5)
+        visibility: visibilita,
+      };
+
+      // Upload media reale se presente
+      if (mediaFile) {
+        setCaricandoMedia(true);
+        const preparato = await preparaMediaPerUpload(mediaFile);
+        const uploadRes = await fetch('/api/community-media', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+          body: JSON.stringify({ action: 'upload', ...preparato }),
+        });
+        setCaricandoMedia(false);
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(uploadData.error || 'Errore upload media');
+        payload.mediaId   = uploadData.mediaId;
+        payload.mediaType = preparato.mediaType;
+      } else if (mediaUrl.trim()) {
+        // Legacy URL (backward compat)
+        payload.mediaUrl  = mediaUrl.trim();
         payload.mediaType = mediaType || '';
       }
+
       const res = await fetch('/api/community', {
         method: 'POST',
         headers: {
@@ -274,9 +454,11 @@ function EditorPost({ onChiudi, onCreato }) {
       if (!res.ok) throw new Error(data.error || 'Errore');
       // Pulisci bozza dopo invio riuscito
       localStorage.removeItem('andryxify_bozza_post');
+      if (mediaPreview) { URL.revokeObjectURL(mediaPreview); mediaPreviewRef.current = null; }
       onCreato(data.post);
       onChiudi();
     } catch (err) {
+      setCaricandoMedia(false);
       setErrore(err.message);
     } finally {
       setInvio(false);
@@ -326,6 +508,58 @@ function EditorPost({ onChiudi, onCreato }) {
           ))}
         </div>
 
+        {/* Tag liberi smart — input chip con autocomplete */}
+        <div className="social-tag-input-wrapper">
+          <label className="social-tag-input-label">
+            <span>{t('community.editor.tag.label')}</span>
+            <Link to="/socialify/info-tag" className="social-tag-input-info" title={t('community.editor.tag.info_titolo')}>
+              ⓘ
+            </Link>
+          </label>
+          <TagInput
+            value={tagLiberi}
+            onChange={setTagLiberi}
+            max={5}
+            placeholder={t('community.editor.tag.placeholder')}
+          />
+        </div>
+
+        {/* Selettore visibilità */}
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '0.65rem' }}>
+          {[
+            { val: 'public',  label: '🌍 Pubblico',    descr: 'Visibile a tutti' },
+            { val: 'friends', label: '👥 Solo amici',  descr: 'Visibile solo ai tuoi amici' },
+          ].map(({ val, label, descr }) => (
+            <button
+              key={val}
+              type="button"
+              onClick={() => setVisibilita(val)}
+              title={descr}
+              style={{
+                flex: 1,
+                padding: '0.45rem 0.6rem',
+                borderRadius: 'var(--r-sm)',
+                fontSize: '0.78rem',
+                fontWeight: visibilita === val ? 700 : 400,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                background: visibilita === val
+                  ? (val === 'friends' ? 'rgba(130,170,240,0.15)' : 'rgba(34,197,94,0.12)')
+                  : 'var(--surface-1)',
+                color: visibilita === val
+                  ? (val === 'friends' ? 'rgba(130,200,255,0.9)' : 'var(--accent-spotify)')
+                  : 'var(--text-faint)',
+                border: `1px solid ${visibilita === val
+                  ? (val === 'friends' ? 'rgba(130,170,240,0.3)' : 'rgba(34,197,94,0.3)')
+                  : 'var(--glass-border)'}`,
+                transition: 'all 0.18s',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
           <input
             type="text"
@@ -348,9 +582,11 @@ function EditorPost({ onChiudi, onCreato }) {
 
         <div style={{ position: 'relative' }}>
           <textarea
+            ref={testoRef}
             placeholder={t('community.editor.testo_ph')}
             value={testo}
-            onChange={(e) => setTesto(e.target.value)}
+            onChange={(e) => { setTesto(e.target.value); menzione.onChange(e); }}
+            onKeyDown={menzione.onKeyDown}
             maxLength={2000}
             rows={5}
             className="social-campo social-area-testo"
@@ -365,6 +601,7 @@ function EditorPost({ onChiudi, onCreato }) {
               onSelect={(nome) => setTesto(prev => (prev ? `${prev} ${nome}` : nome))}
             />
           </div>
+          <DropdownMenzione {...menzione.dropdownProps} />
         </div>
 
         {/* Contatore caratteri + toggle anteprima */}
@@ -391,34 +628,56 @@ function EditorPost({ onChiudi, onCreato }) {
           />
         )}
 
-        {/* Media URL (optional) */}
+        {/* Allega media reale */}
         <div className="social-media-sezione">
-          <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.4rem' }}>
-            {[
-              { value: '',      label: t('community.post.tipo.testo') },
-              { value: 'video', label: t('community.post.tipo.video') },
-              { value: 'audio', label: t('community.post.tipo.audio') },
-            ].map(t => (
-              <button key={t.value} type="button" className="chip" onClick={() => setMediaType(t.value)}
-                style={{
-                  fontSize: '0.68rem', padding: '2px 8px', cursor: 'pointer',
-                  background: mediaType === t.value ? 'rgba(var(--primary-rgb, 99,102,241), 0.15)' : 'transparent',
-                  color: mediaType === t.value ? 'var(--primary)' : 'var(--text-faint)',
-                  border: `1px solid ${mediaType === t.value ? 'var(--primary)' : 'var(--glass-border)'}`,
-                }}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-          {mediaType && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="chip"
+              onClick={() => fileInputRef.current?.click()}
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', padding: '4px 10px' }}
+            >
+              <Paperclip size={13} /> Allega media
+            </button>
             <input
-              type="url"
-              placeholder={mediaType === 'video' ? 'https://esempio.com/video.mp4' : 'https://esempio.com/audio.mp3'}
-              value={mediaUrl}
-              onChange={(e) => setMediaUrl(e.target.value)}
-              className="social-campo"
-              style={{ fontSize: '0.82rem' }}
+              ref={fileInputRef}
+              type="file"
+              accept={MEDIA_ACCETTATI}
+              style={{ display: 'none' }}
+              onChange={onFileSelezionato}
             />
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)' }}>
+              Immagini, audio e video — max 5 MB (immagini compresse auto)
+            </span>
+          </div>
+
+          {/* Anteprima file selezionato */}
+          {mediaFile && mediaPreview && (
+            <div style={{ marginTop: '0.5rem', position: 'relative', display: 'inline-flex', alignItems: 'flex-start' }}>
+              {mediaType === 'image' && (
+                <img src={mediaPreview} alt="" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, display: 'block' }} />
+              )}
+              {mediaType === 'audio' && (
+                <div className="social-media-audio-wrapper">
+                  <Volume2 size={14} color="var(--primary)" />
+                  <audio src={mediaPreview} controls preload="metadata" className="social-media-audio" />
+                </div>
+              )}
+              {mediaType === 'video' && (
+                <video src={mediaPreview} controls preload="metadata" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }} />
+              )}
+              <button
+                type="button"
+                onClick={rimuoviMedia}
+                style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                title="Rimuovi media"
+              >
+                <X size={12} color="#fff" />
+              </button>
+              <span style={{ position: 'absolute', bottom: 4, left: 6, fontSize: '0.65rem', color: '#fff', background: 'rgba(0,0,0,0.55)', padding: '1px 4px', borderRadius: 4 }}>
+                {mediaFile.name}
+              </span>
+            </div>
           )}
         </div>
 
@@ -427,10 +686,10 @@ function EditorPost({ onChiudi, onCreato }) {
           <button
             type="submit"
             className="btn btn-primary"
-            disabled={invio || !titolo.trim() || !testo.trim()}
+            disabled={invio || caricandoMedia || !titolo.trim() || !testo.trim()}
             style={{ fontSize: '0.85rem', padding: '0.5rem 1.3rem' }}
           >
-            {invio ? t('community.editor.invio') : <><Send size={14} /> {t('community.editor.pubblica')}</>}
+            {caricandoMedia ? '⏳ Upload…' : invio ? t('community.editor.invio') : <><Send size={14} /> {t('community.editor.pubblica')}</>}
           </button>
         </div>
       </motion.form>
@@ -723,10 +982,22 @@ export default function CommunityPage() {
   const [pagina, setPagina] = useState(parseInt(searchParams.get('pagina')) || 1);
   const [totPagine, setTotPagine] = useState(1);
   const [categoriaAttiva, setCategoriaAttiva] = useState(searchParams.get('categoria') || null);
+  const [tagAttivo, setTagAttivo] = useState(searchParams.get('slug') || null);
+  const [tagDettaglio, setTagDettaglio] = useState(null);  // meta del tag attivo (postCount, follower, isFollowing)
   const [caricamento, setCaricamento] = useState(true);
   const [errore, setErrore] = useState('');
   const [mostraEditor, setMostraEditor] = useState(false);
   const [vistaAttiva, setVistaAttiva] = useState(searchParams.get('vista') === 'classifica' ? 'classifica' : 'feed');
+
+  // Sincronizza tagAttivo con URL quando cambia (es. utente clicca un TagChip)
+  useEffect(() => {
+    const slugUrl = searchParams.get('slug') || null;
+    if (slugUrl !== tagAttivo) {
+      setTagAttivo(slugUrl);
+      setPagina(1);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const caricaPosts = useCallback(async () => {
     setCaricamento(true);
@@ -735,7 +1006,12 @@ export default function CommunityPage() {
       const params = new URLSearchParams();
       params.set('page', pagina);
       params.set('limit', '20');
-      if (categoriaAttiva) params.set('tag', categoriaAttiva);
+      // Filtro per tag libero ha priorità sul filtro categoria classico
+      if (tagAttivo) {
+        params.set('slug', tagAttivo);
+      } else if (categoriaAttiva) {
+        params.set('tag', categoriaAttiva);
+      }
 
       const headers = {};
       if (twitchToken) headers.Authorization = `Bearer ${twitchToken}`;
@@ -751,21 +1027,65 @@ export default function CommunityPage() {
     } finally {
       setCaricamento(false);
     }
-  }, [pagina, categoriaAttiva, twitchToken, t]);
+  }, [pagina, categoriaAttiva, tagAttivo, twitchToken, t]);
 
   useEffect(() => { caricaPosts(); }, [caricaPosts]);
+
+  // Carica metadata del tag attivo (per mostrare l'header con # follower / bottone Segui)
+  useEffect(() => {
+    if (!tagAttivo) { setTagDettaglio(null); return; }
+    let alive = true;
+    (async () => {
+      try {
+        const headers = twitchToken ? { Authorization: `Bearer ${twitchToken}` } : {};
+        const res = await fetch(`/api/tags?slug=${encodeURIComponent(tagAttivo)}`, { headers });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (alive) setTagDettaglio(data.tag || null);
+      } catch { /* silent */ }
+    })();
+    return () => { alive = false; };
+  }, [tagAttivo, twitchToken]);
 
   // Sincronizza parametri URL
   useEffect(() => {
     const p = new URLSearchParams();
     if (pagina > 1) p.set('pagina', pagina);
     if (categoriaAttiva) p.set('categoria', categoriaAttiva);
+    if (tagAttivo) p.set('slug', tagAttivo);
     setSearchParams(p, { replace: true });
-  }, [pagina, categoriaAttiva, setSearchParams]);
+  }, [pagina, categoriaAttiva, tagAttivo, setSearchParams]);
 
   const gestisciCategoria = (valore) => {
     setCategoriaAttiva(prev => prev === valore ? null : valore);
+    setTagAttivo(null);    // reset tag libero quando si cambia categoria
     setPagina(1);
+  };
+
+  const gestisciToggleSeguiTag = async () => {
+    if (!isLoggedIn || !tagAttivo || !tagDettaglio) return;
+    const nuovaAzione = tagDettaglio.isFollowing ? 'unfollow' : 'follow';
+    // Aggiornamento ottimistico
+    setTagDettaglio(prev => prev && {
+      ...prev,
+      isFollowing: !prev.isFollowing,
+      followerCount: prev.isFollowing ? Math.max(0, prev.followerCount - 1) : prev.followerCount + 1,
+    });
+    try {
+      const res = await fetch('/api/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+        body: JSON.stringify({ action: nuovaAzione, slug: tagAttivo }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      // Rollback
+      setTagDettaglio(prev => prev && {
+        ...prev,
+        isFollowing: !prev.isFollowing,
+        followerCount: prev.isFollowing ? Math.max(0, prev.followerCount - 1) : prev.followerCount + 1,
+      });
+    }
   };
 
   const gestisciMiPiace = async (post) => {
@@ -905,6 +1225,48 @@ export default function CommunityPage() {
         </motion.div>
       ) : (
         <>
+          {/* Strip macro-categorie + tag in trend + tag che segui */}
+          <motion.div {...entrata(0.22)}>
+            <TagStrip />
+          </motion.div>
+
+          {/* Header tag attivo (quando si sta filtrando per un tag libero) */}
+          {tagAttivo && tagDettaglio && (
+            <motion.div
+              {...entrata(0.24)}
+              className="glass-panel social-tag-header"
+            >
+              <div className="social-tag-header-info">
+                <span className="social-tag-header-slug">#{tagDettaglio.slug}</span>
+                <span className="social-tag-header-stats">
+                  {tagDettaglio.postCount} {tagDettaglio.postCount === 1 ? 'post' : 'post'}
+                  {tagDettaglio.followerCount > 0 && ` · ${tagDettaglio.followerCount} follower`}
+                </span>
+              </div>
+              <div className="social-tag-header-azioni">
+                {isLoggedIn && (
+                  <button
+                    type="button"
+                    className={`btn ${tagDettaglio.isFollowing ? 'btn-ghost' : 'btn-primary'}`}
+                    onClick={gestisciToggleSeguiTag}
+                    style={{ fontSize: '0.78rem', padding: '0.4rem 0.9rem' }}
+                  >
+                    {tagDettaglio.isFollowing ? t('community.tag.seguito') : t('community.tag.segui')}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => { setTagAttivo(null); setPagina(1); }}
+                  style={{ fontSize: '0.78rem', padding: '0.4rem 0.9rem' }}
+                  aria-label="Rimuovi filtro tag"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+
           {/* Filtri categoria */}
           <motion.div {...entrata(0.26)} className="social-filtri-categorie">
             <button

@@ -22,7 +22,7 @@ export default function Footer() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem' }}>
         {/* Brand */}
         <Link to="/" aria-label={t('nav.aria.logo')} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
-          <img src={LOGO_URL} alt="ANDRYXify" className="footer-logo-img" />
+          <img src={LOGO_URL} alt="ANDRYXify" className="footer-logo-img" width="240" height="52" />
           <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: 0, letterSpacing: '0.2px' }}>
             {t('footer.tagline')}
           </p>

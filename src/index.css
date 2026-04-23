@@ -1,5 +1,58 @@
 /* Fonti caricate in index.html via <link rel="preload"> per ridurre CLS */
 
+/* ════════════════════════════════════════════════════
+   CLS PREVENTION — fallback font metrics override
+   ════════════════════════════════════════════════════
+   Quando un web font carica, le sue metriche (x-height, ascent,
+   advance width) differiscono spesso dal fallback di sistema. Il
+   risultato è un reflow visibile: titoli che si ridimensionano,
+   paragrafi che si rinumerano. Le `@font-face` sotto definiscono
+   font fittizi che usano un font di sistema MA con `size-adjust`
+   e `ascent/descent` overrides calibrati sui web font reali.
+
+   Metodologia di calcolo dei valori (non sono arbitrari):
+     • size-adjust: rapporto medio tra advance-width del web font
+       e quello di Arial, misurato con il Font Style Matcher di
+       Monica Dinculescu (https://meowni.ca/font-style-matcher/).
+       Outfit è leggermente più stretto → 96%; Inter più largo → 107%;
+       Space Grotesk simile → 102%.
+     • ascent-override / descent-override: presi direttamente dai
+       `unitsPerEm` e `sTypoAscender`/`sTypoDescender` del file font
+       reale, normalizzati a percentuale (es. Outfit ha ascender 950
+       su 1000 unitsPerEm → 95%).
+     • line-gap-override: 0% perché i font moderni usano line-gap
+       tipografico minimo, e qualunque gap aggiuntivo causerebbe
+       differenze in altezza riga visibili.
+
+   Browser supportati: Chrome 87+, Firefox 89+, Safari 17+ (~95%
+   utenza). Sui browser senza supporto è no-op (degrada silenzio).
+   Vedi web.dev/css-size-adjust + Lighthouse "Avoid layout shifts".
+   ════════════════════════════════════════════════════ */
+@font-face {
+  font-family: 'Outfit-fallback';
+  src: local('Arial');
+  size-adjust: 96%;
+  ascent-override: 95%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Inter-fallback';
+  src: local('Arial');
+  size-adjust: 107%;
+  ascent-override: 90%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'SpaceGrotesk-fallback';
+  src: local('Arial');
+  size-adjust: 102%;
+  ascent-override: 92%;
+  descent-override: 23%;
+  line-gap-override: 0%;
+}
+
 /* ═══════════════════════════════════════════════════
    ANDRYXify — Design System v4
    "Liquid Glass" — Apple WWDC 2025 / iOS 26
@@ -101,7 +154,7 @@ html {
 }
 
 body {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit', 'Outfit-fallback', sans-serif;
   background-color: var(--bg-dark);
   color: var(--text-main);
   min-height: 100svh;
@@ -487,7 +540,7 @@ button.nav-tema-toggle {
   font-weight: 700;
   font-size: 0.95rem;
   letter-spacing: -0.01em;
-  font-family: 'Space Grotesk', 'Outfit', sans-serif;
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', 'Outfit-fallback', sans-serif;
 }
 
 .premio-desc {
@@ -567,7 +620,7 @@ button.nav-tema-toggle {
   font-weight: 700;
   font-size: 0.88rem;
   letter-spacing: -0.01em;
-  font-family: 'Space Grotesk', 'Outfit', sans-serif;
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', 'Outfit-fallback', sans-serif;
 }
 
 .msg-feature-desc {
@@ -620,7 +673,7 @@ button.nav-tema-toggle {
 
 /* Headline principale hero */
 .hero-title {
-  font-family: 'Space Grotesk', 'Outfit', sans-serif;
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', 'Outfit-fallback', sans-serif;
   font-size: clamp(3.2rem, 10vw, 6.4rem);
   font-weight: 800;
   letter-spacing: -3px;
@@ -632,6 +685,8 @@ button.nav-tema-toggle {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  /* CLS prevention: riserva l'altezza minima per evitare reflow al swap del web font */
+  min-height: clamp(3.2rem, 10vw, 6.4rem);
 }
 
 .hero-title-ify {
@@ -642,7 +697,7 @@ button.nav-tema-toggle {
 }
 
 .title {
-  font-family: 'Space Grotesk', 'Outfit', sans-serif;
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', 'Outfit-fallback', sans-serif;
   font-size: clamp(2.4rem, 6vw, 3.8rem);
   font-weight: 700;
   letter-spacing: -2px;
@@ -700,7 +755,7 @@ button.nav-tema-toggle {
 .link-content { display: flex; flex-direction: column; gap: 3px; }
 
 .link-title { font-weight: 700; font-size: 0.95rem; }
-.link-desc  { font-size: 0.78rem; color: var(--text-muted); font-family: 'Inter', sans-serif; }
+.link-desc  { font-size: 0.78rem; color: var(--text-muted); font-family: 'Inter', 'Inter-fallback', sans-serif; }
 
 /* ═══════════════════════════════════════════════════
    CHIPS / BADGES
@@ -792,7 +847,7 @@ button.nav-tema-toggle {
   padding: 0.6rem 1.5rem;
   min-height: 44px;
   border-radius: var(--r-full);
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit', 'Outfit-fallback', sans-serif;
   font-weight: 700;
   font-size: .88rem;
   text-decoration: none;
@@ -941,7 +996,7 @@ button.nav-tema-toggle {
   background: rgba(255, 184, 108, 0.10);
   color: var(--accent-warm);
   border: 1px solid rgba(255, 184, 108, 0.32);
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit', 'Outfit-fallback', sans-serif;
   font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
@@ -1008,7 +1063,7 @@ button.nav-tema-toggle {
   text-align: center;
   color: var(--text-muted);
   font-size: 0.85rem;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Inter', 'Inter-fallback', sans-serif;
 }
 
 .footer-social-btn {
@@ -1025,7 +1080,7 @@ button.nav-tema-toggle {
    ═══════════════════════════════════════════════════ */
 
 .section-title {
-  font-family: 'Space Grotesk', 'Outfit', sans-serif;
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', 'Outfit-fallback', sans-serif;
   font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -.5px;
@@ -1487,7 +1542,7 @@ nav.navbar-container.glass-panel {
 }
 
 .tab-label {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit', 'Outfit-fallback', sans-serif;
   font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.10px;
@@ -2318,14 +2373,14 @@ body {
 
 /* ═══════════════════════════════════════════════════
    SOCIALify — Forum / Bacheca sociale
-   Mobile-first, touch-optimized, glass design
+   Redesign: Twitter-style card, categoria accent, pill actions, thread replies
    ═══════════════════════════════════════════════════ */
 
 /* ── Avatar ── */
 .social-avatar {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   border-radius: 50%;
   overflow: hidden;
   display: flex;
@@ -2334,6 +2389,10 @@ body {
   background: var(--surface-2);
   color: var(--text-faint);
   flex-shrink: 0;
+  /* Ring colorato dalla categoria — passa --cat-color sul genitore */
+  outline: 2px solid var(--cat-color, rgba(255,255,255,0.07));
+  outline-offset: 2px;
+  transition: outline-color 0.2s;
 }
 
 .social-avatar img {
@@ -2343,42 +2402,79 @@ body {
   object-fit: cover;
 }
 
-.social-avatar-piccolo { width: 32px; height: 32px; min-width: 32px; }
-.social-avatar-grande  { width: 44px; height: 44px; min-width: 44px; }
+.social-avatar-piccolo {
+  width: 32px; height: 32px; min-width: 32px;
+  outline-width: 1.5px;
+}
+.social-avatar-grande {
+  width: 50px; height: 50px; min-width: 50px;
+  outline-width: 2.5px;
+}
 
-/* ── Scheda post ── */
+/* ════════════════════════════════════════
+   SCHEDA POST — redesign card
+   ════════════════════════════════════════ */
 .social-scheda-post {
   display: block;
   text-decoration: none;
   color: inherit;
-  padding: 1rem 1.1rem;
-  transition: transform 0.18s var(--ease-glass), box-shadow 0.18s var(--ease-glass);
+  padding: 1.15rem 1.25rem 0.95rem;
+  /* Accent border sinistra colorata per categoria */
+  border-left: 3px solid var(--cat-color, rgba(130,170,240,0.18));
+  transition:
+    transform 0.22s var(--ease-glass),
+    box-shadow 0.22s var(--ease-glass),
+    border-left-color 0.22s,
+    background 0.22s;
   -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
 }
 
+/* Glow accent che cresce da sinistra al hover */
+.social-scheda-post::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 80px;
+  background: linear-gradient(90deg, var(--cat-color, rgba(130,170,240,0.16)) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.25s var(--ease-glass);
+  pointer-events: none;
+  filter: blur(14px);
+}
+
+.social-scheda-post:hover::before { opacity: 0.18; }
+
+/* Header: avatar + meta (nome, chip, tempo) */
 .social-scheda-riga {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: flex-start;
 }
 
-.social-scheda-corpo {
+/* Meta accanto all'avatar */
+.social-scheda-meta {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.social-scheda-intestazione {
+/* Riga autore + chip + add-friend */
+.social-autore-riga {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  margin-bottom: 3px;
 }
 
 .social-autore {
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   color: var(--text-main);
+  white-space: nowrap;
 }
 
 .social-tempo {
@@ -2389,61 +2485,112 @@ body {
   gap: 3px;
 }
 
+/* Chip categoria: inline nella riga autore */
 .social-chip-categoria {
-  font-size: 0.62rem;
-  padding: 2px 7px;
-  margin-left: auto;
+  font-size: 0.61rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
   flex-shrink: 0;
 }
 
-.social-titolo-post {
-  font-size: 0.95rem;
+/* Chip solo-amici */
+.social-chip-amici {
+  font-size: 0.61rem;
   font-weight: 700;
-  margin: 0 0 4px;
-  line-height: 1.35;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  background: rgba(130, 170, 240, 0.14);
+  color: rgba(160, 200, 255, 0.9);
+  border: 1px solid rgba(130, 170, 240, 0.28);
+}
+
+/* Contenuto post (titolo + body + media + azioni) indentato sotto avatar */
+.social-scheda-contenuto {
+  padding-left: 56px; /* 44px avatar + 12px gap */
+  margin-top: 6px;
+}
+
+/* Retrocompatibilità: .social-scheda-corpo usato nel thread view */
+.social-scheda-corpo {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Retrocompatibilità: vecchio stile intestazione usato nel thread view */
+.social-scheda-intestazione {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.social-titolo-post {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 5px;
+  line-height: 1.38;
   color: var(--text-main);
+  letter-spacing: -0.01em;
 }
 
 .social-anteprima-testo {
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   color: var(--text-muted);
-  line-height: 1.5;
+  line-height: 1.55;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
-  margin: 0;
+  margin: 0 0 8px;
 }
 
-/* ── Azioni (mi piace, risposte) ── */
+/* ── Azioni pill ── */
 .social-azioni-riga {
   display: flex;
-  gap: 14px;
-  margin-top: 8px;
+  gap: 6px;
+  margin-top: 10px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .social-btn-azione {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   font-size: 0.78rem;
   color: var(--text-faint);
-  background: none;
-  border: none;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: var(--r-sm);
-  transition: color 0.15s, background 0.15s;
+  padding: 5px 12px;
+  border-radius: 999px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, transform 0.1s;
   -webkit-tap-highlight-color: transparent;
-  min-height: 32px;
+  min-height: 30px;
+  font-family: inherit;
 }
 
-.social-btn-azione:hover,
-.social-btn-azione:active {
+.social-btn-azione:hover {
   color: var(--text-muted);
-  background: var(--surface-1);
+  background: rgba(255,255,255,0.09);
+  border-color: rgba(255,255,255,0.14);
+}
+
+.social-btn-azione:active {
+  transform: scale(0.94);
+}
+
+/* Azione "Mi piace" — accent quando attivo */
+.social-btn-azione--liked {
+  color: var(--accent, #e040fb);
+  border-color: rgba(224,64,251,0.25);
+  background: rgba(224,64,251,0.07);
 }
 
 /* ── Bottone aggiungi amico (inline nei post) ── */
@@ -2453,6 +2600,9 @@ body {
   font-size: 0.72rem;
   border-radius: var(--r-full);
   color: var(--text-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
   transition: color 0.15s, transform 0.15s;
 }
 
@@ -2547,17 +2697,410 @@ body {
 .social-lista-post {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.55rem;
 }
 
 .social-skeleton {
-  height: 110px;
+  /* Altezza vicina ai post reali per evitare layout shift al primo load.
+     Un post tipico fa ~280-320px (header + corpo + azioni). */
+  height: 280px;
   border-radius: var(--r-md);
 }
 
 .social-vuoto {
   text-align: center;
   padding: 2.5rem 1.5rem;
+}
+
+/* ════════════════════════════════════════════════════
+   SISTEMA TAG SMART
+   ════════════════════════════════════════════════════ */
+
+/* ── Strip in cima al feed: Macro / Trending / Following ── */
+.tag-strip {
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  /* CLS prevention: riserva altezza minima anche durante caricamento */
+  min-height: 84px;
+}
+.tag-strip-skeleton {
+  height: 64px;
+  border-radius: var(--r-sm);
+}
+.tag-strip-riga {
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+}
+.tag-strip-intestazione {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.1rem;
+}
+.tag-strip-titolo {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-family: 'Outfit', 'Outfit-fallback', sans-serif;
+}
+.tag-strip-link {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.68rem;
+  color: var(--text-faint);
+  text-decoration: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  transition: color .15s, background .15s;
+}
+.tag-strip-link:hover { color: var(--text-main); background: var(--surface-1); }
+.tag-strip-scroll {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-bottom: 2px;          /* spazio per il bordo bottom dei chip */
+}
+.tag-strip-scroll::-webkit-scrollbar { display: none; }
+.tag-strip-vuoto {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+  padding: 0.4rem 0.2rem;
+}
+
+/* ── TagChip: chip individuale con conteggio post ── */
+.tag-chip {
+  --tag-color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px 5px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tag-color) 11%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tag-color) 22%, transparent);
+  color: var(--tag-color);
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s, transform .12s;
+  flex-shrink: 0;
+  font-family: 'Outfit', 'Outfit-fallback', sans-serif;
+}
+.tag-chip:hover {
+  background: color-mix(in srgb, var(--tag-color) 18%, transparent);
+  border-color: color-mix(in srgb, var(--tag-color) 36%, transparent);
+  transform: translateY(-1px);
+}
+.tag-chip:active { transform: translateY(0); }
+.tag-chip-emoji { font-size: 0.85rem; line-height: 1; }
+.tag-chip-conteggio {
+  font-size: 0.66rem;
+  font-weight: 700;
+  opacity: 0.7;
+  background: color-mix(in srgb, var(--tag-color) 16%, transparent);
+  padding: 1px 6px;
+  border-radius: 999px;
+  margin-left: 2px;
+}
+.tag-chip--compact {
+  padding: 3px 8px 3px 7px;
+  font-size: 0.7rem;
+  --tag-color: var(--text-muted);
+  background: var(--surface-1);
+  border-color: var(--glass-border);
+}
+.tag-chip--compact:hover {
+  --tag-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 28%, transparent);
+}
+
+/* ── Tag chips sotto il post (riga inline) ── */
+.social-post-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 0.55rem;
+  margin-bottom: 0.4rem;
+}
+
+/* ── Header del filtro tag attivo (sopra il feed) ── */
+.social-tag-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.1rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.social-tag-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.social-tag-header-slug {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--primary);
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', sans-serif;
+  letter-spacing: -0.5px;
+}
+.social-tag-header-stats {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.social-tag-header-azioni {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── TagInput: chip input nell'editor ── */
+.tag-input-contenitore {
+  position: relative;
+}
+.social-tag-input-wrapper {
+  margin-bottom: 0.65rem;
+}
+.social-tag-input-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.social-tag-input-info {
+  color: var(--text-faint);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: color .15s;
+}
+.social-tag-input-info:hover { color: var(--primary); }
+
+.tag-input-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0.5rem 0.65rem;
+  background: var(--surface-1);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-sm);
+  min-height: 42px;
+  transition: border-color .15s, background .15s;
+}
+.tag-input-chips:focus-within {
+  border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+  background: color-mix(in srgb, var(--primary) 4%, var(--surface-1));
+}
+.tag-input-icona {
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+.tag-input-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 9px;
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
+  color: var(--primary);
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  font-family: 'Outfit', 'Outfit-fallback', sans-serif;
+}
+.tag-input-chip-rimuovi {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: opacity .15s, background .15s;
+}
+.tag-input-chip-rimuovi:hover {
+  opacity: 1;
+  background: rgba(255,255,255,0.12);
+}
+.tag-input-campo {
+  flex: 1;
+  min-width: 110px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-main);
+  font-size: 0.85rem;
+  padding: 4px 2px;
+  font-family: inherit;
+}
+.tag-input-campo::placeholder { color: var(--text-faint); }
+.tag-input-contatore {
+  font-size: 0.66rem;
+  color: var(--text-faint);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.tag-input-suggerimenti {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.tag-input-suggerimento {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-main);
+  font-size: 0.82rem;
+  transition: background .12s;
+}
+.tag-input-suggerimento:hover,
+.tag-input-suggerimento--attivo {
+  background: var(--surface-2);
+}
+.tag-input-suggerimento-slug { font-weight: 600; }
+.tag-input-suggerimento-stat {
+  font-size: 0.7rem;
+  color: var(--text-faint);
+}
+
+/* ── Pagina informativa tag (TagInfoPage) ── */
+.tag-info-lista {
+  list-style: none;
+  padding: 0;
+  margin: 0.85rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.tag-info-lista li {
+  padding: 0.55rem 0.75rem;
+  background: var(--surface-1);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-xs);
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+.tag-info-lista li strong { color: var(--text-main); }
+
+.tag-info-tecnica {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  background: color-mix(in srgb, var(--secondary) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--secondary) 18%, transparent);
+  border-radius: var(--r-sm);
+}
+.tag-info-tecnica-titolo {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--secondary);
+  margin-bottom: 0.5rem;
+}
+.tag-info-tecnica .tag-info-lista li {
+  background: rgba(0,0,0,0.18);
+  border-color: rgba(0,229,255,0.10);
+  font-family: 'Inter', 'Inter-fallback', sans-serif;
+}
+
+.tag-info-milestones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+.tag-info-milestone {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0.85rem 1rem;
+  background: color-mix(in srgb, var(--accent-warm) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-warm) 22%, transparent);
+  border-radius: var(--r-sm);
+}
+.tag-info-milestone-soglia {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--accent-warm);
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', sans-serif;
+}
+.tag-info-milestone-xp {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-main);
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', sans-serif;
+  letter-spacing: -0.5px;
+}
+.tag-info-milestone-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.tag-info-griglia {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.85rem;
+  margin-top: 1rem;
+}
+.tag-info-card {
+  padding: 1rem 1.1rem;
+  background: var(--surface-1);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.tag-info-card h3 {
+  font-size: 0.95rem;
+  margin: 0;
+  font-weight: 700;
+  font-family: 'Outfit', 'Outfit-fallback', sans-serif;
+}
+.tag-info-card p {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.55;
 }
 
 /* ── Paginazione ── */
@@ -2608,7 +3151,7 @@ body {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 800;
-  font-family: 'Space Grotesk', 'Outfit', sans-serif;
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', 'Outfit-fallback', sans-serif;
 }
 
 .social-categorie-griglia {
@@ -2622,7 +3165,7 @@ body {
   width: 100%;
   padding: 0.7rem 0.9rem;
   margin-bottom: 0.6rem;
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit', 'Outfit-fallback', sans-serif;
   font-size: 0.88rem;
   color: var(--text-main);
   background: var(--surface-1);
@@ -2666,7 +3209,10 @@ body {
   flex: 1;
 }
 
-/* ── Vista thread ── */
+/* ════════════════════════════════════════
+   VISTA THREAD — post principale + risposte
+   ════════════════════════════════════════ */
+
 .social-link-indietro {
   display: inline-flex;
   gap: 6px;
@@ -2677,60 +3223,87 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Post principale nel thread: più spazioso, con accent border */
 .social-post-principale {
-  padding: 1.2rem;
+  padding: 1.3rem 1.4rem 1.1rem;
+  border-left: 3.5px solid var(--cat-color, rgba(130,170,240,0.14));
+  position: relative;
 }
 
 .social-titolo-thread {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   font-weight: 800;
-  margin: 0 0 4px;
+  margin: 0.85rem 0 0.5rem;
   line-height: 1.3;
-  font-family: 'Space Grotesk', 'Outfit', sans-serif;
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', 'Outfit-fallback', sans-serif;
+  letter-spacing: -0.02em;
 }
 
 .social-corpo-thread {
-  margin-top: 1rem;
+  margin-top: 0;
   font-size: 0.9rem;
   color: var(--text-muted);
-  line-height: 1.7;
+  line-height: 1.75;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .social-azioni-thread {
   display: flex;
-  gap: 12px;
-  margin-top: 1rem;
-  padding-top: 0.85rem;
+  gap: 8px;
+  margin-top: 1.1rem;
+  padding-top: 0.9rem;
   border-top: 1px solid var(--glass-border);
   align-items: center;
+  flex-wrap: wrap;
 }
 
-/* ── Risposte ── */
+/* ── Sezione risposte ── */
 .social-intestazione-risposte {
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 700;
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.85rem;
   display: flex;
   align-items: center;
   gap: 8px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .social-lista-risposte {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 8px;
 }
 
+/* Risposta come card indentata con thread-line */
 .social-risposta {
-  padding: 0.75rem 0.85rem;
-  border-radius: var(--r-sm);
-  transition: background 0.15s;
+  padding: 0.9rem 1rem;
+  background: rgba(255,255,255,0.024);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  border-left: 2px solid rgba(130,170,240,0.10);
+  margin-left: 10px;
+  transition: background 0.15s, border-left-color 0.15s;
+  position: relative;
+}
+
+.social-risposta::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 20px;
+  bottom: 50%;
+  width: 10px;
+  border-left: 2px solid rgba(130,170,240,0.10);
+  border-bottom: 2px solid rgba(130,170,240,0.10);
+  border-bottom-left-radius: 6px;
+  pointer-events: none;
 }
 
 .social-risposta:hover {
-  background: var(--surface-1);
+  background: rgba(255,255,255,0.05);
+  border-left-color: rgba(130,170,240,0.28);
 }
 
 .social-risposta-riga {
@@ -2747,14 +3320,15 @@ body {
 .social-risposta-intestazione {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 7px;
+  margin-bottom: 5px;
+  flex-wrap: wrap;
 }
 
 .social-testo-risposta {
-  font-size: 0.85rem;
+  font-size: 0.87rem;
   color: var(--text-muted);
-  line-height: 1.6;
+  line-height: 1.65;
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
@@ -2762,32 +3336,67 @@ body {
 
 .social-nessuna-risposta {
   text-align: center;
-  padding: 1.5rem;
+  padding: 2rem 1.5rem;
   color: var(--text-faint);
   font-size: 0.85rem;
+  background: rgba(255,255,255,0.018);
+  border-radius: var(--r-md);
+  border: 1px dashed rgba(255,255,255,0.08);
 }
 
+/* ── Form risposta ── */
 .social-form-risposta {
-  padding: 0.85rem 1rem;
+  padding: 1rem 1.1rem;
 }
 
 .social-form-risposta-riga {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: flex-end;
 }
 
 .social-btn-invia {
   font-size: 0.82rem;
-  padding: 0.5rem 0.85rem;
+  padding: 0.5rem 0.9rem;
   flex-shrink: 0;
 }
 
-/* ── Desktop: scheda post hover ── */
+/* ═══════════════════════════════════════
+   TAG MENZIONE (@username) — chip inline nel testo renderizzato
+   ═══════════════════════════════════════ */
+.tag-menzione {
+  display: inline;
+  color: var(--primary, #7c86ff);
+  font-weight: 600;
+  cursor: default;
+  border-radius: 4px;
+  padding: 0 2px;
+  transition: background 0.15s;
+}
+.tag-menzione:hover {
+  background: rgba(124,134,255,0.12);
+}
+
+/* Dropdown menzione — stilizzato come glass-panel */
+.menzione-dropdown {
+  box-shadow: 0 8px 32px rgba(8,12,48,0.55);
+  border: 1.5px solid rgba(130,170,240,0.16) !important;
+}
+.menzione-voce {
+  color: var(--text-main);
+  font-family: inherit;
+}
+.menzione-voce:hover,
+.menzione-voce[data-focus='true'] {
+  background: rgba(130,170,240,0.16) !important;
+}
+
+/* ── Desktop ── */
 @media (min-width: 641px) and (hover: hover) {
   .social-scheda-post:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.30);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.28);
+    border-left-color: var(--cat-color, var(--primary));
   }
 
   .social-editor-sfondo {
@@ -2801,11 +3410,19 @@ body {
   }
 
   .social-post-principale {
-    padding: 1.5rem 1.6rem;
+    padding: 1.6rem 1.8rem 1.3rem;
   }
 
   .social-titolo-thread {
-    font-size: 1.3rem;
+    font-size: 1.38rem;
+  }
+
+  .social-scheda-contenuto {
+    padding-left: 62px; /* 50px avatar-grande + 12px gap */
+  }
+
+  .social-risposta {
+    margin-left: 14px;
   }
 }
 
@@ -3257,7 +3874,7 @@ body {
   border-radius: var(--r-full);
   font-size: 0.82rem;
   font-weight: 600;
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit', 'Outfit-fallback', sans-serif;
   color: var(--text-muted);
   background: transparent;
   border: none;
@@ -3341,7 +3958,7 @@ body {
   background: rgba(0, 0, 0, 0.25);
   color: var(--text-main);
   font-size: 0.88rem;
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit', 'Outfit-fallback', sans-serif;
   transition: border-color 0.2s, box-shadow 0.2s;
   outline: none;
 }
@@ -3391,7 +4008,7 @@ body {
   border-radius: var(--r-full);
   font-size: 0.75rem;
   font-weight: 600;
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit', 'Outfit-fallback', sans-serif;
   background: rgba(0, 0, 0, 0.2);
   color: var(--text-muted);
   border: 1px solid var(--glass-border);
@@ -3434,7 +4051,7 @@ body {
   background: rgba(0, 229, 255, 0.08);
   padding: 0.15rem 0.5rem;
   border-radius: 6px;
-  font-family: 'Space Grotesk', monospace;
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', monospace;
 }
 
 .mod-chip-permission {
@@ -4947,7 +5564,7 @@ img.msg-avatar {
 
 /* ── Titolo sezione con accento gradient ── */
 .section-title-gradient {
-  font-family: 'Space Grotesk', 'Outfit', sans-serif;
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', 'Outfit-fallback', sans-serif;
   font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -.5px;

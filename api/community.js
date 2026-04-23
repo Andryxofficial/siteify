@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { GENERAL_KEY, getMonthlyKey, getCurrentSeason, getLevel, getDecayedXp, getContentQualityMultiplier, getProfanityPenalty, censorProfanity } from './social-leaderboard.js';
+import { normalizeTagList, indexPostTags, getPostTags, unindexPostTags, maybeAwardTagMilestones } from './_tagSystem.js';
 
 /**
  * Community API — Custom forum for ANDRYXify
@@ -25,6 +26,7 @@ import { GENERAL_KEY, getMonthlyKey, getCurrentSeason, getLevel, getDecayedXp, g
  */
 
 const VALID_TAGS = ['generale', 'giochi', 'stream', 'tech', 'meme', 'suggerimenti'];
+const VALID_VISIBILITIES = ['public', 'friends'];
 const VALID_MEDIA_TYPES = ['video', 'audio', ''];
 const MAX_TITLE = 120;
 const MAX_BODY = 2000;
@@ -54,6 +56,16 @@ function getEngagementMultiplier(likeCount, replyCount) {
   return 1.0;
 }
 
+/**
+ * Ritorna true se il viewer può vedere il post.
+ * Post friends-only: visibili solo all'autore e ai suoi amici autenticati.
+ */
+function canSeePost(post, viewerLogin, viewerFriends) {
+  if (post.visibility !== 'friends') return true;
+  if (!viewerLogin) return false;
+  return post.author === viewerLogin || viewerFriends.has(post.author);
+}
+
 /** Award XP to a user on both the monthly and general leaderboards. */
 async function awardXp(redis, username, xp) {
   if (!username || xp <= 0) return;
@@ -72,6 +84,22 @@ function sanitize(str, maxLen) {
   if (typeof str !== 'string') return '';
   // eslint-disable-next-line no-control-regex
   return str.trim().slice(0, maxLen).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+}
+
+/**
+ * Helper: i tag liberi sono salvati in `post.tags` come JSON string.
+ * Questo helper li ritorna come array di slug. Difensivo verso shape legacy.
+ */
+function parsePostTags(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter(t => typeof t === 'string');
+  if (typeof raw !== 'string') return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter(t => typeof t === 'string') : [];
+  } catch {
+    return [];
+  }
 }
 
 async function validateTwitch(authHeader) {
@@ -166,6 +194,22 @@ export default async function handler(req, res) {
         if (!post || !post.id) {
           return res.status(404).json({ error: 'Post non trovato.' });
         }
+
+        // Controllo visibilità per post solo-amici
+        if (post.visibility === 'friends') {
+          const authHeader = req.headers.authorization;
+          const viewer = authHeader?.startsWith('Bearer ') ? await validateTwitch(authHeader) : null;
+          if (!viewer) {
+            return res.status(403).json({ error: 'Questo post è visibile solo agli amici dell\'autore.' });
+          }
+          if (viewer.login !== post.author) {
+            const isFriend = await redis.sismember(`friends:${viewer.login}`, post.author);
+            if (!isFriend) {
+              return res.status(403).json({ error: 'Questo post è visibile solo agli amici dell\'autore.' });
+            }
+          }
+        }
+
         let liked = false;
         const authHeader = req.headers.authorization;
         if (authHeader?.startsWith('Bearer ')) {
@@ -177,6 +221,7 @@ export default async function handler(req, res) {
         return res.status(200).json({
           post: {
             ...post,
+            tags: parsePostTags(post.tags),
             replyCount: Number(post.replyCount || 0),
             likeCount: Number(post.likeCount || 0),
             liked,
@@ -189,55 +234,69 @@ export default async function handler(req, res) {
       const tag = req.query?.tag;
       const user = req.query?.user;
       const start = (page - 1) * limit;
-      const end = start + limit - 1;
 
       let sourceKey = 'community:timeline';
-      if (tag && VALID_TAGS.includes(tag)) {
+      const slugParam = req.query?.slug;
+      if (slugParam && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(slugParam) && slugParam.length <= 24) {
+        // Filtro per tag libero (nuovo sistema)
+        sourceKey = `tag:${slugParam}`;
+      } else if (tag && VALID_TAGS.includes(tag)) {
         sourceKey = `community:tag:${tag}`;
       } else if (user) {
         sourceKey = `community:user:${sanitize(user, 50)}`;
       }
 
-      // Get post IDs (newest first)
-      const postIds = await redis.zrange(sourceKey, start, end, { rev: true });
-      const total = await redis.zcard(sourceKey);
+      // Fetch un buffer generoso per compensare i post filtrati per visibilità
+      const FETCH_BUFFER = 200;
+      const allIds = await redis.zrange(sourceKey, 0, FETCH_BUFFER - 1, { rev: true });
 
-      if (!postIds || postIds.length === 0) {
-        return res.status(200).json({ posts: [], total, page, pages: Math.ceil(total / limit) });
+      if (!allIds || allIds.length === 0) {
+        return res.status(200).json({ posts: [], total: 0, page, pages: 1 });
       }
 
       // Fetch all post hashes in parallel
-      const posts = await Promise.all(
-        postIds.map(id => redis.hgetall(`community:post:${id}`))
+      const allPosts = await Promise.all(
+        allIds.map(id => redis.hgetall(`community:post:${id}`))
       );
 
-      // Check likes for current user if authenticated
+      // Determina viewer e i suoi amici (un solo hset read per request)
+      let viewerLogin = null;
+      let viewerFriends = new Set();
       let userLikes = {};
       const authHeader = req.headers.authorization;
       if (authHeader?.startsWith('Bearer ')) {
         const twitchUser = await validateTwitch(authHeader);
         if (twitchUser) {
-          const likeChecks = await Promise.all(
-            postIds.map(id => redis.sismember(`community:likes:${id}`, twitchUser.login))
-          );
-          postIds.forEach((id, i) => { userLikes[id] = !!likeChecks[i]; });
+          viewerLogin = twitchUser.login;
+          const [friendsList, likeChecks] = await Promise.all([
+            redis.smembers(`friends:${viewerLogin}`),
+            Promise.all(allIds.map(id => redis.sismember(`community:likes:${id}`, viewerLogin))),
+          ]);
+          viewerFriends = new Set(friendsList || []);
+          allIds.forEach((id, i) => { userLikes[id] = !!likeChecks[i]; });
         }
       }
 
-      const result = posts
+      // Filtra per visibilità, poi pagina
+      const visible = allPosts
         .filter(p => p && p.id)
+        .filter(p => canSeePost(p, viewerLogin, viewerFriends))
         .map(p => ({
           ...p,
+          tags: parsePostTags(p.tags),
           replyCount: Number(p.replyCount || 0),
           likeCount: Number(p.likeCount || 0),
           liked: !!userLikes[p.id],
         }));
 
+      const total = visible.length;
+      const paginated = visible.slice(start, start + limit);
+
       return res.status(200).json({
-        posts: result,
+        posts: paginated,
         total,
         page,
-        pages: Math.ceil(total / limit),
+        pages: Math.ceil(total / limit) || 1,
       });
     } catch (e) {
       console.error('Community GET error:', e);
@@ -253,19 +312,34 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Devi effettuare il login con Twitch.' });
       }
 
-      const { title: rawTitle, body: rawBody, tag: rawTag, mediaUrl: rawMediaUrl, mediaType: rawMediaType } = req.body || {};
+      const { title: rawTitle, body: rawBody, tag: rawTag, tags: rawTags, mediaUrl: rawMediaUrl, mediaType: rawMediaType, mediaId: rawMediaId, visibility: rawVisibility } = req.body || {};
 
       const title = censorProfanity(sanitize(rawTitle, MAX_TITLE));
       const body = censorProfanity(sanitize(rawBody, MAX_BODY));
       const tag = VALID_TAGS.includes(rawTag) ? rawTag : 'generale';
+      const visibility = VALID_VISIBILITIES.includes(rawVisibility) ? rawVisibility : 'public';
 
-      // Validate media (optional)
+      // ── Sistema tag libero ──
+      // Accetta `tags: string[]` (massimo 5) + auto-include il tag categoria classica
+      // come tag di default per backward compat. Validazione + anti-spam in _tagSystem.
+      const userTagsRaw = Array.isArray(rawTags) ? rawTags : [];
+      // Includi il tag categoria classico come tag di default (es. 'generale', 'giochi'...)
+      const allRawTags = [tag, ...userTagsRaw];
+      const tagResult = normalizeTagList(allRawTags);
+      const acceptedTags = tagResult.accepted;   // [{ slug, status }]
+      const rejectedTags = tagResult.rejected;   // [{ raw, reason }]
+
+      // Media allegato tramite upload reale (mediaId da /api/community-media)
+      let mediaId = '';
       let mediaUrl = '';
       let mediaType = '';
-      if (rawMediaUrl) {
+      if (rawMediaId) {
+        mediaId  = sanitize(rawMediaId, 100);
+        mediaType = ['image', 'audio', 'video'].includes(rawMediaType) ? rawMediaType : '';
+      } else if (rawMediaUrl) {
+        // Backward compat: accetta ancora URL HTTPS (legacy)
         mediaUrl = sanitize(rawMediaUrl, MAX_MEDIA_URL);
         mediaType = VALID_MEDIA_TYPES.includes(rawMediaType) ? rawMediaType : '';
-        // Basic URL validation — must be a valid HTTPS URL
         if (mediaUrl) {
           try {
             const parsed = new URL(mediaUrl);
@@ -305,8 +379,11 @@ export default async function handler(req, res) {
         title,
         body,
         tag,
+        tags: JSON.stringify(acceptedTags.map(t => t.slug)),
+        visibility,
         mediaUrl,
         mediaType,
+        mediaId,
         createdAt: now,
         replyCount: 0,
         likeCount: 0,
@@ -319,6 +396,20 @@ export default async function handler(req, res) {
         redis.zadd(`community:tag:${tag}`, { score: now, member: id }),
         redis.zadd(`community:user:${twitchUser.login}`, { score: now, member: id }),
         redis.set(rlKey, '1', { ex: RATE_LIMIT_SECONDS }),
+        /* Indice mention: aggiorna score (più recente = priorità maggiore) */
+        redis.zadd('users:mention', { score: now, member: twitchUser.login }),
+        redis.hset(`users:mention:meta:${twitchUser.login}`, {
+          displayName: twitchUser.displayName,
+          avatar:      twitchUser.avatar || '',
+          updatedAt:   now,
+        }),
+        /* Indice tag liberi (sistema smart) */
+        indexPostTags(redis, {
+          postId: id,
+          tags: acceptedTags,
+          creatorLogin: twitchUser.login,
+          ts: now,
+        }),
       ]);
 
       // Award XP for creating a post — quality-adjusted, profanity-penalized, with diminishing returns
@@ -331,10 +422,25 @@ export default async function handler(req, res) {
           const decayedXp = await getDecayedXp(redis, twitchUser.login, 'post', qualityAdjusted);
           const finalXp = Math.max(0, decayedXp + profanityPenalty);
           if (finalXp > 0) await awardXp(redis, twitchUser.login, finalXp);
+
+          // Tag milestones: reward al creatore di un tag che diventa popolare
+          // (idempotente: ogni milestone è concessa una sola volta per (utente, tag))
+          for (const t of acceptedTags) {
+            await maybeAwardTagMilestones(
+              redis,
+              twitchUser.login,
+              t.slug,
+              (login, xp) => awardXp(redis, login, xp),
+            );
+          }
         } catch (e) { console.warn('XP award (post) error:', e); }
       })();
 
-      return res.status(201).json({ post: { ...post, liked: false } });
+      return res.status(201).json({
+        post: { ...post, tags: acceptedTags.map(t => t.slug), liked: false },
+        tagsAccepted: acceptedTags.map(t => t.slug),
+        tagsRejected: rejectedTags,
+      });
     } catch (e) {
       console.error('Community POST error:', e);
       return res.status(500).json({ error: 'Errore nella creazione del post.' });
@@ -436,6 +542,8 @@ export default async function handler(req, res) {
 
       // Clean up all related keys
       const replyIds = await redis.zrange(`community:replies:${postId}`, 0, -1);
+      // Recupera i tag liberi del post per de-indicizzarli
+      const postTagSlugs = await getPostTags(redis, postId);
       const deleteOps = [
         redis.del(postKey),
         redis.del(`community:likes:${postId}`),
@@ -444,7 +552,13 @@ export default async function handler(req, res) {
         redis.zrem(`community:tag:${post.tag}`, postId),
         redis.zrem(`community:user:${post.author}`, postId),
         ...replyIds.map(rid => redis.del(`community:reply:${rid}`)),
+        unindexPostTags(redis, postId, postTagSlugs),
       ];
+      // Elimina media allegato al post (se presente)
+      if (post.mediaId) {
+        deleteOps.push(redis.del(`cm:${post.mediaId}`));
+        deleteOps.push(redis.del(`cm:${post.mediaId}:meta`));
+      }
       await Promise.all(deleteOps);
 
       return res.status(200).json({ deleted: true });

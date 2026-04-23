@@ -135,7 +135,7 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Devi effettuare il login con Twitch.' });
       }
 
-      const { postId, body: rawBody } = req.body || {};
+      const { postId, body: rawBody, mediaId: rawMediaId, mediaType: rawMediaType, parentReplyId: rawParentReplyId } = req.body || {};
 
       if (!postId) {
         return res.status(400).json({ error: 'postId richiesto.' });
@@ -146,10 +146,35 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'La risposta deve avere almeno 2 caratteri.' });
       }
 
+      // Media allegato (opzionale)
+      const mediaId   = rawMediaId  ? sanitize(rawMediaId, 100) : '';
+      const mediaType = ['image', 'audio', 'video'].includes(rawMediaType) ? rawMediaType : '';
+
       // Check parent post exists (and get author for XP)
       const parentPost = await redis.hgetall(`community:post:${postId}`);
       if (!parentPost || !parentPost.id) {
         return res.status(404).json({ error: 'Post non trovato.' });
+      }
+
+      // Parent reply (optional): valida che esista e appartenga allo stesso post
+      let parentReplyId = '';
+      let parentReplySnippet = '';
+      let parentReplyAuthor = '';
+      let parentReplyAuthorDisplay = '';
+      if (rawParentReplyId) {
+        const candidateId = sanitize(String(rawParentReplyId), 32);
+        const parentReply = await redis.hgetall(`community:reply:${candidateId}`);
+        if (!parentReply || !parentReply.id) {
+          return res.status(404).json({ error: 'Risposta originale non trovata.' });
+        }
+        if (String(parentReply.postId) !== String(postId)) {
+          return res.status(400).json({ error: 'La risposta originale non appartiene a questo post.' });
+        }
+        parentReplyId = parentReply.id;
+        // Snippet della risposta originale per visualizzazione "in risposta a"
+        parentReplySnippet = (parentReply.body || '').slice(0, 140);
+        parentReplyAuthor = parentReply.author || '';
+        parentReplyAuthorDisplay = parentReply.authorDisplay || parentReply.author || '';
       }
 
       // Rate limiting
@@ -171,13 +196,28 @@ export default async function handler(req, res) {
         authorDisplay: twitchUser.displayName,
         body,
         createdAt: now,
+        ...(mediaId ? { mediaId, mediaType } : {}),
+        ...(parentReplyId ? {
+          parentReplyId,
+          parentReplyAuthor,
+          parentReplyAuthorDisplay,
+          parentReplySnippet,
+        } : {}),
       };
 
       await Promise.all([
         redis.hset(`community:reply:${id}`, reply),
         redis.zadd(`community:replies:${postId}`, { score: now, member: id }),
+        redis.zadd(`community:user-replies:${twitchUser.login}`, { score: now, member: id }),
         redis.hincrby(`community:post:${postId}`, 'replyCount', 1),
         redis.set(rlKey, '1', { ex: RATE_LIMIT_SECONDS }),
+        /* Indice mention */
+        redis.zadd('users:mention', { score: now, member: twitchUser.login }),
+        redis.hset(`users:mention:meta:${twitchUser.login}`, {
+          displayName: twitchUser.displayName,
+          avatar:      twitchUser.avatar || '',
+          updatedAt:   now,
+        }),
       ]);
 
       // Award XP for writing a reply — quality-adjusted, profanity-penalized, with diminishing returns
@@ -234,6 +274,10 @@ export default async function handler(req, res) {
         redis.del(replyKey),
         redis.zrem(`community:replies:${reply.postId}`, replyId),
         redis.hincrby(`community:post:${reply.postId}`, 'replyCount', -1),
+        ...(reply.mediaId ? [
+          redis.del(`cm:${reply.mediaId}`),
+          redis.del(`cm:${reply.mediaId}:meta`),
+        ] : []),
       ]);
 
       return res.status(200).json({ deleted: true });

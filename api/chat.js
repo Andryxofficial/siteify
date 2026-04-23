@@ -1,4 +1,5 @@
 import { Redis } from '@upstash/redis';
+import { randomUUID } from 'crypto';
 
 /**
  * Chat API — Chat generale della community ANDRYXify
@@ -6,14 +7,27 @@ import { Redis } from '@upstash/redis';
  * Redis data model:
  *   chat:messages              → List (newest first, max 200 entries, each JSON string)
  *   chat:ratelimit:<user>      → String with TTL 3 seconds
+ *   chat:media:<uuid>          → base64 media data (TTL 7 giorni)
+ *   chat:media:<uuid>:meta     → JSON { author, mimeType, name, mediaType, createdAt } (TTL 7 giorni)
  *
- * GET    /api/chat?action=messages&limit=100   → messaggi pubblici (nessuna auth)
- * POST   /api/chat  { action: "send", text }   → invio messaggio (auth richiesta)
+ * GET    /api/chat?action=messages&limit=100      → messaggi pubblici (nessuna auth)
+ * GET    /api/chat?action=media&id=<mediaId>      → scarica media (nessuna auth)
+ * POST   /api/chat  { action: "send", text, mediaId?, mediaType? }   → invio messaggio (auth)
+ * POST   /api/chat  { action: "upload_media", data, mimeType, name } → carica media (auth)
  */
 
-const MAX_MESSAGES = 200;
+export const config = {
+  api: { bodyParser: { sizeLimit: '10mb' } },
+};
+
+const MAX_MESSAGES    = 200;
 const MAX_TEXT_LENGTH = 500;
 const RATE_LIMIT_SECONDS = 3;
+const MAX_MEDIA_SIZE  = 8_000_000; // ~8 MB base64 ≈ 6 MB raw
+const MEDIA_TTL       = 7 * 86400; // 7 giorni (coerente con le ultime ~200 chat)
+const VALID_MIME_PREFIXES = ['image/', 'audio/', 'video/'];
+/* SVG bloccato: può contenere script e abilitare XSS */
+const BLOCKED_MIME_TYPES  = ['image/svg+xml'];
 
 function sanitize(str, maxLen) {
   if (typeof str !== 'string') return '';
@@ -76,6 +90,19 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const action = req.query?.action;
+
+      /* GET media: scarica media allegato a un messaggio (pubblico) */
+      if (action === 'media') {
+        const id = (req.query?.id || '').slice(0, 100).trim();
+        if (!id) return res.status(400).json({ error: 'ID media richiesto.' });
+        const metaRaw = await redis.get(`chat:media:${id}:meta`);
+        if (!metaRaw) return res.status(404).json({ error: 'Media non trovato.' });
+        const meta = typeof metaRaw === 'string' ? JSON.parse(metaRaw) : metaRaw;
+        const data = await redis.get(`chat:media:${id}`);
+        if (!data) return res.status(404).json({ error: 'Media non trovato.' });
+        return res.status(200).json({ data, mimeType: meta.mimeType, name: meta.name, mediaType: meta.mediaType });
+      }
+
       if (action !== 'messages') {
         return res.status(400).json({ error: 'Azione non valida. Usa: action=messages' });
       }
@@ -100,7 +127,7 @@ export default async function handler(req, res) {
     }
   }
 
-  /* ─── POST: invio messaggio ─── */
+  /* ─── POST: invio messaggio o upload media ─── */
   if (req.method === 'POST') {
     const twitchUser = await validateTwitch(req.headers.authorization);
     if (!twitchUser) {
@@ -108,15 +135,42 @@ export default async function handler(req, res) {
     }
 
     try {
-      const { action, text: rawText } = req.body || {};
+      const { action, text: rawText, mediaId: rawMediaId, mediaType: rawMediaType, data, mimeType: rawMime, name: rawName } = req.body || {};
 
+      /* ── Upload media allegato ── */
+      if (action === 'upload_media') {
+        if (!data || typeof data !== 'string') return res.status(400).json({ error: 'Dati media richiesti.' });
+        if (data.length > MAX_MEDIA_SIZE) return res.status(413).json({ error: 'File troppo grande (max ~6 MB).' });
+        const mimeType = (rawMime || '').trim().slice(0, 100);
+        if (!VALID_MIME_PREFIXES.some(p => mimeType.startsWith(p)) || BLOCKED_MIME_TYPES.includes(mimeType)) {
+          return res.status(400).json({ error: 'Tipo MIME non supportato. Usa immagine (non SVG), audio o video.' });
+        }
+        const name      = (rawName || 'file').trim().slice(0, 200);
+        const mediaType = ['image', 'audio', 'video'].includes(rawMediaType) ? rawMediaType : 'image';
+        const mediaId   = randomUUID();
+        const meta = JSON.stringify({ author: twitchUser.login, mimeType, name, mediaType, createdAt: Date.now() });
+        await Promise.all([
+          redis.set(`chat:media:${mediaId}`, data, { ex: MEDIA_TTL }),
+          redis.set(`chat:media:${mediaId}:meta`, meta, { ex: MEDIA_TTL }),
+        ]);
+        return res.status(201).json({ mediaId });
+      }
+
+      /* ── Invio messaggio ── */
       if (action !== 'send') {
         return res.status(400).json({ error: 'Azione non valida. Usa: action=send' });
       }
 
-      const text = sanitize(rawText, MAX_TEXT_LENGTH);
-      if (!text) {
+      const text     = sanitize(rawText || '', MAX_TEXT_LENGTH);
+      const mediaId  = rawMediaId  ? String(rawMediaId).trim().slice(0, 100)  : '';
+      const mediaType = ['image', 'audio', 'video'].includes(rawMediaType) ? rawMediaType : '';
+
+      if (!text && !mediaId) {
         return res.status(400).json({ error: 'Il messaggio non può essere vuoto.' });
+      }
+      /* Se è presente un mediaId, il mediaType deve essere valido */
+      if (mediaId && !mediaType) {
+        return res.status(400).json({ error: 'Tipo media non valido.' });
       }
 
       // Rate limiting
@@ -134,10 +188,19 @@ export default async function handler(req, res) {
         authorDisplay: twitchUser.displayName,
         text,
         createdAt: Date.now(),
+        ...(mediaId ? { mediaId, mediaType } : {}),
       };
 
       await redis.lpush('chat:messages', JSON.stringify(message));
       await redis.ltrim('chat:messages', 0, MAX_MESSAGES - 1);
+
+      /* Indice mention: aggiorna score (più recente = priorità maggiore) — non-bloccante */
+      redis.zadd('users:mention', { score: Date.now(), member: twitchUser.login }).catch(() => {});
+      redis.hset(`users:mention:meta:${twitchUser.login}`, {
+        displayName: twitchUser.displayName,
+        avatar:      twitchUser.avatar || '',
+        updatedAt:   Date.now(),
+      }).catch(() => {});
 
       return res.status(200).json({ ok: true, message });
     } catch (e) {

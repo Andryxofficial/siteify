@@ -100,6 +100,10 @@ export default function SettingsPage() {
   const [privacy, setPrivacy] = useState({ friendRequestsOpen: true, visibility: 'public' });
   const [privacyLoading, setPrivacyLoading] = useState(false);
 
+  // Export dati
+  const [esportando, setEsportando] = useState(false);
+  const [erroreExport, setErroreExport] = useState('');
+
   // Carica privacy dal server
   useEffect(() => {
     if (!twitchToken) return;
@@ -159,22 +163,48 @@ export default function SettingsPage() {
     finally { setPrivacyLoading(false); }
   }, [twitchToken]);
 
-  const esportaDati = () => {
-    const dati = {
-      notifiche,
-      tema: temaAttivo,
-      modalitaTema,
-      fontDimensione,
-      privacy,
-      esportatoIl: new Date().toISOString(),
-    };
-    const blob = new Blob([JSON.stringify(dati, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `andryxify-impostazioni-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const esportaDati = async () => {
+    if (!twitchToken) return;
+    setEsportando(true);
+    setErroreExport('');
+    try {
+      /* Dati server: post, risposte, amici, preferiti, XP, profilo */
+      const res = await fetch('/api/user-export', {
+        headers: { Authorization: `Bearer ${twitchToken}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Errore ${res.status}`);
+      }
+      const datiServer = await res.json();
+
+      /* Arricchisci con impostazioni locali */
+      const esportazione = {
+        ...datiServer,
+        impostazioniLocali: {
+          notifiche,
+          tema:          temaAttivo,
+          modalitaTema,
+          fontDimensione,
+          privacy,
+        },
+      };
+
+      /* Scarica JSON */
+      const blob = new Blob([JSON.stringify(esportazione, null, 2)], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `andryxify-dati-${twitchUser}-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErroreExport(e.message || 'Errore durante l\'esportazione. Riprova.');
+    } finally {
+      setEsportando(false);
+    }
   };
 
   return (
@@ -451,13 +481,64 @@ export default function SettingsPage() {
 
           {/* ═══ Dati ═══ */}
           <motion.section className="glass-panel" style={{ padding: '1.2rem', marginBottom: '2rem' }} {...entrata(0.4)}>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.8rem', fontSize: '1rem' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.9rem', fontSize: '1rem' }}>
               <Database size={18} /> {t('settings.dati')}
             </h3>
-            <button className="btn btn-ghost" style={{ fontSize: '0.82rem', marginBottom: '0.8rem' }} onClick={esportaDati}>
-              <Download size={14} /> {t('settings.dati.esporta')}
+
+            {/* Cosa viene incluso */}
+            <div style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: 10,
+              padding: '0.75rem 1rem',
+              marginBottom: '1rem',
+              fontSize: '0.8rem',
+              color: 'var(--text-muted)',
+              lineHeight: 1.6,
+            }}>
+              <div style={{ fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.4rem', fontSize: '0.82rem' }}>
+                Il file JSON includerà:
+              </div>
+              {[
+                '📝 Tutti i tuoi post pubblicati',
+                '💬 Tutte le tue risposte',
+                '⭐ Post aggiunti ai preferiti',
+                '👥 Lista amici',
+                '🏆 Statistiche XP e livello',
+                '👤 Profilo (bio, social, privacy)',
+                '⚙️ Impostazioni locali (tema, notifiche)',
+              ].map(voce => (
+                <div key={voce} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  {voce}
+                </div>
+              ))}
+            </div>
+
+            {/* Errore */}
+            {erroreExport && (
+              <p style={{ fontSize: '0.8rem', color: 'var(--accent)', marginBottom: '0.75rem' }}>
+                ⚠️ {erroreExport}
+              </p>
+            )}
+
+            {/* Bottone export */}
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: '0.85rem', width: '100%', justifyContent: 'center', opacity: esportando ? 0.7 : 1 }}
+              onClick={esportaDati}
+              disabled={esportando}
+            >
+              {esportando ? (
+                <>
+                  <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid var(--text-faint)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                  Raccolta dati in corso…
+                </>
+              ) : (
+                <><Download size={15} /> Scarica i miei dati</>
+              )}
             </button>
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>
+
+            <p style={{ fontSize: '0.73rem', color: 'var(--text-faint)', marginTop: '0.7rem', lineHeight: 1.5 }}>
               {t('settings.dati.elimina_descr')}
             </p>
           </motion.section>

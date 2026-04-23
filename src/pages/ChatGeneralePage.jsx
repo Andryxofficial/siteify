@@ -6,13 +6,14 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { MessageCircle, Send, Twitch, Users, LogIn, Lock } from 'lucide-react';
+import { MessageCircle, Send, Twitch, Users, LogIn, Lock, Paperclip, X } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useEmoteTwitch } from '../hooks/useEmoteTwitch';
 import EmotePicker from '../components/EmotePicker';
 import SEO from '../components/SEO';
 import MessagesPage from './MessagesPage';
 import { useLingua } from '../contexts/LinguaContext';
+import { preparaMediaPerUpload, MEDIA_ACCETTATI } from '../utils/compressioneMedia';
 
 const CHAT_API = '/api/chat';
 const POLL_MS = 2000;
@@ -54,6 +55,61 @@ function tempoFa(ts, lingua = 'it') {
   return `${Math.floor(giorni / 30)} mesi fa`;
 }
 
+
+/* ── Componente visualizzazione media messaggio chat ── */
+function ChatMediaDisplay({ mediaId, mediaType }) {
+  const [src, setSrc]     = useState(null);
+  const [mime, setMime]   = useState('');
+  const [caric, setCaric] = useState(true);
+  const [err, setErr]     = useState(false);
+  const blobUrlRef        = useRef(null);
+  const MIME_CONSENTITI   = ['image/', 'audio/', 'video/'];
+
+  useEffect(() => {
+    if (!mediaId) return;
+    let annullato = false;
+    (async () => {
+      try {
+        const res  = await fetch(`/api/chat?action=media&id=${encodeURIComponent(mediaId)}`);
+        if (!res.ok) throw new Error();
+        const dati = await res.json();
+        if (annullato) return;
+        /* Valida il MIME type prima di costruire il data: URL (prevenzione XSS) */
+        if (!MIME_CONSENTITI.some(p => (dati.mimeType || '').startsWith(p))) throw new Error();
+        const blob = await fetch(`data:${dati.mimeType};base64,${dati.data}`).then(r => r.blob());
+        if (annullato) return;
+        if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+        const newUrl = URL.createObjectURL(blob);
+        blobUrlRef.current = newUrl;
+        setSrc(newUrl);
+        setMime(dati.mimeType);
+      } catch { if (!annullato) setErr(true); }
+      finally  { if (!annullato) setCaric(false); }
+    })();
+    return () => {
+      annullato = true;
+      if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mediaId]);
+
+  if (!mediaId) return null;
+  if (caric) return <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>⏳ Media…</span>;
+  if (err)   return null;
+
+  const tipo = mediaType || (mime.startsWith('image/') ? 'image' : mime.startsWith('audio/') ? 'audio' : 'video');
+
+  if (tipo === 'image') return (
+    <img src={src} alt="" style={{ maxWidth: '100%', maxHeight: 240, borderRadius: 8, marginTop: 4, display: 'block' }} />
+  );
+  if (tipo === 'audio') return (
+    <audio src={src} controls preload="metadata" style={{ marginTop: 4, width: '100%', maxWidth: 280 }} />
+  );
+  return (
+    <video src={src} controls preload="metadata" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, marginTop: 4, display: 'block' }} />
+  );
+}
+
 export default function ChatGeneralePage() {
   const { isLoggedIn, twitchToken, getTwitchLoginUrl } = useTwitchAuth();
   const { emoteCanale, emoteGlobali, seventvCanale, seventvGlobali, renderTestoConEmote } = useEmoteTwitch(twitchToken);
@@ -66,6 +122,16 @@ export default function ChatGeneralePage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const pollRef = useRef(null);
+  const [mediaFile, setMediaFile]           = useState(null);
+  const [mediaPreview, setMediaPreview]     = useState(null);
+  const [mediaType, setMediaType]           = useState('');
+  const [caricandoMedia, setCaricandoMedia] = useState(false);
+  const fileInputChatRef = useRef(null);
+  const mediaPreviewRef  = useRef(null); // ref per revoca blob URL sicura su unmount
+
+  useEffect(() => {
+    return () => { if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current); };
+  }, []);
 
   // Recupera messaggi dal server
   const fetchMessages = useCallback(async () => {
@@ -115,19 +181,37 @@ export default function ChatGeneralePage() {
   // Invio messaggio
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!text.trim() || sending) return;
+    if ((!text.trim() && !mediaFile) || sending) return;
 
     setSending(true);
     setError('');
 
     try {
+      const payload = { action: 'send', text: text.trim() };
+
+      // Upload media allegato se presente
+      if (mediaFile) {
+        setCaricandoMedia(true);
+        const preparato = await preparaMediaPerUpload(mediaFile);
+        const uploadRes = await fetch(CHAT_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+          body: JSON.stringify({ action: 'upload_media', ...preparato }),
+        });
+        setCaricandoMedia(false);
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(uploadData.error || 'Errore upload media');
+        payload.mediaId   = uploadData.mediaId;
+        payload.mediaType = preparato.mediaType;
+      }
+
       const res = await fetch(CHAT_API, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${twitchToken}`,
         },
-        body: JSON.stringify({ action: 'send', text: text.trim() }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -137,6 +221,10 @@ export default function ChatGeneralePage() {
       }
 
       setText('');
+      if (mediaPreview) { URL.revokeObjectURL(mediaPreview); mediaPreviewRef.current = null; }
+      setMediaFile(null);
+      setMediaPreview(null);
+      setMediaType('');
       // Aggiunge il messaggio subito evitando duplicati dal polling
       setMessages((prev) => {
         if (prev.some((m) => m.id === data.message.id)) return prev;
@@ -145,6 +233,7 @@ export default function ChatGeneralePage() {
     } catch {
       setError(t('chat.errore.rete'));
     } finally {
+      setCaricandoMedia(false);
       setSending(false);
     }
   };
@@ -279,69 +368,103 @@ export default function ChatGeneralePage() {
                       <p style={{ margin: '0.2rem 0 0', fontSize: '0.88rem', wordBreak: 'break-word' }}>
                         {renderTestoConEmote(msg.text)}
                       </p>
+                      {msg.mediaId && (
+                        <ChatMediaDisplay mediaId={msg.mediaId} mediaType={msg.mediaType} />
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
 
               {/* Input invio */}
-              <form
-                onSubmit={handleSend}
-                style={{
-                  display: 'flex',
-                  gap: '0.5rem',
-                  padding: '0.8rem 1rem',
-                  borderTop: '1px solid rgba(130,170,240,0.1)',
-                  alignItems: 'center',
-                  /* z-index difensivo: assicura che il form di scrittura resti
-                     sempre sopra eventuali overlay flottanti (banner offline,
-                     toast, prompt installa PWA) che potrebbero coprirlo. */
-                  position: 'relative',
-                  zIndex: 5,
-                  /* Non si deve schiacciare se il flex container ha poco spazio. */
-                  flexShrink: 0,
-                  /* Lascia respiro per il safe-area-inset (iPhone, gestures). */
-                  paddingBottom: 'max(0.8rem, env(safe-area-inset-bottom, 0.8rem))',
-                  background: 'rgba(0,0,0,0.18)',
-                }}
-              >
-                <EmotePicker
-                  emoteCanale={emoteCanale}
-                  emoteGlobali={emoteGlobali}
-                  seventvCanale={seventvCanale}
-                  seventvGlobali={seventvGlobali}
-                  onSelect={(nome) => setText(prev => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + nome + ' ')}
-                  disabled={sending}
-                />
-                <input
-                  type="text"
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder={t('chat.placeholder')}
-                  maxLength={500}
-                  style={{
-                    flex: 1,
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(130,170,240,0.14)',
-                    borderRadius: 12,
-                    padding: '0.6rem 0.9rem',
-                    color: 'inherit',
-                    fontSize: '0.9rem',
-                    outline: 'none',
-                  }}
-                />
-                <span style={{ fontSize: '0.7rem', opacity: 0.4, whiteSpace: 'nowrap' }}>
-                  {text.length}/500
-                </span>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={!text.trim() || sending}
-                  style={{ padding: '0.6rem 0.9rem', display: 'flex', alignItems: 'center', gap: 4 }}
+              <div style={{ borderTop: '1px solid rgba(130,170,240,0.1)', padding: '0.8rem 1rem', flexShrink: 0, position: 'relative', zIndex: 5, background: 'rgba(0,0,0,0.18)', paddingBottom: 'max(0.8rem, env(safe-area-inset-bottom, 0.8rem))' }}>
+                {/* Anteprima media selezionato */}
+                {mediaFile && mediaPreview && (
+                  <div style={{ marginBottom: '0.5rem', position: 'relative', display: 'inline-flex', alignItems: 'flex-start' }}>
+                    {mediaType === 'image' && (
+                      <img src={mediaPreview} alt="" style={{ maxHeight: 100, maxWidth: 160, borderRadius: 6, display: 'block' }} />
+                    )}
+                    {mediaType === 'audio' && (
+                      <audio src={mediaPreview} controls preload="metadata" style={{ width: 240 }} />
+                    )}
+                    {mediaType === 'video' && (
+                      <video src={mediaPreview} controls preload="metadata" style={{ maxHeight: 100, maxWidth: 160, borderRadius: 6 }} />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current);
+                        mediaPreviewRef.current = null;
+                        setMediaFile(null); setMediaPreview(null); setMediaType('');
+                      }}
+                      style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: 18, height: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <X size={10} color="#fff" />
+                    </button>
+                  </div>
+                )}
+                <form
+                  onSubmit={handleSend}
+                  style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}
                 >
-                  <Send size={16} />
-                </button>
-              </form>
+                  <EmotePicker
+                    emoteCanale={emoteCanale}
+                    emoteGlobali={emoteGlobali}
+                    seventvCanale={seventvCanale}
+                    seventvGlobali={seventvGlobali}
+                    onSelect={(nome) => setText(prev => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + nome + ' ')}
+                    disabled={sending}
+                  />
+                  {/* Pulsante allegato media */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputChatRef.current?.click()}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: mediaFile ? 'var(--primary)' : 'var(--text-faint)', flexShrink: 0, display: 'flex', alignItems: 'center' }}
+                    title="Allega immagine, audio o video"
+                  >
+                    <Paperclip size={18} />
+                  </button>
+                  <input
+                    ref={fileInputChatRef}
+                    type="file"
+                    accept={MEDIA_ACCETTATI}
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current);
+                      const newUrl = URL.createObjectURL(file);
+                      mediaPreviewRef.current = newUrl;
+                      setMediaFile(file);
+                      setMediaPreview(newUrl);
+                      setMediaType(
+                        file.type.startsWith('image/') ? 'image' :
+                        file.type.startsWith('audio/') ? 'audio' : 'video'
+                      );
+                      e.target.value = '';
+                    }}
+                  />
+                  <input
+                    type="text"
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    placeholder={t('chat.placeholder')}
+                    maxLength={500}
+                    style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(130,170,240,0.14)', borderRadius: 12, padding: '0.6rem 0.9rem', color: 'inherit', fontSize: '0.9rem', outline: 'none' }}
+                  />
+                  <span style={{ fontSize: '0.7rem', opacity: 0.4, whiteSpace: 'nowrap' }}>
+                    {text.length}/500
+                  </span>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={(!text.trim() && !mediaFile) || sending || caricandoMedia}
+                    style={{ padding: '0.6rem 0.9rem', display: 'flex', alignItems: 'center', gap: 4 }}
+                  >
+                    {caricandoMedia ? '⏳' : <Send size={16} />}
+                  </button>
+                </form>
+              </div>
 
               {error && (
                 <p style={{ color: '#f87171', fontSize: '0.8rem', padding: '0 1rem 0.5rem', textAlign: 'center' }}>
