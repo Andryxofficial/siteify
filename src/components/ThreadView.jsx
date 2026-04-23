@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import BottoneAggiungiAmico from './BottoneAggiungiAmico';
+import LinkProfilo from './LinkProfilo';
 import SEO from '../components/SEO';
 import { preparaMediaPerUpload, MEDIA_ACCETTATI } from '../utils/compressioneMedia';
 import { useMenzione, DropdownMenzione, renderConMenzioni } from './MenzionePicker';
@@ -170,18 +171,18 @@ function SchedaRisposta({ risposta, puoEliminare, onElimina, onRispondi, onVaiA,
       )}
 
       <div className="social-risposta-riga">
-        <div className="social-avatar social-avatar-piccolo">
+        <LinkProfilo user={risposta.author} className="social-avatar social-avatar-piccolo">
           {risposta.authorAvatar ? (
             <img src={risposta.authorAvatar} alt="" />
           ) : (
             <User size={16} />
           )}
-        </div>
+        </LinkProfilo>
         <div className="social-risposta-corpo">
           <div className="social-risposta-intestazione">
-            <span className="social-autore" style={{ fontSize: '0.86rem' }}>
+            <LinkProfilo user={risposta.author} className="social-autore" style={{ fontSize: '0.86rem' }}>
               {risposta.authorDisplay || risposta.author}
-            </span>
+            </LinkProfilo>
             <BottoneAggiungiAmico
               targetUser={risposta.author}
               twitchToken={twitchToken}
@@ -568,18 +569,18 @@ export default function ThreadView() {
       {/* Post principale */}
       <motion.article className="glass-panel social-post-principale" {...entrata(0.1)} style={{ '--cat-color': cat.colore }}>
         <div className="social-scheda-riga">
-          <div className="social-avatar social-avatar-grande">
+          <LinkProfilo user={post.author} className="social-avatar social-avatar-grande">
             {post.authorAvatar ? (
               <img src={post.authorAvatar} alt="" />
             ) : (
               <User size={22} />
             )}
-          </div>
+          </LinkProfilo>
           <div className="social-scheda-corpo">
             <div className="social-scheda-intestazione">
-              <span className="social-autore" style={{ fontSize: '0.92rem' }}>
+              <LinkProfilo user={post.author} className="social-autore" style={{ fontSize: '0.92rem' }}>
                 {post.authorDisplay || post.author}
-              </span>
+              </LinkProfilo>
               <BottoneAggiungiAmico
                 targetUser={post.author}
                 twitchToken={twitchToken}

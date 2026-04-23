@@ -22,6 +22,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AtSign } from 'lucide-react';
+import LinkProfilo from './LinkProfilo';
 
 /* ── Costanti ── */
 const MIN_QUERY_LEN = 1;   // caratteri minimi DOPO @ per avviare la ricerca
@@ -325,10 +326,16 @@ export function renderConMenzioni(testo) {
   const parti = testo.split(/(@[a-zA-Z0-9_]{1,25})/g);
   return parti.map((parte, i) => {
     if (/^@[a-zA-Z0-9_]{1,25}$/.test(parte)) {
+      const username = parte.slice(1).toLowerCase();
       return (
-        <span key={i} className="tag-menzione" title={`Profilo di ${parte.slice(1)}`}>
+        <LinkProfilo
+          key={i}
+          user={username}
+          className="tag-menzione"
+          title={`Profilo di ${username}`}
+        >
           {parte}
-        </span>
+        </LinkProfilo>
       );
     }
     return parte;

@@ -10,6 +10,7 @@ import { MessageCircle, Send, Twitch, Users, LogIn, Lock, Paperclip, X } from 'l
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useEmoteTwitch } from '../hooks/useEmoteTwitch';
 import EmotePicker from '../components/EmotePicker';
+import LinkProfilo from '../components/LinkProfilo';
 import SEO from '../components/SEO';
 import MessagesPage from './MessagesPage';
 import { useLingua } from '../contexts/LinguaContext';
@@ -348,19 +349,23 @@ export default function ChatGeneralePage() {
                     }}
                   >
                     {msg.authorAvatar ? (
-                      <img
-                        src={msg.authorAvatar}
-                        alt={msg.author}
-                        style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0 }}
-                      />
+                      <LinkProfilo user={msg.author} style={{ display: 'inline-flex', flexShrink: 0 }}>
+                        <img
+                          src={msg.authorAvatar}
+                          alt={msg.author}
+                          style={{ width: 28, height: 28, borderRadius: '50%' }}
+                        />
+                      </LinkProfilo>
                     ) : (
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', flexShrink: 0 }} />
+                      <LinkProfilo user={msg.author} style={{ display: 'inline-flex', flexShrink: 0 }}>
+                        <span style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'inline-block' }} />
+                      </LinkProfilo>
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>
+                        <LinkProfilo user={msg.author} style={{ fontWeight: 700, fontSize: '0.85rem' }}>
                           {msg.authorDisplay || msg.author}
-                        </span>
+                        </LinkProfilo>
                         <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>
                           {tempoFa(msg.createdAt, lingua)}
                         </span>

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import SEO from '../components/SEO';
+import LinkProfilo from '../components/LinkProfilo';
 import { useLingua } from '../contexts/LinguaContext';
 
 const API_URL = '/api/friends';
@@ -211,7 +212,7 @@ export default function FriendsPage() {
               {friends.map(f => (
                 <div key={f} className="mod-item glass-card" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem' }}>
                   <Twitch size={16} color="#9146FF" />
-                  <span style={{ fontWeight: 600, flex: 1 }}>{f}</span>
+                  <LinkProfilo user={f} style={{ fontWeight: 600, flex: 1 }}>{f}</LinkProfilo>
                   <div style={{ display: 'flex', gap: '0.35rem' }}>
                     <Link to={`/messaggi?con=${f}`} className="mod-icon-btn" title={t('friends.msg')}>
                       <MessageSquare size={14} />
@@ -249,12 +250,14 @@ export default function FriendsPage() {
                 {requests.map(r => (
                   <div key={r.from} className="mod-item glass-card" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem' }}>
                     {r.avatar ? (
-                      <img src={r.avatar} alt="" style={{ width: 28, height: 28, borderRadius: '50%' }} />
+                      <LinkProfilo user={r.from} style={{ display: 'inline-flex' }}>
+                        <img src={r.avatar} alt="" style={{ width: 28, height: 28, borderRadius: '50%' }} />
+                      </LinkProfilo>
                     ) : (
                       <Twitch size={16} color="#9146FF" />
                     )}
                     <div style={{ flex: 1 }}>
-                      <span style={{ fontWeight: 600 }}>{r.display || r.from}</span>
+                      <LinkProfilo user={r.from} style={{ fontWeight: 600 }}>{r.display || r.from}</LinkProfilo>
                       <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)', marginLeft: '0.4rem' }}>
                         <Clock size={10} /> {tempoFa(r.createdAt, lingua)}
                       </span>
@@ -285,7 +288,7 @@ export default function FriendsPage() {
                 {sent.map(s => (
                   <div key={s} className="mod-item glass-card" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem' }}>
                     <Twitch size={16} color="#9146FF" />
-                    <span style={{ fontWeight: 600, flex: 1 }}>{s}</span>
+                    <LinkProfilo user={s} style={{ fontWeight: 600, flex: 1 }}>{s}</LinkProfilo>
                     <button className="mod-icon-btn mod-icon-btn-danger" title={t('friends.annulla')}
                       disabled={actionLoading === s} onClick={() => doAction('cancel', s)}>
                       <X size={14} />
@@ -327,7 +330,7 @@ export default function FriendsPage() {
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <Twitch size={18} color="#9146FF" />
-                  <span style={{ fontWeight: 600, flex: 1 }}>{searchStatus.target}</span>
+                  <LinkProfilo user={searchStatus.target} style={{ fontWeight: 600, flex: 1 }}>{searchStatus.target}</LinkProfilo>
                   {searchStatus.status === 'self' && (
                     <span className="chip" style={{ fontSize: '0.72rem' }}>{t('friends.status.self')}</span>
                   )}

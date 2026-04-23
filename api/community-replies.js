@@ -299,6 +299,10 @@ export default async function handler(req, res) {
         const added = await redis.sadd(likesKey, twitchUser.login);
         if (added) {
           await redis.hincrby(replyKey, 'likeCount', 1);
+          /* Counter aggregato per la scheda profilo dell'autore */
+          if (reply.author && reply.author !== twitchUser.login) {
+            redis.incr(`profile:${reply.author}:likes`).catch(() => {});
+          }
           // XP best-effort: liker (decay) + autore della risposta
           ;(async () => {
             try {
@@ -316,6 +320,14 @@ export default async function handler(req, res) {
         const removed = await redis.srem(likesKey, twitchUser.login);
         if (removed) {
           await redis.hincrby(replyKey, 'likeCount', -1);
+          if (reply.author && reply.author !== twitchUser.login) {
+            (async () => {
+              try {
+                const v = await redis.decr(`profile:${reply.author}:likes`);
+                if (Number(v) < 0) await redis.set(`profile:${reply.author}:likes`, '0');
+              } catch { /* ignora */ }
+            })();
+          }
         }
       }
 
