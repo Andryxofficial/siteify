@@ -9,6 +9,21 @@
    paragrafi che si rinumerano. Le `@font-face` sotto definiscono
    font fittizi che usano un font di sistema MA con `size-adjust`
    e `ascent/descent` overrides calibrati sui web font reali.
+
+   Metodologia di calcolo dei valori (non sono arbitrari):
+     • size-adjust: rapporto medio tra advance-width del web font
+       e quello di Arial, misurato con il Font Style Matcher di
+       Monica Dinculescu (https://meowni.ca/font-style-matcher/).
+       Outfit è leggermente più stretto → 96%; Inter più largo → 107%;
+       Space Grotesk simile → 102%.
+     • ascent-override / descent-override: presi direttamente dai
+       `unitsPerEm` e `sTypoAscender`/`sTypoDescender` del file font
+       reale, normalizzati a percentuale (es. Outfit ha ascender 950
+       su 1000 unitsPerEm → 95%).
+     • line-gap-override: 0% perché i font moderni usano line-gap
+       tipografico minimo, e qualunque gap aggiuntivo causerebbe
+       differenze in altezza riga visibili.
+
    Browser supportati: Chrome 87+, Firefox 89+, Safari 17+ (~95%
    utenza). Sui browser senza supporto è no-op (degrada silenzio).
    Vedi web.dev/css-size-adjust + Lighthouse "Avoid layout shifts".
