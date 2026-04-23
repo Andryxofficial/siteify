@@ -2318,14 +2318,14 @@ body {
 
 /* ═══════════════════════════════════════════════════
    SOCIALify — Forum / Bacheca sociale
-   Mobile-first, touch-optimized, glass design
+   Redesign: Twitter-style card, categoria accent, pill actions, thread replies
    ═══════════════════════════════════════════════════ */
 
 /* ── Avatar ── */
 .social-avatar {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   border-radius: 50%;
   overflow: hidden;
   display: flex;
@@ -2334,6 +2334,10 @@ body {
   background: var(--surface-2);
   color: var(--text-faint);
   flex-shrink: 0;
+  /* Ring colorato dalla categoria — passa --cat-color sul genitore */
+  outline: 2px solid var(--cat-color, rgba(255,255,255,0.07));
+  outline-offset: 2px;
+  transition: outline-color 0.2s;
 }
 
 .social-avatar img {
@@ -2343,42 +2347,62 @@ body {
   object-fit: cover;
 }
 
-.social-avatar-piccolo { width: 32px; height: 32px; min-width: 32px; }
-.social-avatar-grande  { width: 44px; height: 44px; min-width: 44px; }
+.social-avatar-piccolo {
+  width: 32px; height: 32px; min-width: 32px;
+  outline-width: 1.5px;
+}
+.social-avatar-grande {
+  width: 50px; height: 50px; min-width: 50px;
+  outline-width: 2.5px;
+}
 
-/* ── Scheda post ── */
+/* ════════════════════════════════════════
+   SCHEDA POST — redesign card
+   ════════════════════════════════════════ */
 .social-scheda-post {
   display: block;
   text-decoration: none;
   color: inherit;
-  padding: 1rem 1.1rem;
-  transition: transform 0.18s var(--ease-glass), box-shadow 0.18s var(--ease-glass);
+  padding: 1.1rem 1.2rem 0.9rem;
+  /* Accent border sinistra colorata per categoria */
+  border-left: 3.5px solid var(--cat-color, rgba(130,170,240,0.12));
+  transition:
+    transform 0.18s var(--ease-glass),
+    box-shadow 0.18s var(--ease-glass),
+    border-left-color 0.2s;
   -webkit-tap-highlight-color: transparent;
+  position: relative;
 }
 
+/* Header: avatar + meta (nome, chip, tempo) */
 .social-scheda-riga {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: flex-start;
 }
 
-.social-scheda-corpo {
+/* Meta accanto all'avatar */
+.social-scheda-meta {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.social-scheda-intestazione {
+/* Riga autore + chip + add-friend */
+.social-autore-riga {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  margin-bottom: 3px;
 }
 
 .social-autore {
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   color: var(--text-main);
+  white-space: nowrap;
 }
 
 .social-tempo {
@@ -2389,91 +2413,99 @@ body {
   gap: 3px;
 }
 
+/* Chip categoria: inline nella riga autore */
 .social-chip-categoria {
-  font-size: 0.62rem;
-  padding: 2px 7px;
-  margin-left: auto;
+  font-size: 0.61rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
   flex-shrink: 0;
 }
 
-/* ═══════════════════════════════════════
-   TAG MENZIONE (@username) — chip inline nel testo renderizzato
-   ═══════════════════════════════════════ */
-.tag-menzione {
-  display: inline;
-  color: var(--primary, #7c86ff);
-  font-weight: 600;
-  cursor: default;
-  border-radius: 4px;
-  padding: 0 2px;
-  transition: background 0.15s;
-}
-.tag-menzione:hover {
-  background: rgba(124,134,255,0.12);
+/* Contenuto post (titolo + body + media + azioni) indentato sotto avatar */
+.social-scheda-contenuto {
+  padding-left: 56px; /* 44px avatar + 12px gap */
+  margin-top: 6px;
 }
 
-/* Dropdown menzione — stilizzato come glass-panel */
-.menzione-dropdown {
-  box-shadow: 0 8px 32px rgba(8,12,48,0.55);
-  border: 1.5px solid rgba(130,170,240,0.16) !important;
+/* Retrocompatibilità: .social-scheda-corpo usato nel thread view */
+.social-scheda-corpo {
+  flex: 1;
+  min-width: 0;
 }
-.menzione-voce {
-  color: var(--text-main);
-  font-family: inherit;
-}
-.menzione-voce:hover,
-.menzione-voce[data-focus='true'] {
-  background: rgba(130,170,240,0.16) !important;
+
+/* Retrocompatibilità: vecchio stile intestazione usato nel thread view */
+.social-scheda-intestazione {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
 }
 
 .social-titolo-post {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 700;
-  margin: 0 0 4px;
-  line-height: 1.35;
+  margin: 0 0 5px;
+  line-height: 1.38;
   color: var(--text-main);
+  letter-spacing: -0.01em;
 }
 
 .social-anteprima-testo {
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   color: var(--text-muted);
-  line-height: 1.5;
+  line-height: 1.55;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
-  margin: 0;
+  margin: 0 0 8px;
 }
 
-/* ── Azioni (mi piace, risposte) ── */
+/* ── Azioni pill ── */
 .social-azioni-riga {
   display: flex;
-  gap: 14px;
-  margin-top: 8px;
+  gap: 6px;
+  margin-top: 10px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .social-btn-azione {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   font-size: 0.78rem;
   color: var(--text-faint);
-  background: none;
-  border: none;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: var(--r-sm);
-  transition: color 0.15s, background 0.15s;
+  padding: 5px 12px;
+  border-radius: 999px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, transform 0.1s;
   -webkit-tap-highlight-color: transparent;
-  min-height: 32px;
+  min-height: 30px;
+  font-family: inherit;
 }
 
-.social-btn-azione:hover,
-.social-btn-azione:active {
+.social-btn-azione:hover {
   color: var(--text-muted);
-  background: var(--surface-1);
+  background: rgba(255,255,255,0.09);
+  border-color: rgba(255,255,255,0.14);
+}
+
+.social-btn-azione:active {
+  transform: scale(0.94);
+}
+
+/* Azione "Mi piace" — accent quando attivo */
+.social-btn-azione--liked {
+  color: var(--accent, #e040fb);
+  border-color: rgba(224,64,251,0.25);
+  background: rgba(224,64,251,0.07);
 }
 
 /* ── Bottone aggiungi amico (inline nei post) ── */
@@ -2483,6 +2515,9 @@ body {
   font-size: 0.72rem;
   border-radius: var(--r-full);
   color: var(--text-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
   transition: color 0.15s, transform 0.15s;
 }
 
@@ -2577,11 +2612,11 @@ body {
 .social-lista-post {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.55rem;
 }
 
 .social-skeleton {
-  height: 110px;
+  height: 120px;
   border-radius: var(--r-md);
 }
 
@@ -2696,7 +2731,10 @@ body {
   flex: 1;
 }
 
-/* ── Vista thread ── */
+/* ════════════════════════════════════════
+   VISTA THREAD — post principale + risposte
+   ════════════════════════════════════════ */
+
 .social-link-indietro {
   display: inline-flex;
   gap: 6px;
@@ -2707,60 +2745,87 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Post principale nel thread: più spazioso, con accent border */
 .social-post-principale {
-  padding: 1.2rem;
+  padding: 1.3rem 1.4rem 1.1rem;
+  border-left: 3.5px solid var(--cat-color, rgba(130,170,240,0.14));
+  position: relative;
 }
 
 .social-titolo-thread {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   font-weight: 800;
-  margin: 0 0 4px;
+  margin: 0.85rem 0 0.5rem;
   line-height: 1.3;
   font-family: 'Space Grotesk', 'Outfit', sans-serif;
+  letter-spacing: -0.02em;
 }
 
 .social-corpo-thread {
-  margin-top: 1rem;
+  margin-top: 0;
   font-size: 0.9rem;
   color: var(--text-muted);
-  line-height: 1.7;
+  line-height: 1.75;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .social-azioni-thread {
   display: flex;
-  gap: 12px;
-  margin-top: 1rem;
-  padding-top: 0.85rem;
+  gap: 8px;
+  margin-top: 1.1rem;
+  padding-top: 0.9rem;
   border-top: 1px solid var(--glass-border);
   align-items: center;
+  flex-wrap: wrap;
 }
 
-/* ── Risposte ── */
+/* ── Sezione risposte ── */
 .social-intestazione-risposte {
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 700;
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.85rem;
   display: flex;
   align-items: center;
   gap: 8px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .social-lista-risposte {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 8px;
 }
 
+/* Risposta come card indentata con thread-line */
 .social-risposta {
-  padding: 0.75rem 0.85rem;
-  border-radius: var(--r-sm);
-  transition: background 0.15s;
+  padding: 0.9rem 1rem;
+  background: rgba(255,255,255,0.024);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  border-left: 2px solid rgba(130,170,240,0.10);
+  margin-left: 10px;
+  transition: background 0.15s, border-left-color 0.15s;
+  position: relative;
+}
+
+.social-risposta::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 20px;
+  bottom: 50%;
+  width: 10px;
+  border-left: 2px solid rgba(130,170,240,0.10);
+  border-bottom: 2px solid rgba(130,170,240,0.10);
+  border-bottom-left-radius: 6px;
+  pointer-events: none;
 }
 
 .social-risposta:hover {
-  background: var(--surface-1);
+  background: rgba(255,255,255,0.05);
+  border-left-color: rgba(130,170,240,0.28);
 }
 
 .social-risposta-riga {
@@ -2777,14 +2842,15 @@ body {
 .social-risposta-intestazione {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 7px;
+  margin-bottom: 5px;
+  flex-wrap: wrap;
 }
 
 .social-testo-risposta {
-  font-size: 0.85rem;
+  font-size: 0.87rem;
   color: var(--text-muted);
-  line-height: 1.6;
+  line-height: 1.65;
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
@@ -2792,32 +2858,67 @@ body {
 
 .social-nessuna-risposta {
   text-align: center;
-  padding: 1.5rem;
+  padding: 2rem 1.5rem;
   color: var(--text-faint);
   font-size: 0.85rem;
+  background: rgba(255,255,255,0.018);
+  border-radius: var(--r-md);
+  border: 1px dashed rgba(255,255,255,0.08);
 }
 
+/* ── Form risposta ── */
 .social-form-risposta {
-  padding: 0.85rem 1rem;
+  padding: 1rem 1.1rem;
 }
 
 .social-form-risposta-riga {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: flex-end;
 }
 
 .social-btn-invia {
   font-size: 0.82rem;
-  padding: 0.5rem 0.85rem;
+  padding: 0.5rem 0.9rem;
   flex-shrink: 0;
 }
 
-/* ── Desktop: scheda post hover ── */
+/* ═══════════════════════════════════════
+   TAG MENZIONE (@username) — chip inline nel testo renderizzato
+   ═══════════════════════════════════════ */
+.tag-menzione {
+  display: inline;
+  color: var(--primary, #7c86ff);
+  font-weight: 600;
+  cursor: default;
+  border-radius: 4px;
+  padding: 0 2px;
+  transition: background 0.15s;
+}
+.tag-menzione:hover {
+  background: rgba(124,134,255,0.12);
+}
+
+/* Dropdown menzione — stilizzato come glass-panel */
+.menzione-dropdown {
+  box-shadow: 0 8px 32px rgba(8,12,48,0.55);
+  border: 1.5px solid rgba(130,170,240,0.16) !important;
+}
+.menzione-voce {
+  color: var(--text-main);
+  font-family: inherit;
+}
+.menzione-voce:hover,
+.menzione-voce[data-focus='true'] {
+  background: rgba(130,170,240,0.16) !important;
+}
+
+/* ── Desktop ── */
 @media (min-width: 641px) and (hover: hover) {
   .social-scheda-post:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.30);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.28);
+    border-left-color: var(--cat-color, var(--primary));
   }
 
   .social-editor-sfondo {
@@ -2831,11 +2932,19 @@ body {
   }
 
   .social-post-principale {
-    padding: 1.5rem 1.6rem;
+    padding: 1.6rem 1.8rem 1.3rem;
   }
 
   .social-titolo-thread {
-    font-size: 1.3rem;
+    font-size: 1.38rem;
+  }
+
+  .social-scheda-contenuto {
+    padding-left: 62px; /* 50px avatar-grande + 12px gap */
+  }
+
+  .social-risposta {
+    margin-left: 14px;
   }
 }
 
