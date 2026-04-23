@@ -177,6 +177,53 @@ export default async function handler(req, res) {
         return res.status(200).json({ posts });
       }
 
+      /* Galleria foto utente per il profilo: solo post con media immagine.
+         GET /api/community?action=user_media&user=<u>&limit=24 */
+      if (url.searchParams.get('action') === 'user_media') {
+        const user = sanitize(url.searchParams.get('user') || '', 50).toLowerCase();
+        if (!user) return res.status(400).json({ error: 'Parametro "user" richiesto.' });
+        const limit = Math.min(60, Math.max(1, parseInt(url.searchParams.get('limit')) || 24));
+
+        /* Carica fino a 200 post recenti dell'utente, filtra quelli con media immagine.
+           NB: i post friends-only sono inclusi solo se il viewer può vederli. */
+        const ids = await redis.zrange(`community:user:${user}`, 0, 199, { rev: true });
+        if (!ids || ids.length === 0) return res.status(200).json({ media: [] });
+
+        const allPosts = await Promise.all(ids.map(id => redis.hgetall(`community:post:${id}`)));
+
+        /* Determina viewer per filtro friends-only */
+        let viewerLogin = null;
+        let viewerFriends = new Set();
+        const auth = req.headers.authorization;
+        if (auth?.startsWith('Bearer ')) {
+          const tu = await validateTwitch(auth);
+          if (tu) {
+            viewerLogin = tu.login;
+            try {
+              const list = await redis.smembers(`friends:${viewerLogin}`);
+              viewerFriends = new Set(list || []);
+            } catch { /* ignora */ }
+          }
+        }
+
+        const media = allPosts
+          .filter(p => p && p.id && (p.mediaType === 'image') && (p.mediaId || p.mediaUrl))
+          .filter(p => canSeePost(p, viewerLogin, viewerFriends))
+          .slice(0, limit)
+          .map(p => ({
+            postId: p.id,
+            mediaId: p.mediaId || '',
+            mediaUrl: p.mediaUrl || '',
+            url: p.mediaId
+              ? `/api/community-media?action=get&id=${encodeURIComponent(p.mediaId)}`
+              : (p.mediaUrl || ''),
+            title: p.title || '',
+            createdAt: Number(p.createdAt || 0),
+          }));
+
+        return res.status(200).json({ media });
+      }
+
       if (url.searchParams.get('action') === 'is_favorite') {
         const authHeader = req.headers.authorization || req.headers['authorization'];
         if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Non autenticato' });
@@ -482,6 +529,10 @@ export default async function handler(req, res) {
         const added = await redis.sadd(likesKey, twitchUser.login);
         if (added) {
           await redis.hincrby(postKey, 'likeCount', 1);
+          /* Counter aggregato per la scheda profilo dell'autore */
+          if (post.author && post.author !== twitchUser.login) {
+            redis.incr(`profile:${post.author}:likes`).catch(() => {});
+          }
           // Award XP with diminishing returns + engagement multiplier (best-effort)
           ;(async () => {
             try {
@@ -503,6 +554,15 @@ export default async function handler(req, res) {
         const removed = await redis.srem(likesKey, twitchUser.login);
         if (removed) {
           await redis.hincrby(postKey, 'likeCount', -1);
+          /* Decrementa anche il counter aggregato (mai sotto zero) */
+          if (post.author && post.author !== twitchUser.login) {
+            (async () => {
+              try {
+                const v = await redis.decr(`profile:${post.author}:likes`);
+                if (Number(v) < 0) await redis.set(`profile:${post.author}:likes`, '0');
+              } catch { /* ignora */ }
+            })();
+          }
         }
       }
 
