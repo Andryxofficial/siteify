@@ -497,6 +497,25 @@ export const TRADUZIONI = {
     'game.submit.errore_rete':    'Errore rete — punteggio salvato, verrà inviato più tardi.',
     'game.calendario.desc':       'Un gioco nuovo ogni mese. Clicca un titolo per provarlo in Modalità Prova — i punteggi non vengono registrati.',
     'game.calendario.prova':      'Modalità Prova (no classifica)',
+
+    /* ── Mod Panel — Shield Mode modal ── */
+    'mod.shield.titolo':                   'Attiva Shield Mode',
+    'mod.shield.sottotitolo':              'Scegli il livello di protezione da applicare al canale.',
+    'mod.shield.attiva':                   'Attiva Shield Mode',
+    'mod.shield.disattiva':                'Disattiva Shield Mode',
+    'mod.shield.conferma':                 'Attiva',
+    'mod.shield.attivo_banner':            '🛡️ Shield Mode ATTIVO',
+    'mod.shield.attivato':                 'Shield Mode attivato!',
+    'mod.shield.disattivato':              'Shield Mode disattivato.',
+    'mod.shield.nota_chat':                'Le impostazioni chat aggiuntive rimarranno attive fino a quando non le modificherai manualmente nella sezione Chat Settings.',
+    'mod.shield.mode.base.label':          'Solo Scudo',
+    'mod.shield.mode.base.desc':           'Attiva Shield Mode senza restrizioni chat aggiuntive. Blocca account nuovi o sospetti.',
+    'mod.shield.mode.follower.label':      'Scudo + Follower',
+    'mod.shield.mode.follower.desc':       'Shield Mode + chat solo per follower (min 10 minuti). Ideale per raid improvvisi.',
+    'mod.shield.mode.sub.label':           'Scudo + Subscriber',
+    'mod.shield.mode.sub.desc':            'Shield Mode + chat riservata ai subscriber. Massima protezione con la community fedele.',
+    'mod.shield.mode.max.label':           'Protezione Totale',
+    'mod.shield.mode.max.desc':            'Shield Mode + solo subscriber + solo emote. Il livello più alto di protezione.',
   },
 
   en: {
@@ -970,6 +989,25 @@ export const TRADUZIONI = {
     'game.submit.errore_rete':    'Network error — score saved, will be sent later.',
     'game.calendario.desc':       'A new game every month. Click a title to try it in Trial Mode — scores are not recorded.',
     'game.calendario.prova':      'Trial Mode (no leaderboard)',
+
+    /* ── Mod Panel — Shield Mode modal ── */
+    'mod.shield.titolo':                   'Activate Shield Mode',
+    'mod.shield.sottotitolo':              'Choose the protection level to apply to the channel.',
+    'mod.shield.attiva':                   'Activate Shield Mode',
+    'mod.shield.disattiva':                'Deactivate Shield Mode',
+    'mod.shield.conferma':                 'Activate',
+    'mod.shield.attivo_banner':            '🛡️ Shield Mode ACTIVE',
+    'mod.shield.attivato':                 'Shield Mode activated!',
+    'mod.shield.disattivato':              'Shield Mode deactivated.',
+    'mod.shield.nota_chat':                'Additional chat settings will remain active until you manually change them in the Chat Settings section.',
+    'mod.shield.mode.base.label':          'Shield Only',
+    'mod.shield.mode.base.desc':           'Activates Shield Mode without additional chat restrictions. Blocks new or suspicious accounts.',
+    'mod.shield.mode.follower.label':      'Shield + Follower',
+    'mod.shield.mode.follower.desc':       'Shield Mode + follower-only chat (min 10 minutes). Ideal for sudden raids.',
+    'mod.shield.mode.sub.label':           'Shield + Subscriber',
+    'mod.shield.mode.sub.desc':            'Shield Mode + subscriber-only chat. Maximum protection with your loyal community.',
+    'mod.shield.mode.max.label':           'Full Protection',
+    'mod.shield.mode.max.desc':            'Shield Mode + subscriber-only + emote-only. The highest level of protection.',
   },
 
   es: {
@@ -1443,6 +1481,25 @@ export const TRADUZIONI = {
     'game.submit.errore_rete':    'Error de red — puntuación guardada, se enviará más tarde.',
     'game.calendario.desc':       'Un juego nuevo cada mes. Haz clic en un título para probarlo en Modo Prueba — las puntuaciones no se registran.',
     'game.calendario.prova':      'Modo Prueba (sin clasificación)',
+
+    /* ── Mod Panel — Shield Mode modal ── */
+    'mod.shield.titolo':                   'Activar Shield Mode',
+    'mod.shield.sottotitolo':              'Elige el nivel de protección a aplicar en el canal.',
+    'mod.shield.attiva':                   'Activar Shield Mode',
+    'mod.shield.disattiva':                'Desactivar Shield Mode',
+    'mod.shield.conferma':                 'Activar',
+    'mod.shield.attivo_banner':            '🛡️ Shield Mode ACTIVO',
+    'mod.shield.attivato':                 '¡Shield Mode activado!',
+    'mod.shield.disattivato':              'Shield Mode desactivado.',
+    'mod.shield.nota_chat':                'La configuración adicional del chat permanecerá activa hasta que la modifiques manualmente en la sección Chat Settings.',
+    'mod.shield.mode.base.label':          'Solo Escudo',
+    'mod.shield.mode.base.desc':           'Activa Shield Mode sin restricciones de chat adicionales. Bloquea cuentas nuevas o sospechosas.',
+    'mod.shield.mode.follower.label':      'Escudo + Seguidor',
+    'mod.shield.mode.follower.desc':       'Shield Mode + chat solo para seguidores (mín 10 minutos). Ideal para raids repentinos.',
+    'mod.shield.mode.sub.label':           'Escudo + Suscriptor',
+    'mod.shield.mode.sub.desc':            'Shield Mode + chat reservado para suscriptores. Máxima protección con tu comunidad fiel.',
+    'mod.shield.mode.max.label':           'Protección Total',
+    'mod.shield.mode.max.desc':            'Shield Mode + solo suscriptores + solo emotes. El nivel más alto de protección.',
   },
 };
 

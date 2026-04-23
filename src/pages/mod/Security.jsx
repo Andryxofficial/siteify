@@ -15,7 +15,9 @@ import {
   Check, X, Clock, AlertCircle, RefreshCw, Info, Ban,
 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
-import { modGet, modPost } from '../../utils/modApi';
+import { useLingua } from '../../contexts/LinguaContext';
+import { modGet } from '../../utils/modApi';
+import ShieldModeModal, { useDisattivaScudo } from './ShieldModeModal';
 
 const AUTOMOD_CATEGORIES = [
   { key: 'aggression',                label: 'Aggressività' },
@@ -30,10 +32,12 @@ const AUTOMOD_CATEGORIES = [
 
 export default function Security({ token }) {
   const toast = useToast();
+  const { t } = useLingua();
 
   // Shield Mode
   const [shieldActive, setShieldActive] = useState(false);
   const [shieldLoading, setShieldLoading] = useState(true);
+  const [shieldModaleAperto, setShieldModaleAperto] = useState(false);
 
   // AutoMod
   const [automodSettings, setAutomodSettings] = useState(null);
@@ -68,23 +72,10 @@ export default function Security({ token }) {
     setShieldLoading(false);
   }, [token, toast]);
 
-  const toggleShield = useCallback(async () => {
-    const nuovoStato = !shieldActive;
-    setShieldLoading(true);
-    const r = await modPost('/api/mod-moderation', token, {
-      action: 'shield_mode',
-      active: nuovoStato,
-    });
-    if (r.ok) {
-      setShieldActive(nuovoStato);
-      toast.success(nuovoStato ? 'Shield Mode attivato!' : 'Shield Mode disattivato.', {
-        titolo: '🛡️ Shield Mode',
-      });
-    } else {
-      toast.error(r.error, { titolo: 'Shield Mode' });
-    }
-    setShieldLoading(false);
-  }, [token, toast, shieldActive]);
+  const disattivaScudo = useDisattivaScudo({
+    token,
+    onDone: (attivo) => setShieldActive(attivo),
+  });
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -267,20 +258,45 @@ export default function Security({ token }) {
               }}
             />
             <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--accent)' }}>
-              Shield Mode ATTIVO
+              {t('mod.shield.attivo_banner')}
             </span>
           </motion.div>
         )}
-        <button
-          className={shieldActive ? 'btn-primary btn-tonal-danger' : 'btn-primary'}
-          onClick={toggleShield}
-          disabled={shieldLoading}
-          style={{ fontSize: '0.85rem' }}
-        >
-          {shieldLoading ? <Loader size={14} className="spin" /> : shieldActive ? <ShieldX size={14} /> : <ShieldCheck size={14} />}
-          {shieldActive ? 'Disattiva Shield Mode' : 'Attiva Shield Mode'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {!shieldActive ? (
+            <button
+              className="btn-primary"
+              onClick={() => setShieldModaleAperto(true)}
+              disabled={shieldLoading}
+              style={{ fontSize: '0.85rem' }}
+            >
+              {shieldLoading ? <Loader size={14} className="spin" /> : <ShieldCheck size={14} />}
+              {t('mod.shield.attiva')}
+            </button>
+          ) : (
+            <button
+              className="btn-primary btn-tonal-danger"
+              onClick={disattivaScudo}
+              disabled={shieldLoading}
+              style={{ fontSize: '0.85rem' }}
+            >
+              {shieldLoading ? <Loader size={14} className="spin" /> : <ShieldX size={14} />}
+              {t('mod.shield.disattiva')}
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Modale selezione modalità scudo */}
+      <AnimatePresence>
+        {shieldModaleAperto && (
+          <ShieldModeModal
+            token={token}
+            onClose={() => setShieldModaleAperto(false)}
+            onDone={(attivo) => setShieldActive(attivo)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* AutoMod Settings */}
       <div className="glass-card" style={{ padding: '1.25rem' }}>
