@@ -8,6 +8,7 @@ import { hapticLight } from '../utils/haptics';
 import { useTema } from '../contexts/TemaContext';
 import { useLingua } from '../contexts/LinguaContext';
 import { prefetchPagina } from '../lazyPages';
+import { segnaNavigazione } from '../utils/navTransizione';
 
 const LOGO_URL = '/Firma_Andryx.png';
 
@@ -178,12 +179,21 @@ function MobileTabBar({ activePath, haNonLetti }) {
 
     if (targetIdx !== ai) {
       hapticLight();
+      /* Comunica a PageTransition che la navigazione è di tipo swipe */
+      const dir = targetIdx > ai ? 1 : -1;
+      segnaNavigazione('swipe', dir);
       navigate(MOBILE_LINKS[targetIdx].path);
     }
   }, [count, getTabWidth, navigate, pillX, pillScale]);
 
-  const handleTabClick = useCallback(() => {
+  const handleTabClick = useCallback((targetPath) => {
     hapticLight();
+    /* Calcola direzione del tab cliccato rispetto all'attivo */
+    const ai = activeIdxRef.current;
+    const ti = MOBILE_LINKS.findIndex(l => l.path === targetPath);
+    if (ti !== -1 && ti !== ai) {
+      segnaNavigazione('click', ti > ai ? 1 : -1);
+    }
   }, []);
 
   return (
@@ -208,7 +218,16 @@ function MobileTabBar({ activePath, haNonLetti }) {
               scale: pillScale,
               width: `${tabWidthPct}%`,
             }}
-          />
+          >
+            {/* Lens flare — si riattiva a ogni cambio di tab attivo */}
+            <motion.div
+              key={activeIdx}
+              className="pill-lens-flare"
+              initial={{ opacity: 0.9, scale: 0.7 }}
+              animate={{ opacity: 0, scale: 1.6 }}
+              transition={{ duration: 0.55, ease: [0.2, 0, 0.4, 1] }}
+            />
+          </motion.div>
         )}
 
         {/* ── Tab items ── */}
@@ -222,7 +241,7 @@ function MobileTabBar({ activePath, haNonLetti }) {
               className={`tab-item${isActive ? ' active' : ''}`}
               aria-label={label}
               aria-current={isActive ? 'page' : undefined}
-              onClick={handleTabClick}
+              onClick={() => handleTabClick(path)}
               onTouchStart={() => prefetchPagina(path)}
               onPointerEnter={() => prefetchPagina(path)}
             >
@@ -355,7 +374,16 @@ export default function Navbar() {
                     initial={false}
                     animate={{ left: pillPos.left, width: pillPos.width }}
                     transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.8 }}
-                  />
+                  >
+                    {/* Lens flare desktop — si riattiva al cambio di percorso */}
+                    <motion.div
+                      key={displayPath}
+                      className="pill-lens-flare"
+                      initial={{ opacity: 0.85, scale: 0.6 }}
+                      animate={{ opacity: 0, scale: 1.8 }}
+                      transition={{ duration: 0.5, ease: [0.2, 0, 0.4, 1] }}
+                    />
+                  </motion.div>
                 )}
 
                 {NAV_LINKS.map(({ path, labelKey, Icon }) => {

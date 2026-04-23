@@ -7,10 +7,10 @@
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Twitch, LogIn, RotateCcw, Trophy, Calendar, Crown, Award, Zap, Keyboard, WifiOff,
-  Maximize2, Minimize2, Backpack, FlaskConical, Wand2,
+  Maximize2, Minimize2, Backpack, FlaskConical, Wand2, Pause, Play, X,
 } from 'lucide-react';
 import SEO from '../components/SEO';
 import { getGameForMonth, loadGameModule, getAllGameMetas } from '../games/registry';
@@ -147,17 +147,29 @@ export default function GamePage() {
   const cleanupRef = useRef(null);
 
   /* ─── State ─── */
-  const [gameStatus, setGameStatus] = useState('idle'); // idle | playing | gameover
+  const [gameStatus, setGameStatus] = useState('idle'); // idle | playing | gameover | paused
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [, setHp] = useState(0);
   const [, setMaxHp] = useState(0);
   const [showKeyboard, setShowKeyboard] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [gamePaused, setGamePaused] = useState(false);
 
   /* Wake Lock — mantiene lo schermo acceso durante una partita,
      così non si spegne dopo i 30s di inattività di Android/iOS. */
   useWakeLock(gameStatus === 'playing');
+
+  /* ─── Nasconde navbar/tab-bar durante il gioco per massimizzare lo spazio ─── */
+  useEffect(() => {
+    const corpo = document.body;
+    if (gameStatus === 'playing' || gameStatus === 'paused') {
+      corpo.classList.add('gioco-in-corso');
+    } else {
+      corpo.classList.remove('gioco-in-corso');
+    }
+    return () => corpo.classList.remove('gioco-in-corso');
+  }, [gameStatus]);
 
   // Twitch auth
   const [twitchUser, setTwitchUser] = useState(null);
@@ -394,9 +406,51 @@ export default function GamePage() {
     return () => { if (cleanupRef.current) cleanupRef.current(); };
   }, [gameStatus]);
 
+  /* ─── Pausa / riprendi (solo giochi standalone) ─── */
+  const mettInPausa = useCallback(() => {
+    if (!isStandalone || gameStatus !== 'playing') return;
+    /* Invia Escape al motore di gioco per metterlo in pausa interna */
+    keysRef.current['Escape'] = true;
+    setTimeout(() => { keysRef.current['Escape'] = false; }, 80);
+    setGamePaused(true);
+    setGameStatus('paused');
+  }, [isStandalone, gameStatus]);
+
+  const riprendi = useCallback(() => {
+    setGamePaused(false);
+    setGameStatus('playing');
+    /* Sblocca il motore — lo stesso tasto Escape lo fa uscire dalla pausa */
+    keysRef.current['Escape'] = true;
+    setTimeout(() => { keysRef.current['Escape'] = false; }, 80);
+  }, []);
+
+  const salvaEdEsci = useCallback(() => {
+    setGamePaused(false);
+    /* Il cleanup del motore salva automaticamente il progresso */
+    if (cleanupRef.current) { cleanupRef.current(); cleanupRef.current = null; }
+    if (isLegend) {
+      try { setLegendSaveAvailable(hasLegendSave()); } catch { /* ignored */ }
+    } else if (isPlatform) {
+      try { setPlatformSaveAvailable(hasPlatformSave()); } catch { /* ignored */ }
+    }
+    setScore(0);
+    setSubmitMsg('');
+    setGameStatus('idle');
+  }, [isLegend, isPlatform]);
+
   /* ─── Keyboard listeners ─── */
   useEffect(() => {
     const down = (e) => {
+      /* Escape durante gioco standalone → pausa */
+      if (e.key === 'Escape' && isStandalone && gameStatus === 'playing') {
+        mettInPausa();
+        return;
+      }
+      /* Escape durante pausa → riprendi */
+      if (e.key === 'Escape' && isStandalone && gameStatus === 'paused') {
+        riprendi();
+        return;
+      }
       keysRef.current[e.key] = true;
       // Prevent page scroll/focus jump when playing
       if (gameStatus === 'playing' && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Tab'].includes(e.key)) {
@@ -411,7 +465,7 @@ export default function GamePage() {
       window.removeEventListener('keyup', up);
       keysRef.current = {};
     };
-  }, [gameStatus]);
+  }, [gameStatus, isStandalone, mettInPausa, riprendi]);
 
   /* ─── Gamepad API polling ─── */
   const gamepadFrameRef = useRef(null);
@@ -756,9 +810,22 @@ export default function GamePage() {
       <div className="game-layout">
         <div ref={gameAreaRef} className={`game-area${isFullscreen ? ' is-fullscreen' : ''}`}>
           {/* Toolbar sopra il canvas (fuori dal wrapper di gioco) — contiene
-              il bottone schermo intero. Sta volutamente FUORI dal canvas-wrapper
+              il bottone schermo intero e pausa. Sta volutamente FUORI dal canvas-wrapper
               cosi` non copre mai l'HUD del gioco ne` gli overlay idle/game-over. */}
           <div className="game-toolbar">
+            {/* Pausa — solo giochi standalone (Legend/Platform), non mensili */}
+            {isStandalone && gameStatus === 'playing' && (
+              <button
+                type="button"
+                onClick={mettInPausa}
+                className="game-fullscreen-btn"
+                aria-label={t('game.pausa')}
+                title={t('game.pausa')}
+              >
+                <Pause size={16} />
+                <span className="game-fullscreen-btn-label">{t('game.pausa')}</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={toggleFullscreen}
@@ -931,6 +998,68 @@ export default function GamePage() {
                 </div>
               </div>
             )}
+
+            {/* Pause overlay — solo giochi standalone */}
+            <AnimatePresence>
+              {gamePaused && (
+                <motion.div
+                  className="game-overlay game-pausa-overlay"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  <motion.div
+                    className="game-overlay-content"
+                    initial={{ scale: 0.92, y: 16, opacity: 0 }}
+                    animate={{ scale: 1, y: 0, opacity: 1 }}
+                    exit={{ scale: 0.94, y: 8, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+                  >
+                    <span style={{ fontSize: '2.5rem', marginBottom: '0.25rem' }}>⏸</span>
+                    <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '0.4rem 0 1rem', color: themeColor }}>
+                      {t('game.pausa')}
+                    </h2>
+                    <button
+                      onClick={riprendi}
+                      className="btn btn-primary"
+                      style={{ fontSize: '1rem', padding: '0.75rem 2rem', minWidth: '200px', marginBottom: '0.5rem' }}
+                    >
+                      <Play size={16} /> {t('game.pausa.riprendi')}
+                    </button>
+                    <button
+                      onClick={salvaEdEsci}
+                      className="btn"
+                      style={{
+                        fontSize: '0.9rem', padding: '0.6rem 1.5rem', minWidth: '200px',
+                        background: 'rgba(100,200,100,0.12)', color: '#7ee8a2',
+                        border: '1px solid rgba(100,200,100,0.28)',
+                      }}
+                    >
+                      {t('game.pausa.salva_esci')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setGamePaused(false);
+                        if (cleanupRef.current) { cleanupRef.current(); cleanupRef.current = null; }
+                        setScore(0);
+                        setSubmitMsg('');
+                        setGameStatus('idle');
+                      }}
+                      className="btn"
+                      style={{
+                        fontSize: '0.82rem', padding: '0.5rem 1.5rem', minWidth: '200px', marginTop: '0.25rem',
+                        background: 'rgba(255,80,80,0.1)', color: '#ff8080',
+                        border: '1px solid rgba(255,80,80,0.25)',
+                      }}
+                    >
+                      <X size={13} style={{ marginRight: 4 }} />
+                      {t('game.pausa.esci')}
+                    </button>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Touch controls (mobile) — ultra responsive */}
@@ -948,6 +1077,17 @@ export default function GamePage() {
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              {/* Pausa mobile — solo standalone */}
+              {isStandalone && gameStatus === 'playing' && (
+                <button
+                  className="game-kb-toggle"
+                  onClick={mettInPausa}
+                  title={t('game.pausa')}
+                  aria-label={t('game.pausa')}
+                >
+                  <Pause size={18} />
+                </button>
+              )}
               <button
                 className={`game-kb-toggle ${showKeyboard ? 'active' : ''}`}
                 onClick={() => setShowKeyboard(v => !v)}

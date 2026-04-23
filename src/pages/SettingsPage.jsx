@@ -11,7 +11,21 @@ import { useTema } from '../contexts/TemaContext';
 import { useLingua } from '../contexts/LinguaContext';
 import SEO from '../components/SEO';
 
-const NOTIF_PREFS_KEY       = 'andryxify_msg_notif_prefs';
+const NOTIF_PREFS_KEY       = 'andryxify_notif_v2';
+const NOTIF_DEFAULT = {
+  /* Sistema */
+  inApp:    true,
+  push:     false,
+  sound:    true,
+  /* Canali */
+  live:     true,
+  messaggi: true,
+  chat:     false,
+  post:     false,
+  risposte: true,
+  likes:    false,
+  mentions: true,
+};
 const TEMA_KEY               = 'andryxify_tema';
 const TEMA_MODALITA_KEY      = 'andryxify_tema_modalita';
 const FONT_DIMENSIONE_KEY    = 'andryxify_font_dimensione';
@@ -81,9 +95,32 @@ export default function SettingsPage() {
   const [notifiche, setNotifiche] = useState(() => {
     try {
       const saved = localStorage.getItem(NOTIF_PREFS_KEY);
-      return saved ? JSON.parse(saved) : { inApp: true, push: false, sound: true };
-    } catch { return { inApp: true, push: false, sound: true }; }
+      return saved ? { ...NOTIF_DEFAULT, ...JSON.parse(saved) } : { ...NOTIF_DEFAULT };
+    } catch { return { ...NOTIF_DEFAULT }; }
   });
+
+  // Stato permesso browser Notification
+  const [permessoNotif, setPermessoNotif] = useState(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported';
+    return Notification.permission; // 'default' | 'granted' | 'denied'
+  });
+
+  const richiediPermessoNotif = async () => {
+    if (!('Notification' in window)) return;
+    try {
+      const perm = await Notification.requestPermission();
+      setPermessoNotif(perm);
+      if (perm === 'granted') {
+        aggiornaNotifica('push', true);
+        new Notification('ANDRYXify — Notifiche attive 🔔', {
+          body: 'Riceverai avvisi per live, messaggi e interazioni.',
+          icon: '/pwa-192.png',
+          badge: '/pwa-192.png',
+          tag: 'andryx-welcome',
+        });
+      }
+    } catch { /* rifiutato */ }
+  };
 
   // Tema colore accent
   const [temaAttivo, setTemaAttivo] = useState(() => localStorage.getItem(TEMA_KEY) || 'default');
@@ -397,13 +434,102 @@ export default function SettingsPage() {
           </motion.section>
 
           {/* ═══ Notifiche ═══ */}
-          <motion.section className="glass-panel" style={{ padding: '1.2rem', marginBottom: '1rem' }} {...entrata(0.25)}>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.8rem', fontSize: '1rem' }}>
+          <motion.section className="glass-panel settings-notif-panel" style={{ padding: '1.2rem', marginBottom: '1rem' }} {...entrata(0.25)}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem', fontSize: '1rem' }}>
               <Bell size={18} /> {t('settings.notifiche')}
             </h3>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '1rem', lineHeight: 1.45 }}>
+              {t('settings.notif.sezione.canali')}
+            </p>
+
+            {/* ── Canali ── */}
+            {[
+              { key: 'live',     labelKey: 'settings.notif.live',     descrKey: 'settings.notif.live.descr'     },
+              { key: 'messaggi', labelKey: 'settings.notif.messaggi', descrKey: 'settings.notif.messaggi.descr' },
+              { key: 'chat',     labelKey: 'settings.notif.chat',     descrKey: 'settings.notif.chat.descr'     },
+              { key: 'post',     labelKey: 'settings.notif.post',     descrKey: 'settings.notif.post.descr'     },
+              { key: 'risposte', labelKey: 'settings.notif.risposte', descrKey: 'settings.notif.risposte.descr' },
+              { key: 'likes',    labelKey: 'settings.notif.likes',    descrKey: 'settings.notif.likes.descr'    },
+              { key: 'mentions', labelKey: 'settings.notif.mentions', descrKey: 'settings.notif.mentions.descr' },
+            ].map(({ key, labelKey, descrKey }) => (
+              <div key={key} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '0.6rem 0', borderBottom: '1px solid rgba(130,170,240,0.08)',
+              }}>
+                <div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{t(labelKey)}</div>
+                  <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '2px' }}>{t(descrKey)}</div>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={notifiche[key]}
+                  onClick={() => aggiornaNotifica(key, !notifiche[key])}
+                  style={{
+                    flexShrink: 0, marginLeft: '1rem',
+                    width: 44, height: 24, borderRadius: 12, border: 'none',
+                    background: notifiche[key] ? 'var(--primary)' : 'rgba(255,255,255,0.15)',
+                    position: 'relative', cursor: 'pointer', transition: 'background 0.2s',
+                  }}
+                >
+                  <span style={{
+                    position: 'absolute', top: 2, left: notifiche[key] ? 22 : 2,
+                    width: 20, height: 20, borderRadius: '50%',
+                    background: '#fff', transition: 'left 0.2s',
+                  }} />
+                </button>
+              </div>
+            ))}
+
+            {/* ── Sistema ── */}
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '1rem', marginBottom: '0.4rem', fontWeight: 600 }}>
+              {t('settings.notif.sezione.sistema')}
+            </p>
             <Interruttore etichetta={t('settings.notif.in_app')} attivo={notifiche.inApp} onChange={v => aggiornaNotifica('inApp', v)} />
-            <Interruttore etichetta={t('settings.notif.push')} attivo={notifiche.push} onChange={v => aggiornaNotifica('push', v)} />
             <Interruttore etichetta={t('settings.notif.suoni')} attivo={notifiche.sound} onChange={v => aggiornaNotifica('sound', v)} />
+
+            {/* ── Push browser ── */}
+            <div style={{ marginTop: '0.8rem', padding: '0.8rem', borderRadius: '0.75rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(130,170,240,0.1)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: permessoNotif === 'granted' ? 0 : '0.5rem' }}>
+                <div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{t('settings.notif.push')}</div>
+                  <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '2px' }}>{t('settings.notif.push.descr')}</div>
+                </div>
+                {permessoNotif === 'granted' && (
+                  <button
+                    role="switch"
+                    aria-checked={notifiche.push}
+                    onClick={() => aggiornaNotifica('push', !notifiche.push)}
+                    style={{
+                      flexShrink: 0, marginLeft: '1rem',
+                      width: 44, height: 24, borderRadius: 12, border: 'none',
+                      background: notifiche.push ? 'var(--primary)' : 'rgba(255,255,255,0.15)',
+                      position: 'relative', cursor: 'pointer', transition: 'background 0.2s',
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute', top: 2, left: notifiche.push ? 22 : 2,
+                      width: 20, height: 20, borderRadius: '50%',
+                      background: '#fff', transition: 'left 0.2s',
+                    }} />
+                  </button>
+                )}
+              </div>
+              {permessoNotif === 'default' && (
+                <button className="btn btn-ghost" style={{ fontSize: '0.8rem', width: '100%', justifyContent: 'center', marginTop: '0.3rem' }} onClick={richiediPermessoNotif}>
+                  <Bell size={13} /> {t('settings.notif.push.attiva')}
+                </button>
+              )}
+              {permessoNotif === 'denied' && (
+                <p style={{ fontSize: '0.73rem', color: 'var(--accent-warm, #ffb86c)', marginTop: '0.4rem', lineHeight: 1.45 }}>
+                  ⚠️ {t('settings.notif.push.bloccate')}
+                </p>
+              )}
+              {permessoNotif === 'unsupported' && (
+                <p style={{ fontSize: '0.73rem', color: 'var(--text-faint)', marginTop: '0.4rem' }}>
+                  Notifiche push non supportate da questo browser.
+                </p>
+              )}
+            </div>
           </motion.section>
 
           {/* ═══ Sicurezza E2E ═══ */}

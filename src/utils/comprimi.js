@@ -143,3 +143,33 @@ export function formatDimensione(bytes) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+/** Limite massimo per file audio/video (4 MB → lascia margine per base64 overhead in Redis) */
+const AV_MAX_BYTES = 4_000_000;
+
+/**
+ * Elabora qualsiasi tipo di media per il caricamento:
+ * - Immagini → compressione canvas-based
+ * - Audio/video → verifica solo il limite di dimensione (no transcoding lato client)
+ * - Lancia un errore se il file supera il limite e non è comprimibile
+ */
+export async function comprimeFileMedia(file) {
+  if (!file) throw new Error('Nessun file selezionato.');
+
+  if (file.type.startsWith('image/') || isImageComprimibile(file)) {
+    return comprimeImmagine(file);
+  }
+
+  /* Audio e video: accettali se sotto il limite, altrimenti errore */
+  if (file.type.startsWith('audio/') || file.type.startsWith('video/')) {
+    if (file.size > AV_MAX_BYTES) {
+      throw new Error(
+        `File troppo grande (${formatDimensione(file.size)}). Limite: ${formatDimensione(AV_MAX_BYTES)}.`
+      );
+    }
+    return file;
+  }
+
+  /* Formato non supportato */
+  throw new Error(`Formato non supportato: ${file.type || file.name}`);
+}

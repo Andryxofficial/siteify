@@ -1739,11 +1739,74 @@ nav.navbar-container.glass-panel {
   display: flex;
 }
 
+/* ──────────────────────────────────────────────────────────────
+   MODALITÀ GIOCO IN CORSO — Nasconde navbar e tab bar
+   per dedicare tutto lo schermo al canvas + controlli touch.
+   La classe viene aggiunta/rimossa su <body> da GamePage.
+   ────────────────────────────────────────────────────────────── */
+body.gioco-in-corso .navbar-container,
+body.gioco-in-corso .mobile-tab-bar {
+  display: none !important;
+  pointer-events: none;
+}
+
+/* ── Overlay pausa — stile glass scuro sopra il canvas ── */
+.game-pausa-overlay {
+  background: linear-gradient(
+    145deg,
+    rgba(8, 12, 32, 0.92) 0%,
+    rgba(16, 24, 52, 0.84) 100%
+  );
+}
+
+/* ── Lens flare — burst luminoso sulla pill di navigazione ── */
+.pill-lens-flare {
+  position: absolute;
+  inset: -40%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 70% 55% at 50% 50%,
+    rgba(200, 220, 255, 0.72) 0%,
+    rgba(180, 200, 255, 0.28) 30%,
+    rgba(130, 170, 240, 0.08) 60%,
+    transparent 80%
+  );
+  mix-blend-mode: screen;
+  will-change: opacity, transform;
+  /* Secondo riflesso prismatico — bagliore colorato */
+  filter: blur(2px);
+}
+
+/* Riflesso secondario (alone esterno più grande e più debole) */
+.pill-lens-flare::before {
+  content: '';
+  position: absolute;
+  inset: 10%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse 60% 45% at 60% 35%,
+    rgba(255, 240, 200, 0.45) 0%,
+    rgba(200, 160, 255, 0.15) 45%,
+    transparent 70%
+  );
+  mix-blend-mode: screen;
+}
+
+
+
 .game-touch-controls {
   display: none;
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 0 0.25rem;
+}
+
+/* Mostra i controlli touch quando si è in modalità gioco su touch device */
+@media (hover: none) and (pointer: coarse) {
+  body.gioco-in-corso .game-touch-controls {
+    display: flex;
+  }
 }
 
 .game-joystick {

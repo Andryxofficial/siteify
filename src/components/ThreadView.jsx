@@ -1,13 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Heart, MessageSquare, Clock, Send, Trash2, User,
-  Twitch, Film, Music,
+  Twitch, Film, Music, Paperclip, Volume2, X as XIcon,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import BottoneAggiungiAmico from './BottoneAggiungiAmico';
 import SEO from '../components/SEO';
+import { comprimeFileMedia } from '../utils/comprimi';
 
 const MAPPA_CATEGORIE = {
   generale:     { etichetta: '💬 Generale',     colore: 'var(--text-muted)' },
@@ -91,6 +92,20 @@ function SchedaRisposta({ risposta, puoEliminare, onElimina, twitchToken, curren
             )}
           </div>
           <p className="social-testo-risposta">{risposta.body}</p>
+          {/* Media risposta — supporta mediaId (reale) e mediaUrl (legacy) */}
+          {risposta.mediaId && risposta.mediaMimeType?.startsWith('image/') && (
+            <img src={`/api/community-media?id=${risposta.mediaId}`} alt="Allegato" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: '0.4rem', marginTop: '0.4rem' }} loading="lazy" />
+          )}
+          {risposta.mediaId && risposta.mediaMimeType?.startsWith('video/') && (
+            <video src={`/api/community-media?id=${risposta.mediaId}`} controls preload="metadata" className="social-media-video" style={{ marginTop: '0.4rem' }}>
+              Il tuo browser non supporta il tag video.
+            </video>
+          )}
+          {risposta.mediaId && risposta.mediaMimeType?.startsWith('audio/') && (
+            <audio src={`/api/community-media?id=${risposta.mediaId}`} controls preload="metadata" className="social-media-audio" style={{ marginTop: '0.4rem', width: '100%' }}>
+              Il tuo browser non supporta il tag audio.
+            </audio>
+          )}
         </div>
       </div>
     </motion.div>
@@ -112,6 +127,37 @@ export default function ThreadView() {
   const [testoRisposta, setTestoRisposta] = useState('');
   const [invio, setInvio] = useState(false);
   const [erroreRisposta, setErroreRisposta] = useState('');
+  /* Media allegato risposta */
+  const [mediaFileRisposta, setMediaFileRisposta] = useState(null);
+  const [mediaPreviewRisposta, setMediaPreviewRisposta] = useState(null);
+  const [mediaLoadingRisposta, setMediaLoadingRisposta] = useState(false);
+  const fileInputRispostaRef = useRef(null);
+
+  useEffect(() => {
+    return () => { if (mediaPreviewRisposta) URL.revokeObjectURL(mediaPreviewRisposta); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mediaPreviewRisposta]);
+
+  const onFileRisposta = useCallback(async (file) => {
+    if (!file) return;
+    setMediaLoadingRisposta(true);
+    try {
+      const compresso = await comprimeFileMedia(file);
+      setMediaFileRisposta(compresso);
+      setMediaPreviewRisposta(URL.createObjectURL(compresso));
+    } catch (err) {
+      setErroreRisposta(err.message || 'Errore nel caricamento del media.');
+    } finally {
+      setMediaLoadingRisposta(false);
+    }
+  }, []);
+
+  const rimuoviMediaRisposta = useCallback(() => {
+    setMediaFileRisposta(null);
+    if (mediaPreviewRisposta) URL.revokeObjectURL(mediaPreviewRisposta);
+    setMediaPreviewRisposta(null);
+    if (fileInputRispostaRef.current) fileInputRispostaRef.current.value = '';
+  }, [mediaPreviewRisposta]);
 
   /* ── Carica dati del post ── */
   const caricaTutto = useCallback(async () => {
@@ -182,18 +228,36 @@ export default function ThreadView() {
     setInvio(true);
     setErroreRisposta('');
     try {
+      const payload = { postId, body: testoRisposta.trim() };
+
+      /* Upload media allegato se presente */
+      if (mediaFileRisposta) {
+        const arrayBuffer = await mediaFileRisposta.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        const uploadRes = await fetch('/api/community-media', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+          body: JSON.stringify({ contentType: mediaFileRisposta.type, dataBase64: base64 }),
+        });
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(uploadData.error || 'Errore nel caricamento del media.');
+        payload.mediaId       = uploadData.id;
+        payload.mediaMimeType = mediaFileRisposta.type;
+      }
+
       const res = await fetch('/api/community-replies', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${twitchToken}`,
         },
-        body: JSON.stringify({ postId, body: testoRisposta.trim() }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Errore');
       setRisposte(prev => [...prev, data.reply]);
       setTestoRisposta('');
+      rimuoviMediaRisposta();
       setPost(prev => prev ? { ...prev, replyCount: (prev.replyCount || 0) + 1 } : prev);
     } catch (err) {
       setErroreRisposta(err.message);
@@ -328,15 +392,37 @@ export default function ThreadView() {
         {/* Corpo del post */}
         <div className="social-corpo-thread">{post.body}</div>
 
-        {/* Media content */}
-        {post.mediaUrl && post.mediaType === 'video' && (
+        {/* Media content — supporta mediaId (reale) e mediaUrl (legacy) */}
+        {post.mediaId && post.mediaMimeType?.startsWith('image/') && (
+          <div className="social-media-preview" style={{ margin: '1rem 0' }}>
+            <img src={`/api/community-media?id=${post.mediaId}`} alt="Allegato" className="social-media-img" loading="lazy" style={{ maxWidth: '100%', borderRadius: '0.5rem' }} />
+          </div>
+        )}
+        {post.mediaId && post.mediaMimeType?.startsWith('video/') && (
+          <div className="social-media-preview" style={{ margin: '1rem 0' }}>
+            <video src={`/api/community-media?id=${post.mediaId}`} controls preload="metadata" className="social-media-video">
+              Il tuo browser non supporta il tag video.
+            </video>
+          </div>
+        )}
+        {post.mediaId && post.mediaMimeType?.startsWith('audio/') && (
+          <div className="social-media-preview" style={{ margin: '1rem 0' }}>
+            <div className="social-media-audio-wrapper">
+              <Volume2 size={16} color="var(--primary)" />
+              <audio src={`/api/community-media?id=${post.mediaId}`} controls preload="metadata" className="social-media-audio">
+                Il tuo browser non supporta il tag audio.
+              </audio>
+            </div>
+          </div>
+        )}
+        {!post.mediaId && post.mediaUrl && post.mediaType === 'video' && (
           <div className="social-media-preview" style={{ margin: '1rem 0' }}>
             <video src={post.mediaUrl} controls preload="metadata" className="social-media-video">
               Il tuo browser non supporta il tag video.
             </video>
           </div>
         )}
-        {post.mediaUrl && post.mediaType === 'audio' && (
+        {!post.mediaId && post.mediaUrl && post.mediaType === 'audio' && (
           <div className="social-media-preview" style={{ margin: '1rem 0' }}>
             <div className="social-media-audio-wrapper">
               <Music size={16} color="var(--primary)" />
@@ -346,7 +432,7 @@ export default function ThreadView() {
             </div>
           </div>
         )}
-        {post.mediaUrl && !post.mediaType && (
+        {!post.mediaId && post.mediaUrl && !post.mediaType && (
           <div className="social-media-preview" style={{ margin: '1rem 0' }}>
             <a href={post.mediaUrl} target="_blank" rel="noopener noreferrer" className="social-media-link">
               <Film size={14} /> Apri media allegato
@@ -425,14 +511,63 @@ export default function ThreadView() {
                 style={{ flex: 1, marginBottom: 0, resize: 'vertical', minHeight: '60px' }}
                 required
               />
-              <button
-                type="submit"
-                className="btn btn-primary social-btn-invia"
-                disabled={invio || !testoRisposta.trim()}
-              >
-                {invio ? '…' : <Send size={15} />}
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                {/* Pulsante allega */}
+                <input
+                  ref={fileInputRispostaRef}
+                  type="file"
+                  accept="image/*,video/*,audio/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => onFileRisposta(e.target.files?.[0] || null)}
+                />
+                <button
+                  type="button"
+                  className="btn btn-ghost social-btn-allega"
+                  title="Allega media"
+                  aria-label="Allega media"
+                  disabled={mediaLoadingRisposta}
+                  onClick={() => fileInputRispostaRef.current?.click()}
+                  style={{ padding: '0.45rem 0.6rem' }}
+                >
+                  <Paperclip size={15} />
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary social-btn-invia"
+                  disabled={invio || !testoRisposta.trim()}
+                >
+                  {invio ? '…' : <Send size={15} />}
+                </button>
+              </div>
             </div>
+
+            {/* Anteprima media risposta */}
+            {mediaPreviewRisposta && mediaFileRisposta && (
+              <div style={{ position: 'relative', marginTop: '0.5rem' }}>
+                {mediaFileRisposta.type.startsWith('image/') && (
+                  <img src={mediaPreviewRisposta} alt="Anteprima" style={{ maxWidth: '100%', maxHeight: 160, borderRadius: '0.4rem', objectFit: 'contain', background: 'rgba(0,0,0,0.2)' }} />
+                )}
+                {mediaFileRisposta.type.startsWith('video/') && (
+                  <video src={mediaPreviewRisposta} controls preload="metadata" style={{ maxWidth: '100%', maxHeight: 140, borderRadius: '0.4rem' }} />
+                )}
+                {mediaFileRisposta.type.startsWith('audio/') && (
+                  <audio src={mediaPreviewRisposta} controls preload="metadata" style={{ width: '100%' }} />
+                )}
+                <button
+                  type="button"
+                  onClick={rimuoviMediaRisposta}
+                  style={{
+                    position: 'absolute', top: 3, right: 3,
+                    background: 'rgba(0,0,0,0.65)', border: 'none', borderRadius: '50%',
+                    width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', color: '#fff',
+                  }}
+                >
+                  <XIcon size={11} />
+                </button>
+              </div>
+            )}
+
             {erroreRisposta && (
               <p className="social-errore" style={{ marginTop: '6px' }}>{erroreRisposta}</p>
             )}

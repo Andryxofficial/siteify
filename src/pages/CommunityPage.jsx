@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, Heart, Clock, Send, X, ChevronLeft, ChevronRight,
   Twitch, LogIn, Plus, User, Bell, BellOff, Trophy, Film, Music,
-  Users, Lock, Shield, Star,
+  Users, Lock, Shield, Star, Paperclip, Image, Volume2,
 } from 'lucide-react';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useNotifiche } from '../hooks/useNotifiche';
@@ -14,6 +14,7 @@ import EmotePicker from '../components/EmotePicker';
 import BottoneAggiungiAmico from '../components/BottoneAggiungiAmico';
 import SEO from '../components/SEO';
 import { useLingua } from '../contexts/LinguaContext';
+import { comprimeFileMedia } from '../utils/comprimi';
 
 function getCATEGORIE(t) {
   return [
@@ -152,15 +153,38 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
             {/* Anteprima testo */}
             <p className="social-anteprima-testo">{renderTestoConEmote(post.body)}</p>
 
-            {/* Media preview */}
-            {post.mediaUrl && post.mediaType === 'video' && (
+            {/* Media preview — supporta sia mediaId (reale) che mediaUrl (legacy) */}
+            {post.mediaId && post.mediaMimeType?.startsWith('image/') && (
+              <div className="social-media-preview" onClick={e => e.preventDefault()}>
+                <img src={`/api/community-media?id=${post.mediaId}`} alt="Allegato" className="social-media-img" loading="lazy" />
+              </div>
+            )}
+            {post.mediaId && post.mediaMimeType?.startsWith('video/') && (
+              <div className="social-media-preview" onClick={e => e.preventDefault()}>
+                <video src={`/api/community-media?id=${post.mediaId}`} controls preload="metadata" className="social-media-video">
+                  Il tuo browser non supporta il tag video.
+                </video>
+              </div>
+            )}
+            {post.mediaId && post.mediaMimeType?.startsWith('audio/') && (
+              <div className="social-media-preview" onClick={e => e.preventDefault()}>
+                <div className="social-media-audio-wrapper">
+                  <Volume2 size={16} color="var(--primary)" />
+                  <audio src={`/api/community-media?id=${post.mediaId}`} controls preload="metadata" className="social-media-audio">
+                    Il tuo browser non supporta il tag audio.
+                  </audio>
+                </div>
+              </div>
+            )}
+            {/* Legacy: vecchi post con mediaUrl */}
+            {!post.mediaId && post.mediaUrl && post.mediaType === 'video' && (
               <div className="social-media-preview" onClick={e => e.preventDefault()}>
                 <video src={post.mediaUrl} controls preload="metadata" className="social-media-video">
                   Il tuo browser non supporta il tag video.
                 </video>
               </div>
             )}
-            {post.mediaUrl && post.mediaType === 'audio' && (
+            {!post.mediaId && post.mediaUrl && post.mediaType === 'audio' && (
               <div className="social-media-preview" onClick={e => e.preventDefault()}>
                 <div className="social-media-audio-wrapper">
                   <Music size={16} color="var(--primary)" />
@@ -170,7 +194,7 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
                 </div>
               </div>
             )}
-            {post.mediaUrl && !post.mediaType && (
+            {!post.mediaId && post.mediaUrl && !post.mediaType && (
               <div className="social-media-preview" onClick={e => e.preventDefault()}>
                 <a href={post.mediaUrl} target="_blank" rel="noopener noreferrer" className="social-media-link">
                   <Film size={14} /> Apri media
@@ -226,17 +250,50 @@ function EditorPost({ onChiudi, onCreato }) {
   const [titolo, setTitolo] = useState(bozzaSalvata?.titolo || '');
   const [testo, setTesto] = useState(bozzaSalvata?.testo || '');
   const [categoria, setCategoria] = useState(bozzaSalvata?.categoria || 'generale');
-  const [mediaUrl, setMediaUrl] = useState(bozzaSalvata?.mediaUrl || '');
-  const [mediaType, setMediaType] = useState(bozzaSalvata?.mediaType || '');
+  /* Media allegato — file reale (non URL) */
+  const [mediaFile, setMediaFile] = useState(null);      // File | null
+  const [mediaPreview, setMediaPreview] = useState(null); // object URL per anteprima
+  const [mediaCaricamento, setMediaCaricamento] = useState(false);
+  const [mediaErrore, setMediaErrore] = useState('');
+  const fileInputRef = useRef(null);
   const [invio, setInvio] = useState(false);
   const [errore, setErrore] = useState('');
   const [mostraAnteprima, setMostraAnteprima] = useState(false);
 
-  // Auto-salva bozza ad ogni modifica
+  // Auto-salva bozza (senza file — i file non si serializzano)
   useEffect(() => {
-    const bozza = { titolo, testo, categoria, mediaUrl, mediaType };
+    const bozza = { titolo, testo, categoria };
     localStorage.setItem('andryxify_bozza_post', JSON.stringify(bozza));
-  }, [titolo, testo, categoria, mediaUrl, mediaType]);
+  }, [titolo, testo, categoria]);
+
+  // Revoca object URL al cambio file
+  useEffect(() => {
+    return () => { if (mediaPreview) URL.revokeObjectURL(mediaPreview); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mediaPreview]);
+
+  const onFileSelezionato = useCallback(async (file) => {
+    if (!file) return;
+    setMediaErrore('');
+    setMediaCaricamento(true);
+    try {
+      const compresso = await comprimeFileMedia(file);
+      setMediaFile(compresso);
+      setMediaPreview(URL.createObjectURL(compresso));
+    } catch (err) {
+      setMediaErrore(err.message || t('community.editor.allega_errore'));
+    } finally {
+      setMediaCaricamento(false);
+    }
+  }, [t]);
+
+  const rimuoviMedia = useCallback(() => {
+    setMediaFile(null);
+    if (mediaPreview) URL.revokeObjectURL(mediaPreview);
+    setMediaPreview(null);
+    setMediaErrore('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [mediaPreview]);
 
   // Colore contatore caratteri
   const contatoreColore = testo.length > 1950 ? 'var(--accent)' : testo.length > 1800 ? '#ffb300' : 'var(--text-faint)';
@@ -258,10 +315,22 @@ function EditorPost({ onChiudi, onCreato }) {
     setErrore('');
     try {
       const payload = { title: titolo.trim(), body: testo.trim(), tag: categoria };
-      if (mediaUrl.trim()) {
-        payload.mediaUrl = mediaUrl.trim();
-        payload.mediaType = mediaType || '';
+
+      /* Se c'è un file allegato, caricalo su /api/community-media prima */
+      if (mediaFile) {
+        const arrayBuffer = await mediaFile.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        const uploadRes = await fetch('/api/community-media', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+          body: JSON.stringify({ contentType: mediaFile.type, dataBase64: base64 }),
+        });
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(uploadData.error || t('community.editor.allega_errore'));
+        payload.mediaId       = uploadData.id;
+        payload.mediaMimeType = mediaFile.type;
       }
+
       const res = await fetch('/api/community', {
         method: 'POST',
         headers: {
@@ -391,34 +460,70 @@ function EditorPost({ onChiudi, onCreato }) {
           />
         )}
 
-        {/* Media URL (optional) */}
+        {/* Media allegato — file picker reale */}
         <div className="social-media-sezione">
-          <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.4rem' }}>
-            {[
-              { value: '',      label: t('community.post.tipo.testo') },
-              { value: 'video', label: t('community.post.tipo.video') },
-              { value: 'audio', label: t('community.post.tipo.audio') },
-            ].map(t => (
-              <button key={t.value} type="button" className="chip" onClick={() => setMediaType(t.value)}
+          {/* Input file nascosto */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*,audio/*"
+            style={{ display: 'none' }}
+            onChange={(e) => onFileSelezionato(e.target.files?.[0] || null)}
+          />
+
+          {!mediaFile && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              style={{ fontSize: '0.78rem', padding: '0.4rem 0.9rem', width: '100%', justifyContent: 'center', gap: '0.4rem' }}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={mediaCaricamento}
+            >
+              <Paperclip size={14} />
+              {mediaCaricamento ? t('community.editor.allega_caricamento') : t('community.editor.allega')}
+            </button>
+          )}
+
+          {mediaCaricamento && (
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', padding: '0.4rem' }}>
+              ⏳ {t('community.editor.allega_caricamento')}
+            </div>
+          )}
+
+          {mediaErrore && (
+            <p style={{ fontSize: '0.73rem', color: '#f87171', marginTop: '0.3rem' }}>{mediaErrore}</p>
+          )}
+
+          {/* Anteprima allegato */}
+          {mediaPreview && mediaFile && (
+            <div className="social-media-preview" style={{ position: 'relative', marginTop: '0.5rem' }}>
+              {mediaFile.type.startsWith('image/') && (
+                <img src={mediaPreview} alt="Anteprima" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: '0.5rem', objectFit: 'contain', background: 'rgba(0,0,0,0.2)' }} />
+              )}
+              {mediaFile.type.startsWith('video/') && (
+                <video src={mediaPreview} controls preload="metadata" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: '0.5rem' }} />
+              )}
+              {mediaFile.type.startsWith('audio/') && (
+                <audio src={mediaPreview} controls preload="metadata" style={{ width: '100%' }} />
+              )}
+              <button
+                type="button"
+                onClick={rimuoviMedia}
+                title="Rimuovi allegato"
                 style={{
-                  fontSize: '0.68rem', padding: '2px 8px', cursor: 'pointer',
-                  background: mediaType === t.value ? 'rgba(var(--primary-rgb, 99,102,241), 0.15)' : 'transparent',
-                  color: mediaType === t.value ? 'var(--primary)' : 'var(--text-faint)',
-                  border: `1px solid ${mediaType === t.value ? 'var(--primary)' : 'var(--glass-border)'}`,
-                }}>
-                {t.label}
+                  position: 'absolute', top: 4, right: 4,
+                  background: 'rgba(0,0,0,0.65)', border: 'none', borderRadius: '50%',
+                  width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', color: '#fff',
+                }}
+              >
+                <X size={12} />
               </button>
-            ))}
-          </div>
-          {mediaType && (
-            <input
-              type="url"
-              placeholder={mediaType === 'video' ? 'https://esempio.com/video.mp4' : 'https://esempio.com/audio.mp3'}
-              value={mediaUrl}
-              onChange={(e) => setMediaUrl(e.target.value)}
-              className="social-campo"
-              style={{ fontSize: '0.82rem' }}
-            />
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-faint)', marginTop: '0.25rem' }}>
+                <Paperclip size={11} style={{ verticalAlign: 'middle', marginRight: 3 }} />
+                {mediaFile.name} · {(mediaFile.size / 1024).toFixed(0)} KB
+              </p>
+            </div>
           )}
         </div>
 
