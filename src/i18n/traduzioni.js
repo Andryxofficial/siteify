@@ -213,6 +213,19 @@ export const TRADUZIONI = {
     'twitch.cta.segui':         'Segui su Twitch',
     'twitch.cta.donazioni':     'Donazioni su x.la',
 
+    /* ── Twitch watch time ── */
+    'twitch.watchtime.titolo':         'Spettatori più longevi',
+    'twitch.watchtime.desc':           'Classifica in tempo reale di chi guarda il canale per più ore',
+    'twitch.watchtime.tab.globale':    'Tutti i tempi',
+    'twitch.watchtime.tab.mensile':    'Questo mese',
+    'twitch.watchtime.login':          'Accedi con Twitch per essere tracciato nella classifica',
+    'twitch.watchtime.vuota':          'Nessuno ancora — inizia a guardare la live!',
+    'twitch.watchtime.tu':             'Tu',
+    'twitch.watchtime.tracking':       'Stai guardando da',
+    'twitch.watchtime.rank':           'La tua posizione',
+    'twitch.watchtime.bonus.titolo':   'Bonus longevità',
+    'twitch.watchtime.bonus.desc':     'Più guardi, più alto sali! Raggiungi i badge:',
+
     /* ── YouTube page ── */
     'youtube.subtitle':         'Riflessioni, approfondimenti e highlights sul futuro digitale.',
     'youtube.canale.desc':      'Live, estratti, approfondimenti sull\'intelligenza artificiale, reaction e gaming. Esplora tutti i contenuti originali e unisciti alla community!',
@@ -706,6 +719,19 @@ export const TRADUZIONI = {
     'twitch.cta.segui':         'Follow on Twitch',
     'twitch.cta.donazioni':     'Donate on x.la',
 
+    /* ── Twitch watch time ── */
+    'twitch.watchtime.titolo':         'Top Viewers by Watch Time',
+    'twitch.watchtime.desc':           'Real-time leaderboard of who watches the channel the most',
+    'twitch.watchtime.tab.globale':    'All time',
+    'twitch.watchtime.tab.mensile':    'This month',
+    'twitch.watchtime.login':          'Log in with Twitch to be tracked on the leaderboard',
+    'twitch.watchtime.vuota':          'Nobody yet — start watching the stream!',
+    'twitch.watchtime.tu':             'You',
+    'twitch.watchtime.tracking':       'You have been watching for',
+    'twitch.watchtime.rank':           'Your position',
+    'twitch.watchtime.bonus.titolo':   'Loyalty bonus',
+    'twitch.watchtime.bonus.desc':     'The more you watch, the higher you climb! Earn badges:',
+
     /* ── YouTube page ── */
     'youtube.subtitle':         'Thoughts, deep-dives and highlights from the digital frontier.',
     'youtube.canale.desc':      'Live streams, clips, AI deep-dives, reactions and gaming. Explore all original content and join the community!',
@@ -1197,6 +1223,19 @@ export const TRADUZIONI = {
     'twitch.canale.desc':       '¡Sígueme en Twitch para no perderte ningún directo. Activa las notificaciones y únete a la comunidad!',
     'twitch.cta.segui':         'Seguir en Twitch',
     'twitch.cta.donazioni':     'Donaciones en x.la',
+
+    /* ── Twitch watch time ── */
+    'twitch.watchtime.titolo':         'Espectadores más longevos',
+    'twitch.watchtime.desc':           'Clasificación en tiempo real de quién ve el canal más horas',
+    'twitch.watchtime.tab.globale':    'Todo el tiempo',
+    'twitch.watchtime.tab.mensile':    'Este mes',
+    'twitch.watchtime.login':          'Inicia sesión con Twitch para aparecer en la clasificación',
+    'twitch.watchtime.vuota':          '¡Nadie todavía — empieza a ver el directo!',
+    'twitch.watchtime.tu':             'Tú',
+    'twitch.watchtime.tracking':       'Llevas viendo',
+    'twitch.watchtime.rank':           'Tu posición',
+    'twitch.watchtime.bonus.titolo':   'Bonus de lealtad',
+    'twitch.watchtime.bonus.desc':     'Cuanto más ves, más alto subes. Consigue estas insignias:',
 
     /* ── YouTube page ── */
     'youtube.subtitle':         'Reflexiones, análisis en profundidad y highlights del futuro digital.',
