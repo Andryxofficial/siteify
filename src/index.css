@@ -7932,3 +7932,126 @@ html[data-tema="chiaro"] .app-feature-icon {
     box-shadow: 0 0 0 6px rgba(255, 107, 107, 0);
   }
 }
+
+/* ═══════════════════════════════════════════════════
+   FIX iOS SAFARI — prevenzione auto-zoom sugli input
+   iOS Safari zooma automaticamente la pagina quando
+   si fa tap su un input con font-size < 16px.
+   Forziamo un minimo di 1rem (16px) su mobile per
+   eliminare il comportamento senza impattare desktop.
+   ═══════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  textarea,
+  select {
+    font-size: max(1rem, 1em);
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   TEMA CHIARO — Editor post leggibile
+   Senza questi override il modal "Nuovo Post" risulta
+   praticamente illeggibile: sfondo bianco-su-bianco,
+   input trasparenti sul pannello vetro chiaro,
+   bordi quasi invisibili (rgba 0.04 e 0.16).
+   ═══════════════════════════════════════════════════ */
+
+/* Pannello modale — sfondo più definito */
+html[data-tema="chiaro"] .social-editor {
+  background: linear-gradient(
+    170deg,
+    rgba(237, 241, 255, 0.99) 0%,
+    rgba(225, 233, 255, 0.98) 100%
+  );
+  box-shadow:
+    0 -8px 40px rgba(60, 80, 160, 0.16),
+    0 -1px 0 rgba(80, 110, 200, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.98);
+}
+
+/* Campo testo e area — sfondo bianco opaco, bordo visibile */
+html[data-tema="chiaro"] .social-campo {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(80, 110, 200, 0.32);
+  color: var(--text-main);
+}
+html[data-tema="chiaro"] .social-campo::placeholder {
+  color: rgba(87, 90, 120, 0.55);
+}
+html[data-tema="chiaro"] .social-campo:focus {
+  background: #ffffff;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(224, 64, 251, 0.12);
+}
+
+/* TagInput — contenitore chip con bordo visibile */
+html[data-tema="chiaro"] .tag-input-chips {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(80, 110, 200, 0.32);
+}
+html[data-tema="chiaro"] .tag-input-chips:focus-within {
+  background: #ffffff;
+  border-color: rgba(224, 64, 251, 0.50);
+}
+
+/* Titolo editor */
+html[data-tema="chiaro"] .social-editor-titolo {
+  color: var(--text-main);
+}
+
+/* Label tag liberi */
+html[data-tema="chiaro"] .social-tag-input-label {
+  color: var(--text-muted);
+}
+
+/* Bottone chiudi editor */
+html[data-tema="chiaro"] .social-editor .social-btn-azione {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-main);
+}
+html[data-tema="chiaro"] .social-editor .social-btn-azione:hover {
+  background: rgba(0, 0, 0, 0.10);
+}
+
+/* Contatore caratteri */
+html[data-tema="chiaro"] .social-contatore {
+  color: var(--text-muted);
+}
+
+/* Dropdown suggerimenti tag */
+html[data-tema="chiaro"] .tag-input-suggerimenti {
+  background: rgba(248, 250, 255, 0.98);
+  border-color: rgba(80, 110, 200, 0.22);
+  box-shadow: 0 8px 24px rgba(60, 80, 160, 0.14);
+}
+html[data-tema="chiaro"] .tag-input-suggerimento {
+  color: var(--text-main);
+}
+html[data-tema="chiaro"] .tag-input-suggerimento:hover,
+html[data-tema="chiaro"] .tag-input-suggerimento--attivo {
+  background: rgba(80, 110, 200, 0.08);
+}
+html[data-tema="chiaro"] .tag-input-suggerimento-stat {
+  color: var(--text-muted);
+}
+
+/* ── Modale: layout con tastiera iOS ──
+   Su iOS quando la tastiera si apre il viewport si riduce.
+   svh ("small viewport height") esclude già la tastiera virtuale,
+   ma aggiungiamo padding-bottom di sicurezza per i browser
+   che non supportano svh (fallback a vh). */
+html[data-tema="chiaro"] .social-editor-sfondo {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.social-editor-sfondo {
+  /* Garantisce spazio quando la tastiera software è aperta su iOS */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Previene scroll del body dietro il modal su iOS —
+   la classe .modal-aperto viene aggiunta via JS (EditorPost) */
+body.modal-aperto {
+  overflow: hidden;
+  touch-action: none;
+}

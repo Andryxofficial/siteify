@@ -365,6 +365,12 @@ function EditorPost({ onChiudi, onCreato }) {
     return () => { if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current); };
   }, []);
 
+  // Blocca lo scroll del body mentre il modal è aperto (previene scroll dietro su iOS)
+  useEffect(() => {
+    document.body.classList.add('modal-aperto');
+    return () => { document.body.classList.remove('modal-aperto'); };
+  }, []);
+
   // Auto-salva bozza ad ogni modifica (senza media, troppo grande)
   useEffect(() => {
     const bozza = { titolo, testo, categoria, tagLiberi };
