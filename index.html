@@ -320,5 +320,41 @@
       </noscript>
     </div>
     <script type="module" src="/src/main.jsx"></script>
+
+    <!-- Splash screen — copre il fallback SEO statico finché React non monta -->
+    <div id="andryx-splash" style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;pointer-events:all;">
+      <img
+        src="/Firma_Andryx.png"
+        alt="ANDRYXify"
+        style="max-width:260px;width:65%;height:auto;object-fit:contain;animation:andryxSplashPulse 1.6s ease-in-out infinite;"
+      />
+    </div>
+    <style>
+      /* Colore sfondo splash: rispecchia il tema già impostato dall'anti-FOUC */
+      #andryx-splash {
+        background: #050506;
+        transition:
+          opacity  0.22s cubic-bezier(0.55, 0, 1, 0.45),
+          transform 0.22s cubic-bezier(0.55, 0, 1, 0.45);
+        transform-origin: center center;
+        will-change: opacity, transform;
+      }
+      html[data-tema="chiaro"] #andryx-splash {
+        background: #f0f2f8;
+      }
+      @keyframes andryxSplashPulse {
+        0%, 100% { opacity: 0.75; transform: scale(1); }
+        50%       { opacity: 1;    transform: scale(1.04); }
+      }
+      /* Risucchio: la splash scala verso il centro accelerando mentre svanisce */
+      #andryx-splash.nascosto {
+        opacity: 0;
+        transform: scale(0.72);
+        pointer-events: none;
+      }
+      #andryx-splash.nascosto img {
+        animation: none !important;
+      }
+    </style>
   </body>
 </html>
