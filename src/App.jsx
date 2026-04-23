@@ -171,7 +171,7 @@ function AppLayout() {
     const splash = document.getElementById('andryx-splash');
     if (!splash) return;
     splash.classList.add('nascosto');
-    const t = setTimeout(() => splash.remove(), 500);
+    const t = setTimeout(() => splash.remove(), 260);
     return () => clearTimeout(t);
   }, []);
 

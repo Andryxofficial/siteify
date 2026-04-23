@@ -333,7 +333,11 @@
       /* Colore sfondo splash: rispecchia il tema già impostato dall'anti-FOUC */
       #andryx-splash {
         background: #050506;
-        transition: opacity 0.45s ease;
+        transition:
+          opacity  0.22s cubic-bezier(0.55, 0, 1, 0.45),
+          transform 0.22s cubic-bezier(0.55, 0, 1, 0.45);
+        transform-origin: center center;
+        will-change: opacity, transform;
       }
       html[data-tema="chiaro"] #andryx-splash {
         background: #f0f2f8;
@@ -342,9 +346,14 @@
         0%, 100% { opacity: 0.75; transform: scale(1); }
         50%       { opacity: 1;    transform: scale(1.04); }
       }
+      /* Risucchio: la splash scala verso il centro accelerando mentre svanisce */
       #andryx-splash.nascosto {
         opacity: 0;
+        transform: scale(0.72);
         pointer-events: none;
+      }
+      #andryx-splash.nascosto img {
+        animation: none !important;
       }
     </style>
   </body>
