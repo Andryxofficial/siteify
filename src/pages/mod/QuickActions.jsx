@@ -12,6 +12,7 @@
  * Ogni azione apre un modale glass con conferma + descrizione.
  */
 import { useState, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Rocket, Megaphone, Bookmark, X, Loader, Play, Search, Sparkles,
@@ -55,7 +56,7 @@ function saveSnippets(arr) {
 }
 
 function ModaleGlass({ onClose, children, titolo, icona: Icona, accento }) {
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="quick-action-modale-overlay"
@@ -85,7 +86,8 @@ function ModaleGlass({ onClose, children, titolo, icona: Icona, accento }) {
         </div>
         {children}
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 

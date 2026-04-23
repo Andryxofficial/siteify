@@ -16,6 +16,7 @@
  *   onDone   — callback(shieldActive: boolean) dopo successo
  */
 import { useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldCheck, ShieldX, Users, Star, Lock, X, Loader, Check } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
@@ -74,7 +75,7 @@ export default function ShieldModeModal({ token, onClose, onDone }) {
     }
   }, [token, selezionato, toast, t, onDone, onClose]);
 
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -224,7 +225,8 @@ export default function ShieldModeModal({ token, onClose, onDone }) {
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 
