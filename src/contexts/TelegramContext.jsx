@@ -25,7 +25,6 @@ export function useTelegram() {
 /** Carica lo script SDK Telegram una sola volta (idempotente). */
 let sdkPromise = null;
 function loadTelegramSdk() {
-  if (typeof window === 'undefined') return Promise.resolve(null);
   if (window.Telegram?.WebApp) return Promise.resolve(window.Telegram.WebApp);
   if (sdkPromise) return sdkPromise;
   sdkPromise = new Promise((resolve) => {

@@ -48,10 +48,10 @@ function verificaInitData(initData, botToken) {
     return null;
   }
 
-  // Controlla la freschezza: auth_date non deve essere più vecchio di 5 minuti
+  // Controlla la freschezza: auth_date non deve essere più vecchio di 10 minuti
   const authDate = parseInt(params.get('auth_date') || '0', 10);
   const adesso = Math.floor(Date.now() / 1000);
-  if (!authDate || adesso - authDate > 300) return null;
+  if (!authDate || adesso - authDate > 600) return null;
 
   // Estrai dati utente
   const userRaw = params.get('user');

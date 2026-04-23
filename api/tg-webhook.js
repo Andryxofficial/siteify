@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis';
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 /**
  * tg-webhook.js — Webhook del bot Telegram per ANDRYXify.
@@ -94,10 +94,17 @@ export default async function handler(req, res) {
   // Verifica header segreto (protezione da richieste spurie)
   if (webhookSecret) {
     const incoming = req.headers['x-telegram-bot-api-secret-token'] || '';
-    // Confronto sicuro con HMAC come proxy per timingSafeEqual su stringhe
-    const expected = createHmac('sha256', webhookSecret).update(incoming).digest('hex');
-    const actual   = createHmac('sha256', webhookSecret).update(webhookSecret).digest('hex');
-    if (expected !== actual) {
+    const expectedBuf = Buffer.from(
+      createHmac('sha256', webhookSecret).update(webhookSecret).digest('hex'),
+      'utf8',
+    );
+    const actualBuf = Buffer.from(
+      createHmac('sha256', webhookSecret).update(incoming).digest('hex'),
+      'utf8',
+    );
+    const valido = expectedBuf.length === actualBuf.length &&
+                   timingSafeEqual(expectedBuf, actualBuf);
+    if (!valido) {
       return res.status(403).json({ error: 'Token segreto non valido.' });
     }
   }
@@ -127,7 +134,7 @@ export default async function handler(req, res) {
   const comando = testo.split(' ')[0].toLowerCase().replace(/@\S+$/, '');
 
   if (comando === '/start') {
-    const testo = (
+    const testoBenvenuto = (
       `🎮 <b>Ciao ${nome}!</b> Benvenuto su <b>ANDRYXify</b>!\n\n` +
       `Sono <b>Andryx</b> — streamer Twitch, gamer e content creator italiano.\n\n` +
       `Cosa trovi qui:\n` +
@@ -137,7 +144,7 @@ export default async function handler(req, res) {
       `📺 <b>Twitch / YouTube</b> — stream live e video\n\n` +
       `Tocca il bottone qui sotto per aprire l'app! 👇`
     );
-    await inviaMessaggio(botToken, chatId, testo, {
+    await inviaMessaggio(botToken, chatId, testoBenvenuto, {
       reply_markup: {
         inline_keyboard: [[
           { text: '🎮 Apri ANDRYXify', web_app: { url: MINI_APP_URL } },

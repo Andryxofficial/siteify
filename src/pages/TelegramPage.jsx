@@ -214,7 +214,7 @@ export default function TelegramPage() {
           <div>
             <p className="tg-cta__titolo">Aprila su Telegram!</p>
             <p className="tg-cta__desc">
-              Aggiungi il bot ANDRYXify e apri l&apos;app direttamente da Telegram —
+              Aggiungi il bot ANDRYXify e apri l&apos;app direttamente da Telegram &mdash;
               senza installare nulla.
             </p>
             <a
