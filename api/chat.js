@@ -26,6 +26,8 @@ const RATE_LIMIT_SECONDS = 3;
 const MAX_MEDIA_SIZE  = 8_000_000; // ~8 MB base64 ≈ 6 MB raw
 const MEDIA_TTL       = 7 * 86400; // 7 giorni (coerente con le ultime ~200 chat)
 const VALID_MIME_PREFIXES = ['image/', 'audio/', 'video/'];
+/* SVG bloccato: può contenere script e abilitare XSS */
+const BLOCKED_MIME_TYPES  = ['image/svg+xml'];
 
 function sanitize(str, maxLen) {
   if (typeof str !== 'string') return '';
@@ -140,8 +142,8 @@ export default async function handler(req, res) {
         if (!data || typeof data !== 'string') return res.status(400).json({ error: 'Dati media richiesti.' });
         if (data.length > MAX_MEDIA_SIZE) return res.status(413).json({ error: 'File troppo grande (max ~6 MB).' });
         const mimeType = (rawMime || '').trim().slice(0, 100);
-        if (!VALID_MIME_PREFIXES.some(p => mimeType.startsWith(p))) {
-          return res.status(400).json({ error: 'Tipo MIME non supportato. Usa immagine, audio o video.' });
+        if (!VALID_MIME_PREFIXES.some(p => mimeType.startsWith(p)) || BLOCKED_MIME_TYPES.includes(mimeType)) {
+          return res.status(400).json({ error: 'Tipo MIME non supportato. Usa immagine (non SVG), audio o video.' });
         }
         const name      = (rawName || 'file').trim().slice(0, 200);
         const mediaType = ['image', 'audio', 'video'].includes(rawMediaType) ? rawMediaType : 'image';
@@ -165,6 +167,10 @@ export default async function handler(req, res) {
 
       if (!text && !mediaId) {
         return res.status(400).json({ error: 'Il messaggio non può essere vuoto.' });
+      }
+      /* Se è presente un mediaId, il mediaType deve essere valido */
+      if (mediaId && !mediaType) {
+        return res.status(400).json({ error: 'Tipo media non valido.' });
       }
 
       // Rate limiting

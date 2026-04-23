@@ -62,6 +62,8 @@ function ChatMediaDisplay({ mediaId, mediaType }) {
   const [mime, setMime]   = useState('');
   const [caric, setCaric] = useState(true);
   const [err, setErr]     = useState(false);
+  const blobUrlRef        = useRef(null);
+  const MIME_CONSENTITI   = ['image/', 'audio/', 'video/'];
 
   useEffect(() => {
     if (!mediaId) return;
@@ -72,13 +74,23 @@ function ChatMediaDisplay({ mediaId, mediaType }) {
         if (!res.ok) throw new Error();
         const dati = await res.json();
         if (annullato) return;
+        /* Valida il MIME type prima di costruire il data: URL (prevenzione XSS) */
+        if (!MIME_CONSENTITI.some(p => (dati.mimeType || '').startsWith(p))) throw new Error();
         const blob = await fetch(`data:${dati.mimeType};base64,${dati.data}`).then(r => r.blob());
-        setSrc(URL.createObjectURL(blob));
-        setMime(dati.mimeType || '');
+        if (annullato) return;
+        if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+        const newUrl = URL.createObjectURL(blob);
+        blobUrlRef.current = newUrl;
+        setSrc(newUrl);
+        setMime(dati.mimeType);
       } catch { if (!annullato) setErr(true); }
       finally  { if (!annullato) setCaric(false); }
     })();
-    return () => { annullato = true; };
+    return () => {
+      annullato = true;
+      if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mediaId]);
 
   if (!mediaId) return null;
@@ -115,10 +127,10 @@ export default function ChatGeneralePage() {
   const [mediaType, setMediaType]           = useState('');
   const [caricandoMedia, setCaricandoMedia] = useState(false);
   const fileInputChatRef = useRef(null);
+  const mediaPreviewRef  = useRef(null); // ref per revoca blob URL sicura su unmount
 
   useEffect(() => {
-    return () => { if (mediaPreview) URL.revokeObjectURL(mediaPreview); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current); };
   }, []);
 
   // Recupera messaggi dal server
@@ -209,7 +221,7 @@ export default function ChatGeneralePage() {
       }
 
       setText('');
-      if (mediaPreview) URL.revokeObjectURL(mediaPreview);
+      if (mediaPreview) { URL.revokeObjectURL(mediaPreview); mediaPreviewRef.current = null; }
       setMediaFile(null);
       setMediaPreview(null);
       setMediaType('');
@@ -380,7 +392,11 @@ export default function ChatGeneralePage() {
                     )}
                     <button
                       type="button"
-                      onClick={() => { if (mediaPreview) URL.revokeObjectURL(mediaPreview); setMediaFile(null); setMediaPreview(null); setMediaType(''); }}
+                      onClick={() => {
+                        if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current);
+                        mediaPreviewRef.current = null;
+                        setMediaFile(null); setMediaPreview(null); setMediaType('');
+                      }}
                       style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: 18, height: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                       <X size={10} color="#fff" />
@@ -416,9 +432,11 @@ export default function ChatGeneralePage() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
-                      if (mediaPreview) URL.revokeObjectURL(mediaPreview);
+                      if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current);
+                      const newUrl = URL.createObjectURL(file);
+                      mediaPreviewRef.current = newUrl;
                       setMediaFile(file);
-                      setMediaPreview(URL.createObjectURL(file));
+                      setMediaPreview(newUrl);
                       setMediaType(
                         file.type.startsWith('image/') ? 'image' :
                         file.type.startsWith('audio/') ? 'audio' : 'video'

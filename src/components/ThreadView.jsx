@@ -56,6 +56,9 @@ function MediaDisplay({ mediaId, mediaType }) {
   const [nome, setNome]   = useState('');
   const [caric, setCaric] = useState(true);
   const [err, setErr]     = useState(false);
+  const blobUrlRef        = useRef(null);
+
+  const MIME_CONSENTITI = ['image/', 'audio/', 'video/'];
 
   useEffect(() => {
     if (!mediaId) return;
@@ -66,14 +69,24 @@ function MediaDisplay({ mediaId, mediaType }) {
         if (!res.ok) throw new Error();
         const dati = await res.json();
         if (annullato) return;
+        /* Valida il MIME type prima di costruire il data: URL (prevenzione XSS) */
+        if (!MIME_CONSENTITI.some(p => (dati.mimeType || '').startsWith(p))) throw new Error();
         const blob = await fetch(`data:${dati.mimeType};base64,${dati.data}`).then(r => r.blob());
-        setSrc(URL.createObjectURL(blob));
-        setMime(dati.mimeType || '');
+        if (annullato) return;
+        if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+        const newUrl = URL.createObjectURL(blob);
+        blobUrlRef.current = newUrl;
+        setSrc(newUrl);
+        setMime(dati.mimeType);
         setNome(dati.name || 'file');
       } catch { if (!annullato) setErr(true); }
       finally  { if (!annullato) setCaric(false); }
     })();
-    return () => { annullato = true; };
+    return () => {
+      annullato = true;
+      if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mediaId]);
 
   if (!mediaId) return null;
@@ -174,10 +187,10 @@ export default function ThreadView() {
   const [mediaType, setMediaType]           = useState('');
   const [caricandoMedia, setCaricandoMedia] = useState(false);
   const fileInputRispostaRef = useRef(null);
+  const mediaPreviewRef      = useRef(null); // ref per revoca blob URL sicura su unmount
 
   useEffect(() => {
-    return () => { if (mediaPreview) URL.revokeObjectURL(mediaPreview); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current); };
   }, []);
 
   /* ── Carica dati del post ── */
@@ -279,7 +292,7 @@ export default function ThreadView() {
       if (!res.ok) throw new Error(data.error || 'Errore');
       setRisposte(prev => [...prev, data.reply]);
       setTestoRisposta('');
-      if (mediaPreview) URL.revokeObjectURL(mediaPreview);
+      if (mediaPreview) { URL.revokeObjectURL(mediaPreview); mediaPreviewRef.current = null; }
       setMediaFile(null);
       setMediaPreview(null);
       setMediaType('');
@@ -541,9 +554,11 @@ export default function ThreadView() {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  if (mediaPreview) URL.revokeObjectURL(mediaPreview);
+                  if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current);
+                  const newUrl = URL.createObjectURL(file);
+                  mediaPreviewRef.current = newUrl;
                   setMediaFile(file);
-                  setMediaPreview(URL.createObjectURL(file));
+                  setMediaPreview(newUrl);
                   setMediaType(
                     file.type.startsWith('image/') ? 'image' :
                     file.type.startsWith('audio/') ? 'audio' : 'video'
@@ -578,7 +593,8 @@ export default function ThreadView() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (mediaPreview) URL.revokeObjectURL(mediaPreview);
+                    if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current);
+                    mediaPreviewRef.current = null;
                     setMediaFile(null); setMediaPreview(null); setMediaType('');
                   }}
                   style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}

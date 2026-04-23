@@ -71,12 +71,18 @@ const entrata = (ritardo = 0) => ({
 /* ═══════════════════════════════════════
    MEDIA DISPLAY — carica e visualizza media allegati (immagini, audio, video)
    ═══════════════════════════════════════ */
+const MIME_CONSENTITI = ['image/', 'audio/', 'video/'];
+function mimeValido(mime) {
+  return typeof mime === 'string' && MIME_CONSENTITI.some(p => mime.startsWith(p));
+}
+
 function MediaDisplay({ mediaId, mediaType, apiPath = '/api/community-media', token = null }) {
   const [src, setSrc]       = useState(null);
   const [mime, setMime]     = useState('');
   const [nome, setNome]     = useState('');
   const [caric, setCaric]   = useState(true);
   const [errore, setErrore] = useState(false);
+  const blobUrlRef = useRef(null);
 
   useEffect(() => {
     if (!mediaId) return;
@@ -90,9 +96,16 @@ function MediaDisplay({ mediaId, mediaType, apiPath = '/api/community-media', to
         if (!res.ok) throw new Error('Media non trovato');
         const dati = await res.json();
         if (annullato) return;
+        /* Valida il MIME type prima di costruire il data: URL (prevenzione XSS) */
+        if (!mimeValido(dati.mimeType)) throw new Error('Tipo MIME non supportato');
         const blob = await fetch(`data:${dati.mimeType};base64,${dati.data}`).then(r => r.blob());
-        setSrc(URL.createObjectURL(blob));
-        setMime(dati.mimeType || '');
+        if (annullato) return;
+        /* Revoca il precedente blob URL prima di crearne uno nuovo */
+        if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+        const newUrl = URL.createObjectURL(blob);
+        blobUrlRef.current = newUrl;
+        setSrc(newUrl);
+        setMime(dati.mimeType);
         setNome(dati.name || 'file');
       } catch {
         if (!annullato) setErrore(true);
@@ -100,7 +113,10 @@ function MediaDisplay({ mediaId, mediaType, apiPath = '/api/community-media', to
         if (!annullato) setCaric(false);
       }
     })();
-    return () => { annullato = true; };
+    return () => {
+      annullato = true;
+      if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
+    };
   }, [mediaId, apiPath, token]);
 
   if (!mediaId) return null;
@@ -312,15 +328,15 @@ function EditorPost({ onChiudi, onCreato }) {
   const [mediaFile, setMediaFile]       = useState(null);   // File selezionato
   const [mediaPreview, setMediaPreview] = useState(null);   // URL blob per anteprima
   const [caricandoMedia, setCaricandoMedia] = useState(false);
-  const fileInputRef = useRef(null);
+  const fileInputRef    = useRef(null);
+  const mediaPreviewRef = useRef(null); // ref per revoca blob URL sicura su unmount
   const [invio, setInvio] = useState(false);
   const [errore, setErrore] = useState('');
   const [mostraAnteprima, setMostraAnteprima] = useState(false);
 
-  // Pulizia URL blob su unmount
+  // Pulizia URL blob su unmount (via ref, sempre aggiornato)
   useEffect(() => {
-    return () => { if (mediaPreview) URL.revokeObjectURL(mediaPreview); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current); };
   }, []);
 
   // Auto-salva bozza ad ogni modifica (senza media, troppo grande)
@@ -332,9 +348,11 @@ function EditorPost({ onChiudi, onCreato }) {
   const onFileSelezionato = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (mediaPreview) URL.revokeObjectURL(mediaPreview);
+    if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current);
+    const newUrl = URL.createObjectURL(file);
+    mediaPreviewRef.current = newUrl;
     setMediaFile(file);
-    setMediaPreview(URL.createObjectURL(file));
+    setMediaPreview(newUrl);
     setMediaType(
       file.type.startsWith('image/') ? 'image' :
       file.type.startsWith('audio/') ? 'audio' : 'video'
@@ -344,7 +362,8 @@ function EditorPost({ onChiudi, onCreato }) {
   };
 
   const rimuoviMedia = () => {
-    if (mediaPreview) URL.revokeObjectURL(mediaPreview);
+    if (mediaPreviewRef.current) URL.revokeObjectURL(mediaPreviewRef.current);
+    mediaPreviewRef.current = null;
     setMediaFile(null);
     setMediaPreview(null);
     setMediaType('');
@@ -403,7 +422,7 @@ function EditorPost({ onChiudi, onCreato }) {
       if (!res.ok) throw new Error(data.error || 'Errore');
       // Pulisci bozza dopo invio riuscito
       localStorage.removeItem('andryxify_bozza_post');
-      if (mediaPreview) URL.revokeObjectURL(mediaPreview);
+      if (mediaPreview) { URL.revokeObjectURL(mediaPreview); mediaPreviewRef.current = null; }
       onCreato(data.post);
       onChiudi();
     } catch (err) {

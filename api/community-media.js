@@ -22,6 +22,8 @@ export const config = {
 
 const MAX_DATA_SIZE = 8_000_000; // ~8 MB base64 ≈ 6 MB raw
 const VALID_MIME_PREFIXES = ['image/', 'audio/', 'video/'];
+/* SVG bloccato: può contenere script e abilitare XSS se caricato come <object>/<embed> */
+const BLOCKED_MIME_TYPES  = ['image/svg+xml'];
 
 function sanitize(str, maxLen) {
   if (typeof str !== 'string') return '';
@@ -92,8 +94,8 @@ export default async function handler(req, res) {
     if (data.length > MAX_DATA_SIZE) return res.status(413).json({ error: 'File troppo grande (max ~6 MB).' });
 
     const mimeType = sanitize(rawMime || '', 100);
-    if (!VALID_MIME_PREFIXES.some(p => mimeType.startsWith(p))) {
-      return res.status(400).json({ error: 'Tipo MIME non supportato. Usa immagine, audio o video.' });
+    if (!VALID_MIME_PREFIXES.some(p => mimeType.startsWith(p)) || BLOCKED_MIME_TYPES.includes(mimeType)) {
+      return res.status(400).json({ error: 'Tipo MIME non supportato. Usa immagine (non SVG), audio o video.' });
     }
 
     const name      = sanitize(rawName || 'file', 200);
