@@ -39,7 +39,9 @@
     "api/bot-auth-callback.js":  { "memory": 128, "maxDuration": 10 },
     "api/bot-status.js":         { "memory": 128, "maxDuration": 10 },
     "api/bot-timers.js":         { "memory": 128, "maxDuration": 10 },
-    "api/bot-refresh-token.js":  { "memory": 128, "maxDuration": 10 }
+    "api/bot-refresh-token.js":  { "memory": 128, "maxDuration": 10 },
+    "api/tg-auth.js":            { "memory": 128, "maxDuration": 5 },
+    "api/tg-webhook.js":         { "memory": 128, "maxDuration": 10 }
   },
   "headers": [
     {
