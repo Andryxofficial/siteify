@@ -10,6 +10,7 @@ import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import BottoneAggiungiAmico from './BottoneAggiungiAmico';
 import SEO from '../components/SEO';
 import { preparaMediaPerUpload, MEDIA_ACCETTATI } from '../utils/compressioneMedia';
+import { useMenzione, DropdownMenzione, renderConMenzioni } from './MenzionePicker';
 
 const MAPPA_CATEGORIE = {
   generale:     { etichetta: '💬 Generale',     colore: 'var(--text-muted)' },
@@ -117,8 +118,10 @@ function MediaDisplay({ mediaId, mediaType }) {
 }
 
 
-function SchedaRisposta({ risposta, puoEliminare, onElimina, onRispondi, onVaiA, twitchToken, currentUser }) {
+function SchedaRisposta({ risposta, puoEliminare, onElimina, onRispondi, onVaiA, onMiPiace, isLoggedIn, twitchToken, currentUser }) {
   const annidata = !!risposta.parentReplyId;
+  const conteggioLike = Number(risposta.likeCount || 0);
+  const giaPiaciuta = !!risposta.liked;
   return (
     <motion.div
       id={`risposta-${risposta.id}`}
@@ -180,20 +183,39 @@ function SchedaRisposta({ risposta, puoEliminare, onElimina, onRispondi, onVaiA,
               </button>
             )}
           </div>
-          <p className="social-testo-risposta">{risposta.body}</p>
+          <p className="social-testo-risposta">{renderConMenzioni(risposta.body)}</p>
           {risposta.mediaId && (
             <MediaDisplay mediaId={risposta.mediaId} mediaType={risposta.mediaType} />
           )}
-          {/* Azione: Rispondi a questa risposta */}
-          {onRispondi && (
+          {/* Azioni: Mi piace + Rispondi a questa risposta */}
+          {(onMiPiace || onRispondi) && (
             <div className="social-risposta-azioni">
-              <button
-                type="button"
-                className="social-btn-azione social-btn-azione--reply"
-                onClick={() => onRispondi(risposta)}
-              >
-                <Reply size={12} /> Rispondi
-              </button>
+              {onMiPiace && (
+                <button
+                  type="button"
+                  className={`social-btn-azione${giaPiaciuta ? ' social-btn-azione--liked' : ''}`}
+                  onClick={() => onMiPiace(risposta)}
+                  disabled={!isLoggedIn}
+                  title={
+                    isLoggedIn
+                      ? (giaPiaciuta ? 'Togli mi piace' : 'Metti mi piace')
+                      : 'Accedi per mettere mi piace'
+                  }
+                  aria-pressed={giaPiaciuta}
+                >
+                  <Heart size={12} fill={giaPiaciuta ? 'currentColor' : 'none'} />
+                  <span>{conteggioLike}</span>
+                </button>
+              )}
+              {onRispondi && (
+                <button
+                  type="button"
+                  className="social-btn-azione social-btn-azione--reply"
+                  onClick={() => onRispondi(risposta)}
+                >
+                  <Reply size={12} /> Rispondi
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -259,8 +281,8 @@ export default function ThreadView() {
       }
       setPost(data.post);
 
-      // Carica risposte
-      const resRisposte = await fetch(`/api/community-replies?postId=${postId}&limit=50`);
+      // Carica risposte (con auth opzionale per ricevere il flag `liked` per utente)
+      const resRisposte = await fetch(`/api/community-replies?postId=${postId}&limit=50`, { headers });
       if (resRisposte.ok) {
         const datiRisposte = await resRisposte.json();
         setRisposte(datiRisposte.replies || []);
@@ -273,6 +295,16 @@ export default function ThreadView() {
   }, [postId, twitchToken]);
 
   useEffect(() => { caricaTutto(); }, [caricaTutto]);
+
+  /* ── @mention nel campo risposta ── */
+  const menzione = useMenzione(textareaRispostaRef, testoRisposta, (nuovoVal, nuovaCursore) => {
+    setTestoRisposta(nuovoVal);
+    setTimeout(() => {
+      if (textareaRispostaRef.current) {
+        textareaRispostaRef.current.setSelectionRange(nuovaCursore, nuovaCursore);
+      }
+    }, 0);
+  });
 
   /* ── Mi piace ── */
   const gestisciMiPiace = async () => {
@@ -297,6 +329,51 @@ export default function ThreadView() {
       }));
     }
   };
+
+  /* ── Mi piace su una risposta ── */
+  const gestisciMiPiaceRisposta = useCallback(async (risposta) => {
+    if (!isLoggedIn || !twitchToken || !risposta?.id) return;
+    const giaPiaciuta = !!risposta.liked;
+    const azione = giaPiaciuta ? 'unlike' : 'like';
+
+    /* Aggiornamento ottimistico */
+    setRisposte(prev => prev.map(r => r.id === risposta.id
+      ? {
+          ...r,
+          liked: !giaPiaciuta,
+          likeCount: Math.max(0, Number(r.likeCount || 0) + (giaPiaciuta ? -1 : 1)),
+        }
+      : r
+    ));
+
+    try {
+      const res = await fetch('/api/community-replies', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${twitchToken}`,
+        },
+        body: JSON.stringify({ replyId: risposta.id, action: azione }),
+      });
+      if (!res.ok) throw new Error('PATCH non ok');
+      const data = await res.json();
+      /* Riconcilia col conteggio del server (in caso di drift) */
+      setRisposte(prev => prev.map(r => r.id === risposta.id
+        ? { ...r, liked: !!data.liked, likeCount: Math.max(0, Number(data.likeCount || 0)) }
+        : r
+      ));
+    } catch {
+      /* Rollback in caso di errore */
+      setRisposte(prev => prev.map(r => r.id === risposta.id
+        ? {
+            ...r,
+            liked: giaPiaciuta,
+            likeCount: Math.max(0, Number(r.likeCount || 0) + (giaPiaciuta ? 1 : -1)),
+          }
+        : r
+      ));
+    }
+  }, [isLoggedIn, twitchToken]);
 
   /* ── Invia risposta ── */
   const inviaRisposta = async (e) => {
@@ -505,7 +582,7 @@ export default function ThreadView() {
         </div>
 
         {/* Corpo del post */}
-        <div className="social-corpo-thread">{post.body}</div>
+        <div className="social-corpo-thread">{renderConMenzioni(post.body)}</div>
 
         {/* Media content: upload reale (mediaId) o URL legacy */}
         {post.mediaId ? (
@@ -600,6 +677,8 @@ export default function ThreadView() {
                 onElimina={eliminaRisposta}
                 onRispondi={isLoggedIn ? iniziaRispostaA : null}
                 onVaiA={vaiARisposta}
+                onMiPiace={gestisciMiPiaceRisposta}
+                isLoggedIn={isLoggedIn}
                 twitchToken={twitchToken}
                 currentUser={twitchUser}
               />
@@ -617,7 +696,7 @@ export default function ThreadView() {
       {/* Form risposta */}
       <motion.div {...entrata(0.24)} ref={formRispostaRef}>
         {isLoggedIn ? (
-          <form onSubmit={inviaRisposta} className="glass-panel social-form-risposta">
+          <form onSubmit={inviaRisposta} className="glass-panel social-form-risposta" style={{ position: 'relative' }}>
             {/* Contesto: stai rispondendo a una risposta specifica */}
             {rispostaA && (
               <div className="social-form-contesto">
@@ -641,8 +720,9 @@ export default function ThreadView() {
               <textarea
                 ref={textareaRispostaRef}
                 value={testoRisposta}
-                onChange={(e) => setTestoRisposta(e.target.value)}
-                placeholder={rispostaA ? `Rispondi a @${rispostaA.displayName}…` : 'Scrivi una risposta…'}
+                onChange={(e) => { setTestoRisposta(e.target.value); menzione.onChange(e); }}
+                onKeyDown={menzione.onKeyDown}
+                placeholder={rispostaA ? `Rispondi a @${rispostaA.displayName}…` : 'Scrivi una risposta… (usa @ per menzionare)'}
                 maxLength={1000}
                 rows={2}
                 className="social-campo social-area-testo"
@@ -721,6 +801,7 @@ export default function ThreadView() {
             {erroreRisposta && (
               <p className="social-errore" style={{ marginTop: '6px' }}>{erroreRisposta}</p>
             )}
+            <DropdownMenzione {...menzione.dropdownProps} />
           </form>
         ) : clientId ? (
           <div className="glass-panel" style={{ textAlign: 'center', padding: '1.2rem' }}>
