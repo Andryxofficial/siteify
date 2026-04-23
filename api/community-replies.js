@@ -354,6 +354,7 @@ export default async function handler(req, res) {
 
       await Promise.all([
         redis.del(replyKey),
+        redis.del(`community:reply-likes:${replyId}`),
         redis.zrem(`community:replies:${reply.postId}`, replyId),
         redis.hincrby(`community:post:${reply.postId}`, 'replyCount', -1),
         ...(reply.mediaId ? [
