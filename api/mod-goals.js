@@ -80,11 +80,13 @@ export default async function handler(req, res) {
       payload = { goals: data.data || [] };
     } else if (type === 'hype_train') {
       // Endpoint legacy `hypetrain/events` rimosso da Twitch il 15/01/2026.
-      // Sostituto: `hype_train/status` (status del hype train corrente o ultimo).
+      // Sostituto: `hypetrain/status` (senza underscore, status del hype train
+      // corrente o ultimo). Attenzione: il path corretto è `hypetrain/status`
+      // — `hype_train/status` (con underscore) restituisce 404 Not Found.
       // Per non rompere il frontend mappiamo la nuova risposta nello stesso
       // shape `{ events: [{ event_type, event_data: { ... } }] }` che il
       // componente `GoalsHype.jsx` consuma da sempre.
-      const data = await helixGet('hype_train/status', { broadcaster_id: broadcasterId }, auth.token, auth.clientId);
+      const data = await helixGet('hypetrain/status', { broadcaster_id: broadcasterId }, auth.token, auth.clientId);
       const items = Array.isArray(data?.data) ? data.data : [];
       const events = items
         .filter(ht => ht && ht.started_at)

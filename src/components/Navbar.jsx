@@ -30,7 +30,7 @@ const NAV_LINKS = [
 
 const MOBILE_LINKS = [
   { path: '/',              labelKey: 'nav.home',          Icon: HomeIcon          },
-  { path: '/socialify',     labelKey: 'nav.socialify',     Icon: UsersIcon         },
+  { path: '/chi-sono',      labelKey: 'nav.chi-sono',      Icon: UserCircleIcon    },
   { path: '/gioco',         labelKey: 'nav.giochi',        Icon: GameIcon          },
   { path: '/chat',          labelKey: 'nav.chat',          Icon: MessageCircleIcon },
   { path: '/impostazioni',  labelKey: 'nav.impostazioni',  Icon: SettingsIcon     },

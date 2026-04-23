@@ -22,6 +22,7 @@ import { useTwitchAuth } from '../../contexts/TwitchAuthContext';
 import { useEmoteTwitch } from '../../hooks/useEmoteTwitch';
 import EmotePicker from '../../components/EmotePicker';
 import { modPost, modGet } from '../../utils/modApi';
+import ShieldModeModal, { useDisattivaScudo } from './ShieldModeModal';
 
 const API = '/api/mod-actions';
 const MOD_API = '/api/mod-moderation';
@@ -335,7 +336,7 @@ export default function QuickActions({ token, isLive }) {
   const { twitchToken } = useTwitchAuth();
   const { emoteCanale, emoteGlobali, seventvCanale, seventvGlobali } = useEmoteTwitch(twitchToken);
 
-  const [aperta, setAperta] = useState(null); // 'raid' | 'commercial' | 'marker' | 'annuncio' | 'snippet' | null
+  const [aperta, setAperta] = useState(null); // 'raid' | 'commercial' | 'marker' | 'annuncio' | 'snippet' | 'shield' | null
   const [shieldActive, setShieldActive] = useState(false);
   const [shieldLoading, setShieldLoading] = useState(false);
 
@@ -359,23 +360,10 @@ export default function QuickActions({ token, isLive }) {
     return () => clearInterval(interval);
   }, [token]);
 
-  const toggleShield = useCallback(async () => {
-    const nuovoStato = !shieldActive;
-    setShieldLoading(true);
-    const r = await modPost(MOD_API, token, {
-      action: 'shield_mode',
-      active: nuovoStato,
-    });
-    if (r.ok) {
-      setShieldActive(nuovoStato);
-      toast.success(nuovoStato ? 'Shield Mode attivato!' : 'Shield Mode disattivato.', {
-        titolo: '🛡️ Shield Mode',
-      });
-    } else {
-      toast.error(r.error, { titolo: 'Shield Mode' });
-    }
-    setShieldLoading(false);
-  }, [token, toast, shieldActive]);
+  const disattivaScudo = useDisattivaScudo({
+    token,
+    onDone: (attivo) => setShieldActive(attivo),
+  });
 
   const addSnippet = useCallback(() => {
     if (!editLabel.trim() || !editText.trim()) return;
@@ -413,7 +401,7 @@ export default function QuickActions({ token, isLive }) {
       icon: shieldActive ? ShieldCheck : ShieldX,
       color: shieldActive ? 'var(--accent)' : 'var(--text-muted)',
       desc: 'Toggle Shield Mode',
-      onClick: toggleShield,
+      onClick: shieldActive ? disattivaScudo : () => setAperta('shield'),
       loading: shieldLoading,
       pulse: shieldActive,
     },
@@ -446,6 +434,13 @@ export default function QuickActions({ token, isLive }) {
         {aperta === 'marker'     && <ModaleMarker     token={token} onClose={() => setAperta(null)} />}
         {aperta === 'annuncio'   && <ModaleAnnuncio   token={token} onClose={() => setAperta(null)}
           emoteCanale={emoteCanale} emoteGlobali={emoteGlobali} seventvCanale={seventvCanale} seventvGlobali={seventvGlobali} />}
+        {aperta === 'shield' && (
+          <ShieldModeModal
+            token={token}
+            onClose={() => setAperta(null)}
+            onDone={(attivo) => setShieldActive(attivo)}
+          />
+        )}
         {aperta === 'snippet' && (
           <ModaleGlass titolo="Snippet Rapidi" icona={FileText} accento="var(--secondary)" onClose={() => { setAperta(null); setSnippetEditing(false); }}>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.85rem' }}>
