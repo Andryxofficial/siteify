@@ -26,7 +26,7 @@ import {
   TwitchPage, YouTubePage, InstagramPage, PodcastPage, TikTokPage,
   GamePage, CommunityPage, ThreadView, Scoiattoli, ModPanel,
   FriendsPage, MessagesPage, ChatGeneralePage, SettingsPage, ProfiloPage,
-  AppPage, ChiSonoPage,
+  AppPage, ChiSonoPage, TagInfoPage,
   prefetchPagineMain,
 } from './lazyPages';
 import './index.css';
@@ -201,6 +201,7 @@ function AppLayout() {
               <Route path="/gioco" element={<GamePage />} />
               <Route path="/giochi" element={<GamePage />} />
               <Route path="/socialify" element={<CommunityPage />} />
+              <Route path="/socialify/info-tag" element={<TagInfoPage />} />
               <Route path="/socialify/:postId" element={<ThreadView />} />
 
               <Route path="/scoiattoli" element={<Scoiattoli />} />

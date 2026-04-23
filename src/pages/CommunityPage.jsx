@@ -13,6 +13,8 @@ import { useEmoteTwitch } from '../hooks/useEmoteTwitch';
 import EmotePicker from '../components/EmotePicker';
 import BottoneAggiungiAmico from '../components/BottoneAggiungiAmico';
 import SEO from '../components/SEO';
+import TagInput from '../components/TagInput';
+import TagStrip, { TagChip } from '../components/TagStrip';
 import { useLingua } from '../contexts/LinguaContext';
 import { preparaMediaPerUpload, MEDIA_ACCETTATI } from '../utils/compressioneMedia';
 import { useMenzione, DropdownMenzione, renderConMenzioni } from '../components/MenzionePicker';
@@ -280,6 +282,15 @@ function SchedaPost({ post, onMiPiace, twitchToken, currentUser }) {
             </>
           )}
 
+          {/* Tag liberi (free-form) — chip cliccabili che filtrano il feed */}
+          {Array.isArray(post.tags) && post.tags.length > 0 && (
+            <div className="social-post-tags">
+              {post.tags.slice(0, 5).map(slug => (
+                <TagChip key={slug} slug={slug} compact />
+              ))}
+            </div>
+          )}
+
           {/* Azioni */}
           <div className="social-azioni-riga">
             <button
@@ -327,6 +338,7 @@ function EditorPost({ onChiudi, onCreato }) {
   const [titolo, setTitolo] = useState(bozzaSalvata?.titolo || '');
   const [testo, setTesto] = useState(bozzaSalvata?.testo || '');
   const [categoria, setCategoria] = useState(bozzaSalvata?.categoria || 'generale');
+  const [tagLiberi, setTagLiberi] = useState(Array.isArray(bozzaSalvata?.tagLiberi) ? bozzaSalvata.tagLiberi : []);
   const [visibilita, setVisibilita] = useState('public');
   const [mediaUrl, setMediaUrl] = useState(bozzaSalvata?.mediaUrl || '');
   const [mediaType, setMediaType] = useState(bozzaSalvata?.mediaType || '');
@@ -355,9 +367,9 @@ function EditorPost({ onChiudi, onCreato }) {
 
   // Auto-salva bozza ad ogni modifica (senza media, troppo grande)
   useEffect(() => {
-    const bozza = { titolo, testo, categoria };
+    const bozza = { titolo, testo, categoria, tagLiberi };
     localStorage.setItem('andryxify_bozza_post', JSON.stringify(bozza));
-  }, [titolo, testo, categoria]);
+  }, [titolo, testo, categoria, tagLiberi]);
 
   const onFileSelezionato = (e) => {
     const file = e.target.files?.[0];
@@ -402,7 +414,13 @@ function EditorPost({ onChiudi, onCreato }) {
     setInvio(true);
     setErrore('');
     try {
-      const payload = { title: titolo.trim(), body: testo.trim(), tag: categoria, visibility: visibilita };
+      const payload = {
+        title: titolo.trim(),
+        body: testo.trim(),
+        tag: categoria,
+        tags: tagLiberi,                  // Tag liberi smart (max 5)
+        visibility: visibilita,
+      };
 
       // Upload media reale se presente
       if (mediaFile) {
@@ -488,6 +506,22 @@ function EditorPost({ onChiudi, onCreato }) {
               {c.etichetta}
             </button>
           ))}
+        </div>
+
+        {/* Tag liberi smart — input chip con autocomplete */}
+        <div className="social-tag-input-wrapper">
+          <label className="social-tag-input-label">
+            <span>{t('community.editor.tag.label')}</span>
+            <Link to="/socialify/info-tag" className="social-tag-input-info" title={t('community.editor.tag.info_titolo')}>
+              ⓘ
+            </Link>
+          </label>
+          <TagInput
+            value={tagLiberi}
+            onChange={setTagLiberi}
+            max={5}
+            placeholder={t('community.editor.tag.placeholder')}
+          />
         </div>
 
         {/* Selettore visibilità */}
@@ -948,10 +982,22 @@ export default function CommunityPage() {
   const [pagina, setPagina] = useState(parseInt(searchParams.get('pagina')) || 1);
   const [totPagine, setTotPagine] = useState(1);
   const [categoriaAttiva, setCategoriaAttiva] = useState(searchParams.get('categoria') || null);
+  const [tagAttivo, setTagAttivo] = useState(searchParams.get('slug') || null);
+  const [tagDettaglio, setTagDettaglio] = useState(null);  // meta del tag attivo (postCount, follower, isFollowing)
   const [caricamento, setCaricamento] = useState(true);
   const [errore, setErrore] = useState('');
   const [mostraEditor, setMostraEditor] = useState(false);
   const [vistaAttiva, setVistaAttiva] = useState(searchParams.get('vista') === 'classifica' ? 'classifica' : 'feed');
+
+  // Sincronizza tagAttivo con URL quando cambia (es. utente clicca un TagChip)
+  useEffect(() => {
+    const slugUrl = searchParams.get('slug') || null;
+    if (slugUrl !== tagAttivo) {
+      setTagAttivo(slugUrl);
+      setPagina(1);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const caricaPosts = useCallback(async () => {
     setCaricamento(true);
@@ -960,7 +1006,12 @@ export default function CommunityPage() {
       const params = new URLSearchParams();
       params.set('page', pagina);
       params.set('limit', '20');
-      if (categoriaAttiva) params.set('tag', categoriaAttiva);
+      // Filtro per tag libero ha priorità sul filtro categoria classico
+      if (tagAttivo) {
+        params.set('slug', tagAttivo);
+      } else if (categoriaAttiva) {
+        params.set('tag', categoriaAttiva);
+      }
 
       const headers = {};
       if (twitchToken) headers.Authorization = `Bearer ${twitchToken}`;
@@ -976,21 +1027,65 @@ export default function CommunityPage() {
     } finally {
       setCaricamento(false);
     }
-  }, [pagina, categoriaAttiva, twitchToken, t]);
+  }, [pagina, categoriaAttiva, tagAttivo, twitchToken, t]);
 
   useEffect(() => { caricaPosts(); }, [caricaPosts]);
+
+  // Carica metadata del tag attivo (per mostrare l'header con # follower / bottone Segui)
+  useEffect(() => {
+    if (!tagAttivo) { setTagDettaglio(null); return; }
+    let alive = true;
+    (async () => {
+      try {
+        const headers = twitchToken ? { Authorization: `Bearer ${twitchToken}` } : {};
+        const res = await fetch(`/api/tags?slug=${encodeURIComponent(tagAttivo)}`, { headers });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (alive) setTagDettaglio(data.tag || null);
+      } catch { /* silent */ }
+    })();
+    return () => { alive = false; };
+  }, [tagAttivo, twitchToken]);
 
   // Sincronizza parametri URL
   useEffect(() => {
     const p = new URLSearchParams();
     if (pagina > 1) p.set('pagina', pagina);
     if (categoriaAttiva) p.set('categoria', categoriaAttiva);
+    if (tagAttivo) p.set('slug', tagAttivo);
     setSearchParams(p, { replace: true });
-  }, [pagina, categoriaAttiva, setSearchParams]);
+  }, [pagina, categoriaAttiva, tagAttivo, setSearchParams]);
 
   const gestisciCategoria = (valore) => {
     setCategoriaAttiva(prev => prev === valore ? null : valore);
+    setTagAttivo(null);    // reset tag libero quando si cambia categoria
     setPagina(1);
+  };
+
+  const gestisciToggleSeguiTag = async () => {
+    if (!isLoggedIn || !tagAttivo || !tagDettaglio) return;
+    const nuovaAzione = tagDettaglio.isFollowing ? 'unfollow' : 'follow';
+    // Aggiornamento ottimistico
+    setTagDettaglio(prev => prev && {
+      ...prev,
+      isFollowing: !prev.isFollowing,
+      followerCount: prev.isFollowing ? Math.max(0, prev.followerCount - 1) : prev.followerCount + 1,
+    });
+    try {
+      const res = await fetch('/api/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${twitchToken}` },
+        body: JSON.stringify({ action: nuovaAzione, slug: tagAttivo }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      // Rollback
+      setTagDettaglio(prev => prev && {
+        ...prev,
+        isFollowing: !prev.isFollowing,
+        followerCount: prev.isFollowing ? Math.max(0, prev.followerCount - 1) : prev.followerCount + 1,
+      });
+    }
   };
 
   const gestisciMiPiace = async (post) => {
@@ -1130,6 +1225,48 @@ export default function CommunityPage() {
         </motion.div>
       ) : (
         <>
+          {/* Strip macro-categorie + tag in trend + tag che segui */}
+          <motion.div {...entrata(0.22)}>
+            <TagStrip />
+          </motion.div>
+
+          {/* Header tag attivo (quando si sta filtrando per un tag libero) */}
+          {tagAttivo && tagDettaglio && (
+            <motion.div
+              {...entrata(0.24)}
+              className="glass-panel social-tag-header"
+            >
+              <div className="social-tag-header-info">
+                <span className="social-tag-header-slug">#{tagDettaglio.slug}</span>
+                <span className="social-tag-header-stats">
+                  {tagDettaglio.postCount} {tagDettaglio.postCount === 1 ? 'post' : 'post'}
+                  {tagDettaglio.followerCount > 0 && ` · ${tagDettaglio.followerCount} follower`}
+                </span>
+              </div>
+              <div className="social-tag-header-azioni">
+                {isLoggedIn && (
+                  <button
+                    type="button"
+                    className={`btn ${tagDettaglio.isFollowing ? 'btn-ghost' : 'btn-primary'}`}
+                    onClick={gestisciToggleSeguiTag}
+                    style={{ fontSize: '0.78rem', padding: '0.4rem 0.9rem' }}
+                  >
+                    {tagDettaglio.isFollowing ? t('community.tag.seguito') : t('community.tag.segui')}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => { setTagAttivo(null); setPagina(1); }}
+                  style={{ fontSize: '0.78rem', padding: '0.4rem 0.9rem' }}
+                  aria-label="Rimuovi filtro tag"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+
           {/* Filtri categoria */}
           <motion.div {...entrata(0.26)} className="social-filtri-categorie">
             <button
