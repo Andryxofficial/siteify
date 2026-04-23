@@ -339,7 +339,7 @@ export default function Navbar() {
           >
             <div className="navbar-content">
               <Link to="/" className="navbar-logo" aria-label={t('nav.aria.logo')}>
-                <img src={LOGO_URL} alt="ANDRYXify" className="navbar-logo-img" fetchPriority="high" />
+                <img src={LOGO_URL} alt="ANDRYXify" className="navbar-logo-img" width="160" height="32" fetchPriority="high" />
               </Link>
 
               <div
