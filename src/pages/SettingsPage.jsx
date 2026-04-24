@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { useTema } from '../contexts/TemaContext';
 import { useLingua } from '../contexts/LinguaContext';
+import { useNotifiche } from '../hooks/useNotifiche';
 import SEO from '../components/SEO';
 
 const NOTIF_PREFS_KEY       = 'andryxify_msg_notif_prefs';
@@ -77,16 +78,22 @@ export default function SettingsPage() {
   /* i18n — label tradotte e selettore lingua */
   const { t, modalita: modalitaLingua, setModalita: setModalitaLingua, lingueDisponibili } = useLingua();
 
-  // Notifiche
-  const [notifiche, setNotifiche] = useState(() => {
+  // Sistema Endocrino: Notifiche
+  const { attivo: notificheAttive, attiva: attivaNotifiche, disattiva: disattivaNotifiche, supportato: notificheSupportate } = useNotifiche();
+
+  const [notificheLocali, setNotificheLocali] = useState(() => {
     try {
       const saved = localStorage.getItem(NOTIF_PREFS_KEY);
-      return saved ? JSON.parse(saved) : { inApp: true, push: false, sound: true };
-    } catch { return { inApp: true, push: false, sound: true }; }
+      return saved ? JSON.parse(saved) : { inApp: true, sound: true };
+    } catch { return { inApp: true, sound: true }; }
   });
 
   // Tema colore accent
   const [temaAttivo, setTemaAttivo] = useState(() => localStorage.getItem(TEMA_KEY) || 'default');
+  const [customColor, setCustomColor] = useState(() => {
+    const salvato = localStorage.getItem(TEMA_KEY);
+    return (salvato && salvato.startsWith('#')) ? salvato : '#e040fb';
+  });
 
   // Modalità chiaro/scuro — gestita dal TemaContext condiviso con la Navbar
   const { modalita: modalitaTema, setModalita: setModalitaTema, coordsRichieste, richiediCoords } = useTema();
@@ -123,17 +130,25 @@ export default function SettingsPage() {
     })();
   }, [twitchToken, twitchUser]);
 
-  // Salva notifiche
+  // Salva notifiche locali
   useEffect(() => {
-    localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(notifiche));
-  }, [notifiche]);
+    localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(notificheLocali));
+  }, [notificheLocali]);
 
   // Salva e applica tema colore
   useEffect(() => {
     localStorage.setItem(TEMA_KEY, temaAttivo);
-    const tema = TEMI.find(t => t.id === temaAttivo);
-    if (tema) document.documentElement.style.setProperty('--primary', tema.color);
-  }, [temaAttivo]);
+    if (temaAttivo === 'custom') {
+      document.documentElement.style.setProperty('--primary', customColor);
+      localStorage.setItem(TEMA_KEY, customColor); // Salva direttamente il colore
+    } else if (temaAttivo.startsWith('#')) {
+      document.documentElement.style.setProperty('--primary', temaAttivo);
+      setCustomColor(temaAttivo);
+    } else {
+      const tema = TEMI.find(t => t.id === temaAttivo);
+      if (tema) document.documentElement.style.setProperty('--primary', tema.color);
+    }
+  }, [temaAttivo, customColor]);
 
   // Applica dimensione font
   useEffect(() => {
@@ -146,7 +161,12 @@ export default function SettingsPage() {
   }, [fontDimensione]);
 
   const aggiornaNotifica = (campo, valore) => {
-    setNotifiche(prev => ({ ...prev, [campo]: valore }));
+    setNotificheLocali(prev => ({ ...prev, [campo]: valore }));
+  };
+
+  const handleTogglePush = async (attiva) => {
+    if (attiva) await attivaNotifiche();
+    else disattivaNotifiche();
   };
 
   const salvaPrivacy = useCallback(async (nuovaPrivacy) => {
@@ -369,16 +389,29 @@ export default function SettingsPage() {
               style={{
                 width: 36, height: 36, borderRadius: '50%', border: 'none',
                 background: tema.color, cursor: 'pointer', position: 'relative',
-                boxShadow: temaAttivo === tema.id ? `0 0 0 3px ${tema.color}44, inset 0 0 0 2px #fff` : '0 2px 8px rgba(0,0,0,0.3)',
+                boxShadow: (temaAttivo === tema.id && !temaAttivo.startsWith('#')) ? `0 0 0 3px ${tema.color}44, inset 0 0 0 2px #fff` : '0 2px 8px rgba(0,0,0,0.3)',
                 transition: 'box-shadow 0.2s',
               }}
               aria-label={tema.label}
             >
-              {temaAttivo === tema.id && (
+              {(temaAttivo === tema.id && !temaAttivo.startsWith('#')) && (
                 <Check size={16} color="#fff" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
               )}
             </button>
           ))}
+          {/* Selettore Personalizzato Biologico */}
+          <div style={{ position: 'relative', width: 36, height: 36, borderRadius: '50%', boxShadow: temaAttivo.startsWith('#') ? `0 0 0 3px ${customColor}44, inset 0 0 0 2px #fff` : '0 2px 8px rgba(0,0,0,0.3)', cursor: 'pointer', overflow: 'hidden' }}>
+            <input 
+              type="color" 
+              value={customColor} 
+              onChange={(e) => { setCustomColor(e.target.value); setTemaAttivo(e.target.value); }}
+              style={{ position: 'absolute', top: -10, left: -10, width: 60, height: 60, padding: 0, border: 'none', cursor: 'pointer' }}
+              title="Colore personalizzato"
+            />
+            {temaAttivo.startsWith('#') && (
+              <Check size={16} color="#fff" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none' }} />
+            )}
+          </div>
         </div>
       </motion.section>
 
@@ -426,14 +459,18 @@ export default function SettingsPage() {
             </div>
           </motion.section>
 
-          {/* ═══ Notifiche ═══ */}
+          {/* ═══ Notifiche (Sistema Nervoso) ═══ */}
           <motion.section className="glass-panel" style={{ padding: '1.2rem', marginBottom: '1rem' }} {...entrata(0.25)}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.8rem', fontSize: '1rem' }}>
               <Bell size={18} /> {t('settings.notifiche')}
             </h3>
-            <Interruttore etichetta={t('settings.notif.in_app')} attivo={notifiche.inApp} onChange={v => aggiornaNotifica('inApp', v)} />
-            <Interruttore etichetta={t('settings.notif.push')} attivo={notifiche.push} onChange={v => aggiornaNotifica('push', v)} />
-            <Interruttore etichetta={t('settings.notif.suoni')} attivo={notifiche.sound} onChange={v => aggiornaNotifica('sound', v)} />
+            <Interruttore etichetta={t('settings.notif.in_app')} attivo={notificheLocali.inApp} onChange={v => aggiornaNotifica('inApp', v)} />
+            {notificheSupportate ? (
+              <Interruttore etichetta={t('settings.notif.push')} attivo={notificheAttive} onChange={handleTogglePush} />
+            ) : (
+              <p style={{ fontSize: '0.8rem', color: 'var(--accent)', marginTop: '0.5rem' }}>Le notifiche push non sono supportate da questa membrana cellulare (browser).</p>
+            )}
+            <Interruttore etichetta={t('settings.notif.suoni')} attivo={notificheLocali.sound} onChange={v => aggiornaNotifica('sound', v)} />
           </motion.section>
 
           {/* ═══ Sicurezza E2E ═══ */}

@@ -412,7 +412,7 @@ export default function Navbar() {
               </motion.button>
 
               {/* Icona impostazioni */}
-              <Link to="/impostazioni" className="nav-link" aria-label={t('nav.impostazioni')} style={{ marginLeft: '0.25rem', display: 'flex', alignItems: 'center' }}>
+              <Link to="/impostazioni" className="nav-link nav-settings" aria-label={t('nav.impostazioni')} style={{ marginLeft: '0.25rem', display: 'flex', alignItems: 'center' }}>
                 <SettingsIcon size={17} />
               </Link>
             </div>

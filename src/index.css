@@ -83,21 +83,21 @@
   /* ── Liquid Glass — Materiale Vetro ── */
   --vetro-sfondo:      linear-gradient(145deg, rgba(24,30,50,0.72) 0%, rgba(48,64,100,0.28) 100%);
   --vetro-sfondo-flat: rgba(20, 26, 44, 0.65);
-  --vetro-blur:        blur(24px) saturate(180%) contrast(1.05);
-  --vetro-blur-forte:  blur(32px) saturate(190%) contrast(1.06);
-  --vetro-blur-navbar: blur(40px) saturate(200%) contrast(1.08);
-  --vetro-bordo:       1.5px solid rgba(130, 170, 240, 0.14);
-  --vetro-bordo-colore:  rgba(130, 170, 240, 0.14);
-  --vetro-bordo-hover:   rgba(160, 195, 255, 0.22);
-  --vetro-speculare:   rgba(255, 255, 255, 0.22);
-  --vetro-speculare-debole: rgba(255, 255, 255, 0.10);
-  --vetro-caustica:    rgba(140, 180, 255, 0.06);
-  --vetro-ombra:       0 8px 32px rgba(8, 12, 48, 0.40),
-                       0 2px 6px rgba(8, 12, 48, 0.18),
-                       inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  --vetro-ombra-leggera: 0 4px 16px rgba(8, 12, 48, 0.30),
-                         0 1px 3px rgba(8, 12, 48, 0.14),
-                         inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --vetro-blur:        blur(24px) saturate(220%) contrast(1.10);
+  --vetro-blur-forte:  blur(32px) saturate(230%) contrast(1.12);
+  --vetro-blur-navbar: blur(44px) saturate(240%) contrast(1.15);
+  --vetro-bordo:       1.5px solid rgba(130, 170, 240, 0.16);
+  --vetro-bordo-colore:  rgba(130, 170, 240, 0.16);
+  --vetro-bordo-hover:   rgba(160, 195, 255, 0.28);
+  --vetro-speculare:   rgba(255, 255, 255, 0.28);
+  --vetro-speculare-debole: rgba(255, 255, 255, 0.12);
+  --vetro-caustica:    rgba(140, 180, 255, 0.08);
+  --vetro-ombra:       0 12px 36px rgba(8, 12, 48, 0.45),
+                       0 4px 12px rgba(8, 12, 48, 0.22),
+                       inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --vetro-ombra-leggera: 0 6px 20px rgba(8, 12, 48, 0.35),
+                         0 2px 6px rgba(8, 12, 48, 0.18),
+                         inset 0 1px 0 rgba(255, 255, 255, 0.08);
 
   /* Retrocompatibilità alias */
   --glass-bg:        var(--vetro-sfondo);
@@ -1260,11 +1260,11 @@ html[data-tema="chiaro"] .glass-panel.twitch-container {
 }
 
 /* ═══════════════════════════════════════════════════
-   RESPONSIVE — medium desktop (≤1100px)
+   RESPONSIVE — medium desktop (≤1250px)
    ═══════════════════════════════════════════════════ */
 
-@media (max-width: 1100px) and (min-width: 641px) {
-  .nav-label { display: none; }
+@media (max-width: 1250px) and (min-width: 641px) {
+  .nav-label { display: none !important; }
 
   .nav-link {
     padding: 0.5rem 0.65rem;
@@ -1292,8 +1292,8 @@ html[data-tema="chiaro"] .glass-panel.twitch-container {
    RESPONSIVE — mobile (≤640px)
    ═══════════════════════════════════════════════════ */
 
-@media (max-width: 640px) {
-  /* Navbar nascosta su mobile: nessun offset in alto */
+@media (max-width: 960px) {
+  /* Navbar nascosta su tablet e mobile: nessun offset in alto */
   :root {
     --chrome-top: env(safe-area-inset-top, 0px);
   }
@@ -1303,13 +1303,13 @@ html[data-tema="chiaro"] .glass-panel.twitch-container {
     --chrome-top: env(safe-area-inset-top, 0px);
   }
 
-  /* Nasconde la top-navbar su mobile: la tab bar in basso gestisce la navigazione */
+  /* Mostra la top-navbar ridotta su mobile (solo logo e controlli vitali) */
   .navbar-container {
-    display: none;
+    display: flex !important;
   }
 
   .app-container {
-    padding-top: env(safe-area-inset-top, 0px);
+    padding-top: calc(85px + env(safe-area-inset-top, 0px));
     padding-bottom: calc(73px + 2 * env(safe-area-inset-bottom, 0px));
   }
 
@@ -1318,11 +1318,12 @@ html[data-tema="chiaro"] .glass-panel.twitch-container {
     padding-top: env(safe-area-inset-top, 0px);
   }
 
-  .nav-links     { display: none; }
-  .nav-hamburger { display: none; }
-  .nav-label     { display: none; }
+  .nav-links     { display: none !important; }
+  .nav-hamburger { display: none !important; }
+  .nav-label     { display: none !important; }
+  .nav-settings  { display: none !important; }
 
-  .navbar-content { justify-content: center; }
+  .navbar-content { justify-content: space-between; }
 
   .main-content { gap: 1.5rem; }
 
@@ -1508,7 +1509,7 @@ nav.navbar-container.glass-panel {
   display: flex;
   align-items: stretch;
   width: 100%;
-  padding: 6px 2px 6px;
+  padding: 6px 0 6px;
   position: relative;   /* pill is absolute inside here */
   overflow: visible;
 }
@@ -1616,9 +1617,9 @@ nav.navbar-container.glass-panel {
   );
 }
 
-/* ── Show tab bar only on mobile ── */
-@media (max-width: 640px) {
-  .mobile-tab-bar { display: block; }
+/* ── Show tab bar on mobile and tablet ── */
+@media (max-width: 960px) {
+  .mobile-tab-bar { display: block !important; }
 }
 
 /* ── Very small screens ── */
@@ -9121,4 +9122,53 @@ html[data-tema="chiaro"] .profilo-avatar-edit {
   .tg-sezioni {
     grid-template-columns: 1fr;
   }
+}
+
+/* ═══ Ecosistema SOCIALify (Layout) ═══ */
+.social-layout-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+@media (min-width: 960px) {
+  .social-layout-grid {
+    grid-template-columns: 1fr 300px;
+  }
+}
+
+.social-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  position: sticky;
+  top: 80px;
+}
+
+.social-trend-card {
+  padding: 1.2rem;
+  border-radius: var(--r-panel, 26px);
+}
+.social-trend-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.social-trend-item {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.8rem;
+}
+.social-trend-tag {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 0.9rem;
+}
+.social-trend-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }

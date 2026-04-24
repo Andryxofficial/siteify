@@ -4,7 +4,7 @@ import { useLingua } from '../contexts/LinguaContext';
 const SITE_NAME = 'ANDRYXify';
 const BASE_URL = 'https://andryxify.it';
 const DEFAULT_IMAGE = `${BASE_URL}/logo.png`;
-const DEFAULT_KEYWORDS = 'andrea, andrea taliento, andryx, andryx098, ANDRYXify, andryxify, streamer italiano, streamer genova, twitch andryx, twitch andryx098, twitch andryxify, youtube andryx, youtube andryxify, instagram andryx, instagram andryxify, tiktok andryx, tiktok andryxify, gaming, intelligenza artificiale, podcast, content creator, live streaming';
+const DEFAULT_KEYWORDS = 'andrea, andrea taliento, andryx, ANDRYXify, andryxify, andryx098, genova, streamer genova, twitch, twitch italia, social, youtube, youtube italia, gaming, intelligenza artificiale, ia online, podcast, content creator, live streaming, entità digitale';
 
 /* Mappa lingua → locale Open Graph */
 const OG_LOCALE = { it: 'it_IT', en: 'en_US', es: 'es_ES' };

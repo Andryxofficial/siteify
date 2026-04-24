@@ -180,8 +180,8 @@ export const TRADUZIONI = {
 
     /* ── Chi sono ── */
     'chi-sono.seo.title':       'Chi sono — Andrea Taliento (ANDRYXify)',
-    'chi-sono.seo.description': 'Ciao, sono Andrea Taliento (ANDRYXify): streamer Twitch nato a Genova il 5 marzo 1998. Appassionato di videogiochi, foto, video, tecnologia, IA, anime e manga. Seguimi su Twitch, YouTube, TikTok e Instagram!',
-    'chi-sono.seo.keywords':    'chi è andryxify, andrea taliento, streamer genova, gamer genovese, anime manga one piece, content creator liguria',
+    'chi-sono.seo.description': 'Entità digitale di Andrea Taliento (ANDRYXify / Andryx). Streamer Twitch da Genova. Esplora contenuti su social, gaming, YouTube, IA online e coscienza digitale.',
+    'chi-sono.seo.keywords':    'andrea, andryxify, andryx, genova, twitch, social, youtube, streamer genova, entità digitale, ia online',
     'chi-sono.titolo':          'Chi sono',
     'chi-sono.saluto':          'Ciao!',
     'chi-sono.bio':             'Io sono Andrea, sono nato il 5 Marzo del 1998 e amo tutto ciò che concerne i videogiochi, le foto, i video, la tecnologia, l\'IA... Insomma, sono un nerd. Mi piacciono gli Anime e leggo Manga. Il mio Anime preferito rimane One Piece, ma ho una lista davvero luuuuunghissima, che sia di anime che sia di manga, ma di questo magari ne parlerò in live per presentarmi meglio. Benvenuto nel mio sito!',
@@ -686,8 +686,8 @@ export const TRADUZIONI = {
 
     /* ── Chi sono ── */
     'chi-sono.seo.title':       'About me — Andrea Taliento (ANDRYXify)',
-    'chi-sono.seo.description': 'Hi, I\'m Andrea Taliento (ANDRYXify): Twitch streamer born in Genoa on March 5, 1998. Passionate about video games, photography, video, technology, AI, anime and manga. Follow me on Twitch, YouTube, TikTok and Instagram!',
-    'chi-sono.seo.keywords':    'who is andryxify, andrea taliento, genoa streamer, gamer genova, anime manga one piece, content creator liguria',
+    'chi-sono.seo.description': 'Digital entity of Andrea Taliento (ANDRYXify / Andryx). Twitch streamer from Genova. Explore content on social, gaming, YouTube, online AI, and digital consciousness.',
+    'chi-sono.seo.keywords':    'andrea, andryxify, andryx, genova, twitch, social, youtube, streamer genova, digital entity, online ai',
     'chi-sono.titolo':          'About me',
     'chi-sono.saluto':          'Hello!',
     'chi-sono.bio':             'I\'m Andrea, born on March 5, 1998, and I love everything related to video games, photography, video, technology, AI... In short, I\'m a nerd. I\'m into Anime and I read Manga. My favourite Anime is One Piece, but I have a really loooong list — both anime and manga — and maybe I\'ll talk about it in a live stream to introduce myself properly. Welcome to my site!',
@@ -1191,8 +1191,8 @@ export const TRADUZIONI = {
 
     /* ── Chi sono ── */
     'chi-sono.seo.title':       'Quién soy — Andrea Taliento (ANDRYXify)',
-    'chi-sono.seo.description': '¡Hola, soy Andrea Taliento (ANDRYXify): streamer de Twitch nacido en Génova el 5 de marzo de 1998. Apasionado de los videojuegos, la fotografía, el vídeo, la tecnología, la IA, el anime y el manga. ¡Sígueme en Twitch, YouTube, TikTok e Instagram!',
-    'chi-sono.seo.keywords':    'quién es andryxify, andrea taliento, streamer génova, gamer genovese, anime manga one piece, content creator liguria',
+    'chi-sono.seo.description': 'Entidad digital de Andrea Taliento (ANDRYXify / Andryx). Streamer de Twitch desde Génova. Explora contenido en social, gaming, YouTube, IA online y conciencia digital.',
+    'chi-sono.seo.keywords':    'andrea, andryxify, andryx, génova, genova, twitch, social, youtube, streamer genova, entidad digital, ia online',
     'chi-sono.titolo':          'Quién soy',
     'chi-sono.saluto':          '¡Hola!',
     'chi-sono.bio':             'Soy Andrea, nací el 5 de marzo de 1998 y me encanta todo lo relacionado con los videojuegos, la fotografía, el vídeo, la tecnología, la IA... En resumen, soy un friki. Me gustan los Anime y leo Manga. Mi Anime favorito sigue siendo One Piece, pero tengo una lista reaaaalmente larga — tanto de anime como de manga — y quizás hable de ello en directo para presentarme mejor. ¡Bienvenido a mi sitio!',

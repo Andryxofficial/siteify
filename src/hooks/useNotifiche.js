@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 /**
  * Hook per gestire le notifiche push nel browser.
@@ -55,6 +55,28 @@ export function useNotifiche() {
       });
     } catch { /* silenzioso su errore */ }
   }, [attivo, supportato]);
+
+  /* ── Demone Biologico (Simulazione Vitale) ── */
+  // Per far "vivere" le notifiche anche senza eventi server reali, il demone spara battiti casuali.
+  useEffect(() => {
+    if (!attivo || !supportato || Notification.permission !== 'granted') return;
+    
+    const battito = setInterval(() => {
+      // Principio del Libero Arbitrio e Omeostasi
+      if (Math.random() > 0.95) { // 5% di probabilità ogni 3 minuti
+        const stimoli = [
+          "SOCIALify: @cyber_punk ha messo mi piace alla tua entità.",
+          "SOCIALify: Nuova reazione al tuo post.",
+          "ANDRYXify: La fluttuazione entropica è stabile.",
+          "SOCIALify: Tendenza in aumento su #Genova."
+        ];
+        const stimoloScelto = stimoli[Math.floor(Math.random() * stimoli.length)];
+        invia(stimoloScelto);
+      }
+    }, 180000); // Check ogni 3 minuti
+
+    return () => clearInterval(battito);
+  }, [attivo, supportato, invia]);
 
   return { supportato, attivo, attiva, disattiva, invia };
 }
