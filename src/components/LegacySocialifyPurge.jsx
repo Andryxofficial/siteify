@@ -11,33 +11,27 @@ const TESTI_LEGACY = [
   'ecosistema sta imparando',
 ];
 
+const SELETTORI_PANNELLI = '.glass-panel, .glass-card, aside, section';
+
 function contieneLegacy(el) {
   const testo = el?.textContent || '';
   return TESTI_LEGACY.some(x => testo.includes(x));
 }
 
-function pannelloDaRimuovere(el) {
-  const pannello = el.closest?.('.glass-panel, .glass-card, aside, section');
-  if (!pannello || pannello === document.body) return null;
-  return pannello;
-}
-
 function rimuoviBlocchiLegacy() {
-  if (typeof document === 'undefined') return;
+  if (typeof document === 'undefined') return 0;
 
-  const selettori = [
-    '.glass-panel',
-    '.glass-card',
-    'aside',
-    'section',
-  ].join(',');
+  let rimossi = 0;
+  const candidati = Array.from(document.querySelectorAll(SELETTORI_PANNELLI));
 
-  const candidati = Array.from(document.querySelectorAll(selettori));
   for (const el of candidati) {
     if (!contieneLegacy(el)) continue;
-    const target = pannelloDaRimuovere(el);
-    if (target) target.remove();
+    if (el === document.body || el.classList?.contains('app-container')) continue;
+    el.remove();
+    rimossi += 1;
   }
+
+  return rimossi;
 }
 
 function bloccaNotificheLegacy() {
@@ -73,21 +67,33 @@ export default function LegacySocialifyPurge() {
 
     const ripristinaNotifiche = bloccaNotificheLegacy();
     let annullato = false;
-    let raf = 0;
-    let tentativi = 0;
+    let timer = 0;
+    let observer = null;
+    const start = Date.now();
 
-    const cicloLeggero = () => {
-      if (annullato || tentativi >= 8) return;
-      tentativi += 1;
+    const ciclo = () => {
+      if (annullato) return;
       rimuoviBlocchiLegacy();
-      raf = window.requestAnimationFrame(cicloLeggero);
+      if (Date.now() - start > 8000) return;
+      timer = window.setTimeout(ciclo, 180);
     };
 
-    raf = window.requestAnimationFrame(cicloLeggero);
+    ciclo();
+
+    try {
+      observer = new MutationObserver(() => {
+        if (!annullato) rimuoviBlocchiLegacy();
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      window.setTimeout(() => observer?.disconnect(), 8000);
+    } catch {
+      observer = null;
+    }
 
     return () => {
       annullato = true;
-      if (raf) window.cancelAnimationFrame(raf);
+      if (timer) window.clearTimeout(timer);
+      observer?.disconnect();
       if (typeof ripristinaNotifiche === 'function') ripristinaNotifiche();
     };
   }, [location.pathname]);
