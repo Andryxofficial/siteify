@@ -3,6 +3,13 @@ import path from 'path';
 import { Redis } from '@upstash/redis';
 import { getLevel } from './social-leaderboard.js';
 import { miniTokenize } from './_localMiniLlm.js';
+import {
+  evocaMemorie,
+  integraMemorieNelTesto,
+  radicaDomanda,
+  seminaMemorieBase,
+  sintesiMemoria,
+} from './_memoriaSemanticaIkigai.js';
 
 const KNOWLEDGE_PATH = path.join(process.cwd(), 'docs', 'ikigai-knowledge.md');
 const MAX_QUESTION = 700;
@@ -134,16 +141,22 @@ function routesText(routes) {
   return routes.length ? `\n\nPercorsi utili: ${routes.map(r => `${r.label} (${r.path})`).join(', ')}.` : '';
 }
 
-function answerByIntent(intent, routes, live) {
+function memoryText(memorie) {
+  const testo = integraMemorieNelTesto(memorie);
+  return testo ? `\n\nMemoria utile:\n${testo}` : '';
+}
+
+function answerByIntent(intent, routes, live, memorie = []) {
   const rt = routesText(routes);
-  if (intent === 'leaderboard') return `Ikigai ti direbbe di puntare sulla qualità, non sullo spam. La classifica cresce con XP da post, risposte, like dati/ricevuti e milestone dei tag. I livelli vanno da Nuovo Arrivato a Leggenda; ripetere troppe azioni in poco tempo rende meno XP.${live?.available ? ' Posso leggere anche il contesto live delle classifiche quando Redis è disponibile.' : ''}${rt}`;
-  if (intent === 'tags') return `I tag servono a far trovare i contenuti giusti: ogni post può avere tag liberi, il sistema li valida, li indicizza e li usa per tendenze e macroCategorie. Più la community usa tag coerenti, più Ikigai capisce gli interessi reali e può suggerire percorsi migliori.${live?.available ? ' Posso usare anche tag popolari e trend reali.' : ''}${rt}`;
-  if (intent === 'notifications') return `Le notifiche si gestiscono dalle impostazioni: puoi scegliere push, in-app, suoni, vibrazione, anteprime, ore silenziose e categorie come messaggi, risposte, menzioni, amici, community, live e sistema.${rt}`;
-  if (intent === 'socialify') return `Su SOCIALify puoi leggere il feed, pubblicare post, rispondere, usare tag, allegare media, mettere like, salvare preferiti e seguire thread. Alcune azioni richiedono login Twitch.${rt}`;
-  if (intent === 'privacy') return `La privacy gira attorno a login Twitch, profilo, amici e visibilità dei post. Puoi avere contenuti pubblici o solo amici; nelle impostazioni gestisci visibilità, richieste amicizia, dati e preferenze.${rt}`;
-  if (intent === 'account') return `L'account usa Twitch: con il login puoi pubblicare, rispondere, mettere like, salvare preferiti, usare amici/messaggi, partecipare alle classifiche e personalizzare profilo e notifiche.${rt}`;
-  if (intent === 'games') return `La sezione Giochi raccoglie i contenuti interattivi del sito. La trovi dalla tab Giochi; se vuoi restare nella parte community/gaming, SOCIALify usa anche categorie e tag dedicati ai giochi.${rt}`;
-  return `Su ANDRYXify puoi esplorare contenuti di Andryx, usare SOCIALify, seguire Twitch/social, giocare, chattare, gestire profilo, notifiche e impostazioni. La parte più viva è SOCIALify: post, tag, classifiche XP, livelli, premi e macroCategorie evolvono con la community.${rt}`;
+  const mt = memoryText(memorie);
+  if (intent === 'leaderboard') return `Ikigai ti direbbe di puntare sulla qualità, non sullo spam. La classifica cresce con XP da post, risposte, like dati/ricevuti e milestone dei tag. I livelli vanno da Nuovo Arrivato a Leggenda; ripetere troppe azioni in poco tempo rende meno XP.${live?.available ? ' Posso leggere anche il contesto live delle classifiche quando Redis è disponibile.' : ''}${rt}${mt}`;
+  if (intent === 'tags') return `I tag servono a far trovare i contenuti giusti: ogni post può avere tag liberi, il sistema li valida, li indicizza e li usa per tendenze e macroCategorie. Più la community usa tag coerenti, più Ikigai capisce gli interessi reali e può suggerire percorsi migliori.${live?.available ? ' Posso usare anche tag popolari e trend reali.' : ''}${rt}${mt}`;
+  if (intent === 'notifications') return `Le notifiche si gestiscono dalle impostazioni: puoi scegliere push, in-app, suoni, vibrazione, anteprime, ore silenziose e categorie come messaggi, risposte, menzioni, amici, community, live e sistema.${rt}${mt}`;
+  if (intent === 'socialify') return `Su SOCIALify puoi leggere il feed, pubblicare post, rispondere, usare tag, allegare media, mettere like, salvare preferiti e seguire thread. Alcune azioni richiedono login Twitch.${rt}${mt}`;
+  if (intent === 'privacy') return `La privacy gira attorno a login Twitch, profilo, amici e visibilità dei post. Puoi avere contenuti pubblici o solo amici; nelle impostazioni gestisci visibilità, richieste amicizia, dati e preferenze.${rt}${mt}`;
+  if (intent === 'account') return `L'account usa Twitch: con il login puoi pubblicare, rispondere, mettere like, salvare preferiti, usare amici/messaggi, partecipare alle classifiche e personalizzare profilo e notifiche.${rt}${mt}`;
+  if (intent === 'games') return `La sezione Giochi raccoglie i contenuti interattivi del sito. La trovi dalla tab Giochi; se vuoi restare nella parte community/gaming, SOCIALify usa anche categorie e tag dedicati ai giochi.${rt}${mt}`;
+  return `Su ANDRYXify puoi esplorare contenuti di Andryx, usare SOCIALify, seguire Twitch/social, giocare, chattare, gestire profilo, notifiche e impostazioni. La parte più viva è SOCIALify: post, tag, classifiche XP, livelli, premi e macroCategorie evolvono con la community.${rt}${mt}`;
 }
 
 export async function askIkigai({ question, history = [] } = {}) {
@@ -154,25 +167,31 @@ export async function askIkigai({ question, history = [] } = {}) {
   const sections = await retrieve(q, intent);
   const routes = routeMatches(q, intent);
   const live = await liveContext(intent);
-  const answer = answerByIntent(intent, routes, live);
   const redis = await getRedis();
+  if (redis) await seminaMemorieBase(redis).catch(() => {});
+  const memorie = redis ? await evocaMemorie(redis, { testo: `${q} ${sections.map(s => s.title).join(' ')}`, ambito: intent }).catch(() => []) : [];
+  const answer = answerByIntent(intent, routes, live, memorie);
   if (redis) {
     redis.zincrby('ikigai:intents', 1, intent).catch(() => {});
     redis.lpush('ikigai:questions:recent', JSON.stringify({ q, intent, ts: Date.now() })).catch(() => {});
     redis.ltrim('ikigai:questions:recent', 0, 99).catch(() => {});
+    radicaDomanda(redis, { domanda: q, intento: intent, risposta: answer }).catch(() => {});
   }
-  return { ok: true, name: 'Ikigai', engine: 'andryx-ikigai-local-helper', externalApis: false, intent, answer, routes: routes.map(({ label, path }) => ({ label, path })), sources: sections.map(s => s.title), liveAvailable: !!live?.available };
+  return { ok: true, name: 'Ikigai', engine: 'andryx-ikigai-local-helper', externalApis: false, intent, answer, routes: routes.map(({ label, path }) => ({ label, path })), sources: sections.map(s => s.title), memories: memorie.map(m => m.titolo), liveAvailable: !!live?.available };
 }
 
 export async function ikigaiStatus() {
   const sections = await getSections();
   const redis = await getRedis();
   let stats = null;
+  let memoria = null;
   if (redis) {
     try {
+      await seminaMemorieBase(redis).catch(() => {});
       const [intents, recent] = await Promise.all([redis.zrange('ikigai:intents', 0, 10, { rev: true, withScores: true }), redis.lrange('ikigai:questions:recent', 0, 5)]);
       stats = { intents, recent };
+      memoria = await sintesiMemoria(redis);
     } catch { stats = null; }
   }
-  return { ok: true, name: 'Ikigai', engine: 'andryx-ikigai-local-helper', externalApis: false, knowledgeSections: sections.map(s => s.title), stats };
+  return { ok: true, name: 'Ikigai', engine: 'andryx-ikigai-local-helper', externalApis: false, knowledgeSections: sections.map(s => s.title), stats, memoria };
 }
