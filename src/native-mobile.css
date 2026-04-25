@@ -1,0 +1,172 @@
+/* Native mobile polish
+   Layer finale importato per ultimo: gestisce tastiera, safe-area e overlap UI.
+   Obiettivo: esperienza da app, niente zoom iOS e niente pannelli sotto la keyboard. */
+
+:root {
+  --keyboard-inset: 0px;
+  --native-bottom-nav-h: 92px;
+  --native-fab-size: 54px;
+  --native-gap: 12px;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  overscroll-behavior-y: none;
+}
+
+input,
+textarea,
+select,
+button {
+  touch-action: manipulation;
+}
+
+@media (max-width: 820px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  input,
+  textarea,
+  select,
+  .ikigai-input input,
+  .social-editor input,
+  .social-editor textarea,
+  .social-campo,
+  .social-area-testo {
+    font-size: 16px !important;
+    line-height: 1.35;
+    transform: translateZ(0);
+  }
+
+  textarea {
+    min-height: 96px;
+  }
+
+  .app-container {
+    min-height: 100dvh;
+    padding-bottom: calc(var(--native-bottom-nav-h) + env(safe-area-inset-bottom, 0px) + var(--keyboard-inset) + 18px) !important;
+  }
+
+  body.keyboard-open .mobile-tab-bar {
+    transform: translateY(calc(var(--keyboard-inset) * -1));
+    opacity: 0.96;
+  }
+
+  body.keyboard-open .ikigai-fab {
+    display: none;
+  }
+
+  .mobile-tab-bar {
+    z-index: 1180 !important;
+  }
+
+  .ikigai-fab {
+    width: var(--native-fab-size);
+    height: var(--native-fab-size);
+    right: max(16px, env(safe-area-inset-right, 0px) + 10px) !important;
+    bottom: calc(var(--native-bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 18px) !important;
+    z-index: 1175 !important;
+  }
+
+  .ikigai-panel {
+    left: max(12px, env(safe-area-inset-left, 0px) + 4px) !important;
+    right: max(12px, env(safe-area-inset-right, 0px) + 4px) !important;
+    bottom: calc(var(--native-bottom-nav-h) + env(safe-area-inset-bottom, 0px) + var(--keyboard-inset) + 18px) !important;
+    width: auto !important;
+    max-height: calc(100dvh - var(--mobile-topbar-h, 64px) - env(safe-area-inset-top, 0px) - var(--native-bottom-nav-h) - var(--keyboard-inset) - 46px) !important;
+    min-height: 260px;
+    z-index: 1300 !important;
+    overflow: hidden;
+  }
+
+  body.keyboard-open .ikigai-panel {
+    max-height: min(56dvh, 430px) !important;
+    bottom: calc(var(--keyboard-inset) + 12px) !important;
+  }
+
+  .ikigai-messages {
+    min-height: 120px !important;
+    max-height: none !important;
+    flex: 1 1 auto;
+    overscroll-behavior: contain;
+  }
+
+  .ikigai-suggestions {
+    padding-bottom: 0.35rem;
+  }
+
+  .ikigai-suggestions button {
+    min-height: 38px;
+    font-size: 0.82rem;
+  }
+
+  .ikigai-input {
+    flex: 0 0 auto;
+    position: sticky;
+    bottom: 0;
+    background: transparent;
+  }
+
+  .ikigai-input input {
+    min-height: 46px;
+    border-radius: 18px;
+  }
+
+  .ikigai-input button {
+    min-width: 46px;
+    min-height: 46px;
+    border-radius: 18px;
+  }
+
+  .social-editor-sfondo {
+    align-items: end !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--keyboard-inset) + 8px) !important;
+  }
+
+  .social-editor {
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - var(--keyboard-inset) - 22px) !important;
+    overflow-y: auto;
+  }
+
+  body.keyboard-open .social-editor {
+    max-height: calc(100dvh - var(--keyboard-inset) - 18px) !important;
+  }
+
+  .social-tag-input-wrapper input,
+  .social-editor input,
+  .social-editor textarea,
+  .social-area-testo {
+    scroll-margin-bottom: calc(var(--keyboard-inset) + 120px);
+  }
+
+  .mobile-profile-menu,
+  .ikigai-panel,
+  .social-editor {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+}
+
+@media (display-mode: standalone) and (max-width: 820px) {
+  :root {
+    --native-bottom-nav-h: 98px;
+  }
+
+  .ikigai-fab {
+    bottom: calc(var(--native-bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 18px) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .ikigai-panel {
+    border-radius: 24px !important;
+  }
+
+  .ikigai-msg {
+    max-width: 96%;
+  }
+}
