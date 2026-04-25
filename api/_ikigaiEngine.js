@@ -9,6 +9,12 @@ import {
   seminaMemorieBase,
   sintesiMemoria,
 } from './_memoriaSemanticaIkigai.js';
+import {
+  identificaCustodia,
+  leggiProfiloIkigai,
+  registraUsoIkigai,
+  orientamentoIkigai,
+} from './_custodiaIkigai.js';
 
 const KNOWLEDGE_PATH = path.join(process.cwd(), 'docs', 'ikigai-knowledge.md');
 const MAX_QUESTION = 700;
@@ -113,9 +119,9 @@ async function retrieve(question, intent, limit = 4) {
   }).sort((a, b) => b.score - a.score).slice(0, limit);
 }
 
-function routeMatches(question, intent) {
+function routeMatches(question, intent, orientamento = {}) {
   const q = clean(question).toLowerCase();
-  const tokens = new Set(tokenize(`${q} ${intent}`));
+  const tokens = new Set(tokenize(`${q} ${intent} ${(orientamento.topPagine || []).join(' ')}`));
   return ROUTES.map(route => {
     let score = 0;
     for (const term of route.terms) {
@@ -125,6 +131,7 @@ function routeMatches(question, intent) {
     if (intent === 'tags' && route.path.includes('info-tag')) score += 5;
     if (intent === 'leaderboard' && route.path === '/socialify') score += 4;
     if (intent === 'notifications' && route.path === '/impostazioni') score += 5;
+    if ((orientamento.topPagine || []).some(p => route.path !== '/' && p.startsWith(route.path))) score += 1.5;
     return { path: route.path, label: route.label, score };
   }).filter(r => r.score > 0).sort((a, b) => b.score - a.score).slice(0, 3);
 }
@@ -168,11 +175,12 @@ function routesText(routes) {
   return routes.length ? '\n\nTi lascio i collegamenti utili qui sotto.' : '';
 }
 
-function tagsLiveText(live) {
+function tagsLiveText(live, orientamento) {
   const trend = live?.trending?.map(x => `#${x.nome}`).join(', ');
-  const popular = live?.popular?.map(x => `#${x.nome}`).join(', ');
+  const interessi = orientamento?.topInteressi?.slice(0, 3).map(x => `#${x}`).join(', ');
+  if (trend && interessi) return ` In questo momento vedo muoversi soprattutto ${trend}; per te terrei d’occhio anche ${interessi}.`;
   if (trend) return ` In questo momento vedo muoversi soprattutto ${trend}.`;
-  if (popular) return ` I tag più presenti ora sono ${popular}.`;
+  if (interessi) return ` Per come la stai usando, partirei da ${interessi}.`;
   return '';
 }
 
@@ -182,32 +190,34 @@ function classificaLiveText(live) {
   return '';
 }
 
-function answerByIntent(intent, routes, live, contestoPagina = {}) {
+function tonoFinale(testo, orientamento = {}) {
+  if (orientamento.profondita === 'breve') return testo.split('\n\n').slice(0, 2).join('\n\n');
+  return testo;
+}
+
+function answerByIntent(intent, routes, live, contestoPagina = {}, orientamento = {}) {
   const rt = routesText(routes);
   const pagina = clean(contestoPagina?.pathname || '', 80);
+  let risposta;
 
   if (intent === 'tags') {
-    return `Sì: i tag sono il modo più comodo per far capire al sito “di cosa parla” un post. Non sono solo etichette: servono per cercare contenuti, creare tendenze, collegare post simili e far nascere macroCategorie quando la community usa spesso gli stessi argomenti insieme.${tagsLiveText(live)}\n\nEsempio pratico: se molti post usano #zelda, #nintendo e #ocarinaoftime, Ikigai può capire che lì sta nascendo un’area gaming specifica e suggerirti contenuti simili.${rt}`;
+    risposta = `Sì: i tag sono il modo più comodo per far capire al sito “di cosa parla” un post. Non sono solo etichette: servono per cercare contenuti, creare tendenze, collegare post simili e far nascere macroCategorie quando la community usa spesso gli stessi argomenti insieme.${tagsLiveText(live, orientamento)}\n\nEsempio pratico: se molti post usano #zelda, #nintendo e #ocarinaoftime, Ikigai può capire che lì sta nascendo un’area gaming specifica e suggerirti contenuti simili.${rt}`;
+  } else if (intent === 'leaderboard') {
+    risposta = `La classifica funziona a XP: guadagni punti partecipando bene, non spammando. Post utili, risposte, like ricevuti/dati e tag che diventano popolari aiutano a salire; se ripeti troppe azioni uguali, il rendimento cala.${classificaLiveText(live)}\n\nI premi tipo VIP settimanale o campione mensile hanno senso proprio lì: premiare chi tiene viva la community.${rt}`;
+  } else if (intent === 'notifications') {
+    risposta = `Le notifiche le gestisci dalle Impostazioni. Puoi separare push e notifiche in-app, scegliere suoni/vibrazione, anteprime, ore silenziose e categorie come messaggi, risposte, menzioni, amici, community, live e sistema.\n\nIn pratica: puoi farle diventare tranquille o super presenti, senza subire tutto insieme.${rt}`;
+  } else if (intent === 'socialify') {
+    risposta = `SOCIALify è la piazza del sito: feed, post, risposte, like, preferiti, allegati, menzioni e tag. Se sei loggato con Twitch puoi partecipare davvero; se non lo sei puoi comunque esplorare ciò che è pubblico.\n\nDa lì passano anche classifiche, tendenze e macroCategorie.${rt}`;
+  } else if (intent === 'privacy') {
+    risposta = `La privacy qui ruota attorno a profilo, amici e visibilità dei post. Puoi avere contenuti pubblici o solo amici; le impostazioni servono per decidere quanto vuoi esporti e quali dati/preferenze gestire.${rt}`;
+  } else if (intent === 'account') {
+    risposta = `L’account passa da Twitch. Con il login sblocchi post, risposte, like, preferiti, amici, messaggi, profilo, classifiche XP e notifiche personalizzate.${rt}`;
+  } else if (intent === 'games') {
+    risposta = `La sezione Giochi raccoglie la parte interattiva. Se invece vuoi parlare di gaming con la community, SOCIALify usa categorie e tag dedicati per far emergere giochi, discussioni e trend.${rt}`;
+  } else {
+    risposta = `Puoi usare ANDRYXify come hub personale/community: SOCIALify per post e discussioni, classifiche e premi per la parte competitiva, tag per trovare contenuti, giochi per la parte interattiva, profilo/messaggi/amici per la parte social e impostazioni per personalizzare tutto.${pagina ? ` Ora sei su ${pagina}, quindi posso anche orientarti rispetto a questa pagina.` : ''}${rt}`;
   }
-  if (intent === 'leaderboard') {
-    return `La classifica funziona a XP: guadagni punti partecipando bene, non spammando. Post utili, risposte, like ricevuti/dati e tag che diventano popolari aiutano a salire; se ripeti troppe azioni uguali, il rendimento cala.${classificaLiveText(live)}\n\nI premi tipo VIP settimanale o campione mensile hanno senso proprio lì: premiare chi tiene viva la community.${rt}`;
-  }
-  if (intent === 'notifications') {
-    return `Le notifiche le gestisci dalle Impostazioni. Puoi separare push e notifiche in-app, scegliere suoni/vibrazione, anteprime, ore silenziose e categorie come messaggi, risposte, menzioni, amici, community, live e sistema.\n\nIn pratica: puoi farle diventare tranquille o super presenti, senza subire tutto insieme.${rt}`;
-  }
-  if (intent === 'socialify') {
-    return `SOCIALify è la piazza del sito: feed, post, risposte, like, preferiti, allegati, menzioni e tag. Se sei loggato con Twitch puoi partecipare davvero; se non lo sei puoi comunque esplorare ciò che è pubblico.\n\nDa lì passano anche classifiche, tendenze e macroCategorie.${rt}`;
-  }
-  if (intent === 'privacy') {
-    return `La privacy qui ruota attorno a profilo, amici e visibilità dei post. Puoi avere contenuti pubblici o solo amici; le impostazioni servono per decidere quanto vuoi esporti e quali dati/preferenze gestire.${rt}`;
-  }
-  if (intent === 'account') {
-    return `L’account passa da Twitch. Con il login sblocchi post, risposte, like, preferiti, amici, messaggi, profilo, classifiche XP e notifiche personalizzate.${rt}`;
-  }
-  if (intent === 'games') {
-    return `La sezione Giochi raccoglie la parte interattiva. Se invece vuoi parlare di gaming con la community, SOCIALify usa categorie e tag dedicati per far emergere giochi, discussioni e trend.${rt}`;
-  }
-  return `Puoi usare ANDRYXify come hub personale/community: SOCIALify per post e discussioni, classifiche e premi per la parte competitiva, tag per trovare contenuti, giochi per la parte interattiva, profilo/messaggi/amici per la parte social e impostazioni per personalizzare tutto.${pagina ? ` Ora sei su ${pagina}, quindi posso anche orientarti rispetto a questa pagina.` : ''}${rt}`;
+  return tonoFinale(risposta, orientamento);
 }
 
 function rispostaDaMemorizzare(intent) {
@@ -220,21 +230,26 @@ function rispostaDaMemorizzare(intent) {
   return map[intent] || 'Ikigai orienta l’utente tra funzioni, pagine e impostazioni del sito.';
 }
 
-export async function interpellaIkigai({ domanda, question, cronologia = [], history = [], contestoPagina = {}, pageContext = {} } = {}) {
+export async function interpellaIkigai({ domanda, question, cronologia = [], history = [], contestoPagina = {}, pageContext = {}, req = null, corpo = {} } = {}) {
   const q = clean(domanda || question);
   if (!q) return { ok: true, name: 'Ikigai', intent: 'welcome', answer: 'Eccomi. Chiedimi pure cosa puoi fare qui, come funzionano tag, classifiche, premi, notifiche o SOCIALify.', routes: [{ label: 'SOCIALify', path: '/socialify' }, { label: 'Impostazioni', path: '/impostazioni' }] };
 
   const fonteCronologia = Array.isArray(cronologia) && cronologia.length ? cronologia : history;
   const safeHistory = Array.isArray(fonteCronologia) ? fonteCronologia.slice(-MAX_HISTORY).map(x => clean(x, 240)) : [];
   const pagina = Object.keys(contestoPagina || {}).length ? contestoPagina : pageContext;
-  const intent = detectIntent(q, safeHistory, pagina);
-  const sections = await retrieve(q, intent);
-  const routes = routeMatches(q, intent);
-  const live = await liveContext(intent);
   const redis = await getRedis();
   if (redis) await seminaMemorieBase(redis).catch(() => {});
+
+  const identita = identificaCustodia(req, corpo);
+  const profilo = redis ? await leggiProfiloIkigai(redis, identita.idCustodia, identita.tipo).catch(() => null) : null;
+  const orientamento = profilo && !profilo.optOut ? orientamentoIkigai(profilo) : {};
+
+  const intent = detectIntent(q, safeHistory, pagina);
+  const sections = await retrieve(q, intent);
+  const routes = routeMatches(q, intent, orientamento);
+  const live = await liveContext(intent);
   const memorie = redis ? await evocaMemorie(redis, { testo: `${q} ${sections.map(s => s.title).join(' ')}`, ambito: intent }).catch(() => []) : [];
-  const answer = answerByIntent(intent, routes, live, pagina);
+  const answer = answerByIntent(intent, routes, live, pagina, orientamento);
 
   if (redis) {
     redis.zincrby('ikigai:intenti', 1, intent).catch(() => {});
@@ -242,9 +257,16 @@ export async function interpellaIkigai({ domanda, question, cronologia = [], his
     redis.lpush('ikigai:domande:recenti', JSON.stringify({ q, intent, pagina: pagina?.pathname || '', ts: Date.now() })).catch(() => {});
     redis.ltrim('ikigai:domande:recenti', 0, 99).catch(() => {});
     radicaDomanda(redis, { domanda: q, intento: intent, risposta: rispostaDaMemorizzare(intent) }).catch(() => {});
+    registraUsoIkigai(redis, identita.idCustodia, {
+      tipo: identita.tipo,
+      intent,
+      pagina: pagina?.pathname || '',
+      domanda: q,
+      termini: tokenize(q).filter(t => t.length > 3).slice(0, 10),
+    }).catch(() => {});
   }
 
-  return { ok: true, name: 'Ikigai', engine: 'andryx-ikigai-local-helper', externalApis: false, intent, answer, routes: routes.map(({ label, path }) => ({ label, path, href: path })), sources: sections.map(s => s.title), memories: memorie.map(m => m.titolo), liveAvailable: !!live?.available };
+  return { ok: true, name: 'Ikigai', engine: 'andryx-ikigai-local-helper', externalApis: false, intent, answer, routes: routes.map(({ label, path }) => ({ label, path, href: path })), sources: sections.map(s => s.title), memories: memorie.map(m => m.titolo), adaptive: !!(profilo && !profilo.optOut), liveAvailable: !!live?.available };
 }
 
 export async function statoIkigai() {
