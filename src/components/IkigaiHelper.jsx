@@ -10,6 +10,22 @@ const SUGGERIMENTI = [
   'Come gestisco le notifiche?',
 ];
 
+const CHIAVE_ANONIMA = 'andryxify_ikigai_anon_v1';
+
+function idAnonimoLocale() {
+  try {
+    const esistente = localStorage.getItem(CHIAVE_ANONIMA);
+    if (esistente) return esistente;
+    const bytes = new Uint8Array(18);
+    crypto.getRandomValues(bytes);
+    const valore = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    localStorage.setItem(CHIAVE_ANONIMA, valore);
+    return valore;
+  } catch {
+    return '';
+  }
+}
+
 function descriviPagina(pathname) {
   if (pathname === '/') return 'Home';
   if (pathname.startsWith('/socialify/info-tag')) return 'Info tag SOCIALify';
@@ -38,15 +54,20 @@ export default function IkigaiHelper() {
   const chiedi = async (q = question) => {
     const clean = String(q || '').trim();
     if (!clean || loading) return;
+    const anonId = idAnonimoLocale();
     setQuestion('');
     setMessages(prev => [...prev, { role: 'user', text: clean }]);
     setLoading(true);
     try {
       const res = await fetch('/api/ikigai', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(anonId ? { 'X-Ikigai-Anon': anonId } : {}),
+        },
         body: JSON.stringify({
           domanda: clean,
+          anonId,
           cronologia: messages.filter(m => m.role === 'user').map(m => m.text).slice(-4),
           contestoPagina: {
             pathname: location.pathname,
