@@ -1,10 +1,21 @@
 import { useEffect } from 'react';
 
-function calcolaInsetTastiera() {
-  if (typeof window === 'undefined' || !window.visualViewport) return 0;
+function datiViewport() {
+  if (typeof window === 'undefined') {
+    return { inset: 0, left: 0, top: 0, width: 0, height: 0 };
+  }
   const vv = window.visualViewport;
-  const differenza = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-  return Math.round(differenza);
+  if (!vv) {
+    return { inset: 0, left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+  }
+  const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+  return {
+    inset: Math.round(inset),
+    left: Math.round(vv.offsetLeft || 0),
+    top: Math.round(vv.offsetTop || 0),
+    width: Math.round(vv.width || window.innerWidth),
+    height: Math.round(vv.height || window.innerHeight),
+  };
 }
 
 function focusEditabileAttivo() {
@@ -22,16 +33,23 @@ export default function useKeyboardInset() {
     const body = document.body;
 
     const aggiorna = () => {
-      const inset = calcolaInsetTastiera();
-      const aperta = inset > 80 && focusEditabileAttivo();
-      root.style.setProperty('--keyboard-inset', aperta ? `${inset}px` : '0px');
+      const dati = datiViewport();
+      const aperta = dati.inset > 80 && focusEditabileAttivo();
+
+      root.style.setProperty('--keyboard-inset', aperta ? `${dati.inset}px` : '0px');
+      root.style.setProperty('--vv-left', `${dati.left}px`);
+      root.style.setProperty('--vv-top', `${dati.top}px`);
+      root.style.setProperty('--vv-width', `${dati.width}px`);
+      root.style.setProperty('--vv-height', `${dati.height}px`);
       body.classList.toggle('keyboard-open', aperta);
+      body.classList.toggle('visual-viewport-shifted', dati.left !== 0 || dati.top !== 0);
     };
 
     const ritarda = () => {
       aggiorna();
-      window.setTimeout(aggiorna, 90);
-      window.setTimeout(aggiorna, 260);
+      window.setTimeout(aggiorna, 60);
+      window.setTimeout(aggiorna, 160);
+      window.setTimeout(aggiorna, 320);
     };
 
     const vv = window.visualViewport;
@@ -52,7 +70,12 @@ export default function useKeyboardInset() {
       document.removeEventListener('focusin', ritarda);
       document.removeEventListener('focusout', ritarda);
       root.style.removeProperty('--keyboard-inset');
+      root.style.removeProperty('--vv-left');
+      root.style.removeProperty('--vv-top');
+      root.style.removeProperty('--vv-width');
+      root.style.removeProperty('--vv-height');
       body.classList.remove('keyboard-open');
+      body.classList.remove('visual-viewport-shifted');
     };
   }, []);
 }
