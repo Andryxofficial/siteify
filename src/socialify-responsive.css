@@ -1,4 +1,4 @@
-/* SOCIALify responsive comfort layer
+/* SOCIALify + mobile comfort layer
    Sovrascritture conservative: nessuna logica React toccata.
    Nota: niente :has() e niente observer DOM; mobile/PWA deve restare leggero. */
 
@@ -6,6 +6,7 @@
   --social-safe-x: clamp(0.85rem, 3.5vw, 1.4rem);
   --social-card-pad: clamp(0.9rem, 2.8vw, 1.25rem);
   --social-gap: clamp(0.75rem, 2.5vw, 1rem);
+  --mobile-topbar-h: 66px;
 }
 
 /* Evita overflow orizzontale generato da chip, media o griglie troppo ottimiste. */
@@ -19,6 +20,178 @@
 
 .main-content {
   overflow-x: clip;
+}
+
+/* ═══════════════════════════════════════════════════
+   MOBILE TOP BAR — profilo accessibile sotto status bar
+   ═══════════════════════════════════════════════════ */
+.mobile-topbar {
+  display: none;
+}
+
+@media (max-width: 820px) {
+  .navbar-container {
+    display: none !important;
+  }
+
+  .app-container {
+    padding-top: calc(env(safe-area-inset-top) + var(--mobile-topbar-h) + 22px) !important;
+  }
+
+  .pwa-standalone.app-container {
+    padding-top: calc(env(safe-area-inset-top) + var(--mobile-topbar-h) + 18px) !important;
+  }
+
+  .mobile-topbar {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 10px);
+    left: max(14px, env(safe-area-inset-left));
+    right: max(14px, env(safe-area-inset-right));
+    z-index: 1250;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    pointer-events: none;
+  }
+
+  .mobile-topbar-brand {
+    pointer-events: auto;
+    width: min(56vw, 240px);
+    height: 54px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.48);
+    border: 1px solid rgba(150, 165, 210, 0.28);
+    box-shadow: 0 10px 28px rgba(120, 120, 190, 0.18), inset 0 1px 0 rgba(255,255,255,0.55);
+    backdrop-filter: blur(22px) saturate(170%);
+    -webkit-backdrop-filter: blur(22px) saturate(170%);
+    overflow: hidden;
+    text-decoration: none;
+  }
+
+  .mobile-topbar-brand img {
+    max-width: 64%;
+    max-height: 34px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 8px rgba(224,64,251,0.22));
+  }
+
+  .mobile-profile-trigger {
+    pointer-events: auto;
+    width: 52px;
+    height: 52px;
+    border-radius: 999px;
+    border: 1px solid rgba(150, 165, 210, 0.30);
+    background: rgba(255, 255, 255, 0.58);
+    color: var(--primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 28px rgba(120, 120, 190, 0.20), inset 0 1px 0 rgba(255,255,255,0.58);
+    backdrop-filter: blur(22px) saturate(175%);
+    -webkit-backdrop-filter: blur(22px) saturate(175%);
+    padding: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-profile-trigger.active {
+    border-color: rgba(224, 64, 251, 0.48);
+    box-shadow: 0 12px 34px rgba(224,64,251,0.24), inset 0 1px 0 rgba(255,255,255,0.62);
+  }
+
+  .mobile-profile-trigger img {
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .mobile-profile-menu {
+    pointer-events: auto;
+    position: absolute;
+    top: 62px;
+    right: 0;
+    width: min(86vw, 310px);
+    max-width: calc(100vw - 28px);
+    padding: 0.8rem;
+    border-radius: 24px;
+    z-index: 1300;
+  }
+
+  .mobile-profile-menu-head {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.35rem 0.35rem 0.75rem;
+    border-bottom: 1px solid rgba(150, 165, 210, 0.20);
+    margin-bottom: 0.45rem;
+  }
+
+  .mobile-profile-menu-head img {
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    object-fit: cover;
+  }
+
+  .mobile-profile-menu-head strong,
+  .mobile-profile-menu-head span {
+    display: block;
+    max-width: 190px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-profile-menu-head strong {
+    font-size: 0.94rem;
+    color: var(--text-main);
+  }
+
+  .mobile-profile-menu-head span {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .mobile-profile-menu button {
+    width: 100%;
+    min-height: 44px;
+    border: 0;
+    border-radius: 16px;
+    background: transparent;
+    color: var(--text-main);
+    font: inherit;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0 0.75rem;
+    cursor: pointer;
+    text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-profile-menu button:active,
+  .mobile-profile-menu button:hover {
+    background: rgba(255,255,255,0.08);
+  }
+
+  .mobile-profile-menu button.danger {
+    color: #ff7b9b;
+  }
+
+  .mobile-tab-bar {
+    left: max(10px, env(safe-area-inset-left)) !important;
+    right: max(10px, env(safe-area-inset-right)) !important;
+    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    max-width: none !important;
+  }
 }
 
 /* Header, tab, filtri e categorie: scorrono bene su mobile invece di sfondare. */
@@ -57,7 +230,6 @@
   white-space: nowrap;
 }
 
-/* Card post: più leggibile, meno stretta, niente overflow da titolo/corpo. */
 .social-scheda-post {
   display: block;
   width: 100%;
@@ -75,9 +247,7 @@
   min-width: 0;
 }
 
-.social-avatar {
-  flex: 0 0 auto;
-}
+.social-avatar { flex: 0 0 auto; }
 
 .social-avatar,
 .social-avatar img {
@@ -96,9 +266,7 @@
   max-width: 100%;
 }
 
-.social-scheda-meta {
-  flex: 1 1 auto;
-}
+.social-scheda-meta { flex: 1 1 auto; }
 
 .social-autore-riga {
   display: flex;
@@ -120,24 +288,18 @@
   overflow: hidden;
 }
 
-.social-titolo-post {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  hyphens: auto;
-  line-height: 1.2;
-}
-
+.social-titolo-post,
 .social-anteprima-testo {
   overflow-wrap: anywhere;
   word-break: break-word;
   hyphens: auto;
-  line-height: 1.55;
 }
 
+.social-titolo-post { line-height: 1.2; }
+.social-anteprima-testo { line-height: 1.55; }
+
 .social-tempo,
-.social-btn-azione {
-  white-space: nowrap;
-}
+.social-btn-azione { white-space: nowrap; }
 
 .social-azioni-riga {
   display: flex;
@@ -146,7 +308,6 @@
   gap: 0.45rem;
 }
 
-/* Media: immagini/video/audio non devono mai allargare la pagina. */
 .social-media-preview,
 .social-media-img,
 .social-media-video,
@@ -169,9 +330,7 @@
   object-fit: contain;
 }
 
-.social-media-video {
-  max-height: min(420px, 62vh);
-}
+.social-media-video { max-height: min(420px, 62vh); }
 
 .social-media-audio-wrapper {
   display: flex;
@@ -180,11 +339,8 @@
   width: 100%;
 }
 
-.social-media-audio {
-  flex: 1 1 auto;
-}
+.social-media-audio { flex: 1 1 auto; }
 
-/* Editor/modale: su mobile deve sembrare una bottom sheet comoda. */
 .social-editor-sfondo {
   position: fixed;
   inset: 0;
@@ -212,7 +368,7 @@
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  font-size: max(16px, 0.95rem); /* evita zoom aggressivo iOS */
+  font-size: max(16px, 0.95rem);
 }
 
 .social-area-testo {
@@ -220,14 +376,8 @@
   min-height: 9rem;
 }
 
-/* Tag input/autocomplete: impedisce dropdown enormi o fuori viewport. */
-.social-tag-input-wrapper {
-  position: relative;
-}
-
-.social-tag-input-wrapper input {
-  min-width: 0;
-}
+.social-tag-input-wrapper { position: relative; }
+.social-tag-input-wrapper input { min-width: 0; }
 
 [class*="tag-suggestion"],
 [class*="autocomplete"],
@@ -236,7 +386,6 @@
   max-width: min(100vw - 2rem, 520px);
 }
 
-/* Tabelle/classifiche/liste laterali: scroll interno controllato, non pagina rotta. */
 [class*="leaderboard"],
 [class*="classifica"],
 [class*="social-sidebar"],
@@ -252,18 +401,13 @@
   min-width: 0;
 }
 
-/* Desktop: layout più largo ma stabile. */
 @media (min-width: 900px) {
   .social-scheda-post {
     transition: transform 0.18s var(--ease-glass, ease), border-color 0.18s var(--ease-glass, ease), background 0.18s var(--ease-glass, ease);
   }
-
-  .social-scheda-post:hover {
-    transform: translateY(-2px);
-  }
+  .social-scheda-post:hover { transform: translateY(-2px); }
 }
 
-/* Tablet/mobile: una colonna vera e chip scorrevoli dove serve. */
 @media (max-width: 760px) {
   .main-content {
     padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
@@ -285,9 +429,7 @@
   .social-categorie-griglia::-webkit-scrollbar,
   [class*="social-categorie"]::-webkit-scrollbar,
   [class*="social-tabs"]::-webkit-scrollbar,
-  [class*="social-filtri"]::-webkit-scrollbar {
-    display: none;
-  }
+  [class*="social-filtri"]::-webkit-scrollbar { display: none; }
 
   .social-categorie-griglia .chip,
   [class*="social-categorie"] .chip,
@@ -297,29 +439,12 @@
     scroll-snap-align: start;
   }
 
-  .social-scheda-post {
-    border-radius: clamp(16px, 5vw, 22px);
-  }
-
-  .social-scheda-riga {
-    gap: 0.62rem;
-  }
-
-  .social-autore {
-    max-width: 11.5rem;
-  }
-
-  .social-scheda-contenuto {
-    margin-left: 0;
-  }
-
-  .social-titolo-post {
-    font-size: clamp(1rem, 4.2vw, 1.12rem);
-  }
-
-  .social-anteprima-testo {
-    font-size: clamp(0.9rem, 3.7vw, 0.98rem);
-  }
+  .social-scheda-post { border-radius: clamp(16px, 5vw, 22px); }
+  .social-scheda-riga { gap: 0.62rem; }
+  .social-autore { max-width: 11.5rem; }
+  .social-scheda-contenuto { margin-left: 0; }
+  .social-titolo-post { font-size: clamp(1rem, 4.2vw, 1.12rem); }
+  .social-anteprima-testo { font-size: clamp(0.9rem, 3.7vw, 0.98rem); }
 
   .social-editor-sfondo {
     align-items: end;
@@ -350,23 +475,11 @@
 }
 
 @media (max-width: 430px) {
-  .social-scheda-post {
-    padding: 0.82rem;
-  }
-
+  .social-scheda-post { padding: 0.82rem; }
   .social-avatar,
-  .social-avatar img {
-    width: 36px;
-    height: 36px;
-  }
-
-  .social-autore-riga {
-    gap: 0.3rem;
-  }
-
-  .social-autore {
-    max-width: 9.5rem;
-  }
+  .social-avatar img { width: 36px; height: 36px; }
+  .social-autore-riga { gap: 0.3rem; }
+  .social-autore { max-width: 9.5rem; }
 
   .social-chip-categoria,
   .social-chip-amici,
@@ -375,27 +488,12 @@
     padding-inline: 0.42rem !important;
   }
 
-  .social-azioni-riga {
-    gap: 0.35rem;
-  }
-
-  .social-btn-azione {
-    min-height: 34px;
-    padding-inline: 0.55rem !important;
-  }
-
-  .social-area-testo {
-    min-height: 8rem;
-  }
+  .social-azioni-riga { gap: 0.35rem; }
+  .social-btn-azione { min-height: 34px; padding-inline: 0.55rem !important; }
+  .social-area-testo { min-height: 8rem; }
 }
 
-/* PWA standalone: più spazio sotto, niente elementi tagliati dalla gesture bar. */
 @media (display-mode: standalone) {
-  .main-content {
-    padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
-  }
-
-  .social-editor-sfondo {
-    padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
-  }
+  .main-content { padding-bottom: calc(6.25rem + env(safe-area-inset-bottom)); }
+  .social-editor-sfondo { padding-bottom: max(0.85rem, env(safe-area-inset-bottom)); }
 }
