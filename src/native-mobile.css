@@ -94,6 +94,68 @@ button {
   border-radius: inherit;
 }
 
+/* SOCIALify desktop centering guard
+   Alcuni blocchi legacy usano larghezze implicite e restano agganciati a sinistra.
+   Questo layer li rimette dentro una colonna centrale coerente senza toccare il mobile. */
+@media (min-width: 821px) {
+  .main-content:has(.social-scheda-post),
+  .page-transition:has(.social-scheda-post),
+  main:has(.social-scheda-post) {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+
+  .main-content:has(.social-scheda-post) > *,
+  .page-transition:has(.social-scheda-post) > *,
+  main:has(.social-scheda-post) > * {
+    width: min(100%, 1040px) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  .main-content:has(.social-scheda-post) .glass-panel,
+  .main-content:has(.social-scheda-post) .glass-card,
+  .main-content:has(.social-scheda-post) .social-scheda-post,
+  .page-transition:has(.social-scheda-post) .glass-panel,
+  .page-transition:has(.social-scheda-post) .glass-card,
+  .page-transition:has(.social-scheda-post) .social-scheda-post,
+  main:has(.social-scheda-post) .glass-panel,
+  main:has(.social-scheda-post) .glass-card,
+  main:has(.social-scheda-post) .social-scheda-post {
+    max-width: 1040px !important;
+  }
+
+  .main-content:has(.social-scheda-post) .social-scheda-post,
+  .page-transition:has(.social-scheda-post) .social-scheda-post,
+  main:has(.social-scheda-post) .social-scheda-post {
+    width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  .main-content:has(.social-scheda-post) [class*="tag"],
+  .main-content:has(.social-scheda-post) [class*="Tag"],
+  .main-content:has(.social-scheda-post) [class*="categorie"],
+  .main-content:has(.social-scheda-post) [class*="Categorie"],
+  .main-content:has(.social-scheda-post) [class*="filtro"],
+  .main-content:has(.social-scheda-post) [class*="Filtro"],
+  .page-transition:has(.social-scheda-post) [class*="tag"],
+  .page-transition:has(.social-scheda-post) [class*="Tag"],
+  .page-transition:has(.social-scheda-post) [class*="categorie"],
+  .page-transition:has(.social-scheda-post) [class*="Categorie"],
+  .page-transition:has(.social-scheda-post) [class*="filtro"],
+  .page-transition:has(.social-scheda-post) [class*="Filtro"] {
+    max-width: 1040px;
+  }
+
+  .main-content:has(.social-scheda-post) > div,
+  .page-transition:has(.social-scheda-post) > div,
+  main:has(.social-scheda-post) > div {
+    justify-self: center;
+  }
+}
+
 .ikigai-privacy-link {
   display: inline-flex;
   align-items: center;
