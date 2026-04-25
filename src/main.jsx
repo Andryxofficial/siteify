@@ -4,6 +4,7 @@ import { HelmetProvider } from 'react-helmet-async'
 import './index.css'
 import './socialify-responsive.css'
 import './mobile-shell.css'
+import './dark-polish.css'
 import App from './App.jsx'
 
 // Register service worker for PWA support + update detection
