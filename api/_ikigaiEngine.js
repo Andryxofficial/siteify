@@ -165,7 +165,7 @@ async function liveContext(intent) {
 }
 
 function routesText(routes) {
-  return routes.length ? `\n\nTi porto qui: ${routes.map(r => `${r.label} (${r.path})`).join(', ')}.` : '';
+  return routes.length ? '\n\nTi lascio i collegamenti utili qui sotto.' : '';
 }
 
 function tagsLiveText(live) {
@@ -244,7 +244,7 @@ export async function interpellaIkigai({ domanda, question, cronologia = [], his
     radicaDomanda(redis, { domanda: q, intento: intent, risposta: rispostaDaMemorizzare(intent) }).catch(() => {});
   }
 
-  return { ok: true, name: 'Ikigai', engine: 'andryx-ikigai-local-helper', externalApis: false, intent, answer, routes: routes.map(({ label, path }) => ({ label, path })), sources: sections.map(s => s.title), memories: memorie.map(m => m.titolo), liveAvailable: !!live?.available };
+  return { ok: true, name: 'Ikigai', engine: 'andryx-ikigai-local-helper', externalApis: false, intent, answer, routes: routes.map(({ label, path }) => ({ label, path, href: path })), sources: sections.map(s => s.title), memories: memorie.map(m => m.titolo), liveAvailable: !!live?.available };
 }
 
 export async function statoIkigai() {
