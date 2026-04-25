@@ -17,27 +17,26 @@ function contieneLegacy(el) {
 }
 
 function pannelloDaRimuovere(el) {
-  return (
-    el.closest?.('.glass-panel') ||
-    el.closest?.('.glass-card') ||
-    el.closest?.('[class*="sidebar"]') ||
-    el.closest?.('aside') ||
-    el.closest?.('section') ||
-    el.closest?.('div')
-  );
+  const pannello = el.closest?.('.glass-panel, .glass-card, aside, section');
+  if (!pannello || pannello === document.body) return null;
+  return pannello;
 }
 
 function rimuoviBlocchiLegacy() {
   if (typeof document === 'undefined') return;
-  const candidati = Array.from(document.querySelectorAll('body *'));
-  const rimossi = new Set();
 
+  const selettori = [
+    '.glass-panel',
+    '.glass-card',
+    'aside',
+    'section',
+  ].join(',');
+
+  const candidati = Array.from(document.querySelectorAll(selettori));
   for (const el of candidati) {
     if (!contieneLegacy(el)) continue;
     const target = pannelloDaRimuovere(el);
-    if (!target || target === document.body || rimossi.has(target)) continue;
-    target.remove();
-    rimossi.add(target);
+    if (target) target.remove();
   }
 }
 
@@ -73,16 +72,22 @@ export default function LegacySocialifyPurge() {
     if (!location.pathname.startsWith('/socialify')) return undefined;
 
     const ripristinaNotifiche = bloccaNotificheLegacy();
-    rimuoviBlocchiLegacy();
+    let annullato = false;
+    let raf = 0;
+    let tentativi = 0;
 
-    const observer = new MutationObserver(() => rimuoviBlocchiLegacy());
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    const cicloLeggero = () => {
+      if (annullato || tentativi >= 8) return;
+      tentativi += 1;
+      rimuoviBlocchiLegacy();
+      raf = window.requestAnimationFrame(cicloLeggero);
+    };
 
-    const timer = window.setInterval(rimuoviBlocchiLegacy, 900);
+    raf = window.requestAnimationFrame(cicloLeggero);
 
     return () => {
-      observer.disconnect();
-      window.clearInterval(timer);
+      annullato = true;
+      if (raf) window.cancelAnimationFrame(raf);
       if (typeof ripristinaNotifiche === 'function') ripristinaNotifiche();
     };
   }, [location.pathname]);
