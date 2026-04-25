@@ -109,7 +109,18 @@ export default function IkigaiHelper() {
           >
             <header className="ikigai-head">
               <div>
-                <h3><HelpCircle size={18} /> Ikigai</h3>
+                <h3>
+                  <Link
+                    to="/privacy"
+                    className="ikigai-privacy-link"
+                    aria-label="Apri informativa privacy di Ikigai"
+                    title="Privacy di Ikigai"
+                    onClick={() => setOpen(false)}
+                  >
+                    <HelpCircle size={18} />
+                  </Link>
+                  Ikigai
+                </h3>
                 <p>{descriviPagina(location.pathname)}</p>
               </div>
               <button type="button" onClick={() => setOpen(false)} aria-label="Chiudi Ikigai"><X size={18} /></button>
