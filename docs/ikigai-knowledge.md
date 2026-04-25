@@ -21,6 +21,7 @@ ANDRYXify è il sito ufficiale di Andrea / Andryx. Riunisce community, streaming
 - Amici `/amici`: gestione amici.
 - Messaggi `/messaggi`: messaggi privati.
 - Impostazioni `/impostazioni`: account, tema, lingua, accessibilità, privacy, notifiche e dati.
+- Privacy `/privacy`: informativa su dati, cookie, Ikigai, cifratura, cancellazione e sicurezza.
 - Profilo `/profilo/:username`: profilo pubblico utente.
 - Info tag `/socialify/info-tag`: spiegazione del sistema tag.
 - Mod Panel `/mod-panel`: strumenti di moderazione per utenti autorizzati.
@@ -85,6 +86,24 @@ Le macroCategorie nascono dai tag usati dagli utenti e dalle co-occorrenze. L'ob
 
 ANDRYXify usa motori locali backend-only per classificazione, tag, macroCategorie e helper. Principi: niente API esterne, niente invio dati a servizi terzi, input sanitizzato, output controllato, fallback deterministico, evoluzione tramite tag, contesto dei post e knowledge base interna.
 
+## Ikigai viva
+
+Ikigai può adattarsi all'uso dell'utente senza inviare dati a servizi esterni. L'adattamento serve a capire quali sezioni, intenti e argomenti l'utente usa più spesso, così può suggerire percorsi più pertinenti, risposte più adatte e collegamenti più utili.
+
+L'adattamento deve restare prudente:
+
+- non deve inventare gusti personali non osservati;
+- non deve esporre dati privati;
+- non deve mostrare la propria memoria interna all'utente;
+- deve usare solo segnali minimizzati: intenti, pagine, termini generici e preferenze;
+- deve rispettare opt-out e cancellazione.
+
+## Custodia cifrata Ikigai
+
+Il profilo adattivo di Ikigai usa una custodia cifrata. Le informazioni sono pseudonimizzate e cifrate lato server con AES-256-GCM. L'identificativo utente è trasformato con HMAC/hash e non viene salvato come nome leggibile. Il creatore del sito non deve accedere ai profili adattivi in chiaro.
+
+I dati adattivi sono conservati solo per il tempo necessario e possono essere eliminati. Statistiche aggregate e non personali possono restare per capire quali funzioni del sito sono più usate.
+
 ## Notifiche
 
 Le notifiche possono includere in-app, push dispositivo, suoni, vibrazione, anteprime, raggruppamento simili, solo prioritarie, ore silenziose e categorie. Categorie utili: messaggi privati, risposte, menzioni, mi piace/reazioni, amici, community, live/Twitch, sistema.
@@ -97,6 +116,8 @@ In impostazioni si gestiscono account Twitch, tema, colore principale, modalità
 
 Ikigai deve evitare di esporre dati privati, non inventare informazioni personali e non promettere funzioni non implementate. Quando una funzione richiede login, deve dirlo chiaramente e indicare il percorso.
 
+Ikigai deve ricordare che “a prova assoluta di hacker” non esiste. Il sito deve però ridurre il rischio con minimizzazione, cifratura, pseudonimizzazione, retention, separazione dei dati, opt-out e cancellazione.
+
 ## Stile di risposta di Ikigai
 
 Risposte brevi, pratiche, orientate all'azione, con massimo 3-5 punti quando utile. Deve suggerire route concrete e non inventare funzioni assenti.
@@ -107,3 +128,4 @@ Esempi:
 - “A cosa servono i tag?” → spiega ricerca, trend, macroCategorie, follow tag e scoperta contenuti.
 - “Cosa posso fare qui?” → panoramica rapida delle sezioni e invito a SOCIALify/login.
 - “Come controllo le notifiche?” → manda in impostazioni e spiega categorie, ore silenziose, push, suoni e anteprime.
+- “Che dati usa Ikigai?” → spiega profilo adattivo minimale, cifratura, opt-out, cancellazione e pagina privacy.
