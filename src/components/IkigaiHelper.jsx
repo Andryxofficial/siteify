@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HelpCircle, Send, X, Sparkles, ShieldCheck } from 'lucide-react';
+import { HelpCircle, Send, X, Sparkles } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const SUGGERIMENTI = [
@@ -32,6 +32,7 @@ function descriviPagina(pathname) {
   if (pathname.startsWith('/socialify/')) return 'Thread SOCIALify';
   if (pathname.startsWith('/socialify')) return 'SOCIALify';
   if (pathname.startsWith('/impostazioni')) return 'Impostazioni';
+  if (pathname.startsWith('/privacy')) return 'Privacy';
   if (pathname.startsWith('/profilo')) return 'Profilo utente';
   if (pathname.startsWith('/messaggi')) return 'Messaggi';
   if (pathname.startsWith('/amici')) return 'Amici';
@@ -48,7 +49,6 @@ export default function IkigaiHelper() {
     { role: 'ikigai', text: 'Eccomi. Dimmi cosa vuoi capire del sito: funzioni, SOCIALify, classifiche, premi, tag, notifiche o impostazioni.' },
   ]);
   const [loading, setLoading] = useState(false);
-  const mostraLinkPrivacyImpostazioni = location.pathname.startsWith('/impostazioni');
 
   if (location.pathname.startsWith('/overlay/')) return null;
 
@@ -89,18 +89,6 @@ export default function IkigaiHelper() {
 
   return (
     <>
-      {mostraLinkPrivacyImpostazioni && (
-        <Link
-          to="/privacy"
-          className="settings-privacy-shortcut glass-panel"
-          aria-label="Apri informativa privacy e sicurezza di Ikigai"
-          title="Privacy & Ikigai"
-        >
-          <ShieldCheck size={16} />
-          <span>Privacy & Ikigai</span>
-        </Link>
-      )}
-
       <motion.button
         type="button"
         className="ikigai-fab"
