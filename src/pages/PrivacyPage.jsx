@@ -1,4 +1,4 @@
-import { ShieldCheck, LockKeyhole, Brain, Trash2, EyeOff, MessageCircle, Bell } from 'lucide-react';
+import { ShieldCheck, LockKeyhole, Brain, Trash2, EyeOff, MessageCircle, Bell, Activity } from 'lucide-react';
 import SEO from '../components/SEO';
 import { useLingua } from '../contexts/LinguaContext';
 import { privacySecurityText } from '../i18n/privacySecurity';
@@ -28,6 +28,12 @@ export default function PrivacyPage() {
         <h2><Brain size={22} /> {txt.ikigaiTitle}</h2>
         <p>{txt.ikigaiP1}</p>
         <p>{txt.ikigaiP2}</p>
+      </section>
+
+      <section className="glass-panel" style={{ maxWidth: 920, margin: '0 auto 1.25rem', padding: 'clamp(1.25rem, 4vw, 2rem)' }}>
+        <h2><Activity size={22} /> {txt.cognitiveTitle}</h2>
+        <p>{txt.cognitiveP1}</p>
+        <p style={{ color: 'var(--text-muted)' }}>{txt.cognitiveP2}</p>
       </section>
 
       <section className="glass-panel" style={{ maxWidth: 920, margin: '0 auto 1.25rem', padding: 'clamp(1.25rem, 4vw, 2rem)' }}>
