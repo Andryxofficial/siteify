@@ -11,6 +11,7 @@ import PodcastPromo from '../components/PodcastPromo';
 import SEO from '../components/SEO';
 import { useLingua } from '../contexts/LinguaContext';
 import { useToast } from '../contexts/ToastContext';
+import { localFirstText } from '../i18n/localFirst';
 import { condividi, puoCondividere } from '../utils/condividi';
 import { hapticLight } from '../utils/haptics';
 
@@ -34,7 +35,8 @@ const STILE_PREMIO_CTA = {
 
 export default function Home() {
   const [liveState] = useState(0); // local-first: niente polling esterno automatico
-  const { t } = useLingua();
+  const { t, lingua } = useLingua();
+  const localTxt = localFirstText(lingua);
   const toast = useToast();
 
   const onCondividi = async () => {
@@ -59,11 +61,8 @@ export default function Home() {
 
       {/* ── Hero ── */}
       <section className="header hero-section hero-section-safe" style={{ paddingTop: 'clamp(3.8rem, 12vw, 6.2rem)', paddingBottom: '0.5rem', overflow: 'visible' }}>
-
-        {/* Orb decorativo ambientale */}
         <div className="hero-orb" aria-hidden="true" />
 
-        {/* Headline tipografica */}
         <motion.h1 className="hero-title" {...su(0)}>
           ANDRYX<span className="hero-title-ify">ify</span>
         </motion.h1>
@@ -75,7 +74,6 @@ export default function Home() {
           {t('home.hero.e')} <span style={{ color: 'var(--accent-warm)',  fontWeight: 600 }}>{t('home.hero.gaming')}</span>.
         </motion.p>
 
-        {/* Tagline chips */}
         <motion.div {...su(0.24)} style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', marginTop: '1.1rem', flexWrap: 'wrap' }}>
           {[
             { icon: <Sparkles size={14} />, label: t('home.chip.creator'),     color: 'var(--primary)', bg: 'rgba(224,64,251,0.12)', border: 'rgba(224,64,251,0.20)' },
@@ -95,7 +93,6 @@ export default function Home() {
           ))}
         </motion.div>
 
-        {/* CTA principali */}
         <motion.div {...su(0.32)} style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', marginTop: '1.6rem', flexWrap: 'wrap' }}>
           <a href="https://twitch.tv/andryxify" target="_blank" rel="noreferrer" className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #9146FF, #6441a5)' }}>
             <Twitch size={15} /> {t('home.cta.seguimi')}
@@ -111,7 +108,6 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* ── Live preview ── */}
       <motion.section className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.1rem' }} {...su(0.28)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <Twitch size={20} color="#9146FF" />
@@ -123,9 +119,9 @@ export default function Home() {
 
         <div className="glass-card local-live-placeholder" style={{ aspectRatio: '16/9', overflow: 'hidden', borderRadius: 'var(--r-md)', display: 'grid', placeItems: 'center', textAlign: 'center', padding: '1.25rem' }}>
           <div>
-            <strong>ANDRYXify</strong>
+            <strong>{localTxt.livePrivacyTitle}</strong>
             <p style={{ margin: '0.45rem 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-              Preview live disattivata in modalità privacy-first. Apri Twitch solo quando vuoi tu.
+              {localTxt.livePrivacyText}
             </p>
           </div>
         </div>
@@ -135,7 +131,6 @@ export default function Home() {
         </a>
       </motion.section>
 
-      {/* ── Premi della Community ── */}
       <motion.section className="glass-panel" style={{ padding: '1.6rem 1.8rem' }} {...inView(0)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
           <Trophy size={20} color="var(--accent-warm)" />
@@ -160,7 +155,6 @@ export default function Home() {
         </div>
       </motion.section>
 
-      {/* ── Messaggi Privati promo ── */}
       <motion.section className="glass-panel" style={{ padding: '1.6rem 1.8rem' }} {...inView(0.04)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
           <Shield size={20} color="var(--secondary)" />
