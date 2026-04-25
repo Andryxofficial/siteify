@@ -3,6 +3,13 @@ import { hapticLight } from '../utils/haptics';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
+const COPY_FIXES = new Map([
+  ['Le notifiche push non sono supportate da questa membrana cellulare (browser).', 'Le notifiche push non sono supportate da questo browser.'],
+  ['Sistema Endocrino: Notifiche', 'Notifiche'],
+  ['Selettore Personalizzato Biologico', 'Colore personalizzato'],
+  ['Sistema Nervoso', 'Notifiche'],
+]);
+
 function prefersReducedMotion() {
   if (typeof window === 'undefined') return true;
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -16,15 +23,30 @@ function isInteractiveTarget(target) {
   return !!target?.closest?.('a,button,input,textarea,select,[role="button"],[data-reactive],.btn,.glass-panel,.glass-card,.tab-item,.chip');
 }
 
+function sistemaCopyProfessionale(root = document.body) {
+  if (!root) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  for (const node of nodes) {
+    const testo = node.nodeValue;
+    if (!testo) continue;
+    let prossimo = testo;
+    for (const [brutto, pulito] of COPY_FIXES.entries()) {
+      if (prossimo.includes(brutto)) prossimo = prossimo.replaceAll(brutto, pulito);
+    }
+    if (prossimo !== testo) node.nodeValue = prossimo;
+  }
+}
+
 export default function useReactiveExperience() {
   useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return undefined;
 
-    const root = document.documentElement;
     const body = document.body;
     const reduced = prefersReducedMotion();
     body.classList.toggle('motion-reduced', reduced);
-    body.classList.add('reactive-ready');
+    body.classList.add('reactive-ready', 'app-grade-ui');
 
     let raf = 0;
     let lastScrollY = window.scrollY || 0;
@@ -48,6 +70,29 @@ export default function useReactiveExperience() {
     setVar('--rx-tilt-x', '0deg');
     setVar('--rx-tilt-y', '0deg');
     setVar('--rx-depth', '0');
+
+    sistemaCopyProfessionale();
+    const copyObserver = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === 'childList') {
+          mutation.addedNodes.forEach(node => {
+            if (node.nodeType === Node.TEXT_NODE) {
+              let prossimo = node.nodeValue || '';
+              for (const [brutto, pulito] of COPY_FIXES.entries()) prossimo = prossimo.replaceAll(brutto, pulito);
+              if (prossimo !== node.nodeValue) node.nodeValue = prossimo;
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+              sistemaCopyProfessionale(node);
+            }
+          });
+        } else if (mutation.type === 'characterData') {
+          const node = mutation.target;
+          let prossimo = node.nodeValue || '';
+          for (const [brutto, pulito] of COPY_FIXES.entries()) prossimo = prossimo.replaceAll(brutto, pulito);
+          if (prossimo !== node.nodeValue) node.nodeValue = prossimo;
+        }
+      }
+    });
+    copyObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
 
     const markActive = () => {
       body.classList.add('user-active');
@@ -182,7 +227,8 @@ export default function useReactiveExperience() {
       cancelAnimationFrame(raf);
       clearTimeout(idleTimer);
       clearTimeout(onScroll.timer);
-      body.classList.remove('reactive-ready', 'user-active', 'interactive-hover', 'pointer-pressing', 'touch-active', 'is-scrolling', 'motion-sensors-active');
+      copyObserver.disconnect();
+      body.classList.remove('reactive-ready', 'app-grade-ui', 'user-active', 'interactive-hover', 'pointer-pressing', 'touch-active', 'is-scrolling', 'motion-sensors-active');
       delete body.dataset.scrollDir;
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerdown', onPointerDown);
