@@ -4,9 +4,6 @@ import { HelmetProvider } from 'react-helmet-async'
 import './index.css'
 import './socialify-responsive.css'
 import App from './App.jsx'
-import { installSocialifyUiCleanup } from './utils/socialifyUiCleanup.js'
-
-installSocialifyUiCleanup()
 
 // Register service worker for PWA support + update detection
 if ('serviceWorker' in navigator) {
