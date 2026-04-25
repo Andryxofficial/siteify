@@ -23,6 +23,11 @@ import {
   rispostaConversazionaleIkigai,
   rispostaNaturaleIkigai,
 } from './_linguaNaturalisIkigai.js';
+import {
+  pensaIkigai,
+  rifinisciRispostaIkigai,
+  tracciaCognitivaIkigai,
+} from './_metacoscienzaIkigai.js';
 
 const KNOWLEDGE_PATH = path.join(process.cwd(), 'docs', 'ikigai-knowledge.md');
 const MAX_QUESTION = 700;
@@ -77,7 +82,8 @@ export async function interpellaIkigai({ domanda, question, cronologia = [], his
   if (conversazione) {
     const answer = rispostaConversazionaleIkigai(conversazione, lingua) || benvenutoIkigai(lingua);
     const routes = conversazione === 'identita' ? localizzaRotte([{ path: '/privacy' }, { path: '/impostazioni' }], lingua) : [];
-    return { ok: true, name: 'Ikigai', engine: 'andryx-ikigai-natural-local-helper', externalApis: false, lingua, intent: conversazione, answer, routes, sources: [], memories: [], adaptive: false, liveAvailable: false };
+    const coscienza = tracciaCognitivaIkigai(pensaIkigai({ q, intent: conversazione, lingua, pagina: contestoPagina, sections: [], routes, live: {}, memorie: [], orientamento: {} }));
+    return { ok: true, name: 'Ikigai', engine: 'andryx-ikigai-cognitive-local-helper', externalApis: false, lingua, intent: conversazione, answer, routes, sources: [], memories: [], adaptive: false, liveAvailable: false, coscienza };
   }
 
   const fonteCronologia = Array.isArray(cronologia) && cronologia.length ? cronologia : history;
@@ -94,11 +100,14 @@ export async function interpellaIkigai({ domanda, question, cronologia = [], his
   const routesLocalizzate = localizzaRotte(routes, lingua);
   const live = await liveContext(intent);
   const memorie = redis ? await evocaMemorie(redis, { testo: `${q} ${sections.map(s => s.title).join(' ')}`, ambito: intent }).catch(() => []) : [];
-  const answer = rispostaNaturaleIkigai({ intent, routes: routesLocalizzate, live, contestoPagina: pagina, orientamento, lingua });
-  if (redis) { redis.zincrby('ikigai:intenti', 1, intent).catch(() => {}); redis.zincrby('ikigai:intents', 1, intent).catch(() => {}); redis.lpush('ikigai:domande:recenti', JSON.stringify({ q, intent, lingua, pagina: pagina?.pathname || '', ts: Date.now() })).catch(() => {}); redis.ltrim('ikigai:domande:recenti', 0, 99).catch(() => {}); radicaDomanda(redis, { domanda: q, intento: intent, risposta: rispostaDaMemorizzare(intent) }).catch(() => {}); registraUsoIkigai(redis, identita.idCustodia, { tipo: identita.tipo, intent, pagina: pagina?.pathname || '', domanda: q, termini: tokenize(q).filter(t => t.length > 3).slice(0, 10) }).catch(() => {}); }
-  return { ok: true, name: 'Ikigai', engine: 'andryx-ikigai-natural-local-helper', externalApis: false, lingua, intent, answer, routes: routesLocalizzate, sources: sections.map(s => s.title), memories: memorie.map(m => m.titolo), adaptive: !!(profilo && !profilo.optOut), liveAvailable: !!live?.available };
+  const statoIkigai = pensaIkigai({ q, intent, lingua, pagina, sections, routes: routesLocalizzate, live, memorie, orientamento });
+  const baseAnswer = rispostaNaturaleIkigai({ intent, routes: routesLocalizzate, live, contestoPagina: pagina, orientamento, lingua });
+  const answer = rifinisciRispostaIkigai(baseAnswer, statoIkigai, routesLocalizzate);
+  if (redis) { redis.zincrby('ikigai:intenti', 1, intent).catch(() => {}); redis.zincrby('ikigai:intents', 1, intent).catch(() => {}); redis.lpush('ikigai:domande:recenti', JSON.stringify({ q, intent, lingua, pagina: pagina?.pathname || '', confidenza: statoIkigai.confidenza, umore: statoIkigai.umore, ts: Date.now() })).catch(() => {}); redis.ltrim('ikigai:domande:recenti', 0, 99).catch(() => {}); radicaDomanda(redis, { domanda: q, intento: intent, risposta: rispostaDaMemorizzare(intent) }).catch(() => {}); registraUsoIkigai(redis, identita.idCustodia, { tipo: identita.tipo, intent, pagina: pagina?.pathname || '', domanda: q, termini: tokenize(q).filter(t => t.length > 3).slice(0, 10) }).catch(() => {}); }
+  return { ok: true, name: 'Ikigai', engine: 'andryx-ikigai-cognitive-local-helper', externalApis: false, lingua, intent, answer, routes: routesLocalizzate, sources: sections.map(s => s.title), memories: memorie.map(m => m.titolo), adaptive: !!(profilo && !profilo.optOut), liveAvailable: !!live?.available, coscienza: tracciaCognitivaIkigai(statoIkigai) };
 }
 
-export async function statoIkigai() { const sections = await getSections(); const redis = await getRedis(); let stats = null; let memoria = null; if (redis) { try { await seminaMemorieBase(redis).catch(() => {}); const [intents, recent] = await Promise.all([redis.zrange('ikigai:intenti', 0, 10, { rev: true, withScores: true }), redis.lrange('ikigai:domande:recenti', 0, 5)]); stats = { intents, recent }; memoria = await sintesiMemoria(redis); } catch { stats = null; } } return { ok: true, name: 'Ikigai', engine: 'andryx-ikigai-natural-local-helper', externalApis: false, knowledgeSections: sections.map(s => s.title), stats, memoria }; }
+export async function statoIkigai() { const sections = await getSections(); const redis = await getRedis(); let stats = null; let memoria = null; if (redis) { try { await seminaMemorieBase(redis).catch(() => {}); const [intents, recent] = await Promise.all([redis.zrange('ikigai:intenti', 0, 10, { rev: true, withScores: true }), redis.lrange('ikigai:domande:recenti', 0, 5)]); stats = { intents, recent }; memoria = await sintesiMemoria(redis); } catch { stats = null; } } return { ok: true, name: 'Ikigai', engine: 'andryx-ikigai-cognitive-local-helper', externalApis: false, knowledgeSections: sections.map(s => s.title), stats, memoria };
+}
 export const askIkigai = interpellaIkigai;
 export const ikigaiStatus = statoIkigai;
