@@ -24,6 +24,7 @@ import useScrollToTop from './hooks/useScrollToTop';
 import useSwipeBack from './hooks/useSwipeBack';
 import useThemeColor from './hooks/useThemeColor';
 import useKeyboardInset from './hooks/useKeyboardInset';
+import useReactiveExperience from './hooks/useReactiveExperience';
 import UpdateToast from './components/UpdateToast';
 import Home from './pages/Home';
 import FallbackRitardato from './components/FallbackRitardato';
@@ -114,6 +115,7 @@ function AppLayout() {
   const isStandalone = useStandalone();
   const { isTelegram } = useTelegram();
   useKeyboardInset();
+  useReactiveExperience();
   useScrollToTop();
   useSwipeBack(!isTelegram);
   useThemeColor(colorePerRotta(location.pathname));
