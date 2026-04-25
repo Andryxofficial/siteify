@@ -5,6 +5,11 @@ import {
   impostaConsensoIkigai,
   dimenticaProfiloIkigai,
 } from './_custodiaIkigai.js';
+import {
+  inlineHelpPostIkigai,
+  reticoloIkigai,
+  RETICOLO_INFO,
+} from './_reticoloNeuronaleIkigai.js';
 
 export default async function gestoreIkigai(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -14,7 +19,11 @@ export default async function gestoreIkigai(req, res) {
 
   try {
     if (req.method === 'GET') {
-      if (req.query?.action === 'status') return res.status(200).json(await statoIkigai());
+      if (req.query?.action === 'status') {
+        const base = await statoIkigai();
+        return res.status(200).json({ ...base, reticolo: RETICOLO_INFO });
+      }
+      if (req.query?.action === 'reticolo') return res.status(200).json(reticoloIkigai(req.query || {}));
       const domanda = String(req.query?.q || '').trim();
       return res.status(200).json(await interpellaIkigai({ domanda, req }));
     }
@@ -29,6 +38,9 @@ export default async function gestoreIkigai(req, res) {
         const risultato = await impostaConsensoIkigai(redis, idCustodia, { optOut, preferenze });
         return res.status(200).json(risultato);
       }
+
+      if (action === 'reticolo') return res.status(200).json(reticoloIkigai(corpo));
+      if (action === 'inline-post-help') return res.status(200).json(inlineHelpPostIkigai(corpo));
 
       return res.status(200).json(await interpellaIkigai({
         domanda: domanda || question,
