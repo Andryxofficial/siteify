@@ -1,9 +1,12 @@
 /* Native mobile polish
-   Layer finale importato per ultimo: gestisce tastiera, safe-area e overlap UI.
-   Obiettivo: esperienza da app, niente zoom iOS e niente pannelli sotto la keyboard. */
+   Layer finale importato per ultimo: tastiera, safe-area, bottom nav e pannelli dentro visualViewport reale. */
 
 :root {
   --keyboard-inset: 0px;
+  --vv-left: 0px;
+  --vv-top: 0px;
+  --vv-width: 100vw;
+  --vv-height: 100dvh;
   --native-bottom-nav-h: 92px;
   --native-fab-size: 54px;
   --native-gap: 12px;
@@ -13,6 +16,8 @@ html,
 body,
 #root {
   min-height: 100%;
+  max-width: 100%;
+  overflow-x: clip;
   overscroll-behavior-y: none;
 }
 
@@ -29,6 +34,10 @@ button {
     text-size-adjust: 100%;
   }
 
+  body.keyboard-open {
+    overflow-x: clip;
+  }
+
   input,
   textarea,
   select,
@@ -42,67 +51,69 @@ button {
     transform: translateZ(0);
   }
 
-  textarea {
-    min-height: 96px;
-  }
+  textarea { min-height: 96px; }
 
   .app-container {
     min-height: 100dvh;
-    padding-bottom: calc(var(--native-bottom-nav-h) + env(safe-area-inset-bottom, 0px) + var(--keyboard-inset) + 18px) !important;
-  }
-
-  body.keyboard-open .mobile-tab-bar {
-    transform: translateY(calc(var(--keyboard-inset) * -1));
-    opacity: 0.96;
-  }
-
-  body.keyboard-open .ikigai-fab {
-    display: none;
+    padding-bottom: calc(var(--native-bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 18px) !important;
+    overflow-x: clip;
   }
 
   .mobile-tab-bar {
     z-index: 1180 !important;
+    left: calc(var(--vv-left) + max(10px, env(safe-area-inset-left, 0px))) !important;
+    right: auto !important;
+    width: calc(var(--vv-width) - max(20px, env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px) + 20px)) !important;
+    max-width: none !important;
+    bottom: max(10px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.keyboard-open .mobile-tab-bar {
+    transform: translateY(calc(120% + env(safe-area-inset-bottom, 0px))) !important;
+    opacity: 0;
+    pointer-events: none;
   }
 
   .ikigai-fab {
     width: var(--native-fab-size);
     height: var(--native-fab-size);
-    right: max(16px, env(safe-area-inset-right, 0px) + 10px) !important;
+    right: auto !important;
+    left: calc(var(--vv-left) + var(--vv-width) - var(--native-fab-size) - max(16px, env(safe-area-inset-right, 0px) + 10px)) !important;
     bottom: calc(var(--native-bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 18px) !important;
     z-index: 1175 !important;
   }
 
+  body.keyboard-open .ikigai-fab { display: none; }
+
   .ikigai-panel {
-    left: max(12px, env(safe-area-inset-left, 0px) + 4px) !important;
-    right: max(12px, env(safe-area-inset-right, 0px) + 4px) !important;
-    bottom: calc(var(--native-bottom-nav-h) + env(safe-area-inset-bottom, 0px) + var(--keyboard-inset) + 18px) !important;
-    width: auto !important;
-    max-height: calc(100dvh - var(--mobile-topbar-h, 64px) - env(safe-area-inset-top, 0px) - var(--native-bottom-nav-h) - var(--keyboard-inset) - 46px) !important;
+    left: calc(var(--vv-left) + max(12px, env(safe-area-inset-left, 0px) + 4px)) !important;
+    right: auto !important;
+    width: calc(var(--vv-width) - max(24px, env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px) + 24px)) !important;
+    bottom: calc(var(--native-bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 18px) !important;
+    max-height: calc(var(--vv-height) - var(--mobile-topbar-h, 64px) - env(safe-area-inset-top, 0px) - var(--native-bottom-nav-h) - 54px) !important;
     min-height: 260px;
     z-index: 1300 !important;
     overflow: hidden;
+    transform: translateZ(0);
   }
 
   body.keyboard-open .ikigai-panel {
-    max-height: min(56dvh, 430px) !important;
-    bottom: calc(var(--keyboard-inset) + 12px) !important;
+    left: calc(var(--vv-left) + 10px) !important;
+    width: calc(var(--vv-width) - 20px) !important;
+    bottom: calc(var(--keyboard-inset) + 10px) !important;
+    max-height: min(54dvh, calc(var(--vv-height) - var(--keyboard-inset) - 24px)) !important;
+    min-height: 220px;
   }
 
   .ikigai-messages {
-    min-height: 120px !important;
+    min-height: 110px !important;
     max-height: none !important;
     flex: 1 1 auto;
     overscroll-behavior: contain;
   }
 
-  .ikigai-suggestions {
-    padding-bottom: 0.35rem;
-  }
-
-  .ikigai-suggestions button {
-    min-height: 38px;
-    font-size: 0.82rem;
-  }
+  .ikigai-suggestions { padding-bottom: 0.35rem; }
+  .ikigai-suggestions button { min-height: 38px; font-size: 0.82rem; }
 
   .ikigai-input {
     flex: 0 0 auto;
@@ -122,18 +133,33 @@ button {
     border-radius: 18px;
   }
 
+  .cookie-banner {
+    z-index: 1290 !important;
+    left: calc(var(--vv-left) + max(12px, env(safe-area-inset-left, 0px))) !important;
+    right: auto !important;
+    width: min(420px, calc(var(--vv-width) - max(24px, env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px) + 24px))) !important;
+    max-width: calc(var(--vv-width) - 24px) !important;
+    bottom: calc(var(--native-bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 18px) !important;
+  }
+
+  body.keyboard-open .cookie-banner {
+    display: none !important;
+  }
+
   .social-editor-sfondo {
     align-items: end !important;
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--keyboard-inset) + 8px) !important;
   }
 
   .social-editor {
-    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - var(--keyboard-inset) - 22px) !important;
+    width: calc(var(--vv-width) - 20px) !important;
+    max-width: calc(var(--vv-width) - 20px) !important;
+    max-height: calc(var(--vv-height) - env(safe-area-inset-top, 0px) - var(--keyboard-inset) - 22px) !important;
     overflow-y: auto;
   }
 
   body.keyboard-open .social-editor {
-    max-height: calc(100dvh - var(--keyboard-inset) - 18px) !important;
+    max-height: calc(var(--vv-height) - var(--keyboard-inset) - 18px) !important;
   }
 
   .social-tag-input-wrapper input,
@@ -152,21 +178,13 @@ button {
 }
 
 @media (display-mode: standalone) and (max-width: 820px) {
-  :root {
-    --native-bottom-nav-h: 98px;
-  }
-
+  :root { --native-bottom-nav-h: 98px; }
   .ikigai-fab {
     bottom: calc(var(--native-bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 18px) !important;
   }
 }
 
 @media (max-width: 430px) {
-  .ikigai-panel {
-    border-radius: 24px !important;
-  }
-
-  .ikigai-msg {
-    max-width: 96%;
-  }
+  .ikigai-panel { border-radius: 24px !important; }
+  .ikigai-msg { max-width: 96%; }
 }
