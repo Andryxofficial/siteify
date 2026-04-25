@@ -105,8 +105,20 @@ export default function IkigaiHelper() {
                 <div key={i} className={`ikigai-msg ${m.role}`}>
                   <p>{m.text}</p>
                   {Array.isArray(m.routes) && m.routes.length > 0 && (
-                    <div className="ikigai-routes">
-                      {m.routes.map(r => <Link key={`${r.path}-${r.label}`} to={r.path}>{r.label}</Link>)}
+                    <div className="ikigai-routes" aria-label="Collegamenti suggeriti da Ikigai">
+                      {m.routes.map(r => {
+                        const href = r.href || r.path;
+                        return (
+                          <Link
+                            key={`${href}-${r.label}`}
+                            to={href}
+                            aria-label={`Apri ${r.label}`}
+                            onClick={() => setOpen(false)}
+                          >
+                            {r.label}
+                          </Link>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
