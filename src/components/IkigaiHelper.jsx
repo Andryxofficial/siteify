@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HelpCircle, Send, X, Sparkles } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
@@ -41,36 +41,6 @@ function descriviPagina(pathname) {
   return pathname;
 }
 
-function usaLinkPrivacyDentroImpostazioni(pathname) {
-  useEffect(() => {
-    if (!pathname.startsWith('/impostazioni')) return undefined;
-
-    const inserisci = () => {
-      const sezioni = Array.from(document.querySelectorAll('.main-content section.glass-panel'));
-      const privacySection = sezioni.find(section => /privacy/i.test(section.textContent || ''));
-      if (!privacySection || privacySection.querySelector('[data-privacy-inline-link="true"]')) return;
-
-      const link = document.createElement('a');
-      link.href = '/privacy';
-      link.dataset.privacyInlineLink = 'true';
-      link.className = 'settings-inline-privacy-link';
-      link.setAttribute('aria-label', 'Apri informativa privacy e sicurezza di Ikigai');
-      link.innerHTML = '<span>🛡️</span><strong>Privacy & Ikigai</strong><small>Informativa, cifratura, dati e cancellazione</small>';
-      privacySection.appendChild(link);
-    };
-
-    const timer = window.setTimeout(inserisci, 120);
-    const observer = new MutationObserver(inserisci);
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    return () => {
-      window.clearTimeout(timer);
-      observer.disconnect();
-      document.querySelectorAll('[data-privacy-inline-link="true"]').forEach(el => el.remove());
-    };
-  }, [pathname]);
-}
-
 export default function IkigaiHelper() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -79,8 +49,6 @@ export default function IkigaiHelper() {
     { role: 'ikigai', text: 'Eccomi. Dimmi cosa vuoi capire del sito: funzioni, SOCIALify, classifiche, premi, tag, notifiche o impostazioni.' },
   ]);
   const [loading, setLoading] = useState(false);
-
-  usaLinkPrivacyDentroImpostazioni(location.pathname);
 
   if (location.pathname.startsWith('/overlay/')) return null;
 
