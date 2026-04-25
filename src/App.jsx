@@ -29,7 +29,7 @@ import {
   TwitchPage, YouTubePage, InstagramPage, PodcastPage, TikTokPage,
   GamePage, CommunityPage, ThreadView, Scoiattoli, ModPanel,
   FriendsPage, MessagesPage, ChatGeneralePage, SettingsPage, ProfiloPage,
-  AppPage, ChiSonoPage, TagInfoPage, TelegramPage,
+  AppPage, ChiSonoPage, TagInfoPage, TelegramPage, PrivacyPage,
   prefetchPagineMain,
 } from './lazyPages';
 import './index.css';
@@ -162,6 +162,7 @@ function AppLayout() {
                 <Route path="/app" element={<AppPage />} />
                 <Route path="/chi-sono" element={<ChiSonoPage />} />
                 <Route path="/telegram" element={<TelegramPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
               </Routes>
             </Suspense>
           </ErrorBoundary>
