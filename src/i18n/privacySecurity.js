@@ -17,6 +17,10 @@ export const PRIVACY_SECURITY = {
     ikigaiP1: 'Ikigai è l’helper interno del sito. Serve a spiegare funzioni, tag, classifiche, premi, notifiche, impostazioni e percorsi utili.',
     ikigaiP2: 'Per diventare più utile nel tempo, Ikigai può salvare un profilo adattivo minimale: interessi generici, sezioni usate, intenti ricorrenti e preferenze di risposta. Non viene salvato un profilo commerciale, né vengono vendute o cedute informazioni a terzi.',
 
+    cognitiveTitle: 'Stato cognitivo locale di Ikigai',
+    cognitiveP1: 'Ikigai può calcolare uno stato tecnico temporaneo per rispondere meglio: intento rilevato, confidenza, tono della risposta, pagina corrente, parole chiave, fonti locali consultate e memoria semantica evocata.',
+    cognitiveP2: 'Questo stato non è una coscienza umana e non viene usato per profilazione commerciale. Serve solo a rendere le risposte più coerenti, prudenti quando serve e più utili rispetto al contesto.',
+
     privateChatTitle: 'Chat private e messaggi',
     privateChatP1: 'Le chat private servono solo per permettere la conversazione tra utenti autorizzati. I messaggi non vengono usati per addestrare servizi esterni e non vengono ceduti a terzi.',
     privateChatLi1: 'I messaggi privati sono associati agli utenti coinvolti nella conversazione.',
@@ -64,6 +68,10 @@ export const PRIVACY_SECURITY = {
     ikigaiP1: 'Ikigai is the site’s internal helper. It explains features, tags, rankings, rewards, notifications, settings and useful paths.',
     ikigaiP2: 'To become more useful over time, Ikigai may store a minimal adaptive profile: generic interests, sections used, recurring intents and response preferences. It does not create a commercial profile, and information is not sold or transferred to third parties.',
 
+    cognitiveTitle: 'Ikigai local cognitive state',
+    cognitiveP1: 'Ikigai may calculate a temporary technical state to answer better: detected intent, confidence, response tone, current page, keywords, local sources consulted and semantic memory recalled.',
+    cognitiveP2: 'This state is not human consciousness and is not used for commercial profiling. It only helps make answers more coherent, cautious when needed and useful in context.',
+
     privateChatTitle: 'Private chats and messages',
     privateChatP1: 'Private chats only exist to enable conversations between authorized users. Messages are not used to train external services and are not shared with third parties.',
     privateChatLi1: 'Private messages are associated with the users involved in the conversation.',
@@ -110,6 +118,10 @@ export const PRIVACY_SECURITY = {
     ikigaiTitle: 'Ikigai',
     ikigaiP1: 'Ikigai es el asistente interno del sitio. Sirve para explicar funciones, etiquetas, clasificaciones, premios, notificaciones, ajustes y rutas útiles.',
     ikigaiP2: 'Para ser más útil con el tiempo, Ikigai puede guardar un perfil adaptativo mínimo: intereses genéricos, secciones usadas, intenciones recurrentes y preferencias de respuesta. No se crea un perfil comercial ni se venden o ceden datos a terceros.',
+
+    cognitiveTitle: 'Estado cognitivo local de Ikigai',
+    cognitiveP1: 'Ikigai puede calcular un estado técnico temporal para responder mejor: intención detectada, confianza, tono de respuesta, página actual, palabras clave, fuentes locales consultadas y memoria semántica evocada.',
+    cognitiveP2: 'Este estado no es conciencia humana y no se usa para perfilado comercial. Solo sirve para que las respuestas sean más coherentes, prudentes cuando hace falta y útiles según el contexto.',
 
     privateChatTitle: 'Chats privados y mensajes',
     privateChatP1: 'Los chats privados sirven solo para permitir la conversación entre usuarios autorizados. Los mensajes no se usan para entrenar servicios externos y no se comparten con terceros.',
