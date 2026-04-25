@@ -1,0 +1,434 @@
+/* SOCIALify responsive comfort layer
+   Sovrascritture conservative: nessuna logica React toccata. */
+
+:root {
+  --social-safe-x: clamp(0.85rem, 3.5vw, 1.4rem);
+  --social-card-pad: clamp(0.9rem, 2.8vw, 1.25rem);
+  --social-gap: clamp(0.75rem, 2.5vw, 1rem);
+}
+
+/* Evita overflow orizzontale generato da chip, media o griglie troppo ottimiste. */
+.main-content,
+.glass-panel,
+.glass-card,
+[class*="social-"] {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.main-content:has(.social-scheda-post),
+.main-content:has(.social-editor),
+.main-content:has(.social-tag-input-wrapper) {
+  width: min(100%, 1180px);
+  margin-inline: auto;
+  padding-inline: max(var(--social-safe-x), env(safe-area-inset-left));
+  overflow-x: clip;
+}
+
+/* Header, tab, filtri e categorie: scorrono bene su mobile invece di sfondare. */
+.social-categorie-griglia,
+.social-azioni-riga,
+.social-autore-riga,
+.social-post-tags,
+.social-editor-testata,
+.social-media-sezione > div,
+.social-tag-input-wrapper,
+.tag-strip,
+[class*="tag-strip"],
+[class*="social-tab"],
+[class*="social-filtri"],
+[class*="social-tabs"],
+[class*="social-categorie"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.social-categorie-griglia,
+[class*="social-categorie"] {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.social-categorie-griglia .chip,
+.social-post-tags .chip,
+.social-tag-input-wrapper .chip,
+[class*="social-categorie"] .chip,
+[class*="tag-chip"],
+[class*="social-chip"] {
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+/* Card post: più leggibile, meno stretta, niente overflow da titolo/corpo. */
+.social-scheda-post {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  padding: var(--social-card-pad);
+  overflow: hidden;
+  text-decoration: none;
+  contain: layout paint;
+}
+
+.social-scheda-riga {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.social-avatar {
+  flex: 0 0 auto;
+}
+
+.social-avatar,
+.social-avatar img {
+  width: clamp(38px, 10vw, 48px);
+  height: clamp(38px, 10vw, 48px);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.social-scheda-meta,
+.social-scheda-contenuto,
+.social-autore-riga,
+.social-titolo-post,
+.social-anteprima-testo {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.social-scheda-meta {
+  flex: 1 1 auto;
+}
+
+.social-autore-riga {
+  display: flex;
+  align-items: center;
+  gap: 0.38rem;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+
+.social-autore {
+  max-width: min(100%, 18rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-scheda-contenuto {
+  margin-top: 0.7rem;
+  overflow: hidden;
+}
+
+.social-titolo-post {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
+  line-height: 1.2;
+}
+
+.social-anteprima-testo {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
+  line-height: 1.55;
+}
+
+.social-tempo,
+.social-btn-azione {
+  white-space: nowrap;
+}
+
+.social-azioni-riga {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+/* Media: immagini/video/audio non devono mai allargare la pagina. */
+.social-media-preview,
+.social-media-img,
+.social-media-video,
+.social-media-audio-wrapper,
+.social-media-audio,
+.social-media-link {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.social-media-preview {
+  overflow: hidden;
+  border-radius: var(--r-md, 14px);
+}
+
+.social-media-img,
+.social-media-video {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.social-media-video {
+  max-height: min(420px, 62vh);
+}
+
+.social-media-audio-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.social-media-audio {
+  flex: 1 1 auto;
+}
+
+/* Editor/modale: su mobile deve sembrare una bottom sheet comoda. */
+.social-editor-sfondo {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: max(1rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.social-editor {
+  width: min(100%, 720px);
+  max-height: min(92vh, 900px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.social-editor input,
+.social-editor textarea,
+.social-campo,
+.social-area-testo {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  font-size: max(16px, 0.95rem); /* evita zoom aggressivo iOS */
+}
+
+.social-area-testo {
+  resize: vertical;
+  min-height: 9rem;
+}
+
+/* Tag input/autocomplete: impedisce dropdown enormi o fuori viewport. */
+.social-tag-input-wrapper {
+  position: relative;
+}
+
+.social-tag-input-wrapper input {
+  min-width: 0;
+}
+
+[class*="tag-suggestion"],
+[class*="autocomplete"],
+[class*="menzione"],
+[class*="mention"] {
+  max-width: min(100vw - 2rem, 520px);
+}
+
+/* Tabelle/classifiche/liste laterali: scroll interno controllato, non pagina rotta. */
+[class*="leaderboard"],
+[class*="classifica"],
+[class*="social-sidebar"],
+[class*="social-feed"],
+[class*="social-lista"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+[class*="leaderboard"] table,
+[class*="classifica"] table {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Desktop: layout più largo ma stabile. */
+@media (min-width: 900px) {
+  .main-content:has(.social-scheda-post),
+  .main-content:has(.social-editor),
+  .main-content:has(.social-tag-input-wrapper) {
+    padding-inline: clamp(1rem, 3vw, 2rem);
+  }
+
+  .social-scheda-post {
+    transition: transform 0.18s var(--ease-glass, ease), border-color 0.18s var(--ease-glass, ease), background 0.18s var(--ease-glass, ease);
+  }
+
+  .social-scheda-post:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* Tablet/mobile: una colonna vera e chip scorrevoli dove serve. */
+@media (max-width: 760px) {
+  .main-content:has(.social-scheda-post),
+  .main-content:has(.social-editor),
+  .main-content:has(.social-tag-input-wrapper) {
+    width: 100%;
+    padding-inline: max(0.75rem, env(safe-area-inset-left));
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
+
+  .social-categorie-griglia,
+  [class*="social-categorie"],
+  [class*="social-tabs"],
+  [class*="social-filtri"] {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 0.25rem;
+    margin-inline: calc(var(--social-safe-x) * -0.35);
+    padding-inline: calc(var(--social-safe-x) * 0.35);
+    scroll-snap-type: x proximity;
+  }
+
+  .social-categorie-griglia::-webkit-scrollbar,
+  [class*="social-categorie"]::-webkit-scrollbar,
+  [class*="social-tabs"]::-webkit-scrollbar,
+  [class*="social-filtri"]::-webkit-scrollbar {
+    display: none;
+  }
+
+  .social-categorie-griglia .chip,
+  [class*="social-categorie"] .chip,
+  [class*="social-tabs"] button,
+  [class*="social-filtri"] button {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
+  .social-scheda-post {
+    border-radius: clamp(16px, 5vw, 22px);
+  }
+
+  .social-scheda-riga {
+    gap: 0.62rem;
+  }
+
+  .social-autore {
+    max-width: 11.5rem;
+  }
+
+  .social-scheda-contenuto {
+    margin-left: 0;
+  }
+
+  .social-titolo-post {
+    font-size: clamp(1rem, 4.2vw, 1.12rem);
+  }
+
+  .social-anteprima-testo {
+    font-size: clamp(0.9rem, 3.7vw, 0.98rem);
+  }
+
+  .social-editor-sfondo {
+    align-items: end;
+    place-items: end stretch;
+    padding-inline: 0.5rem;
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .social-editor {
+    width: 100%;
+    max-height: min(88vh, 820px);
+    border-radius: 22px 22px max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-bottom));
+    padding: clamp(1rem, 4vw, 1.25rem) !important;
+  }
+
+  .social-editor-testata {
+    position: sticky;
+    top: -1px;
+    z-index: 5;
+    padding-bottom: 0.7rem;
+    backdrop-filter: blur(18px) saturate(140%);
+  }
+
+  .social-media-audio-wrapper {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 430px) {
+  .main-content:has(.social-scheda-post),
+  .main-content:has(.social-tag-input-wrapper) {
+    padding-inline: max(0.62rem, env(safe-area-inset-left));
+  }
+
+  .social-scheda-post {
+    padding: 0.82rem;
+  }
+
+  .social-avatar,
+  .social-avatar img {
+    width: 36px;
+    height: 36px;
+  }
+
+  .social-autore-riga {
+    gap: 0.3rem;
+  }
+
+  .social-autore {
+    max-width: 9.5rem;
+  }
+
+  .social-chip-categoria,
+  .social-chip-amici,
+  [class*="social-chip"] {
+    font-size: 0.68rem !important;
+    padding-inline: 0.42rem !important;
+  }
+
+  .social-azioni-riga {
+    gap: 0.35rem;
+  }
+
+  .social-btn-azione {
+    min-height: 34px;
+    padding-inline: 0.55rem !important;
+  }
+
+  .social-area-testo {
+    min-height: 8rem;
+  }
+}
+
+/* PWA standalone: più spazio sotto, niente elementi tagliati dalla gesture bar. */
+@media (display-mode: standalone) {
+  .main-content:has(.social-scheda-post),
+  .main-content:has(.social-tag-input-wrapper) {
+    padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
+  }
+
+  .social-editor-sfondo {
+    padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
+  }
+}
+
+@supports not selector(:has(*)) {
+  .main-content {
+    overflow-x: clip;
+  }
+
+  .social-scheda-post,
+  .social-editor,
+  .social-tag-input-wrapper {
+    max-width: 100%;
+  }
+}
