@@ -20,6 +20,200 @@
 .main-content { overflow-x: clip; }
 
 /* ═══════════════════════════════════════════════════
+   IKIGAI — helper floating
+   ═══════════════════════════════════════════════════ */
+.ikigai-fab {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  z-index: 1400;
+  width: 54px;
+  height: 54px;
+  border-radius: 999px;
+  border: var(--vetro-bordo);
+  background:
+    radial-gradient(110% 110% at 25% 0%, rgba(224,64,251,0.28), transparent 58%),
+    radial-gradient(100% 100% at 90% 10%, rgba(0,229,255,0.16), transparent 50%),
+    var(--vetro-sfondo-flat);
+  color: var(--primary);
+  box-shadow: var(--vetro-ombra);
+  backdrop-filter: var(--vetro-blur-chrome, var(--vetro-blur));
+  -webkit-backdrop-filter: var(--vetro-blur-chrome, var(--vetro-blur));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ikigai-panel {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: calc(158px + env(safe-area-inset-bottom));
+  z-index: 1399;
+  width: min(390px, calc(100vw - 28px));
+  max-height: min(640px, calc(100svh - 190px));
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.ikigai-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--vetro-bordo-colore);
+  padding-bottom: 0.7rem;
+}
+
+.ikigai-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.ikigai-head p {
+  color: var(--text-muted);
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+}
+
+.ikigai-head button,
+.ikigai-input button,
+.ikigai-suggestions button {
+  border: 1px solid var(--vetro-bordo-colore);
+  background: var(--surface-1);
+  color: var(--text-main);
+  border-radius: var(--r-md);
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ikigai-head button {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ikigai-suggestions {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 0.15rem;
+}
+
+.ikigai-suggestions::-webkit-scrollbar { display: none; }
+
+.ikigai-suggestions button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 0.7rem;
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 0.76rem;
+}
+
+.ikigai-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  overflow-y: auto;
+  padding-right: 0.1rem;
+  min-height: 180px;
+  max-height: 330px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ikigai-msg {
+  max-width: 92%;
+  border-radius: 18px;
+  padding: 0.72rem 0.82rem;
+  border: 1px solid var(--vetro-bordo-colore);
+  background: var(--surface-1);
+}
+
+.ikigai-msg.user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, rgba(224,64,251,0.20), rgba(0,229,255,0.08));
+  border-color: rgba(224,64,251,0.28);
+}
+
+.ikigai-msg.ikigai {
+  align-self: flex-start;
+}
+
+.ikigai-msg p {
+  margin: 0;
+  line-height: 1.5;
+  font-size: 0.86rem;
+  color: var(--text-main);
+  white-space: pre-wrap;
+}
+
+.ikigai-routes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.ikigai-routes a {
+  text-decoration: none;
+  color: var(--primary);
+  font-size: 0.74rem;
+  font-weight: 800;
+  border: 1px solid rgba(224,64,251,0.28);
+  background: rgba(224,64,251,0.10);
+  padding: 0.24rem 0.48rem;
+  border-radius: 999px;
+}
+
+.ikigai-input {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-top: 1px solid var(--vetro-bordo-colore);
+  padding-top: 0.7rem;
+}
+
+.ikigai-input input {
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--vetro-bordo-colore);
+  background: var(--surface-1);
+  color: var(--text-main);
+  padding: 0 0.85rem;
+  font: inherit;
+  font-size: max(16px, 0.9rem);
+}
+
+.ikigai-input button {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+}
+
+.ikigai-input button:disabled,
+.ikigai-suggestions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════════
    MOBILE TOP BAR — profilo accessibile sotto status bar
    Congruente col resto del Liquid Glass del sito.
    ═══════════════════════════════════════════════════ */
@@ -207,6 +401,19 @@
     right: max(10px, env(safe-area-inset-right)) !important;
     bottom: max(10px, env(safe-area-inset-bottom)) !important;
     max-width: none !important;
+  }
+
+  .ikigai-fab {
+    right: max(16px, env(safe-area-inset-right));
+    bottom: calc(104px + env(safe-area-inset-bottom));
+  }
+
+  .ikigai-panel {
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(166px + env(safe-area-inset-bottom));
+    width: auto;
+    max-height: min(62svh, 560px);
   }
 }
 
