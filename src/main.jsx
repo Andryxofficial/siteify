@@ -7,6 +7,7 @@ import './socialify-social-product.css'
 import './mobile-shell.css'
 import './dark-polish.css'
 import './native-mobile.css'
+import './socialify-desktop-hardfix.css'
 import App from './App.jsx'
 
 // Register service worker for PWA support + update detection
