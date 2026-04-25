@@ -1,5 +1,6 @@
 /* SOCIALify responsive comfort layer
-   Sovrascritture conservative: nessuna logica React toccata. */
+   Sovrascritture conservative: nessuna logica React toccata.
+   Nota: niente :has() e niente observer DOM; mobile/PWA deve restare leggero. */
 
 :root {
   --social-safe-x: clamp(0.85rem, 3.5vw, 1.4rem);
@@ -16,12 +17,7 @@
   box-sizing: border-box;
 }
 
-.main-content:has(.social-scheda-post),
-.main-content:has(.social-editor),
-.main-content:has(.social-tag-input-wrapper) {
-  width: min(100%, 1180px);
-  margin-inline: auto;
-  padding-inline: max(var(--social-safe-x), env(safe-area-inset-left));
+.main-content {
   overflow-x: clip;
 }
 
@@ -69,7 +65,6 @@
   padding: var(--social-card-pad);
   overflow: hidden;
   text-decoration: none;
-  contain: layout paint;
 }
 
 .social-scheda-riga {
@@ -259,12 +254,6 @@
 
 /* Desktop: layout più largo ma stabile. */
 @media (min-width: 900px) {
-  .main-content:has(.social-scheda-post),
-  .main-content:has(.social-editor),
-  .main-content:has(.social-tag-input-wrapper) {
-    padding-inline: clamp(1rem, 3vw, 2rem);
-  }
-
   .social-scheda-post {
     transition: transform 0.18s var(--ease-glass, ease), border-color 0.18s var(--ease-glass, ease), background 0.18s var(--ease-glass, ease);
   }
@@ -276,11 +265,7 @@
 
 /* Tablet/mobile: una colonna vera e chip scorrevoli dove serve. */
 @media (max-width: 760px) {
-  .main-content:has(.social-scheda-post),
-  .main-content:has(.social-editor),
-  .main-content:has(.social-tag-input-wrapper) {
-    width: 100%;
-    padding-inline: max(0.75rem, env(safe-area-inset-left));
+  .main-content {
     padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
   }
 
@@ -365,11 +350,6 @@
 }
 
 @media (max-width: 430px) {
-  .main-content:has(.social-scheda-post),
-  .main-content:has(.social-tag-input-wrapper) {
-    padding-inline: max(0.62rem, env(safe-area-inset-left));
-  }
-
   .social-scheda-post {
     padding: 0.82rem;
   }
@@ -411,24 +391,11 @@
 
 /* PWA standalone: più spazio sotto, niente elementi tagliati dalla gesture bar. */
 @media (display-mode: standalone) {
-  .main-content:has(.social-scheda-post),
-  .main-content:has(.social-tag-input-wrapper) {
+  .main-content {
     padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
   }
 
   .social-editor-sfondo {
     padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
-  }
-}
-
-@supports not selector(:has(*)) {
-  .main-content {
-    overflow-x: clip;
-  }
-
-  .social-scheda-post,
-  .social-editor,
-  .social-tag-input-wrapper {
-    max-width: 100%;
   }
 }
