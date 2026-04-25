@@ -86,6 +86,34 @@ Le macroCategorie nascono dai tag usati dagli utenti e dalle co-occorrenze. L'ob
 
 ANDRYXify usa motori locali backend-only per classificazione, tag, macroCategorie e helper. Principi: niente API esterne, niente invio dati a servizi terzi, input sanitizzato, output controllato, fallback deterministico, evoluzione tramite tag, contesto dei post e knowledge base interna.
 
+## Reticolo neuronale locale Ikigai
+
+Ikigai ha un reticolo locale backend-only per stimare segnali utili: chiarezza, energia, community, gaming, tecnico, scrittura, prudenza e azione. Non usa API esterne e non usa modelli GGUF. Il reticolo serve a rendere Ikigai più coerente, adattivo e utile nel sito.
+
+Il reticolo può:
+
+- leggere il testo di una domanda o di un post;
+- calcolare un profilo di scrittura minimale;
+- stimare tono, energia, compattezza e intenti;
+- proporre tag coerenti;
+- dare suggerimenti di scrittura per i post;
+- preparare in futuro un inline help durante la creazione del post.
+
+Deve restare prudente: non deve riscrivere l'identità dell'utente, non deve inventare gusti non osservati, non deve accedere a contenuti privati non necessari e deve rispettare consenso, opt-out e cancellazione.
+
+## Inline help post
+
+Quando l'utente scrive un post, Ikigai potrà aiutare in modo progressivo. Prima osserva solo segnali minimizzati e testo corrente; poi, se l'utente usa spesso il sito e non ha opt-out, può adattare i consigli al suo stile.
+
+Aiuti possibili:
+
+- suggerire tag migliori;
+- dire se il titolo è troppo generico;
+- consigliare un dettaglio concreto da aggiungere;
+- proporre un tono più chiaro, più energico o più sintetico;
+- segnalare se il post rischia di essere troppo povero per creare conversazione;
+- aiutare a rendere un post più adatto alla community senza snaturare lo stile dell'utente.
+
 ## Ikigai viva
 
 Ikigai può adattarsi all'uso dell'utente senza inviare dati a servizi esterni. L'adattamento serve a capire quali sezioni, intenti e argomenti l'utente usa più spesso, così può suggerire percorsi più pertinenti, risposte più adatte e collegamenti più utili.
@@ -107,6 +135,8 @@ I dati adattivi sono conservati solo per il tempo necessario e possono essere el
 ## Notifiche
 
 Le notifiche possono includere in-app, push dispositivo, suoni, vibrazione, anteprime, raggruppamento simili, solo prioritarie, ore silenziose e categorie. Categorie utili: messaggi privati, risposte, menzioni, mi piace/reazioni, amici, community, live/Twitch, sistema.
+
+Se il browser o la webview non supportano le notifiche push, Ikigai deve dirlo in modo semplice: “Le notifiche push non sono supportate da questo browser.”
 
 ## Impostazioni
 
