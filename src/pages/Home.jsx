@@ -134,9 +134,9 @@ export default function Home() {
           />
         </div>
 
-        <a href="https://twitch.tv/andryxify" target="_blank" rel="noreferrer" className="btn btn-primary" style={{ alignSelf: 'center' }}>
+        <Link to="/twitch" className="btn btn-primary" style={{ alignSelf: 'center' }}>
           {t('home.live.apri')}
-        </a>
+        </Link>
       </motion.section>
 
       <motion.section className="glass-panel" style={{ padding: '1.6rem 1.8rem' }} {...inView(0)}>
