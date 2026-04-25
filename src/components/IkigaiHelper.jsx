@@ -10,12 +10,26 @@ const SUGGERIMENTI = [
   'Come gestisco le notifiche?',
 ];
 
+function descriviPagina(pathname) {
+  if (pathname === '/') return 'Home';
+  if (pathname.startsWith('/socialify/info-tag')) return 'Info tag SOCIALify';
+  if (pathname.startsWith('/socialify/')) return 'Thread SOCIALify';
+  if (pathname.startsWith('/socialify')) return 'SOCIALify';
+  if (pathname.startsWith('/impostazioni')) return 'Impostazioni';
+  if (pathname.startsWith('/profilo')) return 'Profilo utente';
+  if (pathname.startsWith('/messaggi')) return 'Messaggi';
+  if (pathname.startsWith('/amici')) return 'Amici';
+  if (pathname.startsWith('/gioco') || pathname.startsWith('/giochi')) return 'Giochi';
+  if (pathname.startsWith('/chat')) return 'Chat';
+  return pathname;
+}
+
 export default function IkigaiHelper() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState([
-    { role: 'ikigai', text: 'Sono Ikigai. Posso spiegarti funzioni, SOCIALify, classifiche, premi, tag, notifiche e impostazioni.' },
+    { role: 'ikigai', text: 'Eccomi. Dimmi cosa vuoi capire del sito: funzioni, SOCIALify, classifiche, premi, tag, notifiche o impostazioni.' },
   ]);
   const [loading, setLoading] = useState(false);
 
@@ -31,13 +45,21 @@ export default function IkigaiHelper() {
       const res = await fetch('/api/ikigai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: clean, history: messages.map(m => m.text).slice(-6) }),
+        body: JSON.stringify({
+          domanda: clean,
+          cronologia: messages.filter(m => m.role === 'user').map(m => m.text).slice(-4),
+          contestoPagina: {
+            pathname: location.pathname,
+            search: location.search,
+            label: descriviPagina(location.pathname),
+          },
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Errore Ikigai');
       setMessages(prev => [...prev, { role: 'ikigai', text: data.answer, routes: data.routes || [] }]);
     } catch {
-      setMessages(prev => [...prev, { role: 'ikigai', text: 'Non riesco a rispondere ora. Riprova tra poco.' }]);
+      setMessages(prev => [...prev, { role: 'ikigai', text: 'Mh, qui mi si è inceppato il collegamento. Riprova tra poco e ti rispondo meglio.' }]);
     } finally {
       setLoading(false);
     }
@@ -67,7 +89,7 @@ export default function IkigaiHelper() {
             <header className="ikigai-head">
               <div>
                 <h3><HelpCircle size={18} /> Ikigai</h3>
-                <p>Helper del sito</p>
+                <p>{descriviPagina(location.pathname)}</p>
               </div>
               <button type="button" onClick={() => setOpen(false)} aria-label="Chiudi Ikigai"><X size={18} /></button>
             </header>
@@ -89,7 +111,7 @@ export default function IkigaiHelper() {
                   )}
                 </div>
               ))}
-              {loading && <div className="ikigai-msg ikigai"><p>Ci penso…</p></div>}
+              {loading && <div className="ikigai-msg ikigai"><p>Ci penso un attimo…</p></div>}
             </div>
 
             <form className="ikigai-input" onSubmit={(e) => { e.preventDefault(); chiedi(); }}>
