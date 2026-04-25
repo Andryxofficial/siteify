@@ -11,7 +11,6 @@ import PodcastPromo from '../components/PodcastPromo';
 import SEO from '../components/SEO';
 import { useLingua } from '../contexts/LinguaContext';
 import { useToast } from '../contexts/ToastContext';
-import { localFirstText } from '../i18n/localFirst';
 import { condividi, puoCondividere } from '../utils/condividi';
 import { hapticLight } from '../utils/haptics';
 
@@ -33,10 +32,14 @@ const STILE_PREMIO_CTA = {
   marginTop: 'auto', alignSelf: 'flex-start', minHeight: 'unset',
 };
 
+function twitchParent() {
+  if (typeof window === 'undefined') return 'andryxify.it';
+  return window.location.hostname || 'andryxify.it';
+}
+
 export default function Home() {
-  const [liveState] = useState(0); // local-first: niente polling esterno automatico
-  const { t, lingua } = useLingua();
-  const localTxt = localFirstText(lingua);
+  const [liveState] = useState(0); // niente polling esterno automatico: solo embed visivo
+  const { t } = useLingua();
   const toast = useToast();
 
   const onCondividi = async () => {
@@ -59,7 +62,6 @@ export default function Home() {
         keywords="andryxify, andrea taliento, streamer genova, gamer genovese, content creator liguria, twitch genova, streaming italiano"
       />
 
-      {/* ── Hero ── */}
       <section className="header hero-section hero-section-safe" style={{ paddingTop: 'clamp(3.8rem, 12vw, 6.2rem)', paddingBottom: '0.5rem', overflow: 'visible' }}>
         <div className="hero-orb" aria-hidden="true" />
 
@@ -113,17 +115,23 @@ export default function Home() {
           <Twitch size={20} color="#9146FF" />
           <h2 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700, fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>{t('home.live.titolo')}</h2>
           <div style={{ marginLeft: 'auto' }}>
-            <span className="chip chip-offline">{t('home.live.offline')}</span>
+            {liveState > 0
+              ? <span className="chip chip-live"><span className="chip-live-dot" /> {t('home.live.live_ora')}</span>
+              : <span className="chip chip-offline">{t('home.live.offline')}</span>
+            }
           </div>
         </div>
 
-        <div className="glass-card local-live-placeholder" style={{ aspectRatio: '16/9', overflow: 'hidden', borderRadius: 'var(--r-md)', display: 'grid', placeItems: 'center', textAlign: 'center', padding: '1.25rem' }}>
-          <div>
-            <strong>{localTxt.livePrivacyTitle}</strong>
-            <p style={{ margin: '0.45rem 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-              {localTxt.livePrivacyText}
-            </p>
-          </div>
+        <div className="glass-card twitch-home-preview" style={{ aspectRatio: '16/9', overflow: 'hidden', borderRadius: 'var(--r-md)' }}>
+          <iframe
+            src={`https://player.twitch.tv/?channel=andryxify&parent=${twitchParent()}&muted=true`}
+            title={t('twitch.iframe.stream.title')}
+            height="100%"
+            width="100%"
+            allowFullScreen
+            loading="lazy"
+            style={{ border: 'none', display: 'block' }}
+          />
         </div>
 
         <a href="https://twitch.tv/andryxify" target="_blank" rel="noreferrer" className="btn btn-primary" style={{ alignSelf: 'center' }}>
