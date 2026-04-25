@@ -23,7 +23,6 @@
     align-items: stretch !important;
   }
 
-  /* Se esiste un wrapper/griglia SOCIALify a due colonne, lo appiattiamo a una sola colonna. */
   body:has(.social-scheda-post) .main-content [class*="layout"],
   body:has(.social-scheda-post) .main-content [class*="Layout"],
   body:has(.social-scheda-post) .main-content [class*="grid"],
@@ -39,7 +38,6 @@
     align-items: stretch !important;
   }
 
-  /* Feed/lista/post devono occupare la colonna centrale, non metà pagina. */
   body:has(.social-scheda-post) .main-content [class*="feed"],
   body:has(.social-scheda-post) .main-content [class*="Feed"],
   body:has(.social-scheda-post) .main-content [class*="lista"],
@@ -55,11 +53,30 @@
     align-self: stretch !important;
   }
 
+  /* Anti-parent sporco: se un wrapper legacy resta largo ~700px, questi blocchi
+     vengono centrati sulla viewport invece che sul parent limitato. */
+  body:has(.social-scheda-post) .tag-strip,
+  body:has(.social-scheda-post) .social-scheda-post,
+  body:has(.social-scheda-post) .main-content [class*="tab"],
+  body:has(.social-scheda-post) .main-content [class*="Tab"],
+  body:has(.social-scheda-post) .main-content [class*="filtri"],
+  body:has(.social-scheda-post) .main-content [class*="Filtri"] {
+    position: relative !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: min(1120px, calc(100vw - clamp(2rem, 6vw, 5rem))) !important;
+    max-width: min(1120px, calc(100vw - clamp(2rem, 6vw, 5rem))) !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  body:has(.social-scheda-post) .social-scheda-post:hover {
+    transform: translateX(-50%) translateY(-2px) !important;
+  }
+
   body:has(.social-scheda-post) .social-scheda-post,
   body:has(.social-scheda-post) .main-content .glass-card.social-scheda-post {
-    width: 100% !important;
-    max-width: 1120px !important;
-    margin-inline: auto !important;
+    margin-inline: 0 !important;
   }
 
   body:has(.social-scheda-post) .main-content > *,
@@ -69,17 +86,10 @@
   body:has(.social-scheda-post) .main-content [class*="tag-strip"],
   body:has(.social-scheda-post) .main-content [class*="TagStrip"],
   body:has(.social-scheda-post) .main-content [class*="categorie"],
-  body:has(.social-scheda-post) .main-content [class*="Categorie"],
-  body:has(.social-scheda-post) .main-content [class*="filtri"],
-  body:has(.social-scheda-post) .main-content [class*="Filtri"],
-  body:has(.social-scheda-post) .main-content [class*="tabs"],
-  body:has(.social-scheda-post) .main-content [class*="Tabs"] {
+  body:has(.social-scheda-post) .main-content [class*="Categorie"] {
     max-width: 1120px !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
   }
 
-  /* Qualunque sidebar/aside rimasta nel layout non deve riservare spazio. */
   body:has(.social-scheda-post) .main-content [class*="sidebar"],
   body:has(.social-scheda-post) .main-content [class*="Sidebar"],
   body:has(.social-scheda-post) .main-content [class*="aside"],
