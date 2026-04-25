@@ -67,6 +67,33 @@ button {
   overflow: visible !important;
 }
 
+.twitch-home-preview {
+  position: relative;
+  border-radius: 24px !important;
+  border: 1px solid color-mix(in srgb, #9146ff 34%, var(--glass-border)) !important;
+  background: #05050a !important;
+  box-shadow:
+    0 24px 64px rgba(145, 70, 255, 0.16),
+    0 10px 28px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255,255,255,0.10) !important;
+}
+
+.twitch-home-preview::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.10), transparent 30%),
+    radial-gradient(circle at 80% 15%, rgba(145,70,255,0.16), transparent 34%);
+  mix-blend-mode: screen;
+}
+
+.twitch-home-preview iframe {
+  border-radius: inherit;
+}
+
 .ikigai-privacy-link {
   display: inline-flex;
   align-items: center;
