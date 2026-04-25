@@ -34,6 +34,7 @@ const loaders = {
   '/chi-sono':     () => import('./pages/ChiSonoPage'),
   '/socialify/info-tag': () => import('./pages/TagInfoPage'),
   '/telegram':     () => import('./pages/TelegramPage'),
+  '/privacy':      () => import('./pages/PrivacyPage'),
 };
 
 /* Componenti lazy — uno per route */
@@ -56,26 +57,20 @@ export const AppPage       = lazy(loaders['/app']);
 export const ChiSonoPage   = lazy(loaders['/chi-sono']);
 export const TagInfoPage   = lazy(loaders['/socialify/info-tag']);
 export const TelegramPage  = lazy(loaders['/telegram']);
+export const PrivacyPage   = lazy(loaders['/privacy']);
 
-/* Cache delle Promise: import() è già idempotente lato bundler, ma
-   tracciamo qui i percorsi già richiesti per evitare lavoro inutile */
 const paginePrefetchate = new Set();
 
-/* Prefetcha il chunk di una route. Sicuro da chiamare più volte. */
 export function prefetchPagina(path) {
   if (!path || paginePrefetchate.has(path)) return;
   const loader = loaders[path];
   if (!loader) return;
   paginePrefetchate.add(path);
-  // Ignora errori di rete: il prefetch è best-effort; il caricamento
-  // reale al click ritenterà e mostrerà l'errore se necessario.
   loader().catch(() => paginePrefetchate.delete(path));
 }
 
-/* Prefetcha in background tutte le pagine principali della navbar,
-   con priorità bassa (requestIdleCallback con fallback a setTimeout). */
 export function prefetchPagineMain() {
-  const principali = ['/socialify', '/twitch', '/youtube', '/instagram', '/podcast', '/tiktok', '/gioco', '/chat', '/impostazioni'];
+  const principali = ['/socialify', '/twitch', '/youtube', '/instagram', '/podcast', '/tiktok', '/gioco', '/chat', '/impostazioni', '/privacy'];
   const eseguiPrefetch = () => { principali.forEach(prefetchPagina); };
   if (typeof window.requestIdleCallback === 'function') {
     window.requestIdleCallback(eseguiPrefetch, { timeout: 2000 });
