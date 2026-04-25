@@ -1,4 +1,4 @@
-import { ShieldCheck, LockKeyhole, Brain, Trash2, EyeOff } from 'lucide-react';
+import { ShieldCheck, LockKeyhole, Brain, Trash2, EyeOff, MessageCircle, Bell } from 'lucide-react';
 import SEO from '../components/SEO';
 
 export default function PrivacyPage() {
@@ -6,7 +6,7 @@ export default function PrivacyPage() {
     <main className="main-content privacy-page">
       <SEO
         title="Privacy & Ikigai — ANDRYXify"
-        description="Informativa privacy di ANDRYXify: dati, cookie, Ikigai, sicurezza, cifratura e diritti dell'utente."
+        description="Informativa privacy di ANDRYXify: dati, cookie, chat private, Ikigai, sicurezza, cifratura e diritti dell'utente."
         canonical="/privacy"
       />
 
@@ -26,6 +26,30 @@ export default function PrivacyPage() {
         </p>
         <p>
           Per diventare più utile nel tempo, Ikigai può salvare un profilo adattivo minimale: interessi generici, sezioni usate, intenti ricorrenti e preferenze di risposta. Non viene salvato un profilo commerciale, né vengono vendute o cedute informazioni a terzi.
+        </p>
+      </section>
+
+      <section className="glass-panel" style={{ maxWidth: 920, margin: '0 auto 1.25rem', padding: 'clamp(1.25rem, 4vw, 2rem)' }}>
+        <h2><MessageCircle size={22} /> Chat private e messaggi</h2>
+        <p>
+          Le chat private servono solo per permettere la conversazione tra utenti autorizzati. I messaggi non vengono usati per addestrare servizi esterni e non vengono ceduti a terzi.
+        </p>
+        <ul style={{ lineHeight: 1.75 }}>
+          <li>I messaggi privati sono associati agli utenti coinvolti nella conversazione.</li>
+          <li>Il contenuto delle chat private non deve essere mostrato ad altri utenti non coinvolti.</li>
+          <li>Le notifiche dei messaggi devono usare anteprime controllabili dall’utente quando disponibili.</li>
+          <li>Eventuali metadati tecnici, come stato letto/non letto, timestamp e partecipanti, servono al funzionamento della chat.</li>
+          <li>Le esportazioni dati possono includere contenuti e metadati legati all’account richiedente.</li>
+        </ul>
+        <p style={{ color: 'var(--text-muted)' }}>
+          Dove possibile, ANDRYXify privilegia minimizzazione, accesso limitato e separazione dei dati. Se in futuro verrà introdotta cifratura end-to-end piena, l’informativa dovrà indicare chiaramente cosa è cifrato, dove avviene la cifratura e chi possiede le chiavi.
+        </p>
+      </section>
+
+      <section className="glass-panel" style={{ maxWidth: 920, margin: '0 auto 1.25rem', padding: 'clamp(1.25rem, 4vw, 2rem)' }}>
+        <h2><Bell size={22} /> Notifiche</h2>
+        <p>
+          Le notifiche possono riguardare messaggi privati, risposte, menzioni, amici, community, live e comunicazioni di sistema. L’utente può gestire preferenze locali come notifiche in-app, push, suoni, anteprime e categorie disponibili.
         </p>
       </section>
 
@@ -57,6 +81,9 @@ export default function PrivacyPage() {
         <h2><Trash2 size={22} /> Cancellazione</h2>
         <p>
           La cancellazione del profilo Ikigai elimina la custodia associata all’utente o all’identificativo anonimo locale. Alcune statistiche aggregate e non personali possono restare per capire quali funzioni del sito vengono usate di più.
+        </p>
+        <p>
+          Per le chat private, la cancellazione o esportazione deve rispettare anche la presenza di altri partecipanti nella conversazione: i dati dell’account richiedente possono essere rimossi o esportati, mentre parti della conversazione potrebbero restare disponibili agli altri partecipanti quando necessario per coerenza e sicurezza del servizio.
         </p>
       </section>
     </main>
