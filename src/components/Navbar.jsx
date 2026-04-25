@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, animate as fmAnimate } from 'framer-motion';
-import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon, MessageCircle as MessageCircleIcon, Settings as SettingsIcon, Sun, Moon, SunMoon, Sunrise, UserCircle as UserCircleIcon } from 'lucide-react';
+import { Home as HomeIcon, Twitch as TwitchIcon, Youtube as YoutubeIcon, Instagram as InstagramIcon, Mic as MicIcon, Gamepad2 as GameIcon, Users as UsersIcon, MessageCircle as MessageCircleIcon, Settings as SettingsIcon, Sun, Moon, SunMoon, Sunrise, UserCircle as UserCircleIcon, LogOut, LogIn, UserRound } from 'lucide-react';
 import TikTokIcon from './TikTokIcon';
 import useScrollHeader from '../hooks/useScrollHeader';
 import { hapticLight } from '../utils/haptics';
 import { useTema } from '../contexts/TemaContext';
 import { useLingua } from '../contexts/LinguaContext';
+import { useTwitchAuth } from '../contexts/TwitchAuthContext';
 import { prefetchPagina } from '../lazyPages';
 
 const LOGO_URL = '/Firma_Andryx.png';
+const LOGO_AVATAR_FALLBACK = '/pwa-192.png';
 
 /* Chiave localStorage condivisa con MessagesPage per il badge non-letti */
 const CHIAVE_NON_LETTI = 'andryxify_ha_non_letti';
@@ -65,15 +67,119 @@ function useNonLetti() {
   return haNonLetti;
 }
 
+const ICONE_TEMA = { auto: SunMoon, 'alba-tramonto': Sunrise, chiaro: Sun, scuro: Moon };
+/* Chiavi di traduzione per i tooltip del toggle tema, risolte via useLingua().t() */
+const CHIAVI_TEMA = {
+  auto:            'nav.tema.auto',
+  'alba-tramonto': 'nav.tema.alba-tramonto',
+  chiaro:          'nav.tema.chiaro',
+  scuro:           'nav.tema.scuro',
+};
+
+function MobileTopBar() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { t } = useLingua();
+  const { modalita, cicla } = useTema();
+  const { twitchUser, twitchDisplay, twitchAvatar, isLoggedIn, logout, getTwitchLoginUrl } = useTwitchAuth();
+  const [aperto, setAperto] = useState(false);
+  const menuRef = useRef(null);
+  const labelTema = t(CHIAVI_TEMA[modalita] || 'nav.tema.auto');
+  const TemaIcon = ICONE_TEMA[modalita] || SunMoon;
+
+  useEffect(() => {
+    if (!aperto) return;
+    const close = (e) => {
+      if (!menuRef.current?.contains(e.target)) setAperto(false);
+    };
+    const esc = (e) => { if (e.key === 'Escape') setAperto(false); };
+    document.addEventListener('pointerdown', close, { passive: true });
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('pointerdown', close);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [aperto]);
+
+  const doLogin = () => {
+    hapticLight();
+    window.location.href = getTwitchLoginUrl(location.pathname);
+  };
+
+  const doLogout = () => {
+    hapticLight();
+    logout();
+    setAperto(false);
+  };
+
+  const go = (path) => {
+    hapticLight();
+    setAperto(false);
+    navigate(path);
+  };
+
+  return (
+    <div className="mobile-topbar" ref={menuRef}>
+      <Link to="/" className="mobile-topbar-brand" aria-label={t('nav.aria.logo')}>
+        <img src={LOGO_URL} alt="ANDRYXify" />
+      </Link>
+
+      <button
+        type="button"
+        className={`mobile-profile-trigger${aperto ? ' active' : ''}`}
+        aria-label={isLoggedIn ? 'Apri menu profilo' : 'Accedi con Twitch'}
+        aria-expanded={aperto}
+        onClick={() => {
+          hapticLight();
+          if (!isLoggedIn) doLogin();
+          else setAperto(v => !v);
+        }}
+      >
+        {isLoggedIn ? (
+          <img src={twitchAvatar || LOGO_AVATAR_FALLBACK} alt="" />
+        ) : (
+          <LogIn size={20} />
+        )}
+      </button>
+
+      <AnimatePresence>
+        {aperto && isLoggedIn && (
+          <motion.div
+            className="mobile-profile-menu glass-panel"
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+          >
+            <div className="mobile-profile-menu-head">
+              <img src={twitchAvatar || LOGO_AVATAR_FALLBACK} alt="" />
+              <div>
+                <strong>{twitchDisplay || twitchUser}</strong>
+                <span>@{twitchUser}</span>
+              </div>
+            </div>
+
+            <button type="button" onClick={() => go(`/profilo/${twitchUser}`)}>
+              <UserRound size={17} /> Vedi profilo
+            </button>
+            <button type="button" onClick={() => { cicla(); hapticLight(); }}>
+              <TemaIcon size={17} /> {labelTema}
+            </button>
+            <button type="button" onClick={() => go('/impostazioni')}>
+              <SettingsIcon size={17} /> Impostazioni
+            </button>
+            <button type="button" className="danger" onClick={doLogout}>
+              <LogOut size={17} /> Logout
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 /* ─────────────────────────────────────────────────────────
    MOBILE BOTTOM TAB BAR  (iOS 26-style, liquid glass)
-   ─────────────────────────────────────────────────────────
-   Bolla vetro trascinabile — l'utente può fare swipe
-   orizzontale per spostarsi fra le sezioni.
-
-   Prestazioni: useMotionValue → 0 re-render React durante
-   il drag. Tutto gira sul compositor GPU (translateX/scale).
-   Pan rilevato sul container (tap normali passano ai Link).
    ───────────────────────────────────────────────────────── */
 function MobileTabBar({ activePath, haNonLetti }) {
   const navigate    = useNavigate();
@@ -83,13 +189,11 @@ function MobileTabBar({ activePath, haNonLetti }) {
   const tabWidthPct = 100 / count;
   const itemsRef    = useRef(null);
 
-  /* Ref stabili per evitare chiusure stantie nei gestori pan */
   const isDraggingRef = useRef(false);
   const prevSnapRef   = useRef(activeIdx);
   const activeIdxRef  = useRef(activeIdx);
   activeIdxRef.current = activeIdx;
 
-  /* ── Motion values — nessun re-render, 60fps ── */
   const pillX     = useMotionValue(0);
   const pillScale = useMotionValue(1);
 
@@ -98,15 +202,12 @@ function MobileTabBar({ activePath, haNonLetti }) {
     return el ? el.offsetWidth / count : 0;
   }, [count]);
 
-  /* Posizione iniziale (sincrono, prima del paint — solo al mount
-     per evitare flash; le dipendenze sono stabili al mount) */
   useLayoutEffect(() => {
     const tw = getTabWidth();
     if (tw > 0) pillX.jump(activeIdx * tw);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* Anima al tab attivo quando cambia (tap o navigazione) */
   useEffect(() => {
     if (isDraggingRef.current) return;
     const tw = getTabWidth();
@@ -117,7 +218,6 @@ function MobileTabBar({ activePath, haNonLetti }) {
     }
   }, [activeIdx, getTabWidth, pillX]);
 
-  /* Ricalcola posizione su resize / orientamento */
   useEffect(() => {
     const handler = () => {
       if (isDraggingRef.current) return;
@@ -130,7 +230,6 @@ function MobileTabBar({ activePath, haNonLetti }) {
     return () => window.removeEventListener('resize', handler);
   }, [count, pillX]);
 
-  /* ── Gestori pan — trascinamento bolla vetro ── */
   const handlePanStart = useCallback(() => {
     isDraggingRef.current = true;
     prevSnapRef.current = activeIdxRef.current;
@@ -148,13 +247,11 @@ function MobileTabBar({ activePath, haNonLetti }) {
     const maxX  = (count - 1) * tw;
     let targetX = baseX + info.offset.x;
 
-    /* Elasticità ai bordi — sensazione Apple */
     if (targetX < minX) targetX = minX + (targetX - minX) * ELASTICITA_BORDO;
     else if (targetX > maxX) targetX = maxX + (targetX - maxX) * ELASTICITA_BORDO;
 
     pillX.set(targetX);
 
-    /* Feedback aptico al passaggio di confine tab */
     const idx = calcolaIndiceTarget(info.offset.x, tw, ai, count);
     if (idx !== prevSnapRef.current) {
       hapticLight();
@@ -172,7 +269,6 @@ function MobileTabBar({ activePath, haNonLetti }) {
     const ai       = activeIdxRef.current;
     const targetIdx = calcolaIndiceTarget(info.offset.x, tw, ai, count);
 
-    /* Snap magnetico al tab più vicino */
     fmAnimate(pillX, targetIdx * tw, {
       type: 'spring', stiffness: 420, damping: 34, mass: 0.9,
     });
@@ -189,8 +285,6 @@ function MobileTabBar({ activePath, haNonLetti }) {
 
   return (
     <nav className="mobile-tab-bar" aria-label={t('nav.aria.main')}>
-      {/* motion.div per rilevare il pan orizzontale; touch-action:pan-y
-          lascia lo scroll verticale al browser, cattura solo l'asse X */}
       <motion.div
         ref={itemsRef}
         className="mobile-tab-items"
@@ -199,20 +293,13 @@ function MobileTabBar({ activePath, haNonLetti }) {
         onPanEnd={handlePanEnd}
         style={{ touchAction: 'pan-y' }}
       >
-
-        {/* ── Bolla liquid glass trascinabile ── */}
         {activeIdx >= 0 && (
           <motion.div
             className="mobile-tab-pill"
-            style={{
-              x: pillX,
-              scale: pillScale,
-              width: `${tabWidthPct}%`,
-            }}
+            style={{ x: pillX, scale: pillScale, width: `${tabWidthPct}%` }}
           />
         )}
 
-        {/* ── Tab items ── */}
         {MOBILE_LINKS.map(({ path, labelKey, Icon }) => {
           const isActive = activePath === path;
           const label = t(labelKey);
@@ -232,7 +319,6 @@ function MobileTabBar({ activePath, haNonLetti }) {
                 animate={{ y: isActive ? -2 : 0, scale: isActive ? 1.12 : 1 }}
                 transition={{ type: 'spring', stiffness: 420, damping: 26 }}
               >
-                {/* Pallino non-letti sovrapposto all'icona */}
                 <span style={{ position: 'relative', display: 'flex' }}>
                   <Icon size={22} />
                   {path === '/chat' && haNonLetti && <span className="tab-pallino" aria-hidden="true" />}
@@ -255,21 +341,7 @@ function MobileTabBar({ activePath, haNonLetti }) {
 
 /* ─────────────────────────────────────────────────────────
    DESKTOP TOP NAVBAR
-   ─────────────────────────────────────────────────────────
-   Pill uses declarative animate={{ left, width }} with
-   pixel state values — no MotionValues, no imperative
-   animate(), no drag. Pill follows hover across links
-   (Apple-style), returns to activePath on mouse-leave.
    ───────────────────────────────────────────────────────── */
-
-const ICONE_TEMA = { auto: SunMoon, 'alba-tramonto': Sunrise, chiaro: Sun, scuro: Moon };
-/* Chiavi di traduzione per i tooltip del toggle tema, risolte via useLingua().t() */
-const CHIAVI_TEMA = {
-  auto:            'nav.tema.auto',
-  'alba-tramonto': 'nav.tema.alba-tramonto',
-  chiaro:          'nav.tema.chiaro',
-  scuro:           'nav.tema.scuro',
-};
 
 export default function Navbar() {
   const location          = useLocation();
@@ -286,7 +358,6 @@ export default function Navbar() {
   const [pillPos,     setPillPos]     = useState({ left: 0, width: 0 });
   const [pillReady,   setPillReady]   = useState(false);
 
-  // displayPath: hover takes priority over active route
   const displayPath = hoveredPath ?? location.pathname;
 
   const getInfo = useCallback((path) => {
@@ -298,7 +369,6 @@ export default function Navbar() {
     return { left: lR.left - cR.left, width: lR.width };
   }, []);
 
-  /* ── Init pill on mount ── */
   useEffect(() => {
     const t = setTimeout(() => {
       const info = getInfo(location.pathname);
@@ -308,14 +378,12 @@ export default function Navbar() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ── Follow displayPath (hover or route) ── */
   useEffect(() => {
     if (!pillReady) return;
     const info = getInfo(displayPath);
     if (info) setPillPos(info);
   }, [displayPath, pillReady, getInfo]);
 
-  /* ── Resize: recompute without animation ── */
   useEffect(() => {
     const onResize = () => {
       if (!pillReady) return;
@@ -328,6 +396,8 @@ export default function Navbar() {
 
   return (
     <>
+      <MobileTopBar />
+
       {/* ── Top pill navbar (desktop) — hides on scroll-down ── */}
       <AnimatePresence>
         {headerVisible && (
@@ -349,7 +419,6 @@ export default function Navbar() {
                 style={{ position: 'relative', overflow: 'visible' }}
                 onMouseLeave={() => setHoveredPath(null)}
               >
-                {/* ── Sliding liquid glass pill ── */}
                 {pillReady && (
                   <motion.div
                     className="liquid-nav-pill"
@@ -370,16 +439,9 @@ export default function Navbar() {
                       onMouseEnter={() => { setHoveredPath(path); prefetchPagina(path); }}
                       onFocus={() => prefetchPagina(path)}
                     >
-                      <Link
-                        to={path}
-                        className={`nav-link${isActive ? ' active' : ''}`}
-                      >
-                        <motion.span
-                          whileHover={{ scale: 1.15, rotate: 4 }}
-                          style={{ display: 'flex', pointerEvents: 'none', position: 'relative' }}
-                        >
+                      <Link to={path} className={`nav-link${isActive ? ' active' : ''}`}>
+                        <motion.span whileHover={{ scale: 1.15, rotate: 4 }} style={{ display: 'flex', pointerEvents: 'none', position: 'relative' }}>
                           <Icon size={16} />
-                          {/* Pallino non-letti sul link Chat (Messaggi Privati ora vivono qui) */}
                           {path === '/chat' && haNonLetti && <span className="nav-pallino" aria-hidden="true" />}
                         </motion.span>
                         <span className="nav-label" style={{ pointerEvents: 'none' }}>{label}</span>
@@ -389,7 +451,6 @@ export default function Navbar() {
                 })}
               </div>
 
-              {/* Pulsante toggle tema chiaro/scuro */}
               <motion.button
                 onClick={() => { cicla(); hapticLight(); }}
                 className="nav-link nav-tema-toggle"
@@ -400,18 +461,11 @@ export default function Navbar() {
                 whileTap={{ scale: 0.9, rotate: 15 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 20 }}
               >
-                <motion.span
-                  key={modalita}
-                  initial={{ opacity: 0, rotate: -30, scale: 0.7 }}
-                  animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 22 }}
-                  style={{ display: 'flex' }}
-                >
+                <motion.span key={modalita} initial={{ opacity: 0, rotate: -30, scale: 0.7 }} animate={{ opacity: 1, rotate: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 380, damping: 22 }} style={{ display: 'flex' }}>
                   {React.createElement(ICONE_TEMA[modalita], { size: 17 })}
                 </motion.span>
               </motion.button>
 
-              {/* Icona impostazioni */}
               <Link to="/impostazioni" className="nav-link nav-settings" aria-label={t('nav.impostazioni')} style={{ marginLeft: '0.25rem', display: 'flex', alignItems: 'center' }}>
                 <SettingsIcon size={17} />
               </Link>
@@ -420,7 +474,6 @@ export default function Navbar() {
         )}
       </AnimatePresence>
 
-      {/* ── Tab bar inferiore (solo mobile) — passa lo stato non-letti ── */}
       <MobileTabBar activePath={location.pathname} haNonLetti={haNonLetti} />
     </>
   );
