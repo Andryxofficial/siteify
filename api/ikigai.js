@@ -1,6 +1,6 @@
-import { askIkigai, ikigaiStatus } from './_ikigaiEngine.js';
+import { interpellaIkigai, statoIkigai } from './_ikigaiEngine.js';
 
-export default async function handler(req, res) {
+export default async function gestoreIkigai(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -8,14 +8,17 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      if (req.query?.action === 'status') return res.status(200).json(await ikigaiStatus());
-      const question = String(req.query?.q || '').trim();
-      return res.status(200).json(await askIkigai({ question }));
+      if (req.query?.action === 'status') return res.status(200).json(await statoIkigai());
+      const domanda = String(req.query?.q || '').trim();
+      return res.status(200).json(await interpellaIkigai({ domanda }));
     }
 
     if (req.method === 'POST') {
-      const { question, history } = req.body || {};
-      return res.status(200).json(await askIkigai({ question, history }));
+      const { question, domanda, history, cronologia } = req.body || {};
+      return res.status(200).json(await interpellaIkigai({
+        domanda: domanda || question,
+        cronologia: cronologia || history,
+      }));
     }
 
     return res.status(405).json({ error: 'Metodo non supportato.' });
