@@ -1,14 +1,18 @@
 import { ShieldCheck, LockKeyhole, MessageCircle, ChevronRight } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { useLingua } from '../contexts/LinguaContext';
+import { privacySecurityText } from '../i18n/privacySecurity';
 
 export default function SettingsPrivacyTail() {
   const location = useLocation();
+  const { lingua } = useLingua();
+  const txt = privacySecurityText(lingua);
   if (!location.pathname.startsWith('/impostazioni')) return null;
 
   return (
     <div
       className="main-content"
-      aria-label="Privacy e sicurezza"
+      aria-label={txt.settingsTitle}
       style={{ paddingTop: 0, paddingBottom: 'calc(var(--native-bottom-nav-h, 74px) + env(safe-area-inset-bottom, 0px) + 2.5rem)' }}
     >
       <section
@@ -45,24 +49,24 @@ export default function SettingsPrivacyTail() {
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem', lineHeight: 1.25 }}>
-            Visualizza informazioni privacy e sicurezza
+            {txt.settingsTitle}
           </h3>
           <p style={{ margin: '0 0 0.65rem', color: 'var(--text-muted)', fontSize: '0.84rem', lineHeight: 1.45 }}>
-            Informativa completa su Ikigai, dati, notifiche, chat private, cifratura e cancellazione.
+            {txt.settingsText}
           </p>
           <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }} aria-hidden="true">
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: 'var(--primary)', padding: '0.28rem 0.55rem', borderRadius: 999, background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
-              <LockKeyhole size={13} /> Dati e cifratura
+              <LockKeyhole size={13} /> {txt.settingsPillCrypto}
             </span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: 'var(--primary)', padding: '0.28rem 0.55rem', borderRadius: 999, background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
-              <MessageCircle size={13} /> Chat private
+              <MessageCircle size={13} /> {txt.settingsPillChat}
             </span>
           </div>
         </div>
 
         <Link
           to="/privacy"
-          aria-label="Apri informazioni privacy e sicurezza"
+          aria-label={txt.settingsAria}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -77,7 +81,7 @@ export default function SettingsPrivacyTail() {
             flex: '0 0 auto',
           }}
         >
-          Apri <ChevronRight size={16} />
+          {txt.settingsOpen} <ChevronRight size={16} />
         </Link>
       </section>
     </div>
