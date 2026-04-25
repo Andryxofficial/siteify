@@ -18,6 +18,7 @@ import BannerOffline from './components/BannerOffline';
 import PromptInstalla from './components/PromptInstalla';
 import IkigaiHelper from './components/IkigaiHelper';
 import SettingsPrivacyTail from './components/SettingsPrivacyTail';
+import LegacySocialifyPurge from './components/LegacySocialifyPurge';
 import useStandalone from './hooks/useStandalone';
 import useScrollToTop from './hooks/useScrollToTop';
 import useSwipeBack from './hooks/useSwipeBack';
@@ -137,6 +138,7 @@ function AppLayout() {
     <div className={`app-container${isStandalone ? ' pwa-standalone' : ''}${isTelegram ? ' tg-app' : ''}`}>
       {!isTelegram && <Navbar />}
       <SchermataCampione />
+      <LegacySocialifyPurge />
       <AnimatePresence mode="wait">
         <PageTransition key={location.pathname}>
           <ErrorBoundary>
