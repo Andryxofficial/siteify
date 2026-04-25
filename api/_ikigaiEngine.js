@@ -159,10 +159,11 @@ function answerByIntent(intent, routes, live, memorie = []) {
   return `Su ANDRYXify puoi esplorare contenuti di Andryx, usare SOCIALify, seguire Twitch/social, giocare, chattare, gestire profilo, notifiche e impostazioni. La parte più viva è SOCIALify: post, tag, classifiche XP, livelli, premi e macroCategorie evolvono con la community.${rt}${mt}`;
 }
 
-export async function askIkigai({ question, history = [] } = {}) {
-  const q = clean(question);
+export async function interpellaIkigai({ domanda, question, cronologia = [], history = [] } = {}) {
+  const q = clean(domanda || question);
   if (!q) return { ok: true, name: 'Ikigai', intent: 'welcome', answer: 'Sono Ikigai. Chiedimi cosa puoi fare sul sito, come funzionano SOCIALify, classifiche, premi, tag, notifiche o profilo.', routes: [{ label: 'SOCIALify', path: '/socialify' }, { label: 'Impostazioni', path: '/impostazioni' }] };
-  const safeHistory = Array.isArray(history) ? history.slice(-MAX_HISTORY).map(x => clean(x, 240)) : [];
+  const fonteCronologia = Array.isArray(cronologia) && cronologia.length ? cronologia : history;
+  const safeHistory = Array.isArray(fonteCronologia) ? fonteCronologia.slice(-MAX_HISTORY).map(x => clean(x, 240)) : [];
   const intent = detectIntent(`${safeHistory.join(' ')} ${q}`);
   const sections = await retrieve(q, intent);
   const routes = routeMatches(q, intent);
@@ -180,7 +181,7 @@ export async function askIkigai({ question, history = [] } = {}) {
   return { ok: true, name: 'Ikigai', engine: 'andryx-ikigai-local-helper', externalApis: false, intent, answer, routes: routes.map(({ label, path }) => ({ label, path })), sources: sections.map(s => s.title), memories: memorie.map(m => m.titolo), liveAvailable: !!live?.available };
 }
 
-export async function ikigaiStatus() {
+export async function statoIkigai() {
   const sections = await getSections();
   const redis = await getRedis();
   let stats = null;
@@ -195,3 +196,6 @@ export async function ikigaiStatus() {
   }
   return { ok: true, name: 'Ikigai', engine: 'andryx-ikigai-local-helper', externalApis: false, knowledgeSections: sections.map(s => s.title), stats, memoria };
 }
+
+export const askIkigai = interpellaIkigai;
+export const ikigaiStatus = statoIkigai;
