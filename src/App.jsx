@@ -17,6 +17,7 @@ import CookieBanner from './components/CookieBanner';
 import BannerOffline from './components/BannerOffline';
 import PromptInstalla from './components/PromptInstalla';
 import IkigaiHelper from './components/IkigaiHelper';
+import SettingsPrivacyTail from './components/SettingsPrivacyTail';
 import useStandalone from './hooks/useStandalone';
 import useScrollToTop from './hooks/useScrollToTop';
 import useSwipeBack from './hooks/useSwipeBack';
@@ -164,6 +165,7 @@ function AppLayout() {
                 <Route path="/telegram" element={<TelegramPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
               </Routes>
+              <SettingsPrivacyTail />
             </Suspense>
           </ErrorBoundary>
         </PageTransition>
