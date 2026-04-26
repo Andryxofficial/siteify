@@ -18,6 +18,7 @@ import './light-mode-polish.css'
 import './desktop-navbar-position-fix.css'
 import './theme-parity-guard.css'
 import './light-wow-parity.css'
+import './navbar-glow-contour-fix.css'
 import App from './App.jsx'
 
 if ('serviceWorker' in navigator) {
