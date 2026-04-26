@@ -53,6 +53,7 @@ function MandyMashwearSection({ lingua }) {
   const txt = chiSonoExtraText(lingua);
   return (
     <motion.section
+      id="mandy-mashwear"
       className="glass-panel"
       style={{
         padding: '1.75rem',
@@ -62,6 +63,7 @@ function MandyMashwearSection({ lingua }) {
         gridTemplateColumns: 'auto 1fr',
         gap: '1rem',
         alignItems: 'start',
+        scrollMarginTop: '110px',
       }}
       {...inView(0.02)}
     >
