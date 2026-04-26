@@ -1,6 +1,6 @@
 /* Ikigai Mobile Morph
-   Su mobile il tasto Ikigai non resta separato: quando aperto diventa il close button della box.
-   Lo stato chiuso è blindato perché alcuni layer mobile/PWA possono riposizionarlo dopo load. */
+   Chiuso: FAB stabile sopra navbar.
+   Aperto: niente FAB volante; resta la X interna alla box, sempre visibile e cliccabile. */
 
 .ikigai-mounted .ikigai-fab {
   visibility: visible !important;
@@ -42,34 +42,43 @@
     max-height: min(62svh, 590px) !important;
     padding-bottom: 1rem !important;
     transform-origin: right bottom !important;
+    z-index: 3200 !important;
   }
 
+  /* Quando la box è aperta, il FAB sparisce davvero: niente tasto volante fuori posizione. */
   body.ikigai-open .ikigai-fab {
-    position: fixed !important;
-    display: grid !important;
-    place-items: center !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    z-index: 3320 !important;
-    right: max(1.05rem, env(safe-area-inset-right, 0px) + 1.05rem) !important;
-    bottom: calc(var(--native-bottom-nav-h, 74px) + env(safe-area-inset-bottom, 0px) + min(62svh, 590px) - 2.2rem) !important;
-    width: 48px !important;
-    height: 48px !important;
-    min-width: 48px !important;
-    min-height: 48px !important;
-    border-radius: 999px !important;
-    transform: translate3d(0, 0, 0) !important;
-    contain: none !important;
-    overflow: visible !important;
-    box-shadow:
-      0 10px 28px rgba(8,12,32,.18),
-      inset 0 1px 0 rgba(255,255,255,.38) !important;
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /* La chiusura è quella interna della card. */
+  body.ikigai-open .ikigai-head {
+    padding-right: 3.6rem !important;
   }
 
   body.ikigai-open .ikigai-head > button {
-    opacity: 0 !important;
-    pointer-events: none !important;
+    position: absolute !important;
+    top: .85rem !important;
+    right: .85rem !important;
+    display: grid !important;
+    place-items: center !important;
+    width: 52px !important;
+    height: 52px !important;
+    min-width: 52px !important;
+    min-height: 52px !important;
+    border-radius: 999px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    z-index: 20 !important;
+    color: var(--text-main, var(--lgv-text)) !important;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(255,255,255,.16), transparent 42%),
+      var(--lgv-bg-control, rgba(255,255,255,.76)) !important;
+    border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--lgv-stroke)) !important;
+    box-shadow: 0 10px 24px rgba(8,12,32,.16), inset 0 1px 0 rgba(255,255,255,.26) !important;
   }
 
   body.ikigai-open .ikigai-input {
@@ -100,11 +109,6 @@
     max-height: calc(100svh - var(--keyboard-inset, 0px) - env(safe-area-inset-top, 0px) - 1.4rem) !important;
   }
 
-  body.ikigai-open.keyboard-open .ikigai-fab,
-  body.keyboard-open.ikigai-open .ikigai-fab {
-    bottom: calc(var(--keyboard-inset, 0px) + env(safe-area-inset-bottom, 0px) + min(54svh, 460px)) !important;
-  }
-
   body.ikigai-open .mobile-tab-bar {
     opacity: .34 !important;
     transform: translateY(8px) scale(.985) !important;
@@ -115,9 +119,5 @@
 @media (max-width: 430px) {
   body.ikigai-open .ikigai-panel {
     max-height: min(58svh, 540px) !important;
-  }
-
-  body.ikigai-open .ikigai-fab {
-    bottom: calc(var(--native-bottom-nav-h, 74px) + env(safe-area-inset-bottom, 0px) + min(58svh, 540px) - 2.1rem) !important;
   }
 }
