@@ -1,0 +1,186 @@
+/* Home Geometric Mobile
+   Patch mirata alla Home reale: prende le classi effettive di Home.jsx e rende il cambiamento visibile. */
+
+@media (max-width: 820px) {
+  .main-content.home-flow {
+    width: 100% !important;
+    max-width: none !important;
+    padding-inline: 14px !important;
+    gap: 18px !important;
+  }
+
+  .home-flow .header.hero-section.hero-section-safe {
+    width: min(100%, calc(100vw - 28px)) !important;
+    margin: 0 auto 10px !important;
+    padding: clamp(5.8rem, 14svh, 8.2rem) 18px 24px !important;
+    border-radius: 30px !important;
+    border: 1px solid rgba(150, 160, 210, .26) !important;
+    background:
+      linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255,255,255,.07) 1px, transparent 1px),
+      radial-gradient(circle at 20% 22%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 31%),
+      radial-gradient(circle at 86% 30%, color-mix(in srgb, var(--secondary) 20%, transparent), transparent 34%),
+      linear-gradient(180deg, rgba(255,255,255,.34), rgba(255,255,255,.10)) !important;
+    background-size: 42px 42px, 42px 42px, auto, auto, auto !important;
+    box-shadow:
+      0 18px 54px rgba(60, 70, 120, .12),
+      inset 0 1px 0 rgba(255,255,255,.42) !important;
+    backdrop-filter: blur(20px) saturate(145%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(145%) !important;
+  }
+
+  html[data-theme='dark'] .home-flow .header.hero-section.hero-section-safe,
+  body[data-theme='dark'] .home-flow .header.hero-section.hero-section-safe,
+  body.dark .home-flow .header.hero-section.hero-section-safe {
+    border-color: rgba(122, 140, 210, .28) !important;
+    background:
+      linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255,255,255,.04) 1px, transparent 1px),
+      radial-gradient(circle at 20% 22%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 31%),
+      radial-gradient(circle at 86% 30%, color-mix(in srgb, var(--secondary) 14%, transparent), transparent 34%),
+      linear-gradient(180deg, rgba(24,30,54,.74), rgba(9,13,28,.46)) !important;
+    background-size: 42px 42px, 42px 42px, auto, auto, auto !important;
+  }
+
+  .home-flow .hero-orb {
+    opacity: .42 !important;
+    filter: blur(28px) saturate(1.15) !important;
+    transform: scale(.72) !important;
+  }
+
+  .home-flow .hero-title {
+    font-size: clamp(3.1rem, 15vw, 5.4rem) !important;
+    line-height: .9 !important;
+    letter-spacing: -.085em !important;
+    margin-bottom: 18px !important;
+    text-shadow: none !important;
+  }
+
+  .home-flow .subtitle {
+    max-width: 690px !important;
+    margin-inline: auto !important;
+    font-size: clamp(.98rem, 3.55vw, 1.15rem) !important;
+    line-height: 1.48 !important;
+  }
+
+  .home-flow .chip {
+    border-radius: 14px !important;
+    min-height: 38px !important;
+    padding: 7px 13px !important;
+    box-shadow: 0 8px 18px rgba(30, 36, 72, .08), inset 0 1px 0 rgba(255,255,255,.34) !important;
+  }
+
+  .home-flow .header.hero-section.hero-section-safe > div[style*='justify-content: center'] {
+    gap: 10px !important;
+  }
+
+  .home-flow .header.hero-section.hero-section-safe .btn,
+  .home-flow .header.hero-section.hero-section-safe a.btn,
+  .home-flow .header.hero-section.hero-section-safe button.btn {
+    border-radius: 18px !important;
+    min-height: 52px !important;
+    padding: 0 18px !important;
+    box-shadow: 0 12px 24px rgba(32, 42, 88, .10), inset 0 1px 0 rgba(255,255,255,.32) !important;
+  }
+
+  .home-flow .header.hero-section.hero-section-safe .btn-primary {
+    border-radius: 18px !important;
+    box-shadow:
+      0 14px 32px color-mix(in srgb, var(--primary) 28%, transparent),
+      inset 0 1px 0 rgba(255,255,255,.36) !important;
+  }
+
+  .home-flow > section.glass-panel {
+    width: min(100%, calc(100vw - 28px)) !important;
+    margin-inline: auto !important;
+    border-radius: 28px !important;
+    padding: 18px !important;
+    border: 1px solid rgba(150, 160, 210, .28) !important;
+    background:
+      linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255,255,255,.05) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255,255,255,.68), rgba(246,249,255,.44)) !important;
+    background-size: 44px 44px, 44px 44px, auto !important;
+  }
+
+  html[data-theme='dark'] .home-flow > section.glass-panel,
+  body[data-theme='dark'] .home-flow > section.glass-panel,
+  body.dark .home-flow > section.glass-panel {
+    border-color: rgba(122, 140, 210, .30) !important;
+    background:
+      linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255,255,255,.032) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(24,30,54,.76), rgba(9,13,28,.56)) !important;
+    background-size: 44px 44px, 44px 44px, auto !important;
+  }
+
+  .home-flow .twitch-home-preview {
+    border-radius: 24px !important;
+    border: 1px solid color-mix(in srgb, var(--primary) 16%, rgba(142,155,202,.32)) !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+  }
+
+  .home-flow .twitch-home-preview iframe {
+    border-radius: 22px !important;
+  }
+
+  .home-flow .premi-grid,
+  .home-flow .msg-features {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .home-flow .premio-card,
+  .home-flow .msg-feature {
+    border-radius: 22px !important;
+    padding: 16px !important;
+  }
+
+  .mobile-tab-bar {
+    left: 14px !important;
+    right: 14px !important;
+    width: auto !important;
+    border-radius: 24px !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+    padding: 7px !important;
+  }
+
+  .mobile-tab-item {
+    border-radius: 16px !important;
+    min-height: 56px !important;
+  }
+
+  .mobile-tab-item.active,
+  .mobile-tab-item[aria-current='page'] {
+    border-radius: 16px !important;
+    background: linear-gradient(180deg, rgba(255,255,255,.50), rgba(255,255,255,.18)) !important;
+    border: 1px solid color-mix(in srgb, var(--primary) 32%, rgba(142,155,202,.38)) !important;
+  }
+
+  html[data-theme='dark'] .mobile-tab-item.active,
+  body[data-theme='dark'] .mobile-tab-item.active,
+  body.dark .mobile-tab-item.active,
+  html[data-theme='dark'] .mobile-tab-item[aria-current='page'],
+  body[data-theme='dark'] .mobile-tab-item[aria-current='page'],
+  body.dark .mobile-tab-item[aria-current='page'] {
+    background: linear-gradient(180deg, rgba(255,255,255,.13), rgba(255,255,255,.045)) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .home-flow .header.hero-section.hero-section-safe {
+    padding-top: clamp(5.4rem, 15svh, 7.4rem) !important;
+  }
+
+  .home-flow .header.hero-section.hero-section-safe .btn {
+    min-width: 164px !important;
+  }
+
+  .home-flow .header.hero-section.hero-section-safe .btn:nth-of-type(3),
+  .home-flow .header.hero-section.hero-section-safe button.btn {
+    min-width: min(100%, 268px) !important;
+  }
+}

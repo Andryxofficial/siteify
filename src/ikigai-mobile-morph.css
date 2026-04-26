@@ -1,0 +1,134 @@
+/* Ikigai Mobile Morph
+   Chiuso: FAB stabile sopra navbar.
+   Aperto: niente FAB volante; resta la X interna alla box, sempre visibile e cliccabile. */
+
+.ikigai-mounted .ikigai-fab {
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.ikigai-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  opacity: 1 !important;
+  z-index: 3190 !important;
+  cursor: default !important;
+  pointer-events: auto !important;
+}
+
+@media (max-width: 820px) {
+  body:not(.ikigai-open) .ikigai-fab,
+  body.ikigai-mounted:not(.ikigai-open) .ikigai-fab {
+    position: fixed !important;
+    display: grid !important;
+    place-items: center !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    z-index: 3300 !important;
+    right: max(1rem, env(safe-area-inset-right, 0px) + 1rem) !important;
+    bottom: calc(var(--native-bottom-nav-h, 74px) + env(safe-area-inset-bottom, 0px) + 1.05rem) !important;
+    width: 58px !important;
+    height: 58px !important;
+    min-width: 58px !important;
+    min-height: 58px !important;
+    border-radius: 999px !important;
+    transform: translate3d(0, 0, 0) !important;
+    contain: none !important;
+    overflow: visible !important;
+  }
+
+  body:not(.ikigai-open).keyboard-open .ikigai-fab,
+  body.ikigai-mounted:not(.ikigai-open).keyboard-open .ikigai-fab {
+    bottom: calc(var(--keyboard-inset, 0px) + env(safe-area-inset-bottom, 0px) + 1rem) !important;
+  }
+
+  body.ikigai-open .ikigai-panel {
+    left: max(.75rem, env(safe-area-inset-left, 0px) + .75rem) !important;
+    right: max(.75rem, env(safe-area-inset-right, 0px) + .75rem) !important;
+    bottom: calc(var(--native-bottom-nav-h, 74px) + env(safe-area-inset-bottom, 0px) + .95rem) !important;
+    max-height: min(62svh, 590px) !important;
+    padding-bottom: 1rem !important;
+    transform-origin: right bottom !important;
+    z-index: 3200 !important;
+  }
+
+  body.ikigai-open .ikigai-fab {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  body.ikigai-open .ikigai-head {
+    padding-right: 3.6rem !important;
+  }
+
+  body.ikigai-open .ikigai-head > button {
+    position: absolute !important;
+    top: .85rem !important;
+    right: .85rem !important;
+    display: grid !important;
+    place-items: center !important;
+    width: 52px !important;
+    height: 52px !important;
+    min-width: 52px !important;
+    min-height: 52px !important;
+    border-radius: 999px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    z-index: 20 !important;
+    color: var(--text-main, var(--lgv-text)) !important;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(255,255,255,.16), transparent 42%),
+      var(--lgv-bg-control, rgba(255,255,255,.76)) !important;
+    border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--lgv-stroke)) !important;
+    box-shadow: 0 10px 24px rgba(8,12,32,.16), inset 0 1px 0 rgba(255,255,255,.26) !important;
+  }
+
+  body.ikigai-open .ikigai-input {
+    padding-right: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  body.ikigai-open .ikigai-input input {
+    padding-right: 4.4rem !important;
+  }
+
+  body.ikigai-open .ikigai-input button[type='submit'] {
+    position: absolute !important;
+    right: .36rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 52px !important;
+    height: 52px !important;
+    min-width: 52px !important;
+    min-height: 52px !important;
+    border-radius: 999px !important;
+    z-index: 12 !important;
+  }
+
+  body.ikigai-open.keyboard-open .ikigai-panel,
+  body.keyboard-open.ikigai-open .ikigai-panel {
+    bottom: calc(var(--keyboard-inset, 0px) + env(safe-area-inset-bottom, 0px) + .65rem) !important;
+    max-height: calc(100svh - var(--keyboard-inset, 0px) - env(safe-area-inset-top, 0px) - 1.4rem) !important;
+  }
+
+  body.ikigai-open .mobile-tab-bar {
+    opacity: .34 !important;
+    transform: translateY(8px) scale(.985) !important;
+    pointer-events: none !important;
+  }
+}
+
+@media (max-width: 430px) {
+  body.ikigai-open .ikigai-panel {
+    max-height: min(58svh, 540px) !important;
+  }
+}

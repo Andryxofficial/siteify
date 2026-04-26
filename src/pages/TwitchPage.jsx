@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
-import { Twitch, ExternalLink, Calendar, Users, Star, Clock, Trophy, LogIn } from 'lucide-react';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { Twitch, ExternalLink, Calendar, Users, Star, Clock, Trophy, LogIn, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import SEO from '../components/SEO';
 import { useLingua } from '../contexts/LinguaContext';
 import { useTwitchAuth } from '../contexts/TwitchAuthContext';
@@ -22,6 +22,11 @@ function tempoBreve(secondi) {
   const m = Math.floor((s % 3600) / 60);
   if (h > 0) return `${h}h ${m}m`;
   return `${m}m`;
+}
+
+function twitchParent() {
+  if (typeof window === 'undefined') return 'andryxify.it';
+  return window.location.hostname || 'andryxify.it';
 }
 
 const MEDAGLIE = ['🥇', '🥈', '🥉'];
@@ -359,7 +364,9 @@ function useWatchTimeHeartbeat(twitchToken, attivo) {
 /* ─── Componente principale TwitchPage ─── */
 export default function TwitchPage() {
   const { t } = useLingua();
-  const { twitchUser, twitchToken } = useTwitchAuth();
+  const { twitchUser, twitchDisplay, twitchAvatar, twitchToken, getTwitchLoginUrl } = useTwitchAuth();
+  const parent = twitchParent();
+  const embedKey = useMemo(() => `${parent}-${twitchUser || 'guest'}`, [parent, twitchUser]);
 
   /* Traccia se la pagina è visibile (non in background) */
   const [paginaVisibile, setPaginaVisibile] = useState(
@@ -407,11 +414,37 @@ export default function TwitchPage() {
         </div>
       </header>
 
+      <section className="glass-panel" style={{ padding: '0.9rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', borderColor: 'rgba(145,70,255,.18)' }}>
+        {twitchUser ? (
+          <>
+            {twitchAvatar && <img src={twitchAvatar} alt="" style={{ width: 34, height: 34, borderRadius: '999px', objectFit: 'cover' }} />}
+            <CheckCircle2 size={17} color="#22c55e" />
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+              Login sito attivo come <strong style={{ color: '#c9b8ff' }}>{twitchDisplay || twitchUser}</strong>.
+            </span>
+            <span className="chip" style={{ marginLeft: 'auto', background: 'rgba(145,70,255,.12)', color: '#c9b8ff', border: '1px solid rgba(145,70,255,.22)' }}>
+              Embed sincronizzati con la pagina
+            </span>
+          </>
+        ) : (
+          <>
+            <LogIn size={17} color="#9146FF" />
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', flex: 1 }}>
+              Accedi con Twitch sul sito per watch time, classifiche e funzioni community. Gli embed Twitch usano comunque la sessione Twitch del browser, se presente.
+            </span>
+            <a href={getTwitchLoginUrl('/twitch')} className="btn btn-primary" style={{ background: 'linear-gradient(135deg,#9146FF,#c800ff)' }}>
+              <Twitch size={15} /> Accedi con Twitch
+            </a>
+          </>
+        )}
+      </section>
+
       {/* Player + Chat */}
       <div className="twitch-container glass-panel" style={{ padding: 0 }}>
         <div className="player-side">
           <iframe
-            src={`https://player.twitch.tv/?channel=andryxify&parent=${window.location.hostname}`}
+            key={`player-${embedKey}`}
+            src={`https://player.twitch.tv/?channel=andryxify&parent=${parent}&muted=true`}
             height="100%"
             width="100%"
             allowFullScreen
@@ -434,7 +467,8 @@ export default function TwitchPage() {
             {t('twitch.chat.hint')}
           </div>
           <iframe
-            src={`https://www.twitch.tv/embed/andryxify/chat?parent=${window.location.hostname}&darkpopout`}
+            key={`chat-${embedKey}`}
+            src={`https://www.twitch.tv/embed/andryxify/chat?parent=${parent}&darkpopout`}
             height="100%"
             width="100%"
             style={{ flex: 1, border: 'none', display: 'block' }}

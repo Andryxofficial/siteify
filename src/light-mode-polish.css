@@ -1,0 +1,130 @@
+/* Light mode polish: glass pulito e leggibile senza rompere la navbar desktop. */
+
+:root:not([data-theme='dark']) {
+  --alg-light-panel: linear-gradient(145deg, rgba(255,255,255,.78), rgba(245,248,255,.54));
+  --alg-light-control: linear-gradient(145deg, rgba(255,255,255,.86), rgba(239,245,255,.58));
+  --alg-light-border: rgba(157, 171, 214, .38);
+  --alg-light-shadow: 0 18px 48px rgba(70, 86, 135, .16), 0 5px 18px rgba(80, 88, 130, .08);
+}
+
+:root:not([data-theme='dark']) .mobile-topbar-brand,
+:root:not([data-theme='dark']) .mobile-profile-trigger,
+:root:not([data-theme='dark']) .mobile-profile-menu,
+:root:not([data-theme='dark']) .mobile-tab-bar,
+:root:not([data-theme='dark']) .ikigai-fab,
+:root:not([data-theme='dark']) .ikigai-panel {
+  background: var(--alg-light-control) !important;
+  border-color: color-mix(in srgb, var(--primary) 16%, var(--alg-light-border)) !important;
+  box-shadow: var(--alg-light-shadow), inset 0 1px 0 rgba(255,255,255,.82) !important;
+  color: #171b2f !important;
+  backdrop-filter: blur(24px) saturate(165%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(165%) !important;
+}
+
+@media (max-width: 1023px) {
+  :root:not([data-theme='dark']) .navbar-container,
+  :root:not([data-theme='dark']) .navbar {
+    background: var(--alg-light-control) !important;
+    border-color: color-mix(in srgb, var(--primary) 16%, var(--alg-light-border)) !important;
+    box-shadow: var(--alg-light-shadow), inset 0 1px 0 rgba(255,255,255,.82) !important;
+    color: #171b2f !important;
+    backdrop-filter: blur(24px) saturate(165%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(165%) !important;
+  }
+}
+
+:root:not([data-theme='dark']) .mobile-profile-menu,
+:root:not([data-theme='dark']) .mobile-profile-menu.glass-panel {
+  background:
+    radial-gradient(circle at 78% 92%, rgba(224,64,251,.10), transparent 42%),
+    radial-gradient(circle at 18% 8%, rgba(0,229,255,.07), transparent 38%),
+    linear-gradient(145deg, rgba(255,255,255,.88), rgba(246,249,255,.68)) !important;
+  border: 1px solid rgba(168, 177, 218, .46) !important;
+  box-shadow:
+    0 24px 64px rgba(70, 86, 135, .20),
+    0 8px 24px rgba(80, 88, 130, .10),
+    inset 0 1px 0 rgba(255,255,255,.86) !important;
+}
+
+:root:not([data-theme='dark']) .mobile-profile-menu::after,
+:root:not([data-theme='dark']) .mobile-tab-bar::after,
+:root:not([data-theme='dark']) .mobile-topbar-brand::after,
+:root:not([data-theme='dark']) .mobile-profile-trigger::after {
+  opacity: .22 !important;
+}
+
+:root:not([data-theme='dark']) .mobile-profile-menu-head strong,
+:root:not([data-theme='dark']) .mobile-profile-menu button,
+:root:not([data-theme='dark']) .mobile-profile-menu .danger,
+:root:not([data-theme='dark']) .mobile-tab-bar .tab-label,
+:root:not([data-theme='dark']) .mobile-tab-bar .tab-icon,
+:root:not([data-theme='dark']) .ikigai-panel,
+:root:not([data-theme='dark']) .ikigai-panel * {
+  text-shadow: none !important;
+}
+
+:root:not([data-theme='dark']) .mobile-profile-menu-head strong,
+:root:not([data-theme='dark']) .mobile-profile-menu button {
+  color: #171b2f !important;
+}
+
+:root:not([data-theme='dark']) .mobile-profile-menu-head span {
+  color: rgba(45, 52, 79, .68) !important;
+}
+
+:root:not([data-theme='dark']) .mobile-profile-menu button {
+  background: transparent !important;
+  border-radius: 18px !important;
+}
+
+:root:not([data-theme='dark']) .mobile-profile-menu button:hover,
+:root:not([data-theme='dark']) .mobile-profile-menu button:active {
+  background: rgba(224,64,251,.08) !important;
+}
+
+:root:not([data-theme='dark']) .mobile-profile-menu .danger {
+  color: #ef6679 !important;
+}
+
+:root:not([data-theme='dark']) .mobile-tab-bar {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.80), rgba(241,246,255,.62)) !important;
+  border-color: rgba(170, 181, 218, .42) !important;
+}
+
+:root:not([data-theme='dark']) .mobile-tab-pill {
+  background: linear-gradient(145deg, rgba(255,255,255,.88), rgba(235,243,255,.72)) !important;
+  border: 1px solid rgba(170, 181, 218, .44) !important;
+  box-shadow: 0 10px 26px rgba(70, 86, 135, .16), inset 0 1px 0 rgba(255,255,255,.95) !important;
+}
+
+:root:not([data-theme='dark']) .tab-item.active .tab-label,
+:root:not([data-theme='dark']) .tab-item.active .tab-icon {
+  color: var(--primary) !important;
+}
+
+:root:not([data-theme='dark']) .ikigai-fab {
+  background: linear-gradient(145deg, rgba(255,255,255,.88), rgba(238,247,255,.70)) !important;
+  border-color: rgba(178, 186, 222, .46) !important;
+}
+
+:root:not([data-theme='dark']) .ikigai-panel {
+  background:
+    radial-gradient(circle at 52% 92%, rgba(224,64,251,.10), transparent 38%),
+    linear-gradient(145deg, rgba(255,255,255,.90), rgba(246,249,255,.72)) !important;
+  color: #171b2f !important;
+}
+
+:root:not([data-theme='dark']) .ikigai-msg.ikigai,
+:root:not([data-theme='dark']) .ikigai-input input,
+:root:not([data-theme='dark']) .ikigai-suggestions button {
+  background: rgba(255,255,255,.66) !important;
+  border-color: rgba(170,181,218,.42) !important;
+  color: #171b2f !important;
+}
+
+@media (max-width: 820px) {
+  :root:not([data-theme='dark']) .mobile-profile-menu {
+    top: calc(var(--mobile-topbar-y, 22px) + 70px) !important;
+  }
+}

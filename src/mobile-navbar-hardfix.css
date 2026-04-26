@@ -1,0 +1,137 @@
+/* Bottom Navbar Mobile Hardfix
+   La navbar reale è: .mobile-tab-bar > .mobile-tab-items > .tab-item
+   Non usare .mobile-tab-item: non esiste nel componente attuale. */
+
+@media (max-width: 820px) {
+  .mobile-tab-bar {
+    left: 14px !important;
+    right: 14px !important;
+    bottom: calc(max(env(safe-area-inset-bottom, 0px), 10px) + 4px) !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 74px !important;
+    padding: 8px !important;
+    border-radius: 26px !important;
+    display: block !important;
+    overflow: hidden !important;
+  }
+
+  .mobile-tab-items {
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    align-items: stretch !important;
+    gap: 6px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    touch-action: pan-y !important;
+  }
+
+  .mobile-tab-bar .mobile-tab-pill {
+    position: absolute !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: 100% !important;
+    border-radius: 18px !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--primary) 14%, rgba(255,255,255,.34)), rgba(255,255,255,.14)) !important;
+    border: 1px solid color-mix(in srgb, var(--primary) 22%, rgba(142,155,202,.34)) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.30) !important;
+  }
+
+  .mobile-tab-bar .tab-item {
+    position: relative !important;
+    z-index: 1 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    min-height: 58px !important;
+    height: 58px !important;
+    padding: 6px 2px !important;
+    border-radius: 18px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .mobile-tab-bar .tab-icon {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 24px !important;
+    height: 24px !important;
+    flex: 0 0 auto !important;
+  }
+
+  .mobile-tab-bar .tab-icon svg {
+    width: 23px !important;
+    height: 23px !important;
+    stroke-width: 2.25 !important;
+  }
+
+  .mobile-tab-bar .tab-label {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-size: clamp(.58rem, 2.25vw, .72rem) !important;
+    line-height: 1.05 !important;
+    font-weight: 800 !important;
+    letter-spacing: -.025em !important;
+  }
+
+  .mobile-tab-bar .tab-item.active,
+  .mobile-tab-bar .tab-item[aria-current='page'] {
+    color: var(--primary) !important;
+  }
+
+  .mobile-tab-bar .tab-item:not(.active):not([aria-current='page']) {
+    color: color-mix(in srgb, var(--text-main, #151a2e) 48%, transparent) !important;
+  }
+
+  body.ikigai-open .mobile-tab-bar {
+    opacity: .28 !important;
+    transform: translateY(8px) scale(.985) !important;
+    pointer-events: none !important;
+  }
+
+  body.keyboard-open .mobile-tab-bar {
+    transform: translateY(calc(100% + 18px)) !important;
+    pointer-events: none !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .mobile-tab-bar {
+    left: 10px !important;
+    right: 10px !important;
+    padding: 7px !important;
+  }
+
+  .mobile-tab-items {
+    gap: 4px !important;
+  }
+
+  .mobile-tab-bar .tab-item {
+    height: 56px !important;
+    min-height: 56px !important;
+    border-radius: 16px !important;
+  }
+
+  .mobile-tab-bar .tab-label {
+    font-size: .56rem !important;
+  }
+}

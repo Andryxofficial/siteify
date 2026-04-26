@@ -21,10 +21,15 @@ export default function CookieBanner() {
     const consenso = localStorage.getItem(CHIAVE_STORAGE);
     if (!consenso) {
       // Piccolo delay: prima carica la pagina, poi appare il banner
-      const t = setTimeout(() => setVisibile(true), RITARDO_BANNER_MS);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setVisibile(true), RITARDO_BANNER_MS);
+      return () => clearTimeout(timer);
     }
   }, []);
+
+  useEffect(() => {
+    document.body.classList.toggle('cookie-banner-open', visibile);
+    return () => document.body.classList.remove('cookie-banner-open');
+  }, [visibile]);
 
   const chiudi = (scelta) => {
     localStorage.setItem(CHIAVE_STORAGE, scelta);
