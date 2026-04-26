@@ -51,6 +51,12 @@ const COPY_FIXES_BY_LANG = {
   ]),
 };
 
+const SWIPE_SELECTOR = [
+  '.tab-list', '.tabs', '.feed-tabs', '.category-tabs', '.tag-row', '.tags-row',
+  '.social-tags-row', '.smart-tags-row', '.ikigai-suggestions', '.quick-actions',
+  '.profile-menu-actions', '.notification-chips', '.privacy-actions', '.settings-buttons-row'
+].join(',');
+
 function linguaCorrente() {
   if (typeof document === 'undefined') return 'it';
   const lang = document.documentElement.getAttribute('lang') || 'it';
@@ -117,6 +123,16 @@ function sistemaCopyProfessionale(root = document.body) {
   ripulisciMenuProfilo();
 }
 
+function aggiornaSwipeClassi(root = document) {
+  root.querySelectorAll?.(SWIPE_SELECTOR).forEach((el) => {
+    if (!(el instanceof HTMLElement)) return;
+    const scrollabile = el.scrollWidth > el.clientWidth + 8;
+    el.classList.toggle('is-swipeable', scrollabile);
+    el.classList.toggle('is-at-start', el.scrollLeft <= 4);
+    el.classList.toggle('is-at-end', el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
+  });
+}
+
 export default function useReactiveExperience() {
   useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return undefined;
@@ -140,6 +156,7 @@ export default function useReactiveExperience() {
     let targetTiltX = 0;
     let targetTiltY = 0;
     let idleTimer = null;
+    let swipeTimer = null;
 
     setVar('--rx', '50%');
     setVar('--ry', '38%');
@@ -150,6 +167,8 @@ export default function useReactiveExperience() {
     setVar('--rx-depth', '0');
 
     sistemaCopyProfessionale();
+    aggiornaSwipeClassi();
+
     const langObserver = new MutationObserver(() => sistemaCopyProfessionale());
     langObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
 
@@ -162,6 +181,7 @@ export default function useReactiveExperience() {
               if (prossimo !== node.nodeValue) node.nodeValue = prossimo;
             } else if (node.nodeType === Node.ELEMENT_NODE) {
               sistemaCopyProfessionale(node);
+              aggiornaSwipeClassi(node);
             }
           });
         } else if (mutation.type === 'characterData') {
@@ -171,6 +191,7 @@ export default function useReactiveExperience() {
         }
       }
       ripulisciMenuProfilo();
+      aggiornaSwipeClassi();
     });
     copyObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
 
@@ -245,12 +266,24 @@ export default function useReactiveExperience() {
       schedule();
     };
 
+    const onSwipeScroll = (event) => {
+      const el = event.target?.closest?.(SWIPE_SELECTOR);
+      if (!(el instanceof HTMLElement)) return;
+      el.classList.add('is-swiping');
+      el.classList.toggle('is-at-start', el.scrollLeft <= 4);
+      el.classList.toggle('is-at-end', el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
+      clearTimeout(swipeTimer);
+      swipeTimer = setTimeout(() => el.classList.remove('is-swiping'), 160);
+    };
+
     const onTouchStart = (event) => {
       const touch = event.touches?.[0];
       if (!touch) return;
       targetPointerX = clamp(touch.clientX / Math.max(1, window.innerWidth), 0, 1);
       targetPointerY = clamp(touch.clientY / Math.max(1, window.innerHeight), 0, 1);
       body.classList.add('touch-active');
+      const swipeEl = event.target?.closest?.(SWIPE_SELECTOR);
+      if (swipeEl instanceof HTMLElement) swipeEl.classList.add('is-touching');
       if (isInteractiveTarget(event.target)) hapticLight();
       markActive();
       schedule();
@@ -258,6 +291,7 @@ export default function useReactiveExperience() {
 
     const onTouchEnd = () => {
       body.classList.remove('touch-active');
+      document.querySelectorAll('.is-touching').forEach(el => el.classList.remove('is-touching'));
       schedule();
     };
 
@@ -293,6 +327,8 @@ export default function useReactiveExperience() {
     window.addEventListener('pointerup', onPointerUp, { passive: true });
     window.addEventListener('pointercancel', onPointerUp, { passive: true });
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('scroll', onSwipeScroll, true);
+    window.addEventListener('resize', aggiornaSwipeClassi, { passive: true });
     window.addEventListener('touchstart', onTouchStart, { passive: true });
     window.addEventListener('touchend', onTouchEnd, { passive: true });
     window.addEventListener('touchcancel', onTouchEnd, { passive: true });
@@ -304,16 +340,20 @@ export default function useReactiveExperience() {
     return () => {
       cancelAnimationFrame(raf);
       clearTimeout(idleTimer);
+      clearTimeout(swipeTimer);
       clearTimeout(onScroll.timer);
       copyObserver.disconnect();
       langObserver.disconnect();
       body.classList.remove('reactive-ready', 'app-grade-ui', 'user-active', 'interactive-hover', 'pointer-pressing', 'touch-active', 'is-scrolling', 'motion-sensors-active');
       delete body.dataset.scrollDir;
+      document.querySelectorAll('.is-swipeable,.is-swiping,.is-touching,.is-at-start,.is-at-end').forEach(el => el.classList.remove('is-swipeable', 'is-swiping', 'is-touching', 'is-at-start', 'is-at-end'));
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerUp);
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('scroll', onSwipeScroll, true);
+      window.removeEventListener('resize', aggiornaSwipeClassi);
       window.removeEventListener('touchstart', onTouchStart);
       window.removeEventListener('touchend', onTouchEnd);
       window.removeEventListener('touchcancel', onTouchEnd);
