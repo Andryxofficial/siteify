@@ -16,6 +16,7 @@ import './ikigai-light-readability-final.css'
 import './mobile-input-nozoom.css'
 import './liquid-glass-v2.css'
 import './ikigai-agency.css'
+import './responsive-blueprint-reset.css'
 import App from './App.jsx'
 
 if ('serviceWorker' in navigator) {
