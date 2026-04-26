@@ -148,12 +148,7 @@ export default function IkigaiHelper() {
                       {m.routes.map(r => {
                         const href = r.href || r.path;
                         return (
-                          <Link
-                            key={`${href}-${r.label}`}
-                            to={href}
-                            aria-label={txt.openRoute(r.label)}
-                            onClick={() => setOpen(false)}
-                          >
+                          <Link key={`${href}-${r.label}`} to={href} aria-label={txt.openRoute(r.label)} onClick={() => setOpen(false)}>
                             {r.label}
                           </Link>
                         );
@@ -165,12 +160,14 @@ export default function IkigaiHelper() {
               {loading && <div className="ikigai-msg ikigai"><p>{txt.loading}</p></div>}
             </div>
 
-            <form className="ikigai-input" onSubmit={(e) => { e.preventDefault(); chiedi(); }}>
+            <form className="ikigai-input" data-enter-submit="true" onSubmit={(e) => { e.preventDefault(); chiedi(); }}>
               <input
                 value={question}
                 onChange={e => setQuestion(e.target.value)}
                 placeholder={txt.placeholder}
                 maxLength={700}
+                enterKeyHint="send"
+                inputMode="text"
               />
               <button type="submit" disabled={loading || !question.trim()} aria-label={txt.sendAria}><Send size={18} /></button>
             </form>
