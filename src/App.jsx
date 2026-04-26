@@ -25,6 +25,7 @@ import useSwipeBack from './hooks/useSwipeBack';
 import useThemeColor from './hooks/useThemeColor';
 import useKeyboardInset from './hooks/useKeyboardInset';
 import useReactiveExperience from './hooks/useReactiveExperience';
+import useMobileSubmitBehavior from './hooks/useMobileSubmitBehavior';
 import { avviaI18nDevGuard } from './i18n/i18nDevGuard';
 import UpdateToast from './components/UpdateToast';
 import Home from './pages/Home';
@@ -43,16 +44,10 @@ const EventsOverlay = lazy(() => import('./pages/overlay/EventsOverlay'));
 const AlertsOverlay = lazy(() => import('./pages/overlay/AlertsOverlay'));
 
 class ErrorBoundary extends Component {
-  constructor(props) {
-    super(props);
-    this.state = { errore: null };
-  }
+  constructor(props) { super(props); this.state = { errore: null }; }
   static getDerivedStateFromError(err) { return { errore: err }; }
   componentDidCatch(err, info) { console.error('[ANDRYXify] Errore React non gestito:', err, info.componentStack); }
-  render() {
-    if (this.state.errore) return <ErrorFallback messaggio={this.state.errore.message} />;
-    return this.props.children;
-  }
+  render() { if (this.state.errore) return <ErrorFallback messaggio={this.state.errore.message} />; return this.props.children; }
 }
 
 function ErrorFallback({ messaggio }) {
@@ -105,9 +100,7 @@ const COLORE_PER_ROTTA = {
 
 function colorePerRotta(pathname) {
   if (!pathname) return null;
-  for (const prefisso of Object.keys(COLORE_PER_ROTTA)) {
-    if (pathname === prefisso || pathname.startsWith(prefisso + '/')) return COLORE_PER_ROTTA[prefisso];
-  }
+  for (const prefisso of Object.keys(COLORE_PER_ROTTA)) if (pathname === prefisso || pathname.startsWith(prefisso + '/')) return COLORE_PER_ROTTA[prefisso];
   return null;
 }
 
@@ -116,14 +109,13 @@ function AppLayout() {
   const isStandalone = useStandalone();
   const { isTelegram } = useTelegram();
   useKeyboardInset();
+  useMobileSubmitBehavior();
   useReactiveExperience();
   useScrollToTop();
   useSwipeBack(!isTelegram);
   useThemeColor(colorePerRotta(location.pathname));
 
-  useEffect(() => {
-    avviaI18nDevGuard();
-  }, []);
+  useEffect(() => { avviaI18nDevGuard(); }, []);
 
   useEffect(() => {
     const accento = localStorage.getItem('andryxify_tema');
