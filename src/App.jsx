@@ -17,6 +17,7 @@ import CookieBanner from './components/CookieBanner';
 import BannerOffline from './components/BannerOffline';
 import PromptInstalla from './components/PromptInstalla';
 import IkigaiHelper from './components/IkigaiHelper';
+import IkigaiAgencyToast from './components/IkigaiAgencyToast';
 import SettingsPrivacyTail from './components/SettingsPrivacyTail';
 import LegacySocialifyPurge from './components/LegacySocialifyPurge';
 import useStandalone from './hooks/useStandalone';
@@ -172,6 +173,7 @@ function AppLayout() {
         </PageTransition>
       </AnimatePresence>
       {!isTelegram && <Footer />}
+      {!isTelegram && <IkigaiAgencyToast />}
       {!isTelegram && <IkigaiHelper />}
       <UpdateToast />
       <BannerOffline />
