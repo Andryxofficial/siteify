@@ -64,7 +64,30 @@ function applicaCopyFixes(testo = '') {
   for (const [brutto, pulito] of COPY_FIXES.entries()) prossimo = prossimo.replaceAll(brutto, pulito);
   const langMap = COPY_FIXES_BY_LANG[linguaCorrente()] || COPY_FIXES_BY_LANG.it;
   for (const [brutto, pulito] of langMap.entries()) prossimo = prossimo.replaceAll(brutto, pulito);
+  prossimo = prossimo
+    .replace(/settings\.tema\.label:\s*(Alba\/Tramonto|Amanecer\/Atardecer|Sunrise\/Sunset)/gi, (_, tema) => {
+      const lang = linguaCorrente();
+      if (lang === 'en') return 'Theme: Sunrise/Sunset';
+      if (lang === 'es') return 'Tema: Amanecer/Atardecer';
+      return 'Tema: Alba/Tramonto';
+    })
+    .replace(/settings\.tema\.label:\s*/gi, linguaCorrente() === 'en' ? 'Theme: ' : 'Tema: ');
   return prossimo;
+}
+
+function ripulisciMenuProfilo() {
+  if (typeof document === 'undefined') return;
+  document.querySelectorAll('.mobile-profile-menu button').forEach((button) => {
+    const testo = (button.textContent || '').replace(/\s+/g, ' ').trim();
+    if (/settings\.tema\.label/i.test(testo)) {
+      const lang = linguaCorrente();
+      const icona = button.querySelector('svg');
+      const label = lang === 'en' ? 'Theme: Sunrise/Sunset' : lang === 'es' ? 'Tema: Amanecer/Atardecer' : 'Tema: Alba/Tramonto';
+      button.textContent = '';
+      if (icona) button.appendChild(icona);
+      button.appendChild(document.createTextNode(` ${label}`));
+    }
+  });
 }
 
 function prefersReducedMotion() {
@@ -91,6 +114,7 @@ function sistemaCopyProfessionale(root = document.body) {
     const prossimo = applicaCopyFixes(testo);
     if (prossimo !== testo) node.nodeValue = prossimo;
   }
+  ripulisciMenuProfilo();
 }
 
 export default function useReactiveExperience() {
@@ -146,6 +170,7 @@ export default function useReactiveExperience() {
           if (prossimo !== node.nodeValue) node.nodeValue = prossimo;
         }
       }
+      ripulisciMenuProfilo();
     });
     copyObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
 
