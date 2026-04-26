@@ -28,6 +28,7 @@ import './ikigai-mobile-morph.css'
 import './ikigai-agency.css'
 import './geometric-liquid-glass.css'
 import './home-geometric-mobile.css'
+import './mobile-hide-brand-logo.css'
 import App from './App.jsx'
 
 if ('serviceWorker' in navigator) {
