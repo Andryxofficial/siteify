@@ -16,6 +16,7 @@ import './ikigai-visibility-fix.css'
 import './mobile-profile-hero-fix.css'
 import './light-mode-polish.css'
 import './desktop-navbar-position-fix.css'
+import './theme-parity-guard.css'
 import App from './App.jsx'
 
 if ('serviceWorker' in navigator) {
