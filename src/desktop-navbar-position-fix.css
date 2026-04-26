@@ -1,11 +1,12 @@
-/* Desktop navbar position fix
-   Tiene la navbar desktop alta e coerente senza toccare mobile/PWA. */
+/* Desktop navbar final fix
+   Regola unica: desktop compatto, stesso comportamento chiaro/scuro,
+   nessuna larghezza full-screen, nessuna perdita funzioni. Mobile/PWA esclusi. */
 
 @media (min-width: 1024px) {
   :root {
     --desktop-navbar-top: 14px;
-    --desktop-navbar-height: 56px;
-    --desktop-page-top-clearance: 78px;
+    --desktop-navbar-height: 54px;
+    --desktop-page-top-clearance: 84px;
   }
 
   .navbar-container,
@@ -15,44 +16,135 @@
     left: 50% !important;
     right: auto !important;
     transform: translateX(-50%) !important;
-    width: min(1260px, calc(100vw - 56px)) !important;
-    max-width: min(1260px, calc(100vw - 56px)) !important;
+    width: max-content !important;
+    max-width: calc(100vw - 56px) !important;
     min-height: var(--desktop-navbar-height) !important;
     margin: 0 !important;
-    padding: 0.48rem 1rem !important;
+    padding: 0.46rem 0.95rem !important;
     z-index: 2600 !important;
+    border-radius: 28px !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  :root:not([data-theme='dark']) .navbar-container,
+  :root:not([data-theme='dark']) .navbar-container.glass-panel {
+    background: linear-gradient(145deg, rgba(255,255,255,.82), rgba(242,247,255,.62)) !important;
+    border-color: rgba(166, 177, 218, .44) !important;
+    box-shadow: 0 18px 52px rgba(70, 86, 135, .16), 0 4px 16px rgba(80, 88, 130, .08), inset 0 1px 0 rgba(255,255,255,.86) !important;
+    color: #171b2f !important;
+    backdrop-filter: blur(24px) saturate(165%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(165%) !important;
+  }
+
+  html[data-theme='dark'] .navbar-container,
+  body[data-theme='dark'] .navbar-container,
+  body.dark .navbar-container {
+    background: radial-gradient(circle at var(--rx, 50%) 0%, rgba(224,64,251,.12), transparent 42%), linear-gradient(145deg, rgba(24,30,50,.78), rgba(14,18,32,.58)) !important;
+    border-color: rgba(130, 170, 240, .20) !important;
+    box-shadow: 0 18px 52px rgba(0, 0, 0, .38), 0 4px 16px rgba(8, 12, 48, .24), inset 0 1px 0 rgba(255,255,255,.12) !important;
   }
 
   .navbar-content {
-    min-height: 42px !important;
-    gap: 0.85rem !important;
+    min-height: 40px !important;
+    gap: 0.72rem !important;
+    width: max-content !important;
+    max-width: calc(100vw - 96px) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: visible !important;
   }
 
+  .navbar-logo { flex: 0 0 auto !important; }
+
   .navbar-logo-img {
-    max-height: 36px !important;
+    max-height: 34px !important;
     width: auto !important;
+    display: block !important;
+  }
+
+  .nav-links {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.12rem !important;
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    overflow: visible !important;
   }
 
   .nav-link,
-  button.nav-tema-toggle {
+  button.nav-tema-toggle,
+  .nav-settings {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     min-height: 38px !important;
-    padding-top: 0.42rem !important;
-    padding-bottom: 0.42rem !important;
+    padding: 0.42rem 0.62rem !important;
+    color: var(--text-muted) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    white-space: nowrap !important;
   }
 
-  .app-container {
-    padding-top: var(--desktop-page-top-clearance) !important;
+  :root:not([data-theme='dark']) .nav-link,
+  :root:not([data-theme='dark']) button.nav-tema-toggle,
+  :root:not([data-theme='dark']) .nav-settings {
+    color: rgba(29, 35, 59, .68) !important;
   }
 
-  .main-content {
-    padding-top: 0 !important;
+  :root:not([data-theme='dark']) .nav-link:hover,
+  :root:not([data-theme='dark']) .nav-link.active,
+  :root:not([data-theme='dark']) button.nav-tema-toggle:hover,
+  :root:not([data-theme='dark']) .nav-settings:hover {
+    color: #171b2f !important;
   }
 
+  html[data-theme='dark'] .nav-link,
+  body[data-theme='dark'] .nav-link,
+  body.dark .nav-link,
+  html[data-theme='dark'] button.nav-tema-toggle,
+  body[data-theme='dark'] button.nav-tema-toggle,
+  body.dark button.nav-tema-toggle,
+  html[data-theme='dark'] .nav-settings,
+  body[data-theme='dark'] .nav-settings,
+  body.dark .nav-settings {
+    color: rgba(244,240,250,.72) !important;
+  }
+
+  html[data-theme='dark'] .nav-link:hover,
+  html[data-theme='dark'] .nav-link.active,
+  html[data-theme='dark'] button.nav-tema-toggle:hover,
+  html[data-theme='dark'] .nav-settings:hover,
+  body[data-theme='dark'] .nav-link:hover,
+  body[data-theme='dark'] .nav-link.active,
+  body[data-theme='dark'] button.nav-tema-toggle:hover,
+  body[data-theme='dark'] .nav-settings:hover,
+  body.dark .nav-link:hover,
+  body.dark .nav-link.active,
+  body.dark button.nav-tema-toggle:hover,
+  body.dark .nav-settings:hover {
+    color: #fff !important;
+  }
+
+  .liquid-nav-pill,
+  .active-pill {
+    border-radius: 18px !important;
+    pointer-events: none !important;
+  }
+
+  :root:not([data-theme='dark']) .liquid-nav-pill,
+  :root:not([data-theme='dark']) .active-pill {
+    background: rgba(255,255,255,.62) !important;
+    border: 1px solid rgba(167, 178, 218, .46) !important;
+    box-shadow: 0 8px 22px rgba(70, 86, 135, .13), inset 0 1px 0 rgba(255,255,255,.92) !important;
+  }
+
+  .app-container { padding-top: var(--desktop-page-top-clearance) !important; }
+  .main-content { padding-top: 0 !important; }
   .header.hero-section,
   .hero-section,
-  .hero-section-safe {
-    margin-top: 0 !important;
-  }
+  .hero-section-safe { margin-top: 0 !important; }
 
   body.reactive-ready .navbar-container,
   body.reactive-ready.motion-sensors-active .navbar-container,
@@ -63,11 +155,13 @@
 
 @media (min-width: 1440px) {
   .navbar-container,
-  .navbar-container.glass-panel {
-    top: 12px !important;
-  }
+  .navbar-container.glass-panel { top: 12px !important; }
+  .app-container { padding-top: 80px !important; }
+}
 
-  .app-container {
-    padding-top: 74px !important;
-  }
+@media (min-width: 1024px) and (max-width: 1220px) {
+  .nav-label { font-size: 0.78rem !important; }
+  .nav-link,
+  button.nav-tema-toggle,
+  .nav-settings { padding-inline: 0.48rem !important; }
 }
