@@ -22,6 +22,7 @@ import './navbar-glow-contour-fix.css'
 import './light-mobile-final-fix.css'
 import './ikigai-light-readability-final.css'
 import './mobile-input-nozoom.css'
+import './liquid-glass-v2.css'
 import App from './App.jsx'
 
 if ('serviceWorker' in navigator) {
