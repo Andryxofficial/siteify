@@ -1,0 +1,55 @@
+/* Navbar ghost contour fix
+   La navbar deve avere effetto glass/reactive, ma NON deve ereditare
+   i bordi/overlay delle card che creano il rettangolo fantasma sotto. */
+
+@media (min-width: 1024px) {
+  .navbar-container,
+  .navbar-container.glass-panel {
+    overflow: hidden !important;
+    contain: paint !important;
+    isolation: isolate !important;
+  }
+
+  .navbar-container::before,
+  .navbar-container::after,
+  .navbar-container.glass-panel::before,
+  .navbar-container.glass-panel::after {
+    content: none !important;
+    display: none !important;
+    opacity: 0 !important;
+    background: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .navbar-container .navbar-content {
+    position: relative !important;
+    z-index: 2 !important;
+  }
+
+  .navbar-container .liquid-nav-pill,
+  .navbar-container .active-pill {
+    z-index: 0 !important;
+  }
+
+  /* Il glow resta percepibile dentro i controlli, ma non disegna il guscio esterno. */
+  :root[data-theme='light'] .navbar-container,
+  :root[data-theme='light'] .navbar-container.glass-panel {
+    background:
+      radial-gradient(circle at var(--rx, 50%) 0%, rgba(255,255,255,.42), transparent 30%),
+      radial-gradient(circle at calc(100% - var(--rx, 50%)) 100%, rgba(0,229,255,.075), transparent 34%),
+      linear-gradient(145deg, rgba(255,255,255,.82), rgba(242,247,255,.62)) !important;
+    border-color: rgba(166, 177, 218, .44) !important;
+  }
+
+  :root[data-theme='dark'] .navbar-container,
+  :root[data-theme='dark'] .navbar-container.glass-panel,
+  body.dark .navbar-container,
+  body.dark .navbar-container.glass-panel {
+    background:
+      radial-gradient(circle at var(--rx, 50%) 0%, rgba(224,64,251,.13), transparent 30%),
+      radial-gradient(circle at calc(100% - var(--rx, 50%)) 100%, rgba(0,229,255,.075), transparent 34%),
+      linear-gradient(145deg, rgba(24,30,50,.78), rgba(14,18,32,.60)) !important;
+    border-color: rgba(130, 170, 240, .22) !important;
+  }
+}
