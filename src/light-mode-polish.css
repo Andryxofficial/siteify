@@ -1,4 +1,4 @@
-/* Light mode polish: glass più pulito, leggibile e meno “rotto” su mobile/PWA. */
+/* Light mode polish: glass pulito e leggibile senza rompere la navbar desktop. */
 
 :root:not([data-theme='dark']) {
   --alg-light-panel: linear-gradient(145deg, rgba(255,255,255,.78), rgba(245,248,255,.54));
@@ -12,15 +12,25 @@
 :root:not([data-theme='dark']) .mobile-profile-menu,
 :root:not([data-theme='dark']) .mobile-tab-bar,
 :root:not([data-theme='dark']) .ikigai-fab,
-:root:not([data-theme='dark']) .ikigai-panel,
-:root:not([data-theme='dark']) .navbar-container,
-:root:not([data-theme='dark']) .navbar {
+:root:not([data-theme='dark']) .ikigai-panel {
   background: var(--alg-light-control) !important;
   border-color: color-mix(in srgb, var(--primary) 16%, var(--alg-light-border)) !important;
   box-shadow: var(--alg-light-shadow), inset 0 1px 0 rgba(255,255,255,.82) !important;
   color: #171b2f !important;
   backdrop-filter: blur(24px) saturate(165%) !important;
   -webkit-backdrop-filter: blur(24px) saturate(165%) !important;
+}
+
+@media (max-width: 1023px) {
+  :root:not([data-theme='dark']) .navbar-container,
+  :root:not([data-theme='dark']) .navbar {
+    background: var(--alg-light-control) !important;
+    border-color: color-mix(in srgb, var(--primary) 16%, var(--alg-light-border)) !important;
+    box-shadow: var(--alg-light-shadow), inset 0 1px 0 rgba(255,255,255,.82) !important;
+    color: #171b2f !important;
+    backdrop-filter: blur(24px) saturate(165%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(165%) !important;
+  }
 }
 
 :root:not([data-theme='dark']) .mobile-profile-menu,
@@ -48,7 +58,6 @@
 :root:not([data-theme='dark']) .mobile-profile-menu .danger,
 :root:not([data-theme='dark']) .mobile-tab-bar .tab-label,
 :root:not([data-theme='dark']) .mobile-tab-bar .tab-icon,
-:root:not([data-theme='dark']) .navbar-container .nav-link,
 :root:not([data-theme='dark']) .ikigai-panel,
 :root:not([data-theme='dark']) .ikigai-panel * {
   text-shadow: none !important;
