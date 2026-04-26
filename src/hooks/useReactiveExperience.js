@@ -10,6 +10,54 @@ const COPY_FIXES = new Map([
   ['Sistema Nervoso', 'Notifiche'],
 ]);
 
+const COPY_FIXES_BY_LANG = {
+  it: new Map([
+    ['Vedi profilo', 'Vedi profilo'],
+    ['Impostazioni', 'Impostazioni'],
+    ['Logout', 'Esci'],
+    ['Tema: Amanecer/Atardecer (según la hora)', 'Tema: Alba/Tramonto'],
+  ]),
+  en: new Map([
+    ['Vedi profilo', 'View profile'],
+    ['Impostazioni', 'Settings'],
+    ['Esci', 'Log out'],
+    ['Tema: Chiaro', 'Theme: Light'],
+    ['Tema: Scuro', 'Theme: Dark'],
+    ['Tema: Auto', 'Theme: Auto'],
+    ['Tema: Alba/Tramonto', 'Theme: Sunrise/Sunset'],
+    ['Tema: Alba/Tramonto (in base all\'ora)', 'Theme: Sunrise/Sunset'],
+    ['Tema: Amanecer/Atardecer (según la hora)', 'Theme: Sunrise/Sunset'],
+  ]),
+  es: new Map([
+    ['Vedi profilo', 'Ver perfil'],
+    ['Impostazioni', 'Ajustes'],
+    ['Esci', 'Cerrar sesión'],
+    ['Logout', 'Cerrar sesión'],
+    ['Tema: Chiaro', 'Tema: Claro'],
+    ['Tema: Scuro', 'Tema: Oscuro'],
+    ['Tema: Auto', 'Tema: Auto'],
+    ['Tema: Alba/Tramonto', 'Tema: Amanecer/Atardecer'],
+    ['Tema: Alba/Tramonto (in base all\'ora)', 'Tema: Amanecer/Atardecer'],
+    ['Tema: Amanecer/Atardecer (según la hora)', 'Tema: Amanecer/Atardecer'],
+  ]),
+};
+
+function linguaCorrente() {
+  if (typeof document === 'undefined') return 'it';
+  const lang = document.documentElement.getAttribute('lang') || 'it';
+  if (lang.startsWith('en')) return 'en';
+  if (lang.startsWith('es')) return 'es';
+  return 'it';
+}
+
+function applicaCopyFixes(testo = '') {
+  let prossimo = String(testo || '');
+  for (const [brutto, pulito] of COPY_FIXES.entries()) prossimo = prossimo.replaceAll(brutto, pulito);
+  const langMap = COPY_FIXES_BY_LANG[linguaCorrente()] || COPY_FIXES_BY_LANG.it;
+  for (const [brutto, pulito] of langMap.entries()) prossimo = prossimo.replaceAll(brutto, pulito);
+  return prossimo;
+}
+
 function prefersReducedMotion() {
   if (typeof window === 'undefined') return true;
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -31,10 +79,7 @@ function sistemaCopyProfessionale(root = document.body) {
   for (const node of nodes) {
     const testo = node.nodeValue;
     if (!testo) continue;
-    let prossimo = testo;
-    for (const [brutto, pulito] of COPY_FIXES.entries()) {
-      if (prossimo.includes(brutto)) prossimo = prossimo.replaceAll(brutto, pulito);
-    }
+    const prossimo = applicaCopyFixes(testo);
     if (prossimo !== testo) node.nodeValue = prossimo;
   }
 }
@@ -72,13 +117,15 @@ export default function useReactiveExperience() {
     setVar('--rx-depth', '0');
 
     sistemaCopyProfessionale();
+    const langObserver = new MutationObserver(() => sistemaCopyProfessionale());
+    langObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+
     const copyObserver = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         if (mutation.type === 'childList') {
           mutation.addedNodes.forEach(node => {
             if (node.nodeType === Node.TEXT_NODE) {
-              let prossimo = node.nodeValue || '';
-              for (const [brutto, pulito] of COPY_FIXES.entries()) prossimo = prossimo.replaceAll(brutto, pulito);
+              const prossimo = applicaCopyFixes(node.nodeValue || '');
               if (prossimo !== node.nodeValue) node.nodeValue = prossimo;
             } else if (node.nodeType === Node.ELEMENT_NODE) {
               sistemaCopyProfessionale(node);
@@ -86,8 +133,7 @@ export default function useReactiveExperience() {
           });
         } else if (mutation.type === 'characterData') {
           const node = mutation.target;
-          let prossimo = node.nodeValue || '';
-          for (const [brutto, pulito] of COPY_FIXES.entries()) prossimo = prossimo.replaceAll(brutto, pulito);
+          const prossimo = applicaCopyFixes(node.nodeValue || '');
           if (prossimo !== node.nodeValue) node.nodeValue = prossimo;
         }
       }
@@ -228,6 +274,7 @@ export default function useReactiveExperience() {
       clearTimeout(idleTimer);
       clearTimeout(onScroll.timer);
       copyObserver.disconnect();
+      langObserver.disconnect();
       body.classList.remove('reactive-ready', 'app-grade-ui', 'user-active', 'interactive-hover', 'pointer-pressing', 'touch-active', 'is-scrolling', 'motion-sensors-active');
       delete body.dataset.scrollDir;
       window.removeEventListener('pointermove', onPointerMove);
