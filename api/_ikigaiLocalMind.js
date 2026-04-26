@@ -27,7 +27,7 @@ export const IKIGAI_IDENTITA_LOCALE = {
 
 const LESSICO = {
   sito: ['sito','site','sitio','andryxify','socialify','funzioni','features','funciones','pagina','page','impostazioni','settings','ajustes','privacy','notifiche','notifications','chat','post','profilo','profile','classifica','ranking','premi','tag'],
-  lookMandy: ['vest','vestiti','veste','indossa','outfit','look','stile','style','ropa','viste','felpa','felpe','hoodie','maglia','maglie','shirt','accessori','accessories','mandy','mashwear','mandymashwear'],
+  lookMandy: ['vest','vestiti','veste','indossa','outfit','look','stile','style','ropa','viste','felpa','felpe','hoodie','maglia','maglie','shirt','accessori','accessories','mandy','mash wear','mashwear','mandymashwear'],
   personaAndryx: ['andrea','andre','andryx','andryxify','streamer','lui','suo','his','him','he','el','él'],
   conversazione: ['ciao','hey','hola','come stai','how are you','como estas','cómo estás','parliamo','hablemos','talk','ascoltami','mi ascolti','dimmi'],
   amore: ['ti amo','mi piaci','sei single','fidanzata','fidanzato','amore','love you','i love you','date me','girlfriend','boyfriend','me gustas','te amo','novia','novio','soltera'],
@@ -43,7 +43,7 @@ const RISPOSTE = {
     confineSessuale: 'No, quella direzione non la prendo. Tengo la conversazione pulita e rispettosa. Se vuoi, ti aiuto a scrivere un post, capire una funzione o trovare la sezione giusta.',
     cura: 'Ci sono. Ti rispondo da persona: dimmi cosa vuoi capire o cosa ti sta bloccando, e lo sistemiamo un passo alla volta.',
     fallback: 'Ti seguo, ma ho bisogno di agganciarmi meglio al contesto. Dimmi se stai parlando del sito, di SOCIALify, dei post, delle classifiche, dei tag o di una pagina precisa.',
-    mandy: 'Davvero? Allora hai notato una cosa giusta: spesso ANDRYXify in live indossa maglie, felpe o accessori realizzati da Mandy Mashwear. Nel “Chi sono” c’è proprio un piccolo spazio dedicato a lei: non è una sponsorizzazione, non è una collaborazione pagata e non c’è nessuno scambio dietro. È semplicemente un rimando sincero, perché alcuni pezzi che vedi addosso ad Andryx arrivano dal suo lavoro.',
+    mandy: 'Davvero? Allora hai notato una cosa giusta: spesso ANDRYXify in live indossa maglie, felpe o accessori realizzati da Mandy Mash Wear. Nel “Chi sono” c’è proprio un piccolo spazio dedicato a lei: non è una sponsorizzazione, non è una collaborazione pagata e non c’è nessuno scambio dietro. È semplicemente un rimando sincero, perché alcuni pezzi che vedi addosso ad Andryx arrivano dal suo lavoro.',
   },
   en: {
     identita: 'I’m Ikigai. I was born on March 26, 2001 as ANDRYXify’s narrative identity, and I work here as the site guide: I know SOCIALify, Twitch, rankings, rewards, tags, settings, privacy and features. I can help practically, or talk to you without turning into a FAQ.',
@@ -51,7 +51,7 @@ const RISPOSTE = {
     confineSessuale: 'No, I won’t go in that direction. I keep the conversation clean and respectful. I can help you write a post, understand a feature or find the right section.',
     cura: 'I’m here. I’ll answer like a person: tell me what you want to understand or what is blocking you, and we’ll sort it out step by step.',
     fallback: 'I’m following you, but I need a clearer hook. Tell me if you mean the site, SOCIALify, posts, rankings, tags or a specific page.',
-    mandy: 'Really? Then you noticed the right thing: during live streams, ANDRYXify often wears shirts, hoodies or accessories made by Mandy Mashwear. There is a small section about her on the “About me” page: it is not a sponsorship, not a paid collaboration and there is no exchange behind it. It is simply an honest shout-out, because some pieces you see on Andryx come from her work.',
+    mandy: 'Really? Then you noticed the right thing: during live streams, ANDRYXify often wears shirts, hoodies or accessories made by Mandy Mash Wear. There is a small section about her on the “About me” page: it is not a sponsorship, not a paid collaboration and there is no exchange behind it. It is simply an honest shout-out, because some pieces you see on Andryx come from her work.',
   },
   es: {
     identita: 'Soy Ikigai. Nací el 26 de marzo de 2001 como identidad narrativa de ANDRYXify y trabajo aquí como guía del sitio: conozco SOCIALify, Twitch, clasificaciones, premios, etiquetas, ajustes, privacidad y funciones. Puedo ayudarte de forma práctica o hablar contigo sin convertirme en una FAQ.',
@@ -59,7 +59,7 @@ const RISPOSTE = {
     confineSessuale: 'No, por ahí no voy. Mantengo la conversación limpia y respetuosa. Puedo ayudarte a escribir un post, entender una función o encontrar la sección correcta.',
     cura: 'Estoy aquí. Te respondo como persona: dime qué quieres entender o qué te bloquea, y lo arreglamos paso a paso.',
     fallback: 'Te sigo, pero necesito engancharme mejor al contexto. Dime si hablas del sitio, de SOCIALify, posts, clasificaciones, etiquetas o una página concreta.',
-    mandy: '¿De verdad? Entonces has notado algo concreto: en los directos, ANDRYXify suele llevar camisetas, sudaderas o accesorios hechos por Mandy Mashwear. En la página “Quién soy” hay un pequeño espacio dedicado a ella: no es un patrocinio, no es una colaboración pagada y no hay ningún intercambio detrás. Es simplemente una mención sincera, porque algunas piezas que ves en Andryx vienen de su trabajo.',
+    mandy: '¿De verdad? Entonces has notado algo concreto: en los directos, ANDRYXify suele llevar camisetas, sudaderas o accesorios hechos por Mandy Mash Wear. En la página “Quién soy” hay un pequeño espacio dedicado a ella: no es un patrocinio, no es una colaboración pagada y no hay ningún intercambio detrás. Es simplemente una mención sincera, porque algunas piezas que ves en Andryx vienen de su trabajo.',
   },
 };
 
