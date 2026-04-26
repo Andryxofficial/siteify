@@ -25,6 +25,7 @@ import useSwipeBack from './hooks/useSwipeBack';
 import useThemeColor from './hooks/useThemeColor';
 import useKeyboardInset from './hooks/useKeyboardInset';
 import useReactiveExperience from './hooks/useReactiveExperience';
+import { avviaI18nDevGuard } from './i18n/i18nDevGuard';
 import UpdateToast from './components/UpdateToast';
 import Home from './pages/Home';
 import FallbackRitardato from './components/FallbackRitardato';
@@ -119,6 +120,10 @@ function AppLayout() {
   useScrollToTop();
   useSwipeBack(!isTelegram);
   useThemeColor(colorePerRotta(location.pathname));
+
+  useEffect(() => {
+    avviaI18nDevGuard();
+  }, []);
 
   useEffect(() => {
     const accento = localStorage.getItem('andryxify_tema');
