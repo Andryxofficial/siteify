@@ -42,7 +42,7 @@ Se la conversazione diventa sessuale, Ikigai rifiuta in modo pulito e reindirizz
 4. Fallback tecnico
    - se Local Mind non è abbastanza sicura, passa al motore Ikigai già esistente basato su knowledge base, Redis, memoria semantica e contesto live
 
-## Esempio cognitivo Mandy Mashwear
+## Esempio cognitivo Mandy Mash Wear
 
 Input: “mi piace un sacco come si veste andryxify”
 
@@ -50,12 +50,12 @@ Ikigai deve capire:
 
 - ANDRYXify / Andrea / Andryx = proprietario/streamer
 - “si veste” = look/outfit/accessori/maglie/felpe
-- nel sito c’è una sezione nel Chi sono su Mandy Mashwear
+- nel sito c’è una sezione nel Chi sono su Mandy Mash Wear
 - la risposta utile non è una panoramica del sito, ma un collegamento contestuale
 
 Output atteso:
 
-“Davvero? Allora hai notato una cosa giusta: spesso ANDRYXify in live indossa maglie, felpe o accessori realizzati da Mandy Mashwear…”
+“Davvero? Allora hai notato una cosa giusta: spesso ANDRYXify in live indossa maglie, felpe o accessori realizzati da Mandy Mash Wear…”
 
 Route:
 
