@@ -1,0 +1,70 @@
+/* Ikigai FAB Safe Position
+   Regola finale anti-sovrapposizione: il FAB non deve mai stare sopra un tab della navbar.
+   Va sempre sopra la bottom navigation, con spazio visivo e hit-area libera. */
+
+:root {
+  --mobile-nav-real-h: 90px;
+  --ikigai-fab-gap: 14px;
+  --ikigai-fab-size: 58px;
+}
+
+@media (max-width: 820px) {
+  body:not(.ikigai-open) .ikigai-fab,
+  body.ikigai-mounted:not(.ikigai-open) .ikigai-fab {
+    position: fixed !important;
+    display: grid !important;
+    place-items: center !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    z-index: 3400 !important;
+    width: var(--ikigai-fab-size) !important;
+    height: var(--ikigai-fab-size) !important;
+    min-width: var(--ikigai-fab-size) !important;
+    min-height: var(--ikigai-fab-size) !important;
+    right: max(1rem, env(safe-area-inset-right, 0px) + 1rem) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--mobile-nav-real-h) + var(--ikigai-fab-gap)) !important;
+    border-radius: 20px !important;
+    transform: translate3d(0, 0, 0) !important;
+    contain: none !important;
+    overflow: visible !important;
+  }
+
+  body:not(.ikigai-open) .ikigai-fab::before,
+  body.ikigai-mounted:not(.ikigai-open) .ikigai-fab::before {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    border-radius: 26px;
+    pointer-events: none;
+  }
+
+  body:not(.ikigai-open).keyboard-open .ikigai-fab,
+  body.ikigai-mounted:not(.ikigai-open).keyboard-open .ikigai-fab {
+    bottom: calc(var(--keyboard-inset, 0px) + env(safe-area-inset-bottom, 0px) + 1rem) !important;
+  }
+
+  body.ikigai-open .ikigai-fab {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  .ikigai-agency-toast {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--mobile-nav-real-h) + var(--ikigai-fab-size) + 24px) !important;
+  }
+
+  body.ikigai-open .ikigai-agency-toast,
+  body.keyboard-open .ikigai-agency-toast {
+    display: none !important;
+  }
+}
+
+@media (max-width: 390px) {
+  :root {
+    --mobile-nav-real-h: 86px;
+    --ikigai-fab-gap: 12px;
+    --ikigai-fab-size: 56px;
+  }
+}
