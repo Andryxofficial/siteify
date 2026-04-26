@@ -1,0 +1,73 @@
+/* Desktop navbar position fix
+   Tiene la navbar desktop alta e coerente senza toccare mobile/PWA. */
+
+@media (min-width: 1024px) {
+  :root {
+    --desktop-navbar-top: 14px;
+    --desktop-navbar-height: 56px;
+    --desktop-page-top-clearance: 78px;
+  }
+
+  .navbar-container,
+  .navbar-container.glass-panel {
+    position: fixed !important;
+    top: var(--desktop-navbar-top) !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: min(1260px, calc(100vw - 56px)) !important;
+    max-width: min(1260px, calc(100vw - 56px)) !important;
+    min-height: var(--desktop-navbar-height) !important;
+    margin: 0 !important;
+    padding: 0.48rem 1rem !important;
+    z-index: 2600 !important;
+  }
+
+  .navbar-content {
+    min-height: 42px !important;
+    gap: 0.85rem !important;
+  }
+
+  .navbar-logo-img {
+    max-height: 36px !important;
+    width: auto !important;
+  }
+
+  .nav-link,
+  button.nav-tema-toggle {
+    min-height: 38px !important;
+    padding-top: 0.42rem !important;
+    padding-bottom: 0.42rem !important;
+  }
+
+  .app-container {
+    padding-top: var(--desktop-page-top-clearance) !important;
+  }
+
+  .main-content {
+    padding-top: 0 !important;
+  }
+
+  .header.hero-section,
+  .hero-section,
+  .hero-section-safe {
+    margin-top: 0 !important;
+  }
+
+  body.reactive-ready .navbar-container,
+  body.reactive-ready.motion-sensors-active .navbar-container,
+  .app-grade-ui .navbar-container {
+    transform: translateX(-50%) !important;
+  }
+}
+
+@media (min-width: 1440px) {
+  .navbar-container,
+  .navbar-container.glass-panel {
+    top: 12px !important;
+  }
+
+  .app-container {
+    padding-top: 74px !important;
+  }
+}
