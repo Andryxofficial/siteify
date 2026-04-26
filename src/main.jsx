@@ -27,6 +27,7 @@ import './mobile-experience-v2.css'
 import './ikigai-mobile-morph.css'
 import './ikigai-agency.css'
 import './geometric-liquid-glass.css'
+import './home-geometric-mobile.css'
 import App from './App.jsx'
 
 if ('serviceWorker' in navigator) {
