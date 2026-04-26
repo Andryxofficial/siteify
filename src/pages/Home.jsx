@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Twitch, Sparkles, Zap, Brain, Gamepad2,
@@ -37,10 +37,49 @@ function twitchParent() {
   return window.location.hostname || 'andryxify.it';
 }
 
+function rispostaIndicaLive(testo) {
+  const v = String(testo || '').trim().toLowerCase();
+  if (!v) return false;
+  return !(
+    v.includes('offline') ||
+    v.includes('not live') ||
+    v.includes('is not streaming') ||
+    v.includes('not streaming') ||
+    v.includes('channel does not exist') ||
+    v.includes('error')
+  );
+}
+
 export default function Home() {
-  const [liveState] = useState(0); // niente polling esterno automatico: solo embed visivo
+  const [liveState, setLiveState] = useState(null);
   const { t } = useLingua();
   const toast = useToast();
+
+  useEffect(() => {
+    let annullato = false;
+    let timer = 0;
+
+    const controllaLive = async () => {
+      try {
+        const res = await fetch(`https://decapi.me/twitch/uptime/andryxify?t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: { accept: 'text/plain' },
+        });
+        const testo = await res.text();
+        if (!annullato) setLiveState(rispostaIndicaLive(testo) ? 1 : 0);
+      } catch {
+        if (!annullato) setLiveState(null);
+      }
+    };
+
+    controllaLive();
+    timer = window.setInterval(controllaLive, 60_000);
+
+    return () => {
+      annullato = true;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   const onCondividi = async () => {
     hapticLight();
@@ -115,9 +154,11 @@ export default function Home() {
           <Twitch size={20} color="#9146FF" />
           <h2 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700, fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>{t('home.live.titolo')}</h2>
           <div style={{ marginLeft: 'auto' }}>
-            {liveState > 0
+            {liveState === 1
               ? <span className="chip chip-live"><span className="chip-live-dot" /> {t('home.live.live_ora')}</span>
-              : <span className="chip chip-offline">{t('home.live.offline')}</span>
+              : liveState === 0
+                ? <span className="chip chip-offline">{t('home.live.offline')}</span>
+                : <span className="chip chip-offline">TWITCH</span>
             }
           </div>
         </div>
