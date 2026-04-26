@@ -1,0 +1,228 @@
+/* ANDRYXify Responsive Blueprint Reset
+   Breakpoint netti:
+   - desktop/tablet >= 768px: navbar alta, contenuto centrato largo
+   - mobile <= 767px: bottom navbar fissa in basso, contenuto pieno
+*/
+
+* { box-sizing: border-box; }
+
+html,
+body,
+#root,
+.app-container {
+  width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+@media (min-width: 768px) {
+  .mobile-tab-bar,
+  .mobile-topbar,
+  .mobile-profile-trigger,
+  .mobile-profile-menu {
+    display: none !important;
+  }
+
+  .navbar-container {
+    display: flex !important;
+    position: sticky !important;
+    top: max(14px, env(safe-area-inset-top, 0px)) !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: min(1240px, calc(100vw - 72px)) !important;
+    max-width: min(1240px, calc(100vw - 72px)) !important;
+    margin: 0 auto !important;
+    transform: none !important;
+    z-index: 3000 !important;
+  }
+
+  .navbar-content {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .navbar-logo {
+    flex: 0 0 auto !important;
+    width: 86px !important;
+    min-width: 86px !important;
+  }
+
+  .navbar-logo-img {
+    width: 72px !important;
+    max-width: 72px !important;
+    height: auto !important;
+    object-fit: contain !important;
+  }
+
+  .nav-links {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    overflow: hidden !important;
+  }
+
+  .nav-link {
+    min-width: 0 !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 0 11px !important;
+    border-radius: 17px !important;
+    white-space: nowrap !important;
+  }
+
+  .nav-label {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .main-content,
+  .page-content,
+  .home-flow,
+  .socialify-page,
+  .community-page,
+  .settings-page {
+    width: min(1180px, calc(100vw - 96px)) !important;
+    max-width: min(1180px, calc(100vw - 96px)) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    transform: none !important;
+  }
+
+  .glass-panel,
+  .hero-section,
+  .hero-section-safe,
+  .social-card,
+  .post-card,
+  .social-scheda-post,
+  .socialify-panel,
+  .community-layout,
+  .feed-layout {
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    transform: none !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1100px) {
+  .navbar-container {
+    width: min(980px, calc(100vw - 32px)) !important;
+    max-width: min(980px, calc(100vw - 32px)) !important;
+  }
+
+  .nav-link {
+    padding: 0 8px !important;
+    font-size: .82rem !important;
+  }
+
+  .navbar-logo {
+    width: 76px !important;
+    min-width: 76px !important;
+  }
+
+  .navbar-logo-img {
+    width: 64px !important;
+    max-width: 64px !important;
+  }
+
+  .main-content,
+  .page-content,
+  .home-flow,
+  .socialify-page,
+  .community-page,
+  .settings-page {
+    width: min(940px, calc(100vw - 36px)) !important;
+    max-width: min(940px, calc(100vw - 36px)) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .navbar-container {
+    display: none !important;
+  }
+
+  .mobile-topbar {
+    display: flex !important;
+  }
+
+  .mobile-tab-bar {
+    display: block !important;
+    position: fixed !important;
+    left: max(14px, env(safe-area-inset-left, 0px) + 14px) !important;
+    right: max(14px, env(safe-area-inset-right, 0px) + 14px) !important;
+    bottom: max(12px, env(safe-area-inset-bottom, 0px) + 10px) !important;
+    top: auto !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    z-index: 3300 !important;
+    transform: none !important;
+  }
+
+  .mobile-tab-items {
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+  }
+
+  .tab-item {
+    min-width: 0 !important;
+  }
+
+  .main-content,
+  .page-content,
+  .home-flow,
+  .socialify-page,
+  .community-page,
+  .settings-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: clamp(16px, 4vw, 22px) !important;
+    padding-right: clamp(16px, 4vw, 22px) !important;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+    transform: none !important;
+  }
+
+  .glass-panel,
+  .hero-section,
+  .hero-section-safe,
+  .social-card,
+  .post-card,
+  .social-scheda-post,
+  .socialify-panel,
+  .community-layout,
+  .feed-layout {
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    transform: none !important;
+  }
+
+  input,
+  textarea,
+  select,
+  [contenteditable='true'] {
+    font-size: 16px !important;
+  }
+
+  body.keyboard-open .mobile-tab-bar,
+  body:has(input:focus) .mobile-tab-bar,
+  body:has(textarea:focus) .mobile-tab-bar,
+  body:has(select:focus) .mobile-tab-bar,
+  body:has([contenteditable='true']:focus) .mobile-tab-bar {
+    display: none !important;
+  }
+}
