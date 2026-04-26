@@ -12,12 +12,18 @@ const COPY_FIXES = new Map([
 
 const COPY_FIXES_BY_LANG = {
   it: new Map([
+    ['settings.tema.label: Alba/Tramonto', 'Tema: Alba/Tramonto'],
+    ['settings.tema.label: Amanecer/Atardecer', 'Tema: Alba/Tramonto'],
+    ['settings.tema.label:', 'Tema:'],
     ['Vedi profilo', 'Vedi profilo'],
     ['Impostazioni', 'Impostazioni'],
     ['Logout', 'Esci'],
     ['Tema: Amanecer/Atardecer (según la hora)', 'Tema: Alba/Tramonto'],
   ]),
   en: new Map([
+    ['settings.tema.label: Alba/Tramonto', 'Theme: Sunrise/Sunset'],
+    ['settings.tema.label: Amanecer/Atardecer', 'Theme: Sunrise/Sunset'],
+    ['settings.tema.label:', 'Theme:'],
     ['Vedi profilo', 'View profile'],
     ['Impostazioni', 'Settings'],
     ['Esci', 'Log out'],
@@ -29,6 +35,9 @@ const COPY_FIXES_BY_LANG = {
     ['Tema: Amanecer/Atardecer (según la hora)', 'Theme: Sunrise/Sunset'],
   ]),
   es: new Map([
+    ['settings.tema.label: Alba/Tramonto', 'Tema: Amanecer/Atardecer'],
+    ['settings.tema.label: Amanecer/Atardecer', 'Tema: Amanecer/Atardecer'],
+    ['settings.tema.label:', 'Tema:'],
     ['Vedi profilo', 'Ver perfil'],
     ['Impostazioni', 'Ajustes'],
     ['Esci', 'Cerrar sesión'],
@@ -245,9 +254,7 @@ export default function useReactiveExperience() {
           if (ok !== 'granted') return;
         }
         window.addEventListener('devicemotion', onDeviceMotion, { passive: true });
-      } catch {
-        // Sensori non disponibili o permesso negato: si prosegue senza.
-      }
+      } catch {}
     };
 
     const onFirstGesture = () => {
