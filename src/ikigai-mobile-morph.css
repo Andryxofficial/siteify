@@ -2,8 +2,15 @@
    Su mobile il tasto Ikigai non resta separato: quando aperto diventa il close button della box.
    Lo stato chiuso è blindato perché alcuni layer mobile/PWA possono riposizionarlo dopo load. */
 
+.ikigai-mounted .ikigai-fab {
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
 @media (max-width: 820px) {
-  body:not(.ikigai-open) .ikigai-fab {
+  body:not(.ikigai-open) .ikigai-fab,
+  body.ikigai-mounted:not(.ikigai-open) .ikigai-fab {
     position: fixed !important;
     display: grid !important;
     place-items: center !important;
@@ -23,7 +30,8 @@
     overflow: visible !important;
   }
 
-  body:not(.ikigai-open).keyboard-open .ikigai-fab {
+  body:not(.ikigai-open).keyboard-open .ikigai-fab,
+  body.ikigai-mounted:not(.ikigai-open).keyboard-open .ikigai-fab {
     bottom: calc(var(--keyboard-inset, 0px) + env(safe-area-inset-bottom, 0px) + 1rem) !important;
   }
 
