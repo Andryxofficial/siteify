@@ -8,6 +8,19 @@
   pointer-events: auto !important;
 }
 
+.ikigai-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  opacity: 1 !important;
+  z-index: 3190 !important;
+  cursor: default !important;
+  pointer-events: auto !important;
+}
+
 @media (max-width: 820px) {
   body:not(.ikigai-open) .ikigai-fab,
   body.ikigai-mounted:not(.ikigai-open) .ikigai-fab {
@@ -45,7 +58,6 @@
     z-index: 3200 !important;
   }
 
-  /* Quando la box è aperta, il FAB sparisce davvero: niente tasto volante fuori posizione. */
   body.ikigai-open .ikigai-fab {
     display: none !important;
     visibility: hidden !important;
@@ -53,7 +65,6 @@
     pointer-events: none !important;
   }
 
-  /* La chiusura è quella interna della card. */
   body.ikigai-open .ikigai-head {
     padding-right: 3.6rem !important;
   }
