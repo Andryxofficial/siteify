@@ -48,6 +48,11 @@ export default function IkigaiHelper() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    document.body.classList.add('ikigai-mounted');
+    return () => document.body.classList.remove('ikigai-mounted', 'ikigai-open');
+  }, []);
+
+  useEffect(() => {
     document.body.classList.toggle('ikigai-open', open);
     return () => document.body.classList.remove('ikigai-open');
   }, [open]);
