@@ -48,6 +48,11 @@ export default function IkigaiHelper() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    document.body.classList.toggle('ikigai-open', open);
+    return () => document.body.classList.remove('ikigai-open');
+  }, [open]);
+
+  useEffect(() => {
     setMessages(prev => {
       if (prev.length > 1) return prev;
       return [{ role: 'ikigai', text: txt.welcome }];
@@ -101,6 +106,7 @@ export default function IkigaiHelper() {
         onClick={() => setOpen(v => !v)}
         whileTap={{ scale: 0.92 }}
         aria-label={txt.openAria}
+        aria-expanded={open}
       >
         {open ? <X size={22} /> : <Sparkles size={22} />}
       </motion.button>
