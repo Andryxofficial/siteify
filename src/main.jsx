@@ -25,6 +25,7 @@ import './mobile-input-nozoom.css'
 import './liquid-glass-v2.css'
 import './mobile-experience-v2.css'
 import './ikigai-mobile-morph.css'
+import './ikigai-agency.css'
 import App from './App.jsx'
 
 if ('serviceWorker' in navigator) {
