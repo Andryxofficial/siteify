@@ -14,6 +14,7 @@ import './mobile-nav-always.css'
 import './apple-liquid-glass.css'
 import './ikigai-visibility-fix.css'
 import './mobile-profile-hero-fix.css'
+import './light-mode-polish.css'
 import App from './App.jsx'
 
 if ('serviceWorker' in navigator) {
