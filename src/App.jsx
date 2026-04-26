@@ -119,6 +119,11 @@ function AppLayout() {
   useEffect(() => { avviaI18nDevGuard(); }, []);
 
   useEffect(() => {
+    document.body.classList.toggle('pwa-standalone-mode', !!isStandalone);
+    return () => document.body.classList.remove('pwa-standalone-mode');
+  }, [isStandalone]);
+
+  useEffect(() => {
     const accento = localStorage.getItem('andryxify_tema');
     const colori = { default: '#e040fb', magenta: '#ff4081', cyan: '#00e5ff', amber: '#ffb300', emerald: '#4ade80' };
     if (accento && colori[accento]) document.documentElement.style.setProperty('--primary', colori[accento]);
