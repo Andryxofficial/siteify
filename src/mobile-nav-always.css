@@ -1,0 +1,78 @@
+/* Bottom navbar mobile/PWA sempre accessibile.
+   Nota: un parent con transform rompe position: fixed dei figli su mobile.
+   Quindi su mobile disattiviamo il tilt globale dell'app-container e blindiamo la tabbar. */
+
+@media (max-width: 820px) {
+  body.reactive-ready .app-container,
+  body.reactive-ready.motion-sensors-active .app-container,
+  .app-container,
+  .app-container.pwa-standalone,
+  .pwa-standalone.app-container {
+    transform: none !important;
+    perspective: none !important;
+    transform-style: flat !important;
+  }
+
+  .mobile-tab-bar {
+    position: fixed !important;
+    z-index: 2140 !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: none !important;
+    left: calc(var(--vv-left, 0px) + max(10px, env(safe-area-inset-left, 0px))) !important;
+    right: auto !important;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+    width: calc(var(--vv-width, 100vw) - max(20px, env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px) + 20px)) !important;
+    max-width: none !important;
+    height: var(--native-bottom-nav-h, 74px) !important;
+    min-height: var(--native-bottom-nav-h, 74px) !important;
+    contain: layout paint style;
+    will-change: auto !important;
+  }
+
+  body.keyboard-open .mobile-tab-bar,
+  body.cookie-banner-open .mobile-tab-bar,
+  body.reactive-ready.is-scrolling .mobile-tab-bar,
+  body.reactive-ready[data-scroll-dir='down'] .mobile-tab-bar,
+  body.reactive-ready[data-scroll-dir='up'] .mobile-tab-bar {
+    position: fixed !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: none !important;
+  }
+
+  body.keyboard-open .mobile-tab-bar {
+    bottom: calc(var(--keyboard-inset, 0px) + max(8px, env(safe-area-inset-bottom, 0px))) !important;
+  }
+
+  .mobile-tab-items {
+    display: flex !important;
+    width: 100% !important;
+    height: 100% !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  .tab-item {
+    pointer-events: auto !important;
+  }
+
+  .app-container {
+    padding-bottom: calc(var(--native-bottom-nav-h, 74px) + env(safe-area-inset-bottom, 0px) + 22px) !important;
+  }
+
+  body.keyboard-open .app-container {
+    padding-bottom: calc(var(--keyboard-inset, 0px) + var(--native-bottom-nav-h, 74px) + env(safe-area-inset-bottom, 0px) + 18px) !important;
+  }
+}
+
+@media (display-mode: standalone) and (max-width: 820px) {
+  .mobile-tab-bar,
+  body.keyboard-open .mobile-tab-bar {
+    bottom: calc(var(--keyboard-inset, 0px) + max(6px, env(safe-area-inset-bottom, 0px))) !important;
+  }
+}

@@ -1,0 +1,25 @@
+/* Fix finale SOCIALify: le tab Feed/Classifica e i filtri categoria non devono usare
+   il centramento viewport-based dei post, altrimenti la seconda metà viene tagliata. */
+
+@media (min-width: 821px) {
+  body:has(.social-scheda-post) .main-content [class*="tab"],
+  body:has(.social-scheda-post) .main-content [class*="Tab"],
+  body:has(.social-scheda-post) .main-content [class*="filtri"],
+  body:has(.social-scheda-post) .main-content [class*="Filtri"] {
+    position: static !important;
+    left: auto !important;
+    transform: none !important;
+    width: min(1120px, calc(100vw - clamp(2rem, 6vw, 5rem))) !important;
+    max-width: min(1120px, calc(100vw - clamp(2rem, 6vw, 5rem))) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    overflow: visible !important;
+  }
+
+  body:has(.social-scheda-post) .main-content [class*="tab"] > *,
+  body:has(.social-scheda-post) .main-content [class*="Tab"] > *,
+  body:has(.social-scheda-post) .main-content [class*="filtri"] > *,
+  body:has(.social-scheda-post) .main-content [class*="Filtri"] > * {
+    min-width: 0 !important;
+  }
+}

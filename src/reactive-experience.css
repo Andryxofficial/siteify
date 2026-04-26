@@ -1,0 +1,207 @@
+/* ANDRYXify reactive experience layer
+   Solo transform/opacity/filter e CSS variables: leggero, no layout thrash. */
+
+:root {
+  --rx: 50%;
+  --ry: 38%;
+  --rx-scroll: 0;
+  --rx-velocity: 0;
+  --rx-depth: 0;
+  --rx-tilt-x: 0deg;
+  --rx-tilt-y: 0deg;
+  --rx-reactive-opacity: 0.64;
+}
+
+body.reactive-ready::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--rx-reactive-opacity);
+  background:
+    radial-gradient(circle at var(--rx) var(--ry), color-mix(in srgb, var(--primary) 18%, transparent), transparent 26vmax),
+    radial-gradient(circle at calc(100% - var(--rx)) calc(100% - var(--ry)), rgba(0, 229, 255, 0.10), transparent 30vmax),
+    linear-gradient(180deg, rgba(255,255,255,calc(var(--rx-depth) * 0.035)), transparent 42%);
+  filter: saturate(calc(1 + var(--rx-velocity) * 0.1));
+  transition: opacity 240ms ease;
+}
+
+body.reactive-ready.user-active::before {
+  --rx-reactive-opacity: 0.84;
+}
+
+body.reactive-ready.pointer-pressing::before,
+body.reactive-ready.touch-active::before {
+  --rx-reactive-opacity: 1;
+}
+
+body.reactive-ready .app-container {
+  transform: perspective(1400px) rotateX(calc(var(--rx-tilt-x) * 0.22)) rotateY(calc(var(--rx-tilt-y) * 0.22));
+  transform-origin: center top;
+  transition: transform 220ms ease-out;
+}
+
+body.reactive-ready .glass-panel,
+body.reactive-ready .glass-card,
+body.reactive-ready .btn,
+body.reactive-ready .chip,
+body.reactive-ready .tab-item,
+body.reactive-ready .mobile-tab-bar,
+body.reactive-ready .navbar {
+  will-change: transform, box-shadow, filter;
+}
+
+body.reactive-ready .glass-panel,
+body.reactive-ready .glass-card {
+  transition:
+    transform 180ms cubic-bezier(.2,.8,.2,1),
+    box-shadow 220ms ease,
+    border-color 220ms ease,
+    background 220ms ease,
+    filter 220ms ease;
+}
+
+body.reactive-ready .glass-panel:hover,
+body.reactive-ready .glass-card:hover {
+  transform: translateY(calc(-2px - var(--rx-velocity) * 1px));
+  box-shadow:
+    0 24px 70px color-mix(in srgb, var(--primary) 12%, transparent),
+    0 10px 30px rgba(0,0,0,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.34);
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--glass-border, rgba(255,255,255,.2)));
+}
+
+body.reactive-ready .btn,
+body.reactive-ready button,
+body.reactive-ready a,
+body.reactive-ready [role='button'] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.reactive-ready .btn,
+body.reactive-ready .chip,
+body.reactive-ready .tab-item,
+body.reactive-ready button:not(:disabled) {
+  transition:
+    transform 150ms cubic-bezier(.2,.8,.2,1),
+    box-shadow 180ms ease,
+    filter 180ms ease,
+    opacity 180ms ease,
+    border-color 180ms ease;
+}
+
+body.reactive-ready .btn:hover,
+body.reactive-ready .chip:hover,
+body.reactive-ready .tab-item:hover,
+body.reactive-ready button:not(:disabled):hover {
+  transform: translateY(-1.5px) scale(1.012);
+  filter: saturate(1.06) brightness(1.035);
+}
+
+body.reactive-ready.pointer-pressing .btn:active,
+body.reactive-ready.pointer-pressing button:not(:disabled):active,
+body.reactive-ready.touch-active .btn:active,
+body.reactive-ready.touch-active button:not(:disabled):active {
+  transform: translateY(0) scale(0.965);
+  filter: saturate(1.08) brightness(0.98);
+}
+
+body.reactive-ready[data-scroll-dir='down'] .navbar,
+body.reactive-ready[data-scroll-dir='down'] .mobile-profile-header {
+  transform: translateY(calc(-1px * min(18, var(--rx-velocity) * 18)));
+}
+
+body.reactive-ready[data-scroll-dir='up'] .navbar,
+body.reactive-ready[data-scroll-dir='up'] .mobile-profile-header {
+  transform: translateY(0);
+}
+
+body.reactive-ready.is-scrolling .mobile-tab-bar,
+body.reactive-ready.is-scrolling .ikigai-fab {
+  filter: saturate(1.08) brightness(1.035);
+}
+
+body.reactive-ready.interactive-hover {
+  cursor: default;
+}
+
+body.reactive-ready .hero-title,
+body.reactive-ready .title,
+body.reactive-ready .section-title {
+  background-position:
+    calc(50% + (var(--rx-depth) * 18%)) 50%;
+  filter: drop-shadow(0 0 calc(10px + var(--rx-velocity) * 6px) color-mix(in srgb, var(--primary) 16%, transparent));
+}
+
+body.reactive-ready .twitch-home-preview,
+body.reactive-ready .ikigai-fab,
+body.reactive-ready .mobile-tab-bar,
+body.reactive-ready .settings-privacy-tail {
+  transform-style: preserve-3d;
+}
+
+body.reactive-ready.motion-sensors-active .twitch-home-preview,
+body.reactive-ready.motion-sensors-active .settings-privacy-tail,
+body.reactive-ready.motion-sensors-active .ikigai-panel {
+  transform: perspective(1200px) rotateX(calc(var(--rx-tilt-x) * 0.45)) rotateY(calc(var(--rx-tilt-y) * 0.45));
+}
+
+body.reactive-ready.motion-sensors-active .twitch-home-preview:hover,
+body.reactive-ready.motion-sensors-active .settings-privacy-tail:hover,
+body.reactive-ready.motion-sensors-active .ikigai-panel:hover {
+  transform: perspective(1200px) rotateX(calc(var(--rx-tilt-x) * 0.45)) rotateY(calc(var(--rx-tilt-y) * 0.45)) translateY(-2px);
+}
+
+body.reactive-ready .skeleton {
+  position: relative;
+  overflow: hidden;
+}
+
+body.reactive-ready .skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(calc(-120% + var(--rx-depth) * 260%));
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent);
+  pointer-events: none;
+}
+
+@media (hover: none) {
+  body.reactive-ready .glass-panel:hover,
+  body.reactive-ready .glass-card:hover,
+  body.reactive-ready .btn:hover,
+  body.reactive-ready .chip:hover,
+  body.reactive-ready .tab-item:hover,
+  body.reactive-ready button:not(:disabled):hover {
+    transform: none;
+  }
+
+  body.reactive-ready.touch-active .glass-panel,
+  body.reactive-ready.touch-active .glass-card {
+    border-color: color-mix(in srgb, var(--primary) 24%, var(--glass-border, rgba(255,255,255,.2)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.reactive-ready::before {
+    opacity: 0.28;
+    transition: none;
+  }
+
+  body.reactive-ready .app-container,
+  body.reactive-ready .glass-panel,
+  body.reactive-ready .glass-card,
+  body.reactive-ready .btn,
+  body.reactive-ready .chip,
+  body.reactive-ready .tab-item,
+  body.reactive-ready button,
+  body.reactive-ready .navbar,
+  body.reactive-ready .mobile-profile-header,
+  body.reactive-ready .twitch-home-preview,
+  body.reactive-ready .settings-privacy-tail,
+  body.reactive-ready .ikigai-panel {
+    transition: none !important;
+    transform: none !important;
+  }
+}

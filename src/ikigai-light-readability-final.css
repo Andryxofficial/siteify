@@ -1,0 +1,36 @@
+/* Ultimo override Ikigai tema chiaro.
+   In Home il badge OFFLINE non deve più ereditare regole dark sul pannello. */
+
+:root:not([data-theme='dark']) .ikigai-panel,
+:root:not([data-theme='dark']) .ikigai-panel.glass-panel {
+  color: #171b2f !important;
+  background:
+    radial-gradient(circle at 52% 90%, rgba(224,64,251,.11), transparent 38%),
+    radial-gradient(circle at 12% 0%, rgba(0,229,255,.08), transparent 34%),
+    linear-gradient(145deg, rgba(255,255,255,.91), rgba(244,248,255,.76)) !important;
+}
+
+:root:not([data-theme='dark']) .ikigai-panel *,
+:root:not([data-theme='dark']) .ikigai-head h3,
+:root:not([data-theme='dark']) .ikigai-msg p,
+:root:not([data-theme='dark']) .ikigai-input input {
+  color: #171b2f !important;
+  text-shadow: none !important;
+}
+
+:root:not([data-theme='dark']) .ikigai-head p,
+:root:not([data-theme='dark']) .ikigai-input input::placeholder {
+  color: rgba(45,52,79,.62) !important;
+}
+
+:root:not([data-theme='dark']) .ikigai-suggestions button,
+:root:not([data-theme='dark']) .ikigai-input button {
+  color: var(--primary) !important;
+}
+
+:root:not([data-theme='dark']) .ikigai-msg.ikigai,
+:root:not([data-theme='dark']) .ikigai-msg.user,
+:root:not([data-theme='dark']) .ikigai-input input {
+  background: rgba(255,255,255,.64) !important;
+  border-color: rgba(166,177,218,.42) !important;
+}
