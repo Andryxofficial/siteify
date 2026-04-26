@@ -1,9 +1,11 @@
 /* Ikigai FAB Safe Position
    Regola finale anti-sovrapposizione: il FAB non deve mai stare sopra un tab della navbar.
-   Va sempre sopra la bottom navigation, con spazio visivo e hit-area libera. */
+   Va sempre sopra la bottom navigation, con spazio visivo e hit-area libera.
+   Mobile browser e PWA standalone hanno quote diverse: gestite separatamente. */
 
 :root {
   --mobile-nav-real-h: 90px;
+  --pwa-nav-real-h: 112px;
   --ikigai-fab-gap: 14px;
   --ikigai-fab-size: 58px;
 }
@@ -30,6 +32,14 @@
     overflow: visible !important;
   }
 
+  /* Caso webapp/PWA: la shell standalone non ha la stessa geometria del browser mobile. */
+  .pwa-standalone body:not(.ikigai-open) .ikigai-fab,
+  .pwa-standalone .ikigai-fab,
+  body.ikigai-mounted:not(.ikigai-open) .pwa-standalone .ikigai-fab,
+  .app-container.pwa-standalone .ikigai-fab {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--pwa-nav-real-h) + var(--ikigai-fab-gap)) !important;
+  }
+
   body:not(.ikigai-open) .ikigai-fab::before,
   body.ikigai-mounted:not(.ikigai-open) .ikigai-fab::before {
     content: '';
@@ -40,7 +50,8 @@
   }
 
   body:not(.ikigai-open).keyboard-open .ikigai-fab,
-  body.ikigai-mounted:not(.ikigai-open).keyboard-open .ikigai-fab {
+  body.ikigai-mounted:not(.ikigai-open).keyboard-open .ikigai-fab,
+  body.keyboard-open .app-container.pwa-standalone .ikigai-fab {
     bottom: calc(var(--keyboard-inset, 0px) + env(safe-area-inset-bottom, 0px) + 1rem) !important;
   }
 
@@ -55,15 +66,37 @@
     bottom: calc(env(safe-area-inset-bottom, 0px) + var(--mobile-nav-real-h) + var(--ikigai-fab-size) + 24px) !important;
   }
 
+  .app-container.pwa-standalone .ikigai-agency-toast {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--pwa-nav-real-h) + var(--ikigai-fab-size) + 24px) !important;
+  }
+
   body.ikigai-open .ikigai-agency-toast,
   body.keyboard-open .ikigai-agency-toast {
     display: none !important;
   }
 }
 
+@media (display-mode: standalone) and (max-width: 820px) {
+  :root {
+    --pwa-nav-real-h: 118px;
+  }
+
+  body:not(.ikigai-open) .ikigai-fab,
+  body.ikigai-mounted:not(.ikigai-open) .ikigai-fab,
+  .app-container.pwa-standalone .ikigai-fab {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--pwa-nav-real-h) + var(--ikigai-fab-gap)) !important;
+  }
+
+  .ikigai-agency-toast,
+  .app-container.pwa-standalone .ikigai-agency-toast {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--pwa-nav-real-h) + var(--ikigai-fab-size) + 24px) !important;
+  }
+}
+
 @media (max-width: 390px) {
   :root {
     --mobile-nav-real-h: 86px;
+    --pwa-nav-real-h: 108px;
     --ikigai-fab-gap: 12px;
     --ikigai-fab-size: 56px;
   }
