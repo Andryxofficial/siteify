@@ -15,9 +15,9 @@ export function rilevaConversazioneIkigai(testo = '') {
 }
 
 const ROTTE = {
-  it: { '/': 'Home', '/socialify': 'SOCIALify', '/socialify/info-tag': 'Info tag', '/gioco': 'Giochi', '/chat': 'Chat', '/messaggi': 'Messaggi', '/amici': 'Amici', '/impostazioni': 'Impostazioni', '/twitch': 'Twitch', '/profilo': 'Profilo', '/privacy': 'Privacy' },
-  en: { '/': 'Home', '/socialify': 'SOCIALify', '/socialify/info-tag': 'Tag info', '/gioco': 'Games', '/chat': 'Chat', '/messaggi': 'Messages', '/amici': 'Friends', '/impostazioni': 'Settings', '/twitch': 'Twitch', '/profilo': 'Profile', '/privacy': 'Privacy' },
-  es: { '/': 'Inicio', '/socialify': 'SOCIALify', '/socialify/info-tag': 'Info etiquetas', '/gioco': 'Juegos', '/chat': 'Chat', '/messaggi': 'Mensajes', '/amici': 'Amigos', '/impostazioni': 'Ajustes', '/twitch': 'Twitch', '/profilo': 'Perfil', '/privacy': 'Privacidad' },
+  it: { '/': 'Home', '/socialify': 'SOCIALify', '/socialify/info-tag': 'Info tag', '/gioco': 'Giochi', '/chat': 'Chat', '/messaggi': 'Messaggi', '/amici': 'Amici', '/impostazioni': 'Impostazioni', '/twitch': 'Twitch', '/profilo': 'Profilo', '/privacy': 'Privacy', '/chi-sono': 'Chi sono', 'https://mandymashwear.it/': 'Mandy Mashwear' },
+  en: { '/': 'Home', '/socialify': 'SOCIALify', '/socialify/info-tag': 'Tag info', '/gioco': 'Games', '/chat': 'Chat', '/messaggi': 'Messages', '/amici': 'Friends', '/impostazioni': 'Settings', '/twitch': 'Twitch', '/profilo': 'Profile', '/privacy': 'Privacy', '/chi-sono': 'About me', 'https://mandymashwear.it/': 'Mandy Mashwear' },
+  es: { '/': 'Inicio', '/socialify': 'SOCIALify', '/socialify/info-tag': 'Info etiquetas', '/gioco': 'Juegos', '/chat': 'Chat', '/messaggi': 'Mensajes', '/amici': 'Amigos', '/impostazioni': 'Ajustes', '/twitch': 'Twitch', '/profilo': 'Perfil', '/privacy': 'Privacidad', '/chi-sono': 'Quién soy', 'https://mandymashwear.it/': 'Mandy Mashwear' },
 };
 
 const UI = {
@@ -61,7 +61,7 @@ const UI = {
 
 function tx(lingua) { return UI[normalizzaLinguaIkigai(lingua)] || UI.it; }
 export function etichettaRotta(path, lingua = 'it') { const lang = normalizzaLinguaIkigai(lingua); return ROTTE[lang]?.[path] || ROTTE.it[path] || path; }
-export function localizzaRotte(routes = [], lingua = 'it') { return routes.map(route => ({ ...route, label: etichettaRotta(route.path, lingua), href: route.path })); }
+export function localizzaRotte(routes = [], lingua = 'it') { return routes.map(route => ({ ...route, label: route.label || etichettaRotta(route.path || route.href, lingua), href: route.href || route.path })); }
 function routesText(routes, lingua) { return routes?.length ? `\n\n${tx(lingua).links}` : ''; }
 
 function tagsLiveText(live, orientamento, lingua) {
@@ -78,6 +78,7 @@ function tonoFinale(testo, orientamento = {}) { return orientamento.profondita =
 
 const RISPOSTE = {
   it: {
+    mandy: ({ routes }) => `Davvero? Allora hai notato una cosa giusta: spesso ANDRYXify in live indossa maglie, felpe o accessori realizzati da Mandy Mashwear. Nel “Chi sono” c’è proprio un piccolo spazio dedicato a lei: non è una sponsorizzazione, non è una collaborazione pagata e non c’è nessuno scambio dietro. È semplicemente un rimando sincero, perché alcuni pezzi che vedi addosso ad Andryx arrivano dal suo lavoro.${routesText(routes, 'it')}`,
     tags: ({ live, orientamento, routes }) => `Sì: i tag sono il modo più comodo per far capire al sito “di cosa parla” un post. Servono per cercare contenuti, creare tendenze, collegare post simili e far nascere macroCategorie quando la community usa spesso gli stessi argomenti insieme.${tagsLiveText(live, orientamento, 'it')}\n\nEsempio pratico: se molti post usano #zelda, #nintendo e #ocarinaoftime, Ikigai può capire che lì sta nascendo un’area gaming specifica e suggerirti contenuti simili.${routesText(routes, 'it')}`,
     leaderboard: ({ live, routes }) => `La classifica funziona a XP: guadagni punti partecipando bene, non spammando. Post utili, risposte, like ricevuti/dati e tag che diventano popolari aiutano a salire; se ripeti troppe azioni uguali, il rendimento cala.${classificaLiveText(live, 'it')}\n\nI premi tipo VIP settimanale o campione mensile servono a premiare chi tiene viva la community.${routesText(routes, 'it')}`,
     notifications: ({ routes }) => `Le notifiche le gestisci dalle Impostazioni. Puoi separare push e notifiche in-app, scegliere suoni/vibrazione, anteprime, ore silenziose e categorie come messaggi, risposte, menzioni, amici, community, live e sistema.\n\nIn pratica: puoi farle tranquille o molto presenti, senza subire tutto insieme.${routesText(routes, 'it')}`,
@@ -88,6 +89,7 @@ const RISPOSTE = {
     overview: ({ routes, page }) => `Puoi usare ANDRYXify come hub personale/community: SOCIALify per post e discussioni, classifiche e premi, tag per trovare contenuti, giochi per la parte interattiva, profilo/messaggi/amici per la parte social e impostazioni per personalizzare tutto.${page ? tx('it').currentPage(page) : ''}${routesText(routes, 'it')}`,
   },
   en: {
+    mandy: ({ routes }) => `Really? Then you noticed the right thing: during live streams, ANDRYXify often wears shirts, hoodies or accessories made by Mandy Mashwear. There is a small section about her on the “About me” page: it is not a sponsorship, not a paid collaboration and there is no exchange behind it. It is simply an honest shout-out, because some pieces you see on Andryx come from her work.${routesText(routes, 'en')}`,
     tags: ({ live, orientamento, routes }) => `Yes: tags are the easiest way to tell the site what a post is about. They help people search, surface trends, connect similar posts and grow macro-categories when the community keeps using related topics together.${tagsLiveText(live, orientamento, 'en')}\n\nExample: if many posts use #zelda, #nintendo and #ocarinaoftime, Ikigai can understand that a specific gaming area is forming and suggest similar content.${routesText(routes, 'en')}`,
     leaderboard: ({ live, routes }) => `The ranking is XP-based: you climb by participating well, not by spamming. Useful posts, replies, likes received/given and popular tags can all help; repeating the same actions too quickly gives diminishing returns.${classificaLiveText(live, 'en')}\n\nWeekly VIP and monthly champion rewards exist to reward people who keep the community alive.${routesText(routes, 'en')}`,
     notifications: ({ routes }) => `You manage notifications from Settings. You can separate push and in-app alerts, choose sounds/vibration, previews, quiet hours and categories such as messages, replies, mentions, friends, community, live streams and system updates.\n\nYou can make them calm or very present without getting everything at once.${routesText(routes, 'en')}`,
@@ -98,6 +100,7 @@ const RISPOSTE = {
     overview: ({ routes, page }) => `You can use ANDRYXify as a personal/community hub: SOCIALify for posts and discussions, rankings and rewards, tags to find content, games for interaction, profile/messages/friends for the social layer and settings to personalize everything.${page ? tx('en').currentPage(page) : ''}${routesText(routes, 'en')}`,
   },
   es: {
+    mandy: ({ routes }) => `¿De verdad? Entonces has notado algo concreto: en los directos, ANDRYXify suele llevar camisetas, sudaderas o accesorios hechos por Mandy Mashwear. En la página “Quién soy” hay un pequeño espacio dedicado a ella: no es un patrocinio, no es una colaboración pagada y no hay ningún intercambio detrás. Es simplemente una mención sincera, porque algunas piezas que ves en Andryx vienen de su trabajo.${routesText(routes, 'es')}`,
     tags: ({ live, orientamento, routes }) => `Sí: las etiquetas son la forma más cómoda de decirle al sitio de qué trata un post. Sirven para buscar contenido, crear tendencias, conectar posts parecidos y hacer nacer macroCategorías cuando la comunidad usa a menudo los mismos temas juntos.${tagsLiveText(live, orientamento, 'es')}\n\nEjemplo: si muchos posts usan #zelda, #nintendo y #ocarinaoftime, Ikigai puede entender que está naciendo un área gaming específica y sugerirte contenido similar.${routesText(routes, 'es')}`,
     leaderboard: ({ live, routes }) => `La clasificación funciona con XP: subes participando bien, no haciendo spam. Posts útiles, respuestas, likes recibidos/dados y etiquetas populares ayudan a subir; repetir demasiadas acciones iguales en poco tiempo rinde menos.${classificaLiveText(live, 'es')}\n\nPremios como VIP semanal o campeón mensual premian a quien mantiene viva la comunidad.${routesText(routes, 'es')}`,
     notifications: ({ routes }) => `Las notificaciones se gestionan desde Ajustes. Puedes separar push y avisos dentro de la app, elegir sonidos/vibración, vistas previas, horas silenciosas y categorías como mensajes, respuestas, menciones, amigos, comunidad, directos y sistema.\n\nPuedes hacerlas discretas o muy presentes sin recibir todo junto.${routesText(routes, 'es')}`,
