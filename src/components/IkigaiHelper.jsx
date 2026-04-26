@@ -118,71 +118,82 @@ export default function IkigaiHelper() {
 
       <AnimatePresence>
         {open && (
-          <motion.aside
-            className="ikigai-panel glass-panel"
-            initial={{ opacity: 0, y: 18, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 18, scale: 0.96 }}
-            transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-          >
-            <header className="ikigai-head">
-              <div>
-                <h3>
-                  <Link
-                    to="/privacy"
-                    className="ikigai-privacy-link"
-                    aria-label={txt.privacyAria}
-                    title={txt.privacyTitle}
-                    onClick={() => setOpen(false)}
-                  >
-                    <HelpCircle size={18} />
-                  </Link>
-                  Ikigai
-                </h3>
-                <p>{descriviPagina(location.pathname, lingua)}</p>
-              </div>
-              <button type="button" onClick={() => setOpen(false)} aria-label={txt.closeAria}><X size={18} /></button>
-            </header>
-
-            <div className="ikigai-suggestions">
-              {txt.suggestions.map(s => (
-                <button key={s} type="button" onClick={() => chiedi(s)} disabled={loading}>{s}</button>
-              ))}
-            </div>
-
-            <div className="ikigai-messages">
-              {messages.map((m, i) => (
-                <div key={i} className={`ikigai-msg ${m.role}`}>
-                  <p>{m.text}</p>
-                  {Array.isArray(m.routes) && m.routes.length > 0 && (
-                    <div className="ikigai-routes" aria-label={txt.linksAria}>
-                      {m.routes.map(r => {
-                        const href = r.href || r.path;
-                        return (
-                          <Link key={`${href}-${r.label}`} to={href} aria-label={txt.openRoute(r.label)} onClick={() => setOpen(false)}>
-                            {r.label}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
+          <>
+            <motion.button
+              type="button"
+              className="ikigai-backdrop"
+              aria-label={txt.closeAria}
+              onClick={() => setOpen(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
+            <motion.aside
+              className="ikigai-panel glass-panel"
+              initial={{ opacity: 0, y: 18, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 18, scale: 0.96 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+            >
+              <header className="ikigai-head">
+                <div>
+                  <h3>
+                    <Link
+                      to="/privacy"
+                      className="ikigai-privacy-link"
+                      aria-label={txt.privacyAria}
+                      title={txt.privacyTitle}
+                      onClick={() => setOpen(false)}
+                    >
+                      <HelpCircle size={18} />
+                    </Link>
+                    Ikigai
+                  </h3>
+                  <p>{descriviPagina(location.pathname, lingua)}</p>
                 </div>
-              ))}
-              {loading && <div className="ikigai-msg ikigai"><p>{txt.loading}</p></div>}
-            </div>
+                <button type="button" onClick={() => setOpen(false)} aria-label={txt.closeAria}><X size={18} /></button>
+              </header>
 
-            <form className="ikigai-input" data-enter-submit="true" onSubmit={(e) => { e.preventDefault(); chiedi(); }}>
-              <input
-                value={question}
-                onChange={e => setQuestion(e.target.value)}
-                placeholder={txt.placeholder}
-                maxLength={700}
-                enterKeyHint="send"
-                inputMode="text"
-              />
-              <button type="submit" disabled={loading || !question.trim()} aria-label={txt.sendAria}><Send size={18} /></button>
-            </form>
-          </motion.aside>
+              <div className="ikigai-suggestions">
+                {txt.suggestions.map(s => (
+                  <button key={s} type="button" onClick={() => chiedi(s)} disabled={loading}>{s}</button>
+                ))}
+              </div>
+
+              <div className="ikigai-messages">
+                {messages.map((m, i) => (
+                  <div key={i} className={`ikigai-msg ${m.role}`}>
+                    <p>{m.text}</p>
+                    {Array.isArray(m.routes) && m.routes.length > 0 && (
+                      <div className="ikigai-routes" aria-label={txt.linksAria}>
+                        {m.routes.map(r => {
+                          const href = r.href || r.path;
+                          return (
+                            <Link key={`${href}-${r.label}`} to={href} aria-label={txt.openRoute(r.label)} onClick={() => setOpen(false)}>
+                              {r.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {loading && <div className="ikigai-msg ikigai"><p>{txt.loading}</p></div>}
+              </div>
+
+              <form className="ikigai-input" data-enter-submit="true" onSubmit={(e) => { e.preventDefault(); chiedi(); }}>
+                <input
+                  value={question}
+                  onChange={e => setQuestion(e.target.value)}
+                  placeholder={txt.placeholder}
+                  maxLength={700}
+                  enterKeyHint="send"
+                  inputMode="text"
+                />
+                <button type="submit" disabled={loading || !question.trim()} aria-label={txt.sendAria}><Send size={18} /></button>
+              </form>
+            </motion.aside>
+          </>
         )}
       </AnimatePresence>
     </>
