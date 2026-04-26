@@ -12,11 +12,8 @@ import { prefetchPagina } from '../lazyPages';
 
 const LOGO_URL = '/Firma_Andryx.png';
 const LOGO_AVATAR_FALLBACK = '/pwa-192.png';
-
-/* Chiave localStorage condivisa con MessagesPage per il badge non-letti */
 const CHIAVE_NON_LETTI = 'andryxify_ha_non_letti';
 
-/* I18n: label definite come chiavi di traduzione; risolte a runtime via t() */
 const NAV_LINKS = [
   { path: '/',          labelKey: 'nav.home',       Icon: HomeIcon      },
   { path: '/chi-sono',  labelKey: 'nav.chi-sono',   Icon: UserCircleIcon },
@@ -39,10 +36,8 @@ const MOBILE_LINKS = [
   { path: '/impostazioni',  labelKey: 'nav.impostazioni',  Icon: SettingsIcon     },
 ];
 
-/* Elasticità ai bordi della bolla trascinabile (0 = rigido, 1 = libero) */
 const ELASTICITA_BORDO = 0.2;
 
-/* Calcola l'indice del tab più vicino al centro della pill */
 function calcolaIndiceTarget(offset, tabWidth, activeIdx, count) {
   const baseX   = activeIdx * tabWidth;
   const clampedX = Math.max(0, Math.min((count - 1) * tabWidth, baseX + offset));
@@ -51,7 +46,6 @@ function calcolaIndiceTarget(offset, tabWidth, activeIdx, count) {
   return Math.max(0, Math.min(count - 1, idx));
 }
 
-/* Legge lo stato non-letti dal localStorage e si aggiorna via eventi */
 function useNonLetti() {
   const [haNonLetti, setHaNonLetti] = useState(() => !!localStorage.getItem(CHIAVE_NON_LETTI));
   useEffect(() => {
@@ -68,13 +62,19 @@ function useNonLetti() {
 }
 
 const ICONE_TEMA = { auto: SunMoon, 'alba-tramonto': Sunrise, chiaro: Sun, scuro: Moon };
-/* Chiavi di traduzione per i tooltip del toggle tema, risolte via useLingua().t() */
 const CHIAVI_TEMA = {
   auto:            'nav.tema.auto',
   'alba-tramonto': 'nav.tema.alba-tramonto',
   chiaro:          'nav.tema.chiaro',
   scuro:           'nav.tema.scuro',
 };
+
+function labelTemaMobile(modalita, t) {
+  if (modalita === 'chiaro') return t('settings.tema.chiaro');
+  if (modalita === 'scuro') return t('settings.tema.scuro');
+  if (modalita === 'alba-tramonto') return t('settings.tema.alba-tramonto');
+  return t('settings.tema.auto');
+}
 
 function MobileTopBar() {
   const navigate = useNavigate();
@@ -84,7 +84,7 @@ function MobileTopBar() {
   const { twitchUser, twitchDisplay, twitchAvatar, isLoggedIn, logout, getTwitchLoginUrl } = useTwitchAuth();
   const [aperto, setAperto] = useState(false);
   const menuRef = useRef(null);
-  const labelTema = t(CHIAVI_TEMA[modalita] || 'nav.tema.auto');
+  const labelTema = `${t('settings.tema.label')}: ${labelTemaMobile(modalita, t)}`;
   const TemaIcon = ICONE_TEMA[modalita] || SunMoon;
 
   useEffect(() => {
@@ -127,7 +127,7 @@ function MobileTopBar() {
       <button
         type="button"
         className={`mobile-profile-trigger${aperto ? ' active' : ''}`}
-        aria-label={isLoggedIn ? 'Apri menu profilo' : 'Accedi con Twitch'}
+        aria-label={isLoggedIn ? t('nav.profile.open') : t('nav.profile.login')}
         aria-expanded={aperto}
         onClick={() => {
           hapticLight();
@@ -135,11 +135,7 @@ function MobileTopBar() {
           else setAperto(v => !v);
         }}
       >
-        {isLoggedIn ? (
-          <img src={twitchAvatar || LOGO_AVATAR_FALLBACK} alt="" />
-        ) : (
-          <LogIn size={20} />
-        )}
+        {isLoggedIn ? <img src={twitchAvatar || LOGO_AVATAR_FALLBACK} alt="" /> : <LogIn size={20} />}
       </button>
 
       <AnimatePresence>
@@ -160,16 +156,16 @@ function MobileTopBar() {
             </div>
 
             <button type="button" onClick={() => go(`/profilo/${twitchUser}`)}>
-              <UserRound size={17} /> Vedi profilo
+              <UserRound size={17} /> {t('settings.vedi_profilo')}
             </button>
             <button type="button" onClick={() => { cicla(); hapticLight(); }}>
               <TemaIcon size={17} /> {labelTema}
             </button>
             <button type="button" onClick={() => go('/impostazioni')}>
-              <SettingsIcon size={17} /> Impostazioni
+              <SettingsIcon size={17} /> {t('nav.impostazioni')}
             </button>
             <button type="button" className="danger" onClick={doLogout}>
-              <LogOut size={17} /> Logout
+              <LogOut size={17} /> {t('settings.esci')}
             </button>
           </motion.div>
         )}
@@ -178,9 +174,6 @@ function MobileTopBar() {
   );
 }
 
-/* ─────────────────────────────────────────────────────────
-   MOBILE BOTTOM TAB BAR  (iOS 26-style, liquid glass)
-   ───────────────────────────────────────────────────────── */
 function MobileTabBar({ activePath, haNonLetti }) {
   const navigate    = useNavigate();
   const { t }       = useLingua();
@@ -212,9 +205,7 @@ function MobileTabBar({ activePath, haNonLetti }) {
     if (isDraggingRef.current) return;
     const tw = getTabWidth();
     if (tw > 0) {
-      fmAnimate(pillX, activeIdx * tw, {
-        type: 'spring', stiffness: 420, damping: 34, mass: 0.9,
-      });
+      fmAnimate(pillX, activeIdx * tw, { type: 'spring', stiffness: 420, damping: 34, mass: 0.9 });
     }
   }, [activeIdx, getTabWidth, pillX]);
 
@@ -269,9 +260,7 @@ function MobileTabBar({ activePath, haNonLetti }) {
     const ai       = activeIdxRef.current;
     const targetIdx = calcolaIndiceTarget(info.offset.x, tw, ai, count);
 
-    fmAnimate(pillX, targetIdx * tw, {
-      type: 'spring', stiffness: 420, damping: 34, mass: 0.9,
-    });
+    fmAnimate(pillX, targetIdx * tw, { type: 'spring', stiffness: 420, damping: 34, mass: 0.9 });
 
     if (targetIdx !== ai) {
       hapticLight();
@@ -279,58 +268,24 @@ function MobileTabBar({ activePath, haNonLetti }) {
     }
   }, [count, getTabWidth, navigate, pillX, pillScale]);
 
-  const handleTabClick = useCallback(() => {
-    hapticLight();
-  }, []);
+  const handleTabClick = useCallback(() => { hapticLight(); }, []);
 
   return (
     <nav className="mobile-tab-bar" aria-label={t('nav.aria.main')}>
-      <motion.div
-        ref={itemsRef}
-        className="mobile-tab-items"
-        onPanStart={handlePanStart}
-        onPan={handlePan}
-        onPanEnd={handlePanEnd}
-        style={{ touchAction: 'pan-y' }}
-      >
-        {activeIdx >= 0 && (
-          <motion.div
-            className="mobile-tab-pill"
-            style={{ x: pillX, scale: pillScale, width: `${tabWidthPct}%` }}
-          />
-        )}
-
+      <motion.div ref={itemsRef} className="mobile-tab-items" onPanStart={handlePanStart} onPan={handlePan} onPanEnd={handlePanEnd} style={{ touchAction: 'pan-y' }}>
+        {activeIdx >= 0 && <motion.div className="mobile-tab-pill" style={{ x: pillX, scale: pillScale, width: `${tabWidthPct}%` }} />}
         {MOBILE_LINKS.map(({ path, labelKey, Icon }) => {
           const isActive = activePath === path;
           const label = t(labelKey);
           return (
-            <Link
-              key={path}
-              to={path}
-              className={`tab-item${isActive ? ' active' : ''}`}
-              aria-label={label}
-              aria-current={isActive ? 'page' : undefined}
-              onClick={handleTabClick}
-              onTouchStart={() => prefetchPagina(path)}
-              onPointerEnter={() => prefetchPagina(path)}
-            >
-              <motion.span
-                className="tab-icon"
-                animate={{ y: isActive ? -2 : 0, scale: isActive ? 1.12 : 1 }}
-                transition={{ type: 'spring', stiffness: 420, damping: 26 }}
-              >
+            <Link key={path} to={path} className={`tab-item${isActive ? ' active' : ''}`} aria-label={label} aria-current={isActive ? 'page' : undefined} onClick={handleTabClick} onTouchStart={() => prefetchPagina(path)} onPointerEnter={() => prefetchPagina(path)}>
+              <motion.span className="tab-icon" animate={{ y: isActive ? -2 : 0, scale: isActive ? 1.12 : 1 }} transition={{ type: 'spring', stiffness: 420, damping: 26 }}>
                 <span style={{ position: 'relative', display: 'flex' }}>
                   <Icon size={22} />
                   {path === '/chat' && haNonLetti && <span className="tab-pallino" aria-hidden="true" />}
                 </span>
               </motion.span>
-              <motion.span
-                className="tab-label"
-                animate={{ opacity: isActive ? 1 : 0.5 }}
-                transition={{ duration: 0.2 }}
-              >
-                {label}
-              </motion.span>
+              <motion.span className="tab-label" animate={{ opacity: isActive ? 1 : 0.5 }} transition={{ duration: 0.2 }}>{label}</motion.span>
             </Link>
           );
         })}
@@ -338,10 +293,6 @@ function MobileTabBar({ activePath, haNonLetti }) {
     </nav>
   );
 }
-
-/* ─────────────────────────────────────────────────────────
-   DESKTOP TOP NAVBAR
-   ───────────────────────────────────────────────────────── */
 
 export default function Navbar() {
   const location          = useLocation();
@@ -351,18 +302,15 @@ export default function Navbar() {
   const haNonLetti        = useNonLetti();
   const { modalita, cicla } = useTema();
   const { t }             = useLingua();
-
   const labelTema = t(CHIAVI_TEMA[modalita] || 'nav.tema.auto');
-
   const [hoveredPath, setHoveredPath] = useState(null);
-  const [pillPos,     setPillPos]     = useState({ left: 0, width: 0 });
-  const [pillReady,   setPillReady]   = useState(false);
-
+  const [pillPos, setPillPos] = useState({ left: 0, width: 0 });
+  const [pillReady, setPillReady] = useState(false);
   const displayPath = hoveredPath ?? location.pathname;
 
   const getInfo = useCallback((path) => {
     const container = linksContainerRef.current;
-    const link      = linkRefs.current?.[path];
+    const link = linkRefs.current?.[path];
     if (!container || !link) return null;
     const cR = container.getBoundingClientRect();
     const lR = link.getBoundingClientRect();
@@ -397,48 +345,20 @@ export default function Navbar() {
   return (
     <>
       <MobileTopBar />
-
-      {/* ── Top pill navbar (desktop) — hides on scroll-down ── */}
       <AnimatePresence>
         {headerVisible && (
-          <motion.nav
-            className="navbar-container glass-panel"
-            initial={{ y: -80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -80, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 340, damping: 32, mass: 0.8 }}
-          >
+          <motion.nav className="navbar-container glass-panel" initial={{ y: -80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -80, opacity: 0 }} transition={{ type: 'spring', stiffness: 340, damping: 32, mass: 0.8 }}>
             <div className="navbar-content">
               <Link to="/" className="navbar-logo" aria-label={t('nav.aria.logo')}>
                 <img src={LOGO_URL} alt="ANDRYXify" className="navbar-logo-img" width="220" height="44" fetchPriority="high" />
               </Link>
-
-              <div
-                ref={linksContainerRef}
-                className="nav-links"
-                style={{ position: 'relative', overflow: 'visible' }}
-                onMouseLeave={() => setHoveredPath(null)}
-              >
-                {pillReady && (
-                  <motion.div
-                    className="liquid-nav-pill"
-                    initial={false}
-                    animate={{ left: pillPos.left, width: pillPos.width }}
-                    transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.8 }}
-                  />
-                )}
-
+              <div ref={linksContainerRef} className="nav-links" style={{ position: 'relative', overflow: 'visible' }} onMouseLeave={() => setHoveredPath(null)}>
+                {pillReady && <motion.div className="liquid-nav-pill" initial={false} animate={{ left: pillPos.left, width: pillPos.width }} transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.8 }} />}
                 {NAV_LINKS.map(({ path, labelKey, Icon }) => {
                   const isActive = location.pathname === path;
                   const label = t(labelKey);
                   return (
-                    <div
-                      key={path}
-                      ref={el => { linkRefs.current[path] = el; }}
-                      style={{ position: 'relative', zIndex: 1 }}
-                      onMouseEnter={() => { setHoveredPath(path); prefetchPagina(path); }}
-                      onFocus={() => prefetchPagina(path)}
-                    >
+                    <div key={path} ref={el => { linkRefs.current[path] = el; }} style={{ position: 'relative', zIndex: 1 }} onMouseEnter={() => { setHoveredPath(path); prefetchPagina(path); }} onFocus={() => prefetchPagina(path)}>
                       <Link to={path} className={`nav-link${isActive ? ' active' : ''}`}>
                         <motion.span whileHover={{ scale: 1.15, rotate: 4 }} style={{ display: 'flex', pointerEvents: 'none', position: 'relative' }}>
                           <Icon size={16} />
@@ -450,22 +370,11 @@ export default function Navbar() {
                   );
                 })}
               </div>
-
-              <motion.button
-                onClick={() => { cicla(); hapticLight(); }}
-                className="nav-link nav-tema-toggle"
-                aria-label={labelTema}
-                title={labelTema}
-                style={{ marginLeft: '0.25rem', border: 'none', cursor: 'pointer', background: 'transparent' }}
-                whileHover={{ scale: 1.12 }}
-                whileTap={{ scale: 0.9, rotate: 15 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-              >
+              <motion.button onClick={() => { cicla(); hapticLight(); }} className="nav-link nav-tema-toggle" aria-label={labelTema} title={labelTema} style={{ marginLeft: '0.25rem', border: 'none', cursor: 'pointer', background: 'transparent' }} whileHover={{ scale: 1.12 }} whileTap={{ scale: 0.9, rotate: 15 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
                 <motion.span key={modalita} initial={{ opacity: 0, rotate: -30, scale: 0.7 }} animate={{ opacity: 1, rotate: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 380, damping: 22 }} style={{ display: 'flex' }}>
                   {React.createElement(ICONE_TEMA[modalita], { size: 17 })}
                 </motion.span>
               </motion.button>
-
               <Link to="/impostazioni" className="nav-link nav-settings" aria-label={t('nav.impostazioni')} style={{ marginLeft: '0.25rem', display: 'flex', alignItems: 'center' }}>
                 <SettingsIcon size={17} />
               </Link>
@@ -473,7 +382,6 @@ export default function Navbar() {
           </motion.nav>
         )}
       </AnimatePresence>
-
       <MobileTabBar activePath={location.pathname} haNonLetti={haNonLetti} />
     </>
   );
