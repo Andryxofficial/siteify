@@ -32,6 +32,10 @@ async function scanKeys(redis, pattern, max = 2500) {
   return [...new Set(found)].slice(0, max);
 }
 
+function convoKey(a, b) {
+  return [a, b].sort().join(':');
+}
+
 async function eliminaPost(redis, postId, stats) {
   const post = await redis.hgetall(`community:post:${postId}`);
   if (!post?.id) return;
@@ -133,6 +137,51 @@ async function eliminaClassifiche(redis, username, stats) {
   stats.classificheRipulite = seasons.size + 1;
 }
 
+async function eliminaChatPrivate(redis, username, stats) {
+  const conversazioni = await redis.zrange(`conversations:${username}`, 0, -1).catch(() => []);
+  const interlocutori = Array.isArray(conversazioni) ? conversazioni.filter(Boolean) : [];
+  const ops = [
+    redis.del(`conversations:${username}`),
+    redis.del(`userkeys:${username}`),
+    redis.del(`e2e_passkey:${username}`),
+    redis.del(`online:${username}`),
+  ];
+
+  for (const altro of interlocutori) {
+    const other = safeUser(altro);
+    if (!other) continue;
+    const ck = convoKey(username, other);
+    const messagesKey = `messages:${ck}`;
+    const rawMessages = await redis.lrange(messagesKey, 0, -1).catch(() => []);
+    const mediaIds = [];
+    for (const raw of rawMessages || []) {
+      try {
+        const msg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (msg?.mediaId) mediaIds.push(msg.mediaId);
+      } catch {}
+    }
+    ops.push(redis.del(messagesKey));
+    ops.push(redis.zrem(`conversations:${other}`, username));
+    ops.push(redis.del(`lastread:${username}:${other}`));
+    ops.push(redis.del(`lastread:${other}:${username}`));
+    ops.push(redis.del(`typing:${username}:${other}`));
+    ops.push(redis.del(`typing:${other}:${username}`));
+    ops.push(...mediaIds.flatMap(id => [redis.del(`media:${id}`), redis.del(`media:${id}:meta`)]));
+    stats.conversazioniPrivateEliminate += 1;
+    stats.mediaPrivatiEliminati += mediaIds.length;
+  }
+
+  const reactionKeys = await scanKeys(redis, 'reactions:*', 5000);
+  const syncKeys = await scanKeys(redis, 'sync:*', 1000);
+  const syncCodeKeys = await scanKeys(redis, 'sync_code:*', 1000);
+  ops.push(...reactionKeys.filter(k => k.includes(username)).map(k => redis.del(k)));
+  ops.push(...syncKeys.map(k => redis.del(k).catch(() => {})));
+  ops.push(...syncCodeKeys.map(k => redis.del(k).catch(() => {})));
+
+  await Promise.allSettled(ops);
+  stats.chatPrivateIncluse = true;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'DELETE, OPTIONS');
@@ -150,6 +199,7 @@ export default async function handler(req, res) {
   const kvToken = process.env.KV_REST_API_TOKEN;
   if (!kvUrl || !kvToken) return res.status(500).json({ error: 'Database non configurato.' });
 
+  const includePrivateChats = req.query?.includePrivateChats === 'true' || req.body?.includePrivateChats === true;
   const redis = new Redis({ url: kvUrl, token: kvToken });
   const stats = {
     postEliminati: 0,
@@ -158,6 +208,9 @@ export default async function handler(req, res) {
     likeRisposteRimossi: 0,
     amicizieRimosse: 0,
     classificheRipulite: 0,
+    chatPrivateIncluse: false,
+    conversazioniPrivateEliminate: 0,
+    mediaPrivatiEliminati: 0,
   };
 
   try {
@@ -174,6 +227,8 @@ export default async function handler(req, res) {
       eliminaAmicizie(redis, username, stats),
       eliminaClassifiche(redis, username, stats),
     ]);
+
+    if (includePrivateChats) await eliminaChatPrivate(redis, username, stats);
 
     const keysDirette = [
       `profile:${username}`,
@@ -206,7 +261,10 @@ export default async function handler(req, res) {
       ok: true,
       deleted: true,
       username,
-      message: 'Dati account eliminati. Al prossimo accesso l’utente ripartirà da zero.',
+      includePrivateChats,
+      message: includePrivateChats
+        ? 'Dati account e chat private eliminati. Al prossimo accesso l’utente ripartirà da zero.'
+        : 'Dati account eliminati. Le chat private non sono state incluse. Al prossimo accesso l’utente ripartirà da zero.',
       stats,
     });
   } catch (err) {
