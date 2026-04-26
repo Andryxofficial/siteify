@@ -21,6 +21,7 @@ import './light-wow-parity.css'
 import './navbar-glow-contour-fix.css'
 import './light-mobile-final-fix.css'
 import './ikigai-light-readability-final.css'
+import './mobile-input-nozoom.css'
 import App from './App.jsx'
 
 if ('serviceWorker' in navigator) {
