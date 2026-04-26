@@ -51,6 +51,40 @@ body.dark {
   --geo-inner: inset 0 1px 0 rgba(255,255,255,.16), inset 0 -1px 0 rgba(255,255,255,.045);
 }
 
+/* Utility esplicite per componenti nuovi o rifiniture mirate. */
+.geo-shell { width: min(100%, var(--geo-grid-max)); margin-inline: auto; }
+.glass-card-geo,
+.geo-card {
+  border-radius: var(--geo-radius-lg) !important;
+  background: var(--geo-surface) !important;
+  border: 1px solid var(--geo-border) !important;
+  box-shadow: var(--geo-shadow-card), var(--geo-inner) !important;
+  backdrop-filter: blur(22px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(150%) !important;
+}
+.btn-geo,
+.geo-button {
+  min-height: 46px;
+  border-radius: var(--geo-radius-md) !important;
+  padding-inline: var(--geo-space-5);
+  background: var(--geo-control) !important;
+  border: 1px solid color-mix(in srgb, var(--primary) 10%, var(--geo-border)) !important;
+  box-shadow: 0 8px 20px rgba(20,28,62,.08), var(--geo-inner) !important;
+}
+.btn-geo-primary,
+.geo-button-primary {
+  min-height: 50px;
+  border-radius: var(--geo-radius-md) !important;
+  padding-inline: var(--geo-space-6);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 94%, white 6%), color-mix(in srgb, var(--secondary) 78%, var(--primary) 22%)) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.22) !important;
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--primary) 26%, transparent), inset 0 1px 0 rgba(255,255,255,.30) !important;
+}
+.topbar-geo { display: grid; grid-template-columns: minmax(148px, 220px) auto; align-items: center; gap: var(--geo-space-4); }
+.bottom-nav-geo { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--geo-space-2); padding: var(--geo-space-2); border-radius: var(--geo-radius-xl); }
+.ikigai-panel-geo { border-radius: var(--geo-radius-xxl) !important; background: var(--geo-surface) !important; border: 1px solid var(--geo-border) !important; box-shadow: var(--geo-shadow-float), var(--geo-inner) !important; }
+
 /* Base geometrica: struttura prima dell'effetto. */
 .app-container,
 .main-content,
