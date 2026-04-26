@@ -43,7 +43,6 @@
   contain: layout paint style;
 }
 
-/* Contrasto Ikigai: il pannello deve restare leggibile in chiaro e in scuro. */
 .ikigai-panel,
 .ikigai-panel.glass-panel {
   color: var(--text-main) !important;
@@ -93,11 +92,10 @@
   color: var(--primary) !important;
 }
 
-/* Tema scuro: meno vetro latteo, più pannello scuro leggibile. */
+/* Tema scuro reale: solo quando il tema è scuro, non quando la Home mostra OFFLINE. */
 html[data-theme='dark'] .ikigai-panel,
 body[data-theme='dark'] .ikigai-panel,
-body.dark .ikigai-panel,
-body:has(.chip-offline) .ikigai-panel {
+body.dark .ikigai-panel {
   background:
     radial-gradient(circle at 55% 92%, rgba(224, 64, 251, .16), transparent 36%),
     radial-gradient(circle at 86% 8%, rgba(0, 229, 255, .10), transparent 34%),
@@ -113,8 +111,7 @@ body:has(.chip-offline) .ikigai-panel {
 
 html[data-theme='dark'] .ikigai-panel::after,
 body[data-theme='dark'] .ikigai-panel::after,
-body.dark .ikigai-panel::after,
-body:has(.chip-offline) .ikigai-panel::after {
+body.dark .ikigai-panel::after {
   opacity: .16 !important;
 }
 
@@ -126,10 +123,7 @@ body[data-theme='dark'] .ikigai-msg p,
 body[data-theme='dark'] .ikigai-input input,
 body.dark .ikigai-head h3,
 body.dark .ikigai-msg p,
-body.dark .ikigai-input input,
-body:has(.chip-offline) .ikigai-head h3,
-body:has(.chip-offline) .ikigai-msg p,
-body:has(.chip-offline) .ikigai-input input {
+body.dark .ikigai-input input {
   color: rgba(247, 249, 255, .96) !important;
 }
 
@@ -138,9 +132,7 @@ html[data-theme='dark'] .ikigai-input input::placeholder,
 body[data-theme='dark'] .ikigai-head p,
 body[data-theme='dark'] .ikigai-input input::placeholder,
 body.dark .ikigai-head p,
-body.dark .ikigai-input input::placeholder,
-body:has(.chip-offline) .ikigai-head p,
-body:has(.chip-offline) .ikigai-input input::placeholder {
+body.dark .ikigai-input input::placeholder {
   color: rgba(222, 228, 245, .72) !important;
 }
 
@@ -149,17 +141,14 @@ html[data-theme='dark'] .ikigai-input input,
 body[data-theme='dark'] .ikigai-msg.ikigai,
 body[data-theme='dark'] .ikigai-input input,
 body.dark .ikigai-msg.ikigai,
-body.dark .ikigai-input input,
-body:has(.chip-offline) .ikigai-msg.ikigai,
-body:has(.chip-offline) .ikigai-input input {
+body.dark .ikigai-input input {
   background: rgba(13, 18, 35, .78) !important;
   border-color: rgba(156, 119, 255, .24) !important;
 }
 
 html[data-theme='dark'] .ikigai-suggestions button,
 body[data-theme='dark'] .ikigai-suggestions button,
-body.dark .ikigai-suggestions button,
-body:has(.chip-offline) .ikigai-suggestions button {
+body.dark .ikigai-suggestions button {
   background: rgba(22, 29, 52, .76) !important;
   color: #ff62ff !important;
   border-color: rgba(224, 64, 251, .34) !important;
