@@ -31,6 +31,8 @@ export const TRADUZIONI = {
     'nav.impostazioni':  'Impostazioni',
     'nav.aria.main':     'Navigazione principale',
     'nav.aria.logo':     'ANDRYXify – Home',
+    'nav.profile.open':  'Apri menu profilo',
+    'nav.profile.login': 'Accedi con Twitch',
 
     'nav.tema.auto':          'Tema: Auto (segue sistema)',
     'nav.tema.alba-tramonto': 'Tema: Alba/Tramonto (in base all\'ora)',
@@ -554,6 +556,8 @@ export const TRADUZIONI = {
     'nav.impostazioni':  'Settings',
     'nav.aria.main':     'Main navigation',
     'nav.aria.logo':     'ANDRYXify – Home',
+    'nav.profile.open':  'Open profile menu',
+    'nav.profile.login': 'Log in with Twitch',
 
     'nav.tema.auto':          'Theme: Auto (follows system)',
     'nav.tema.alba-tramonto': 'Theme: Sunrise/Sunset (time-based)',
@@ -1069,6 +1073,8 @@ export const TRADUZIONI = {
     'nav.impostazioni':  'Ajustes',
     'nav.aria.main':     'Navegación principal',
     'nav.aria.logo':     'ANDRYXify – Inicio',
+    'nav.profile.open':  'Abrir menú de perfil',
+    'nav.profile.login': 'Iniciar sesión con Twitch',
 
     'nav.tema.auto':          'Tema: Auto (según el sistema)',
     'nav.tema.alba-tramonto': 'Tema: Amanecer/Atardecer (según la hora)',
