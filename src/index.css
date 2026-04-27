@@ -1881,21 +1881,30 @@ nav.navbar-container.glass-panel {
 .game-canvas-wrapper {
   position: relative;
   aspect-ratio: 1 / 1;
-  /* Il blob (glass-panel) puo` essere grande quanto vuole: il renderer 2D e`
-     smart e si adatta alla dimensione reale. Usiamo container queries cosi`
-     anche l'overlay React interno scala con la dimensione del blob. */
+  /* Container queries: l'overlay React scala con il wrapper. */
   container-type: inline-size;
   container-name: game-blob;
-  /* backdrop-filter su un contenitore con <canvas> causa problemi di compositing
-     su Safari/iOS (canvas invisibile o non renderizzato). Lo neutralizziamo qui
-     anche se glass-panel lo abilita di default.
-     NB: questi valori vengono ripetuti in fondo al file con !important per
-     sopravvivere alle regole LGv2 / blueprint-reset che usano !important. */
+  /* backdrop-filter + transform su un contenitore con <canvas> causano
+     canvas invisibile/blank su Safari/iOS. Neutralizzati qui e in fondo al
+     file con !important per battere le regole LGv2/blueprint-reset. */
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 
+/* I pseudo-elementi di glass-panel (speculare ::before e caustica ::after)
+   hanno z-index 1 e 2 e renderebbero SOPRA il canvas (blocco non posizionato).
+   Li nascondiamo così il canvas è sempre visibile al 100%. */
+.game-canvas-wrapper::before,
+.game-canvas-wrapper::after {
+  display: none;
+}
+
 .game-canvas {
+  /* position:absolute + inset:0 garantisce che il canvas riempia sempre
+     il wrapper anche quando il browser non risolve height:100% con aspect-ratio
+     sul parent in contesto flex (Firefox/Safari edge case). */
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   display: block;
@@ -1903,6 +1912,9 @@ nav.navbar-container.glass-panel {
   cursor: default;
   border-radius: var(--r-lg);
   image-rendering: pixelated;
+  /* z-index:1 → sopra i pseudo-elementi glass-panel (z-index 0 ora che
+     ::before/::after sono nascosti, ma sicurezza extra non fa male). */
+  z-index: 1;
 }
 
 .game-overlay {
