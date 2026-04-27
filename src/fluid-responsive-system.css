@@ -15,13 +15,12 @@
   --fluid-section-contain: 920px;
 }
 
-html {
-  overflow-x: clip;
-}
+html { overflow-x: clip; }
 
 body,
 #root,
-.app-container {
+.app-container,
+.page-route {
   min-width: 0;
   max-width: 100%;
   overflow-x: clip;
@@ -29,29 +28,29 @@ body,
 
 *,
 *::before,
-*::after {
-  box-sizing: border-box;
-}
+*::after { box-sizing: border-box; }
 
 img,
 video,
 canvas,
 svg,
-iframe {
-  max-width: 100%;
-}
+iframe { max-width: 100%; }
 
 img,
 video,
-canvas {
-  height: auto;
-}
+canvas { height: auto; }
+iframe { border: 0; }
 
-iframe {
-  border: 0;
+.page-route {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: var(--fluid-gap-lg);
 }
 
 /* Container fluidi: centrati, mai incollati al lato, mai più larghi del viewport. */
+.page-route > .main-content,
 .main-content,
 .page-content,
 .page-shell,
@@ -67,6 +66,11 @@ iframe {
   overflow: visible !important;
 }
 
+.page-route-home > .main-content,
+.page-route-socialify > .main-content,
+.page-route-socialify > .socialify-shell,
+.page-route-chat > .main-content,
+.page-route-twitch > .main-content,
 .main-content.wide,
 .page-content.wide,
 .home-flow.wide,
@@ -76,6 +80,10 @@ iframe {
 }
 
 /* Sezioni smart: carico progressivo senza cambiare layout. */
+.page-route > .main-content > section,
+.page-route > .main-content > .glass-panel,
+.page-route > .main-content > .glass-card,
+.page-route > .main-content > div,
 .main-content > section,
 .main-content > .glass-panel,
 .main-content > .glass-card,
@@ -126,9 +134,7 @@ iframe {
 }
 
 .glass-panel,
-.glass-card {
-  padding: clamp(1rem, 2.4vw, 1.75rem);
-}
+.glass-card { padding: clamp(1rem, 2.4vw, 1.75rem); }
 
 /* Griglie: trasformazione generale in auto-fit dove possibile. */
 .grid,
@@ -213,16 +219,12 @@ h1 {
 }
 
 h2,
-.card-title {
-  text-wrap: balance;
-}
+.card-title { text-wrap: balance; }
 
 p,
 li,
 .social-anteprima-testo,
-.social-titolo-post {
-  text-wrap: pretty;
-}
+.social-titolo-post { text-wrap: pretty; }
 
 /* SOCIALify: layout a colonne solo quando c'è spazio reale. */
 .socialify-shell,
@@ -243,9 +245,7 @@ li,
 @media (max-width: 1179px) {
   .socialify-shell,
   .community-layout,
-  .social-layout-with-sidebar {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
+  .social-layout-with-sidebar { grid-template-columns: minmax(0, 1fr) !important; }
 
   .social-sidebar,
   [class*='sidebar'] {
@@ -312,26 +312,18 @@ li,
 input,
 textarea,
 select,
-button {
-  max-width: 100%;
-}
+button { max-width: 100%; }
 
 input,
 textarea,
-select {
-  font-size: max(16px, 0.95rem);
-}
+select { font-size: max(16px, 0.95rem); }
 
-textarea {
-  resize: vertical;
-}
+textarea { resize: vertical; }
 
 /* Navbar desktop: se la larghezza si stringe, resta usabile e non rompe i link. */
 @media (min-width: 1024px) {
   .navbar-container,
-  .navbar-content {
-    max-width: calc(100vw - 48px) !important;
-  }
+  .navbar-content { max-width: calc(100vw - 48px) !important; }
 
   .nav-links {
     min-width: 0;
@@ -346,25 +338,17 @@ textarea {
 }
 
 @media (min-width: 1024px) and (max-width: 1320px) {
-  .navbar-content {
-    gap: 0.48rem !important;
-  }
+  .navbar-content { gap: 0.48rem !important; }
 
   .nav-link,
   button.nav-tema-toggle,
-  .nav-settings {
-    padding-inline: 0.48rem !important;
-  }
+  .nav-settings { padding-inline: 0.48rem !important; }
 
-  .nav-label {
-    font-size: 0.78rem !important;
-  }
+  .nav-label { font-size: 0.78rem !important; }
 }
 
 @media (min-width: 1024px) and (max-width: 1120px) {
-  .nav-label {
-    display: none !important;
-  }
+  .nav-label { display: none !important; }
 
   .nav-link,
   button.nav-tema-toggle,
@@ -381,6 +365,7 @@ textarea {
     --fluid-section-contain: 760px;
   }
 
+  .page-route > .main-content,
   .main-content,
   .page-content,
   .page-shell,
@@ -402,6 +387,7 @@ textarea {
     --fluid-section-contain: 680px;
   }
 
+  .page-route > .main-content,
   .main-content,
   .page-content,
   .page-shell,
@@ -439,9 +425,7 @@ textarea {
   .social-categorie-griglia::-webkit-scrollbar,
   [class*='tabs']::-webkit-scrollbar,
   [class*='filtri']::-webkit-scrollbar,
-  [class*='categorie']::-webkit-scrollbar {
-    display: none;
-  }
+  [class*='categorie']::-webkit-scrollbar { display: none; }
 
   .chip,
   .tag-chip,
@@ -459,47 +443,39 @@ textarea {
   .action-bar,
   .actions-row,
   .social-toolbar,
-  .social-header-actions {
-    align-items: stretch;
-  }
+  .social-header-actions { align-items: stretch; }
 
   .toolbar > *,
   .action-bar > *,
-  .social-header-actions > * {
-    min-width: 0;
-  }
+  .social-header-actions > * { min-width: 0; }
 
   .glass-panel,
-  .glass-card {
-    padding: clamp(0.95rem, 4vw, 1.2rem);
-  }
+  .glass-card { padding: clamp(0.95rem, 4vw, 1.2rem); }
 }
 
 /* Small phones: niente bottoni tagliati. */
 @media (max-width: 430px) {
   .title,
   .hero-title,
-  h1 {
-    font-size: clamp(2rem, 13vw, 3.2rem);
-  }
+  h1 { font-size: clamp(2rem, 13vw, 3.2rem); }
 
   .btn,
   button,
   .chip,
   .tag-chip,
-  [class*='chip'] {
-    min-height: 40px;
-  }
+  [class*='chip'] { min-height: 40px; }
 
   .social-scheda-riga,
   .social-card-row,
-  .profile-row {
-    gap: 0.6rem;
-  }
+  .profile-row { gap: 0.6rem; }
 }
 
 /* Browser senza supporto content-visibility: fallback naturale. */
 @supports not (content-visibility: auto) {
+  .page-route > .main-content > section,
+  .page-route > .main-content > .glass-panel,
+  .page-route > .main-content > .glass-card,
+  .page-route > .main-content > div,
   .main-content > section,
   .main-content > .glass-panel,
   .main-content > .glass-card,
@@ -517,7 +493,5 @@ textarea {
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
-  *::after {
-    scroll-behavior: auto !important;
-  }
+  *::after { scroll-behavior: auto !important; }
 }
