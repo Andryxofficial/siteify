@@ -34,6 +34,11 @@ function senzaTransizione(pathname) {
   );
 }
 
+function classeRotta(pathname = '/') {
+  const slug = pathname === '/' ? 'home' : pathname.replace(/^\//, '').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
+  return `page-route page-route-${slug || 'home'}`;
+}
+
 /**
  * Wraps each page route for consistent iOS-like spring transitions.
  * Key is provided externally by AnimatePresence in App.jsx —
@@ -41,6 +46,7 @@ function senzaTransizione(pathname) {
  */
 export default function PageTransition({ children }) {
   const { pathname } = useLocation();
+  const className = classeRotta(pathname);
 
   if (senzaTransizione(pathname)) {
     // Wrapper senza animazioni di entrata: nessun transform/opacity inline,
@@ -52,6 +58,8 @@ export default function PageTransition({ children }) {
     // qualsiasi navigazione successiva verso altre sezioni.
     return (
       <motion.div
+        className={className}
+        data-route={pathname}
         exit={{ opacity: 1, transition: { duration: 0 } }}
         style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
       >
@@ -62,6 +70,8 @@ export default function PageTransition({ children }) {
 
   return (
     <motion.div
+      className={className}
+      data-route={pathname}
       variants={variants}
       initial="initial"
       animate="animate"
