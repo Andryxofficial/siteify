@@ -9268,14 +9268,11 @@ html[data-theme="light"] body::before {
 }
 
 /* ── Glass panel ── */
+html[data-tema="chiaro"] .glass-panel,
 html[data-theme="light"] .glass-panel {
   background: var(--vetro-sfondo);
   border-color: var(--vetro-bordo-colore);
   box-shadow: var(--vetro-ombra);
-}
-
-html[data-tema="chiaro"] .glass-panel,
-html[data-theme="light"] .glass-panel {
   backdrop-filter: var(--vetro-blur) !important;
   -webkit-backdrop-filter: var(--vetro-blur) !important;
 }
@@ -9292,14 +9289,11 @@ html[data-theme="light"] .glass-panel:hover {
 }
 
 /* ── Glass card ── */
+html[data-tema="chiaro"] .glass-card,
 html[data-theme="light"] .glass-card {
   background: linear-gradient(145deg, rgba(255,255,255,0.72) 0%, rgba(226,234,255,0.46) 100%);
   border-color: var(--vetro-bordo-colore);
   box-shadow: var(--vetro-ombra-leggera);
-}
-
-html[data-tema="chiaro"] .glass-card,
-html[data-theme="light"] .glass-card {
   backdrop-filter: var(--vetro-blur) !important;
   -webkit-backdrop-filter: var(--vetro-blur) !important;
 }
