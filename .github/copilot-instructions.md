@@ -21,7 +21,6 @@ siteify/
 │   ├── logo.png                  ← Logo generico
 │   ├── favicon.svg
 │   ├── bg.png
-│   ├── icons.svg
 │   ├── manifest.webmanifest
 │   ├── pwa-192.png
 │   ├── pwa-512.png

@@ -8,8 +8,6 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          /* Three.js — separato in chunk vendor per cache a lungo termine */
-          if (id.includes('node_modules/three') || id.includes('/three/')) return 'vendor-three';
           /* Vendor — cambia raramente, cache a lungo termine */
           if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
             return 'vendor-react';
@@ -39,8 +37,6 @@ export default defineConfig({
     rolldownOptions: {
       output: {
         manualChunks(id) {
-          /* Three.js — chunk vendor separato */
-          if (id.includes('node_modules/three') || id.includes('/three/')) return 'vendor-three';
           /* Vendor React */
           if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) return 'vendor-react';
           if (id.includes('node_modules/react-router')) return 'vendor-router';
