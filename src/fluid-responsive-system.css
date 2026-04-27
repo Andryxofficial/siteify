@@ -1,0 +1,523 @@
+/* Fluid responsive system
+   Soluzione generale cross-browser: blocchi auto-adattivi, sezioni smart,
+   overflow controllato, rendering più fluido e layout coerente tra pagine. */
+
+:root {
+  --fluid-page-max: 1180px;
+  --fluid-wide-max: 1380px;
+  --fluid-readable-max: 860px;
+  --fluid-pad-x: clamp(1rem, 3.5vw, 2rem);
+  --fluid-pad-y: clamp(1.15rem, 3vw, 2rem);
+  --fluid-gap: clamp(0.75rem, 2vw, 1.25rem);
+  --fluid-gap-lg: clamp(1rem, 3vw, 2rem);
+  --fluid-card-radius: clamp(20px, 2vw, 30px);
+  --fluid-control-h: 44px;
+  --fluid-section-contain: 920px;
+}
+
+html {
+  overflow-x: clip;
+}
+
+body,
+#root,
+.app-container {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+img,
+video,
+canvas,
+svg,
+iframe {
+  max-width: 100%;
+}
+
+img,
+video,
+canvas {
+  height: auto;
+}
+
+iframe {
+  border: 0;
+}
+
+/* Container fluidi: centrati, mai incollati al lato, mai più larghi del viewport. */
+.main-content,
+.page-content,
+.page-shell,
+.home-flow,
+.socialify-shell,
+.community-layout,
+.settings-page,
+.privacy-page {
+  width: min(var(--fluid-page-max), calc(100vw - (var(--fluid-pad-x) * 2))) !important;
+  max-width: calc(100vw - (var(--fluid-pad-x) * 2)) !important;
+  margin-inline: auto !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+.main-content.wide,
+.page-content.wide,
+.home-flow.wide,
+.socialify-shell.wide,
+.community-layout.wide {
+  width: min(var(--fluid-wide-max), calc(100vw - (var(--fluid-pad-x) * 2))) !important;
+}
+
+/* Sezioni smart: carico progressivo senza cambiare layout. */
+.main-content > section,
+.main-content > .glass-panel,
+.main-content > .glass-card,
+.main-content > div,
+.home-flow > section,
+.socialify-shell > section,
+.community-layout > section,
+.settings-page > section,
+.privacy-page > section {
+  min-width: 0;
+  max-width: 100%;
+  content-visibility: auto;
+  contain-intrinsic-size: 1px var(--fluid-section-contain);
+}
+
+/* Evita content-visibility su elementi flottanti o fixed. */
+.navbar-container,
+.mobile-topbar,
+.mobile-tab-bar,
+.mobile-profile-menu,
+.ikigai-fab,
+.ikigai-panel,
+.cookie-banner,
+.social-editor-sfondo,
+.modal,
+[role='dialog'] {
+  content-visibility: visible !important;
+  contain: none;
+}
+
+/* Card generali auto-adattive. */
+.glass-panel,
+.glass-card,
+.social-scheda-post,
+.community-post,
+.social-card,
+.tag-info-card,
+.premio-card,
+.msg-feature,
+.settings-privacy-tail,
+.account-delete-box {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border-radius: var(--fluid-card-radius) !important;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.glass-panel,
+.glass-card {
+  padding: clamp(1rem, 2.4vw, 1.75rem);
+}
+
+/* Griglie: trasformazione generale in auto-fit dove possibile. */
+.grid,
+.cards-grid,
+.feature-grid,
+.stats-grid,
+.interests-grid,
+.premi-grid,
+[class*='griglia'],
+[class*='grid'] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.grid:not(.nav-links):not(.mobile-tab-items),
+.cards-grid,
+.feature-grid,
+.stats-grid,
+.interests-grid,
+.premi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: var(--fluid-gap);
+}
+
+/* Righe toolbar: wrap intelligente, senza tagli laterali. */
+.toolbar,
+.action-bar,
+.actions-row,
+.social-azioni-riga,
+.social-editor-testata,
+.social-toolbar,
+.social-header-actions,
+[class*='azioni'],
+[class*='toolbar'] {
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: clamp(0.45rem, 1.5vw, 0.75rem);
+}
+
+/* Chip/tabs: desktop wrap, mobile scroll. */
+.chip-row,
+.tags-row,
+.tag-strip,
+.tabs-row,
+.social-post-tags,
+.social-categorie-griglia,
+[class*='tabs'],
+[class*='filtri'],
+[class*='categorie'] {
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: clamp(0.35rem, 1vw, 0.55rem);
+}
+
+.chip,
+.tag-chip,
+.social-chip,
+[class*='chip'],
+[class*='pill'] {
+  min-width: 0;
+  max-width: min(100%, 22rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Testi leggibili e fluidi. */
+.title,
+.hero-title,
+.section-title,
+h1 {
+  font-size: clamp(2.25rem, 7vw, 5.4rem);
+  line-height: 0.96;
+  text-wrap: balance;
+}
+
+h2,
+.card-title {
+  text-wrap: balance;
+}
+
+p,
+li,
+.social-anteprima-testo,
+.social-titolo-post {
+  text-wrap: pretty;
+}
+
+/* SOCIALify: layout a colonne solo quando c'è spazio reale. */
+.socialify-shell,
+.community-layout {
+  display: grid;
+  gap: var(--fluid-gap-lg);
+}
+
+@media (min-width: 1180px) {
+  .socialify-shell.has-sidebar,
+  .community-layout.has-sidebar,
+  .social-layout-with-sidebar {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+    align-items: start;
+  }
+}
+
+@media (max-width: 1179px) {
+  .socialify-shell,
+  .community-layout,
+  .social-layout-with-sidebar {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .social-sidebar,
+  [class*='sidebar'] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* SOCIALify: le barre larghe devono stare dentro il container, non creare una metà vuota a destra. */
+.socialify-shell .glass-panel,
+.community-layout .glass-panel,
+.social-feed,
+.social-lista,
+[class*='social-feed'],
+[class*='social-lista'] {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Scroll orizzontale controllato solo dove serve. */
+.overflow-x-auto,
+.table-wrap,
+.leaderboard-wrap,
+[class*='scroll-x'] {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+/* Media e embed responsive. */
+.media-frame,
+.video-frame,
+.live-preview-frame,
+.twitch-embed,
+.youtube-embed,
+.social-media-preview,
+[class*='embed'],
+[class*='preview'] iframe {
+  width: 100%;
+  max-width: 100%;
+}
+
+.video-frame,
+.live-preview-frame,
+.twitch-embed,
+.youtube-embed {
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: clamp(18px, 2vw, 26px);
+}
+
+.video-frame iframe,
+.live-preview-frame iframe,
+.twitch-embed iframe,
+.youtube-embed iframe,
+[class*='embed'] iframe {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Form: niente zoom iOS, niente overflow. */
+input,
+textarea,
+select,
+button {
+  max-width: 100%;
+}
+
+input,
+textarea,
+select {
+  font-size: max(16px, 0.95rem);
+}
+
+textarea {
+  resize: vertical;
+}
+
+/* Navbar desktop: se la larghezza si stringe, resta usabile e non rompe i link. */
+@media (min-width: 1024px) {
+  .navbar-container,
+  .navbar-content {
+    max-width: calc(100vw - 48px) !important;
+  }
+
+  .nav-links {
+    min-width: 0;
+    overflow: visible;
+  }
+
+  .nav-label {
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1320px) {
+  .navbar-content {
+    gap: 0.48rem !important;
+  }
+
+  .nav-link,
+  button.nav-tema-toggle,
+  .nav-settings {
+    padding-inline: 0.48rem !important;
+  }
+
+  .nav-label {
+    font-size: 0.78rem !important;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1120px) {
+  .nav-label {
+    display: none !important;
+  }
+
+  .nav-link,
+  button.nav-tema-toggle,
+  .nav-settings {
+    width: 42px !important;
+    padding-inline: 0 !important;
+  }
+}
+
+/* Tablet: layout respirato, niente mezze colonne. */
+@media (max-width: 900px) {
+  :root {
+    --fluid-pad-x: clamp(0.9rem, 4vw, 1.4rem);
+    --fluid-section-contain: 760px;
+  }
+
+  .main-content,
+  .page-content,
+  .page-shell,
+  .home-flow,
+  .socialify-shell,
+  .community-layout,
+  .settings-page,
+  .privacy-page {
+    width: min(100%, calc(100vw - (var(--fluid-pad-x) * 2))) !important;
+  }
+}
+
+/* Mobile: tab/chip scrollano, card piene, toolbar in colonna se serve. */
+@media (max-width: 760px) {
+  :root {
+    --fluid-pad-x: clamp(0.8rem, 4vw, 1rem);
+    --fluid-pad-y: 1rem;
+    --fluid-card-radius: 24px;
+    --fluid-section-contain: 680px;
+  }
+
+  .main-content,
+  .page-content,
+  .page-shell,
+  .home-flow,
+  .socialify-shell,
+  .community-layout,
+  .settings-page,
+  .privacy-page {
+    width: calc(100vw - (var(--fluid-pad-x) * 2)) !important;
+    max-width: calc(100vw - (var(--fluid-pad-x) * 2)) !important;
+  }
+
+  .chip-row,
+  .tags-row,
+  .tag-strip,
+  .tabs-row,
+  .social-post-tags,
+  .social-categorie-griglia,
+  [class*='tabs'],
+  [class*='filtri'],
+  [class*='categorie'] {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x proximity;
+    padding-bottom: 0.25rem;
+    scrollbar-width: none;
+  }
+
+  .chip-row::-webkit-scrollbar,
+  .tags-row::-webkit-scrollbar,
+  .tag-strip::-webkit-scrollbar,
+  .tabs-row::-webkit-scrollbar,
+  .social-post-tags::-webkit-scrollbar,
+  .social-categorie-griglia::-webkit-scrollbar,
+  [class*='tabs']::-webkit-scrollbar,
+  [class*='filtri']::-webkit-scrollbar,
+  [class*='categorie']::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip,
+  .tag-chip,
+  .social-chip,
+  [class*='chip'],
+  [class*='pill'],
+  [class*='tabs'] button,
+  [class*='filtri'] button,
+  [class*='categorie'] button {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
+  .toolbar,
+  .action-bar,
+  .actions-row,
+  .social-toolbar,
+  .social-header-actions {
+    align-items: stretch;
+  }
+
+  .toolbar > *,
+  .action-bar > *,
+  .social-header-actions > * {
+    min-width: 0;
+  }
+
+  .glass-panel,
+  .glass-card {
+    padding: clamp(0.95rem, 4vw, 1.2rem);
+  }
+}
+
+/* Small phones: niente bottoni tagliati. */
+@media (max-width: 430px) {
+  .title,
+  .hero-title,
+  h1 {
+    font-size: clamp(2rem, 13vw, 3.2rem);
+  }
+
+  .btn,
+  button,
+  .chip,
+  .tag-chip,
+  [class*='chip'] {
+    min-height: 40px;
+  }
+
+  .social-scheda-riga,
+  .social-card-row,
+  .profile-row {
+    gap: 0.6rem;
+  }
+}
+
+/* Browser senza supporto content-visibility: fallback naturale. */
+@supports not (content-visibility: auto) {
+  .main-content > section,
+  .main-content > .glass-panel,
+  .main-content > .glass-card,
+  .main-content > div,
+  .home-flow > section,
+  .socialify-shell > section,
+  .community-layout > section,
+  .settings-page > section,
+  .privacy-page > section {
+    content-visibility: visible;
+    contain-intrinsic-size: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}
