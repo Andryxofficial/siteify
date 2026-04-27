@@ -31,6 +31,7 @@ import './home-geometric-mobile.css'
 import './mobile-hide-brand-logo.css'
 import './mobile-navbar-hardfix.css'
 import './ikigai-fab-safe-position.css'
+import './fluid-responsive-system.css'
 import App from './App.jsx'
 
 if ('serviceWorker' in navigator) {
