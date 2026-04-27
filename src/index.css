@@ -1658,6 +1658,11 @@ nav.navbar-container.glass-panel {
      anche l'overlay React interno scala con la dimensione del blob. */
   container-type: inline-size;
   container-name: game-blob;
+  /* backdrop-filter su un contenitore con <canvas> causa problemi di compositing
+     su Safari/iOS (canvas invisibile o non renderizzato). Lo neutralizziamo qui
+     anche se glass-panel lo abilita di default. */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .game-canvas {
