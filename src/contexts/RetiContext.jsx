@@ -92,4 +92,5 @@ export function RetiProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook esportato accanto al provider per comodita`
 export const useReti = () => useContext(RetiCtx);

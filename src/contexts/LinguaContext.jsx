@@ -132,4 +132,5 @@ export function LinguaProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook esportato accanto al provider per comodita`
 export const useLingua = () => useContext(LinguaCtx);

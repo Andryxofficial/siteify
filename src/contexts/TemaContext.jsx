@@ -158,4 +158,5 @@ export function TemaProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook esportato accanto al provider per comodita`
 export const useTema = () => useContext(TemaCtx);

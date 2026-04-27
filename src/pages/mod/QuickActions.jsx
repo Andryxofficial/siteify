@@ -340,7 +340,7 @@ export default function QuickActions({ token, isLive }) {
 
   const [aperta, setAperta] = useState(null); // 'raid' | 'commercial' | 'marker' | 'annuncio' | 'snippet' | 'shield' | null
   const [shieldActive, setShieldActive] = useState(false);
-  const [shieldLoading, setShieldLoading] = useState(false);
+  const [shieldLoading, _setShieldLoading] = useState(false);
 
   // Snippet management
   const [snippets, setSnippets] = useState(loadSnippets);

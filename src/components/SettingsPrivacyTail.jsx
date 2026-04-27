@@ -87,8 +87,8 @@ function AccountDeletionBox({ lingua }) {
         'andryxify_font_dimensione',
         'andryxify_ha_non_letti',
         'andryxify_ikigai_anon',
-      ].forEach(k => { try { localStorage.removeItem(k); } catch {} });
-      try { logout(); } catch {}
+      ].forEach(k => { try { localStorage.removeItem(k); } catch { /* ignora */ } });
+      try { logout(); } catch { /* ignora */ }
       window.location.href = '/';
     } catch (e) {
       setError(e.message || copy.error);

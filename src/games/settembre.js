@@ -817,7 +817,6 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
       for (let i = 0; i < 8; i++) {
         const a = (i / 8) * TWO_PI + s.frame * 0.15;
         const r1 = 20 + i * 8;
-        const r2 = r1 + 30;
         ctx.beginPath();
         ctx.arc(gcx, BASKET_Y - 10, r1, a, a + 0.8);
         ctx.stroke();
@@ -861,7 +860,6 @@ export function createGame(canvas, { keysRef, joystickRef, actionBtnRef, onScore
     // Float texts
     for (const f of s.floats) {
       const alpha = f.life > 0.7 ? 1 : f.life / 0.7;
-      const rise = 1 - f.life;
       ctx.globalAlpha = alpha;
       ctx.fillStyle = f.color;
       ctx.font = `bold ${Math.round(13 * f.scale)}px Outfit, sans-serif`;

@@ -15,6 +15,7 @@ function segreto() {
 function purifica(valore, massimo = 500) {
   return String(valore || '')
     .normalize('NFKC')
+    // eslint-disable-next-line no-control-regex -- sanitizzazione: rimuove caratteri di controllo
     .replace(/[\x00-\x1F]/g, ' ')
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')

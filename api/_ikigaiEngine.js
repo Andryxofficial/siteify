@@ -64,6 +64,7 @@ const INTENTS = [
   { id: 'overview', peso: 1.0, terms: ['cosa posso fare', 'what can i do', 'que puedo hacer', 'qué puedo hacer', 'cosa fa', 'what does it do', 'que hace', 'qué hace', 'funzioni', 'features', 'funciones', 'sito', 'site', 'sitio', 'aiuto', 'help', 'ayuda', 'iniziare', 'start', 'empezar', 'come funziona', 'how does it work', 'como funciona', 'cómo funciona'] },
 ];
 
+// eslint-disable-next-line no-control-regex -- sanitizzazione: rimuove caratteri di controllo
 function clean(value, max = MAX_QUESTION) { return String(value || '').normalize('NFKC').replace(/[\x00-\x1F]/g, ' ').replace(/<[^>]*>/g, ' ').trim().slice(0, max); }
 function tokenize(text) { return miniTokenize(clean(text, 1400)).map(t => t.toLowerCase()); }
 function isMandyLookIntent(text = '') { const q = clean(text).toLowerCase(); const persona = /(andrea|andre\b|andryx|andryxify|streamer|lui|suo|sua|his|him|he\b|él|el streamer)/i.test(q); const look = /(vest|look|outfit|magli|felp|accessor|drip|stile|indossa|wear|wears|clothes|hoodie|shirt|style|ropa|viste|sudadera|camiseta|accesorio|estilo)/i.test(q); const apprezza = /(mi piace|adoro|bello|figo|forte|un sacco|really like|love|cool|me gusta|me encanta|mola)/i.test(q); const mandy = /(mandy\s*mashwear|mandymashwear|mashwear)/i.test(q); return mandy || (persona && look) || (apprezza && look && persona); }

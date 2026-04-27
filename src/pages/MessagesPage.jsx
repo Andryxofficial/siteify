@@ -29,7 +29,6 @@ import {
   saveAndRegisterKeyPair,
   generateAndRegisterNewKeys,
   deleteLocalKeys,
-  exportPublicKey,
   importPublicKey,
   deriveKey,
   encryptMessage,

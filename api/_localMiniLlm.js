@@ -30,6 +30,7 @@ const TAXONOMY_BY_ID = Object.fromEntries(TAXONOMY.map(x => [x.id, x]));
 function safeText(value, max = MAX_TEXT) {
   return String(value || '')
     .normalize('NFKC')
+    // eslint-disable-next-line no-control-regex -- sanitizzazione: rimuove caratteri di controllo (tranne tab/CR/LF)
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ' ')
     .replace(/<[^>]*>/g, ' ')
     .trim()

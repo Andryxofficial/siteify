@@ -44,6 +44,7 @@ export default function TagInput({ value = [], onChange, max = 5, placeholder = 
   /* Autocomplete debounce */
   useEffect(() => {
     if (!bozza || bozza.length < 1) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset suggerimenti quando input vuoto
       setSuggerimenti([]);
       return;
     }

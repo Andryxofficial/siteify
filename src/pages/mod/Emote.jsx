@@ -35,7 +35,7 @@ const TIER_LABELS = {
 
 export default function Emote({ token }) {
   const toast = useToast();
-  const { twitchToken, twitchUser } = useTwitchAuth();
+  const { twitchToken } = useTwitchAuth();
   const { emoteCanale, caricamento: emoteTwitchLoading } = useEmoteTwitch(twitchToken);
 
   const [tab, setTab] = useState('twitch'); // 'twitch' | 'seventv'

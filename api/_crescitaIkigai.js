@@ -6,6 +6,7 @@ const MAX_NODI = 80;
 function pulisci(value = '', max = 800) {
   return String(value || '')
     .normalize('NFKC')
+    // eslint-disable-next-line no-control-regex -- sanitizzazione: rimuove caratteri di controllo
     .replace(/[\x00-\x1F]/g, ' ')
     .replace(/<[^>]*>/g, ' ')
     .trim()
@@ -66,7 +67,7 @@ export async function registraCrescitaIkigai(redis, idCustodia, eventoInput = {}
     }
     await redis.zremrangebyrank(`ikigai:growth:nodes:${idCustodia}`, 0, -MAX_NODI - 1).catch(() => {});
     await redis.expire(`ikigai:growth:nodes:${idCustodia}`, 60 * 60 * 24 * 180).catch(() => {});
-  } catch {}
+  } catch { /* best-effort */ }
   return evento;
 }
 

@@ -10,6 +10,7 @@ const MIN_EMERGENT_POSTS = 3;
 function clean(value, max = 120) {
   return String(value || '')
     .normalize('NFKC')
+    // eslint-disable-next-line no-control-regex -- sanitizzazione: rimuove caratteri di controllo (tranne tab/CR/LF)
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ' ')
     .trim()
     .slice(0, max);
@@ -195,7 +196,7 @@ async function enrichMacroWithMemory(redis, macro) {
   };
 }
 
-export async function buildAdaptiveOverview(redis, { popular = [], trending = [], macros = [] } = {}) {
+export async function buildAdaptiveOverview(redis, { trending = [], macros = [] } = {}) {
   const cached = await redis.get('semantic:macros:cache');
   if (cached) {
     try { return typeof cached === 'string' ? JSON.parse(cached) : cached; } catch { /* rebuild */ }

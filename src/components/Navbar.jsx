@@ -137,7 +137,8 @@ function MobileTabBar({ activePath, haNonLetti }) {
   const isDraggingRef = useRef(false);
   const prevSnapRef = useRef(activeIdx);
   const activeIdxRef = useRef(activeIdx);
-  activeIdxRef.current = activeIdx;
+  // Sincronizza ref senza causare warning "ref accessed during render": uso useEffect.
+  useEffect(() => { activeIdxRef.current = activeIdx; }, [activeIdx]);
   const pillX = useMotionValue(0);
   const pillScale = useMotionValue(1);
   const getTabWidth = useCallback(() => itemsRef.current ? itemsRef.current.offsetWidth / count : 0, [count]);
@@ -209,6 +210,7 @@ export default function Navbar() {
     return { left: lR.left - cR.left, width: lR.width };
   }, []);
   useEffect(() => { const id = setTimeout(() => { const info = getInfo(location.pathname); if (info?.width > 0) { setPillPos(info); setPillReady(true); } }, 60); return () => clearTimeout(id); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- sincronizza posizione pill su cambio rotta/hover
   useEffect(() => { if (pillReady) { const info = getInfo(displayPath); if (info) setPillPos(info); } }, [displayPath, pillReady, getInfo]);
   useEffect(() => { const onResize = () => { if (pillReady) { const info = getInfo(displayPath); if (info) setPillPos(info); } }; window.addEventListener('resize', onResize); return () => window.removeEventListener('resize', onResize); }, [displayPath, pillReady, getInfo]);
 

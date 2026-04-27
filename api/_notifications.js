@@ -68,6 +68,7 @@ function hashEndpoint(endpoint) {
 }
 
 function cleanString(value, maxLen) {
+  // eslint-disable-next-line no-control-regex -- sanitizzazione: rimuove caratteri di controllo (tranne tab/CR/LF)
   return String(value || '').trim().slice(0, maxLen).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
 }
 
