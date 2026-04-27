@@ -449,6 +449,233 @@ button.nav-tema-toggle {
   z-index: 0;
 }
 
+/* ── Hero home ── */
+.home-hero {
+  text-align: center;
+  padding-top: clamp(3.8rem, 12vw, 6.2rem);
+  padding-bottom: 0.5rem;
+  overflow: visible;
+}
+
+.home-accent-primary   { color: var(--primary);     font-weight: 600; }
+.home-accent-secondary { color: var(--secondary);   font-weight: 600; }
+.home-accent-warm      { color: var(--accent-warm); font-weight: 600; }
+
+.home-chips-row {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.chip-home-primary   { background: rgba(224,64,251,0.10);  color: var(--primary);     border: 1px solid rgba(224,64,251,0.20);  font-size: 0.72rem; padding: 4px 12px; }
+.chip-home-secondary { background: rgba(0,229,255,0.10);   color: var(--secondary);   border: 1px solid rgba(0,229,255,0.20);   font-size: 0.72rem; padding: 4px 12px; }
+.chip-home-warm      { background: rgba(255,184,108,0.10); color: var(--accent-warm); border: 1px solid rgba(255,184,108,0.20); font-size: 0.72rem; padding: 4px 12px; }
+
+.home-cta-row {
+  display: flex;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+/* Bottone Twitch — viola Twitch */
+.btn-twitch {
+  background: linear-gradient(135deg, #9146FF, #6441a5);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(145,70,255,.30), 0 0 0 1px rgba(145,70,255,.22);
+}
+.btn-twitch::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,.18) 0%, rgba(255,255,255,.06) 35%, transparent 60%);
+  pointer-events: none;
+}
+.btn-twitch:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 6px 28px rgba(145,70,255,.40), 0 0 0 1px rgba(145,70,255,.30);
+}
+
+/* Bottone icona compatta */
+.btn-icona {
+  padding: 0.6rem 0.85rem;
+  min-width: 44px;
+}
+
+/* ── Bento Grid ── */
+.home-bento {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.bento-tile {
+  padding: 1.5rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  text-decoration: none;
+  color: var(--text-main);
+  border-radius: var(--r-xl);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .26s var(--ease-spring), border-color .26s var(--ease-vetro);
+}
+
+.bento-tile:hover {
+  transform: translateY(-3px);
+  border-color: var(--vetro-bordo-hover);
+}
+
+.bento-tile-title {
+  font-family: 'Space Grotesk', 'SpaceGrotesk-fallback', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.bento-tile-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+  flex: 1;
+}
+
+.bento-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+  transition: color .2s var(--ease-glass), gap .2s var(--ease-spring);
+}
+
+.bento-tile:hover .bento-cta {
+  color: var(--text-main);
+  gap: 8px;
+}
+
+/* LIVE tile — piena larghezza */
+.bento-tile-live {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 1.6rem 2rem;
+  min-height: 120px;
+  /* override overflow per clippare l'orb */
+  overflow: hidden;
+}
+
+.bento-live-glow {
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, rgba(145,70,255,0.16) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.bento-live-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+  z-index: 1;
+}
+
+.bento-live-top {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.bento-live-icon { color: #9146FF; flex-shrink: 0; }
+
+.bento-live-bg {
+  color: rgba(145,70,255,0.07);
+  flex-shrink: 0;
+  display: none;
+}
+
+@media (min-width: 560px) {
+  .bento-live-bg { display: block; }
+}
+
+/* Icone nei tile */
+.bento-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-bottom: 0.2rem;
+}
+
+.bento-icon-games     { background: rgba(145,70,255,0.14); color: var(--accent-twitch);  border: 1px solid rgba(145,70,255,0.22); }
+.bento-icon-community { background: rgba(0,229,255,0.12);  color: var(--secondary);      border: 1px solid rgba(0,229,255,0.20); }
+.bento-icon-msg       { background: rgba(0,229,255,0.10);  color: var(--secondary);      border: 1px solid rgba(0,229,255,0.16); }
+.bento-icon-podcast   { background: rgba(29,185,84,0.12);  color: #1DB954;               border: 1px solid rgba(29,185,84,0.22); }
+
+/* ── Social row compatta ── */
+.home-social-row {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.social-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.48rem 1rem;
+  border-radius: var(--r-full);
+  background: linear-gradient(145deg, rgba(24,30,50,0.58) 0%, rgba(40,52,88,0.22) 100%);
+  border: 1.5px solid rgba(130,170,240,0.12);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  text-decoration: none;
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: border-color .2s var(--ease-glass), box-shadow .2s var(--ease-glass);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.social-pill:hover {
+  border-color: color-mix(in srgb, var(--pill-color) 40%, transparent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--pill-color) 18%, transparent);
+}
+
+.social-pill-icon { display: flex; align-items: center; }
+
+/* Mobile: solo icona nelle pill social */
+@media (max-width: 460px) {
+  .social-pill-label { display: none; }
+  .social-pill { padding: 0.55rem; }
+}
+
 /* ── Griglia premi — 3 colonne fluid ── */
 .premi-grid {
   display: grid;
