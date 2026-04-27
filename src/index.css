@@ -6700,7 +6700,7 @@ img.msg-avatar {
   /* Su mobile: sopra la tab bar di navigazione in basso */
   bottom: calc(var(--tab-bar-offset, 73px) + 0.75rem);
   left: 1rem;
-  z-index: 950;
+  z-index: 2300;
   width: min(290px, calc(100vw - 2rem));
   /* Materiale vetro — usa i token del design system per adattarsi al tema */
   background: var(--vetro-sfondo);
@@ -11103,7 +11103,6 @@ html:not([data-tema="chiaro"]) .ikigai-head p {
 .mobile-profile-menu,
 .ikigai-fab,
 .ikigai-panel,
-.cookie-banner,
 .settings-privacy-tail {
   background: var(--alg-bg) !important;
   border: 1px solid color-mix(in srgb, var(--primary) 14%, var(--alg-edge-soft)) !important;
@@ -11120,7 +11119,6 @@ html:not([data-tema="chiaro"]) .ikigai-head p {
 .mobile-profile-trigger::after,
 .ikigai-fab::after,
 .ikigai-panel::after,
-.cookie-banner::after,
 .settings-privacy-tail::after {
   content: '';
   position: absolute;
@@ -11374,11 +11372,6 @@ body.dark .ikigai-suggestions button {
 
 .mobile-tab-bar {
   z-index: 2140 !important;
-}
-
-.cookie-banner,
-.cookie-panel {
-  z-index: 2300 !important;
 }
 
 @media (max-width: 820px) {
@@ -11746,8 +11739,7 @@ body.dark .ikigai-suggestions button {
 .tab-item,
 .ikigai-fab,
 .ikigai-panel,
-.cookie-banner,
-.cookie-panel {
+.cookie-banner {
   visibility: visible !important;
   pointer-events: auto;
 }
