@@ -3,8 +3,8 @@ import { motion } from 'framer-motion';
 import {
   Twitch, Sparkles, Zap, Brain, Gamepad2,
   Lock, Mic, ArrowRight, Users, Share2,
+  Youtube, Instagram,
 } from 'lucide-react';
-import { Youtube, Instagram } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SEO from '../components/SEO';
 import TikTokIcon from '../components/TikTokIcon';

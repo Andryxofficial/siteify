@@ -670,7 +670,8 @@ button.nav-tema-toggle {
 
 .social-pill-icon { display: flex; align-items: center; }
 
-/* Mobile: solo icona nelle pill social */
+/* Mobile: solo icona nelle pill social.
+   Le pill hanno aria-label sul link → screen reader leggono comunque il nome. */
 @media (max-width: 460px) {
   .social-pill-label { display: none; }
   .social-pill { padding: 0.55rem; }
