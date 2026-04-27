@@ -1660,7 +1660,9 @@ nav.navbar-container.glass-panel {
   container-name: game-blob;
   /* backdrop-filter su un contenitore con <canvas> causa problemi di compositing
      su Safari/iOS (canvas invisibile o non renderizzato). Lo neutralizziamo qui
-     anche se glass-panel lo abilita di default. */
+     anche se glass-panel lo abilita di default.
+     NB: questi valori vengono ripetuti in fondo al file con !important per
+     sopravvivere alle regole LGv2 / blueprint-reset che usano !important. */
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -12864,4 +12866,20 @@ body,
   body:has([contenteditable='true']:focus) .mobile-tab-bar {
     display: none !important;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   GAME CANVAS WRAPPER — override finale (deve stare DOPO tutte le
+   regole LGv2 e blueprint-reset che usano !important).
+   backdrop-filter e transform su un contenitore canvas causano:
+   - canvas invisibile/blank su Safari/iOS (backdrop compositing bug)
+   - overlay di gioco invisibili (game-overlay non renderizzato)
+   - flickering / frame drop su dispositivi mobile
+   ═══════════════════════════════════════════════════════════════════ */
+.game-canvas-wrapper,
+.game-area .glass-panel {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transform: none !important;
+  isolation: auto !important;
 }
