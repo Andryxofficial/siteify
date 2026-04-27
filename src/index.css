@@ -12875,9 +12875,14 @@ body,
    - canvas invisibile/blank su Safari/iOS (backdrop compositing bug)
    - overlay di gioco invisibili (game-overlay non renderizzato)
    - flickering / frame drop su dispositivi mobile
+
+   NOTA SPECIFICITÁ: `html[data-theme="light"] .glass-panel` ha
+   specificità (0,2,1) — element+attr+class. Per battere questa regola
+   anche in light mode usiamo `html .game-area …` = (0,2,1): stessa
+   specificità ma posizione successiva nel cascade → vince ✓
    ═══════════════════════════════════════════════════════════════════ */
-.game-canvas-wrapper,
-.game-area .glass-panel {
+html .game-area .game-canvas-wrapper,
+html .game-area .glass-panel {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   transform: none !important;
