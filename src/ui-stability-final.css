@@ -1,0 +1,280 @@
+/* UI Stability Final
+   Ultimo layer: riprende il controllo dopo i fix stratificati.
+   Struttura coerente su desktop/tablet/mobile/PWA, light/dark allineati. */
+
+:root {
+  --stable-page-max: 1120px;
+  --stable-wide-max: 1280px;
+  --stable-x: clamp(16px, 3vw, 32px);
+  --stable-gap: clamp(16px, 2.4vw, 28px);
+  --stable-radius: clamp(22px, 2vw, 30px);
+  --stable-nav-h: 58px;
+  --stable-nav-top: 18px;
+  --stable-page-top: 118px;
+}
+
+:root[data-theme='light'] {
+  --stable-bg-texture: radial-gradient(circle at var(--rx, 50%) var(--ry, 22%), rgba(224,64,251,.10), transparent 34vw), radial-gradient(circle at calc(100% - var(--rx, 50%)) calc(20% + var(--rx-depth, 0) * 18%), rgba(0,229,255,.095), transparent 36vw), linear-gradient(180deg, #eef2fb 0%, #f7f9ff 46%, #edf2fb 100%);
+  --stable-surface: linear-gradient(145deg, rgba(255,255,255,.84), rgba(244,248,255,.66));
+  --stable-surface-strong: linear-gradient(145deg, rgba(255,255,255,.92), rgba(240,246,255,.76));
+  --stable-text: #171b2f;
+  --stable-muted: rgba(38,46,76,.70);
+  --stable-border: rgba(154,169,214,.46);
+  --stable-shadow: 0 18px 54px rgba(69,84,133,.15), 0 6px 18px rgba(70,86,135,.08), inset 0 1px 0 rgba(255,255,255,.86);
+}
+
+:root[data-theme='dark'] {
+  --stable-bg-texture: radial-gradient(circle at var(--rx, 50%) var(--ry, 22%), rgba(224,64,251,.16), transparent 34vw), radial-gradient(circle at calc(100% - var(--rx, 50%)) calc(20% + var(--rx-depth, 0) * 18%), rgba(0,229,255,.10), transparent 36vw), linear-gradient(180deg, #070912 0%, #0b0f1d 44%, #05070e 100%);
+  --stable-surface: linear-gradient(145deg, rgba(24,30,50,.82), rgba(11,15,29,.70));
+  --stable-surface-strong: linear-gradient(145deg, rgba(29,36,58,.90), rgba(12,16,31,.80));
+  --stable-text: rgba(250,251,255,.96);
+  --stable-muted: rgba(220,226,246,.72);
+  --stable-border: rgba(150,170,235,.26);
+  --stable-shadow: 0 18px 54px rgba(0,0,0,.38), 0 6px 18px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.12);
+}
+
+html, body, #root, .app-container, .page-route {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-x: clip !important;
+}
+
+body {
+  background: var(--stable-bg-texture) !important;
+  color: var(--stable-text) !important;
+}
+
+.app-container {
+  width: 100% !important;
+  padding-top: var(--stable-page-top) !important;
+}
+
+.page-route {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: var(--stable-gap) !important;
+  padding-inline: var(--stable-x) !important;
+  overflow: visible !important;
+}
+
+.page-route > *, .main-content, .page-content, .page-shell, .home-flow, .socialify-shell, .community-layout, .settings-page, .privacy-page {
+  width: min(var(--stable-page-max), 100%) !important;
+  max-width: min(var(--stable-page-max), 100%) !important;
+  margin-inline: auto !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+.page-route-home > *, .page-route-socialify > *, .page-route-twitch > *, .page-route-chat > * {
+  width: min(var(--stable-wide-max), 100%) !important;
+  max-width: min(var(--stable-wide-max), 100%) !important;
+}
+
+@media (min-width: 1024px) {
+  .navbar-container, .navbar-container.glass-panel {
+    position: fixed !important;
+    top: var(--stable-nav-top) !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: min(1240px, calc(100vw - 56px)) !important;
+    max-width: calc(100vw - 56px) !important;
+    min-height: var(--stable-nav-h) !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 9px 14px !important;
+    border-radius: 30px !important;
+    overflow: hidden !important;
+    contain: paint !important;
+    isolation: isolate !important;
+    background: var(--stable-surface-strong) !important;
+    border: 1px solid var(--stable-border) !important;
+    box-shadow: var(--stable-shadow) !important;
+    z-index: 3000 !important;
+  }
+
+  .navbar-container::before, .navbar-container::after, .navbar-container.glass-panel::before, .navbar-container.glass-panel::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  .navbar-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    overflow: visible !important;
+    color: var(--stable-text) !important;
+  }
+
+  .navbar-logo { flex: 0 0 auto !important; min-width: 78px !important; }
+  .navbar-logo-img { max-height: 34px !important; width: auto !important; display: block !important; }
+
+  .nav-links {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    overflow: visible !important;
+  }
+
+  .nav-link, button.nav-tema-toggle, .nav-settings {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 38px !important;
+    max-height: 42px !important;
+    padding: 8px 10px !important;
+    border-radius: 18px !important;
+    color: var(--stable-muted) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    white-space: nowrap !important;
+    text-shadow: none !important;
+  }
+
+  .nav-link.active, .nav-link:hover, button.nav-tema-toggle:hover, .nav-settings:hover { color: var(--stable-text) !important; }
+
+  .liquid-nav-pill, .active-pill {
+    border-radius: 18px !important;
+    background: color-mix(in srgb, var(--stable-surface-strong) 75%, var(--primary) 8%) !important;
+    border: 1px solid var(--stable-border) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.32), 0 8px 22px rgba(60,70,120,.12) !important;
+  }
+}
+
+.header, .hero-section, .hero-section-safe {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-top: 0 !important;
+  padding-top: clamp(8px, 2vw, 22px) !important;
+  overflow: visible !important;
+}
+
+.glass-panel, .glass-card, .social-card, .community-post, .social-scheda-post, .tag-info-card, .settings-privacy-tail, .account-delete-box, .premio-card, .msg-feature {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  border-radius: var(--stable-radius) !important;
+  background: var(--stable-surface) !important;
+  border: 1px solid var(--stable-border) !important;
+  box-shadow: var(--stable-shadow) !important;
+  color: var(--stable-text) !important;
+  overflow: hidden !important;
+  overflow-wrap: anywhere;
+}
+
+.glass-panel > *, .glass-card > *, .social-card > *, .community-post > *, .tag-info-card > *, .settings-privacy-tail > * {
+  position: relative;
+  z-index: 2;
+}
+
+.grid, .cards-grid, .feature-grid, .stats-grid, .interests-grid, .premi-grid, [class*='grid'], [class*='griglia'] {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.cards-grid, .feature-grid, .stats-grid, .interests-grid, .premi-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)) !important;
+  gap: var(--stable-gap) !important;
+}
+
+.toolbar, .action-bar, .actions-row, .social-toolbar, .social-header-actions, .chip-row, .tags-row, .tag-strip, .tabs-row, .social-post-tags, .social-categorie-griglia, [class*='toolbar'], [class*='azioni'], [class*='tabs'], [class*='filtri'], [class*='categorie'] {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: clamp(6px, 1vw, 10px) !important;
+}
+
+.chip, .tag-chip, .social-chip, [class*='chip'], [class*='pill'] {
+  max-width: min(100%, 22rem) !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+iframe, video, img, canvas { max-width: 100% !important; }
+
+.video-frame, .live-preview-frame, .twitch-embed, .youtube-embed, .media-frame, [class*='embed'] {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  border-radius: clamp(18px, 2vw, 26px) !important;
+}
+
+.video-frame, .live-preview-frame, .twitch-embed, .youtube-embed { aspect-ratio: 16 / 9; }
+
+.title, .hero-title, .section-title, h1 {
+  font-size: clamp(2.45rem, 6vw, 5.2rem) !important;
+  line-height: .98 !important;
+  text-wrap: balance;
+}
+
+p, li, .social-anteprima-testo, .social-titolo-post { text-wrap: pretty; }
+
+@media (max-width: 1023px) {
+  :root {
+    --stable-page-top: 88px;
+    --stable-page-max: 100%;
+    --stable-wide-max: 100%;
+    --stable-x: clamp(14px, 4vw, 22px);
+  }
+
+  .app-container {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 82px) !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px) !important;
+  }
+
+  .page-route {
+    padding-inline: var(--stable-x) !important;
+    gap: clamp(14px, 4vw, 22px) !important;
+  }
+
+  .page-route > *, .main-content, .page-content, .page-shell, .home-flow, .socialify-shell, .community-layout, .settings-page, .privacy-page {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 760px) {
+  :root { --stable-radius: 24px; --stable-x: clamp(12px, 4vw, 16px); }
+
+  .title, .hero-title, .section-title, h1 { font-size: clamp(2rem, 12vw, 3.35rem) !important; }
+
+  .chip-row, .tags-row, .tag-strip, .tabs-row, .social-post-tags, .social-categorie-griglia, [class*='tabs'], [class*='filtri'], [class*='categorie'] {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+
+  .chip-row::-webkit-scrollbar, .tags-row::-webkit-scrollbar, .tag-strip::-webkit-scrollbar, .tabs-row::-webkit-scrollbar, .social-post-tags::-webkit-scrollbar, .social-categorie-griglia::-webkit-scrollbar, [class*='tabs']::-webkit-scrollbar, [class*='filtri']::-webkit-scrollbar, [class*='categorie']::-webkit-scrollbar { display: none; }
+
+  .chip, .tag-chip, .social-chip, [class*='chip'], [class*='pill'], [class*='tabs'] button, [class*='filtri'] button, [class*='categorie'] button { flex: 0 0 auto !important; }
+
+  input, textarea, select { font-size: 16px !important; }
+}
+
+.mobile-topbar, .mobile-tab-bar, .mobile-profile-menu, .ikigai-fab, .ikigai-panel, .cookie-banner, [role='dialog'] { content-visibility: visible !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
