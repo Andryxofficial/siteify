@@ -1900,21 +1900,18 @@ nav.navbar-container.glass-panel {
 }
 
 .game-canvas {
-  /* position:absolute + inset:0 garantisce che il canvas riempia sempre
-     il wrapper anche quando il browser non risolve height:100% con aspect-ratio
-     sul parent in contesto flex (Firefox/Safari edge case). */
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  /* Elemento in-flow (NON position:absolute) così il wrapper ottiene altezza
+     dall'aspetto intrinseco 1:1 del canvas (attributi width/height=480×480).
+     height:auto → browser usa il rapporto canvas.width/canvas.height;
+     questo risolve il caso position:absolute + contain:layout che causava
+     altezza wrapper = 0 (invisibile) su Firefox/Safari. */
   display: block;
+  width: 100%;
+  height: auto;
   touch-action: none;
   cursor: default;
   border-radius: var(--r-lg);
   image-rendering: pixelated;
-  /* z-index:1 → sopra i pseudo-elementi glass-panel (z-index 0 ora che
-     ::before/::after sono nascosti, ma sicurezza extra non fa male). */
-  z-index: 1;
 }
 
 .game-overlay {
