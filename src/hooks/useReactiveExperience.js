@@ -313,7 +313,7 @@ export default function useReactiveExperience() {
           if (ok !== 'granted') return;
         }
         window.addEventListener('devicemotion', onDeviceMotion, { passive: true });
-      } catch {}
+      } catch { /* ignored */ }
     };
 
     const onFirstGesture = () => {

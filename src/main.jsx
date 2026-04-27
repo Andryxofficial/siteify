@@ -7,7 +7,7 @@ import App from './App.jsx'
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then((reg) => {
-      setInterval(() => { try { reg.update(); } catch { } }, 60_000);
+      setInterval(() => { try { reg.update(); } catch { /* ignored */ } }, 60_000);
       const onNewSW = (sw) => {
         if (sw.state === 'installed' && navigator.serviceWorker.controller) {
           window.dispatchEvent(new CustomEvent('swUpdate', { detail: { registration: reg } }));

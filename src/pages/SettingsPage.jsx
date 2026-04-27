@@ -202,8 +202,8 @@ export default function SettingsPage() {
       const esportazione = {
         ...datiServer,
         impostazioniLocali: {
-          notifiche,
-          tema:          temaAttivo,
+          notifiche:    notificheLocali,
+          tema:         temaAttivo,
           modalitaTema,
           fontDimensione,
           privacy,

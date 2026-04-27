@@ -22,7 +22,7 @@ function readState() {
 }
 
 function writeState(state) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* quota piena */ }
 }
 
 function safeTopic(value = 'generale') {
