@@ -44,7 +44,6 @@ function segnala(testo, parent) {
   const t = pulisci(testo);
   if (!deveSegnalare(t) || segnalati.has(t)) return;
   segnalati.add(t);
-  // eslint-disable-next-line no-console
   console.warn('[i18n-dev-guard] Stringa visibile potenzialmente non tradotta:', t, parent);
 }
 

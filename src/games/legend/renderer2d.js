@@ -81,7 +81,9 @@ export class Renderer2D {
     /* Lascia che il CSS dimensioni la canvas come vuole il layout; il
        backing buffer viene aggiornato dinamicamente in _resize(). */
     if (!canvas.style.width) canvas.style.width = '100%';
-    if (!canvas.style.height) canvas.style.height = '100%';
+    /* height:auto → usa il rapporto intrinseco canvas.width/canvas.height
+       (sempre 1:1 dopo _resize) evitando circular dependency con wrapper height:auto. */
+    if (!canvas.style.height) canvas.style.height = 'auto';
     canvas.style.display = 'block';
 
     this.ctx = canvas.getContext('2d', { alpha: false });

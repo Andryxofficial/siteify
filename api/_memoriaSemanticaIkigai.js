@@ -9,6 +9,7 @@ const PESO_DECORRENZA = 0.000001;
 function purificaTesto(valore, massimo = LIMITE_TESTO) {
   return String(valore || '')
     .normalize('NFKC')
+    // eslint-disable-next-line no-control-regex -- sanitizzazione: rimuove caratteri di controllo
     .replace(/[\x00-\x1F]/g, ' ')
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')

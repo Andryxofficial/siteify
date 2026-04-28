@@ -130,7 +130,7 @@ export default function ProfiloPage() {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || 'Profilo non trovato');
       }
-      const data = await res.json();
+      const data = await res.json().catch(() => { throw new Error('Profilo non trovato'); });
       setProfilo(data);
       setBio(data.bio || '');
       setSocials(data.socials || {});

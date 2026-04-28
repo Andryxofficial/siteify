@@ -18,6 +18,7 @@ const NODI = [
 function pulisci(testo = '', max = MAX_TESTO) {
   return String(testo || '')
     .normalize('NFKC')
+    // eslint-disable-next-line no-control-regex -- sanitizzazione: rimuove caratteri di controllo
     .replace(/[\x00-\x1F]/g, ' ')
     .replace(/<[^>]*>/g, ' ')
     .trim()

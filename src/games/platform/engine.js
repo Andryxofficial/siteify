@@ -44,7 +44,9 @@ export function startEngine(canvas, cb, opts = {}) {
   canvas.width = VIEW_W;
   canvas.height = VIEW_H;
   canvas.style.width = '100%';
-  canvas.style.height = '100%';
+  /* height:auto → usa il rapporto 1:1 intrinseco (canvas.width = canvas.height = 480)
+     così non si crea una circular dependency con la wrapper height:auto. */
+  canvas.style.height = 'auto';
   canvas.style.imageRendering = 'pixelated';
   canvas.style.imageRendering = 'crisp-edges';
   /* Doppia dichiarazione: alcuni browser preferiscono uno o l'altro. */

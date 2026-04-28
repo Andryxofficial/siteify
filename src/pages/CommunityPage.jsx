@@ -18,7 +18,7 @@ import TagInput from '../components/TagInput';
 import TagStrip, { TagChip } from '../components/TagStrip';
 import { useLingua } from '../contexts/LinguaContext';
 import { preparaMediaPerUpload, MEDIA_ACCETTATI } from '../utils/compressioneMedia';
-import { useMenzione, DropdownMenzione, renderConMenzioni } from '../components/MenzionePicker';
+import { useMenzione, DropdownMenzione } from '../components/MenzionePicker';
 
 function getCATEGORIE(t) {
   return [
@@ -1063,7 +1063,7 @@ export default function CommunityPage() {
     } finally {
       setCaricamento(false);
     }
-  }, [pagina, categoriaAttiva, tagAttivo, twitchToken, t]);
+  }, [pagina, categoriaAttiva, tagAttivo, twitchToken]);
 
   useEffect(() => { caricaPosts(); }, [caricaPosts]);
 

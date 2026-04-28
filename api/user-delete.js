@@ -158,7 +158,7 @@ async function eliminaChatPrivate(redis, username, stats) {
       try {
         const msg = typeof raw === 'string' ? JSON.parse(raw) : raw;
         if (msg?.mediaId) mediaIds.push(msg.mediaId);
-      } catch {}
+      } catch { /* messaggio malformato, ignora */ }
     }
     ops.push(redis.del(messagesKey));
     ops.push(redis.zrem(`conversations:${other}`, username));

@@ -45,6 +45,7 @@ export default function useIsMod() {
 
   useEffect(() => {
     if (!isLoggedIn || !twitchToken) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset stato mod su logout
       setIsMod(null);
       return;
     }

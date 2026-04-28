@@ -50,6 +50,7 @@ function trovaMenzioneAlCursore(testo, cursore) {
 }
 
 /* ── hook principale ── */
+// eslint-disable-next-line react-refresh/only-export-components -- hook esportato accanto al pannello
 export function useMenzione(inputRef, value, onInserisci) {
   const [query, setQuery]           = useState(null);
   const [utenti, setUtenti]         = useState([]);
@@ -321,6 +322,7 @@ export function DropdownMenzione({
 }
 
 /* ── Utility: evidenzia @menzioni nel testo già renderizzato ── */
+// eslint-disable-next-line react-refresh/only-export-components -- utility esportata accanto al pannello
 export function renderConMenzioni(testo) {
   if (!testo || typeof testo !== 'string') return testo;
   const parti = testo.split(/(@[a-zA-Z0-9_]{1,25})/g);

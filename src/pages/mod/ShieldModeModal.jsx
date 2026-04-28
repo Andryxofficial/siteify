@@ -234,6 +234,7 @@ export default function ShieldModeModal({ token, onClose, onDone }) {
  * ModaleDisattivaScudo — semplice confirm inline per disattivare Shield Mode.
  * Usato come alternativa leggera senza bisogno di selezione preset.
  */
+// eslint-disable-next-line react-refresh/only-export-components -- hook esportato accanto al modale per riuso quick-action
 export function useDisattivaScudo({ token, onDone }) {
   const toast = useToast();
   const { t } = useLingua();
